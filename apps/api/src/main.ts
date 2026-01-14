@@ -5,5 +5,12 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix("v1");
   await app.listen(process.env.API_PORT ? Number(process.env.API_PORT) : 4000);
+  app.useGlobalFilters(new (class {
+  catch(exception: any, host: any) {
+    console.error(exception);
+    throw exception;
+  }
+})());
+
 }
 bootstrap();

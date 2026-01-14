@@ -1,14 +1,492 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+enum UserStatus {
+  active
+  disabled
+}
+
+enum PartyType {
+  customer
+  supplier
+  both
+}
+
+enum CoaType {
+  asset
+  liability
+  equity
+  income
+  expense
+}
+
+enum VoucherType {
+  sales_invoice
+  receipt
+  payment
+  journal
+  opening
+  reversal
+}
+
+enum VoucherStatus {
+  draft
+  posted
+  void
+}
+
+enum AuditActorType {
+  user
+  system
+  sync
+  api_client
+  ai_client
+}
+
+enum ChangeOp {
+  upsert
+  delete
+  command
+}
+
+model Company {
+  id           String @id @default(uuid())
+  name         String
+  baseCurrency String @default("NPR")
+  timezone     String @default("Asia/Kathmandu")
+
+  fiscalYearStartMonth Int @default(4) // Nepal common FY start is mid-April; UI can configure.
+
+  // numbering + lock settings
+  invoicePrefix     String    @default("INV")
+  nextInvoiceNumber Int       @default(1)
+  lockDate          DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users        User[]
+  roles        Role[]
+  parties      Party[]
+  items        Item[]
+  taxCodes     TaxCode[]
+  accounts     ChartOfAccount[]
+  vouchers     Voucher[]
+  voucherLines VoucherLine[]
+  devices      Device[]
+  auditLogs    AuditLog[]
+  snapshots    AuditSnapshot[]
+  syncStates   SyncState[]
+
+  changeLog ChangeLog[]
+}
+
+model User {
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  email        String
+  name         String?
+  passwordHash String
+  status       UserStatus @default(active)
+
+  totpEnabled          Boolean @default(false)
+  totpSecretEnc        String?
+  trustedDeviceVersion Int     @default(0)
+
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  userRoles       UserRole[]
+  sessions        AuthSession[]
+  backupCodes     BackupCode[]
+  createdVouchers Voucher[]     @relation("VoucherCreatedBy")
+  postedVouchers  Voucher[]     @relation("VoucherPostedBy")
+  voidedVouchers  Voucher[]     @relation("VoucherVoidedBy")
+  auditLogs       AuditLog[]
+  changeLogs      ChangeLog[]
+
+  deviceLinks DeviceUserLink[]
+
+  @@unique([companyId, email])
+  @@index([companyId, status])
+}
+
+model Role {
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  rolePermissions RolePermission[]
+  userRoles       UserRole[]
+
+  @@unique([companyId, name])
+}
+
+model Permission {
+  code        String @id
+  description String
+
+  rolePermissions RolePermission[]
+}
+
+model RolePermission {
+  roleId         String
+  permissionCode String
+
+  role       Role       @relation(fields: [roleId], references: [id])
+  permission Permission @relation(fields: [permissionCode], references: [code])
+
+  @@id([roleId, permissionCode])
+}
+
+model UserRole {
+  userId String
+  roleId String
+
+  user User @relation(fields: [userId], references: [id])
+  role Role @relation(fields: [roleId], references: [id])
+
+  @@id([userId, roleId])
+}
+
+model AuthSession {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  refreshTokenHash String
+  deviceId         String?
+  trustedUntil     DateTime?
+
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+}
+
+model BackupCode {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  codeHash  String
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model Party {
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  type PartyType @default(customer)
+  name String
+
+  email   String?
+  phone   String?
+  address String?
+
+  // Nepal identifiers (keep both; validate format in app layer)
+  panNumber String?
+  vatNumber String?
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  vouchers     Voucher[]
+  voucherLines VoucherLine[]
+
+  @@index([companyId, type, isActive])
+  @@index([companyId, name])
+}
+
+model ChartOfAccount {
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  code     String
+  name     String
+  type     CoaType
+  parentId String?
+  parent   ChartOfAccount?  @relation("CoaTree", fields: [parentId], references: [id])
+  children ChartOfAccount[] @relation("CoaTree")
+
+  isPostable Boolean @default(true)
+  isActive   Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  voucherLines   VoucherLine[]
+  incomeItems    Item[]        @relation("IncomeAccount")
+  expenseItems   Item[]        @relation("ExpenseAccount")
+  // Back-relations for Tax codes
+  inputTaxCodes  TaxCode[]     @relation("TaxInputAccount")
+  outputTaxCodes TaxCode[]     @relation("TaxOutputAccount")
+
+  @@unique([companyId, code])
+  @@index([companyId, type])
+}
+
+model TaxCode {
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  name        String
+  rate        Decimal @db.Decimal(10, 2) // e.g. 13.00
+  isInclusive Boolean @default(false)
+
+  inputTaxAccountId String?
+  inputTaxAccount   ChartOfAccount? @relation("TaxInputAccount", fields: [inputTaxAccountId], references: [id])
+
+  outputTaxAccountId String?
+  outputTaxAccount   ChartOfAccount? @relation("TaxOutputAccount", fields: [outputTaxAccountId], references: [id])
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  voucherLines VoucherLine[]
+  items        Item[]
+
+  @@index([companyId, isActive])
+}
+
+model Item {
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  name String
+  sku  String?
+  unit String?
+
+  salesPrice    Decimal? @db.Decimal(14, 2)
+  purchasePrice Decimal? @db.Decimal(14, 2)
+
+  incomeAccountId String?
+  incomeAccount   ChartOfAccount? @relation("IncomeAccount", fields: [incomeAccountId], references: [id])
+
+  expenseAccountId String?
+  expenseAccount   ChartOfAccount? @relation("ExpenseAccount", fields: [expenseAccountId], references: [id])
+
+  taxCodeId    String?
+  taxCode      TaxCode?      @relation(fields: [taxCodeId], references: [id])
+  voucherLines VoucherLine[]
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Voucher {
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  voucherType VoucherType
+  status      VoucherStatus @default(draft)
+
+  voucherNumber String?
+  voucherDate   DateTime
+
+  partyId String?
+  party   Party?  @relation(fields: [partyId], references: [id])
+
+  memo String?
+
+  source String @default("api") // web|desktop|sync|ai_client later
+
+  createdByUserId String?
+  createdByUser   User?   @relation("VoucherCreatedBy", fields: [createdByUserId], references: [id])
+
+  postedByUserId String?
+  postedByUser   User?   @relation("VoucherPostedBy", fields: [postedByUserId], references: [id])
+
+  voidedByUserId String?
+  voidedByUser   User?   @relation("VoucherVoidedBy", fields: [voidedByUserId], references: [id])
+
+  postedAt DateTime?
+  voidedAt DateTime?
+
+  reversalOfVoucherId String?
+  reversalOfVoucher   Voucher?  @relation("VoucherReversal", fields: [reversalOfVoucherId], references: [id])
+  reversals           Voucher[] @relation("VoucherReversal")
+
+  revisionOfVoucherId String?
+  revisionOfVoucher   Voucher?  @relation("VoucherRevision", fields: [revisionOfVoucherId], references: [id])
+  revisions           Voucher[] @relation("VoucherRevision")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lines VoucherLine[]
+
+  @@unique([companyId, voucherNumber])
+  @@index([companyId, status, voucherDate])
+}
+
+model VoucherLine {
+  id String @id @default(uuid())
+
+  voucherId String
+  voucher   Voucher @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  lineNo Int
+
+  accountId String
+  account   ChartOfAccount @relation(fields: [accountId], references: [id])
+
+  partyId String?
+  party   Party?  @relation(fields: [partyId], references: [id])
+
+  itemId String?
+  item   Item?   @relation(fields: [itemId], references: [id])
+
+  description String?
+
+  debit  Decimal @default(0) @db.Decimal(14, 2)
+  credit Decimal @default(0) @db.Decimal(14, 2)
+
+  taxCodeId String?
+  taxCode   TaxCode? @relation(fields: [taxCodeId], references: [id])
+
+  taxAmount Decimal @default(0) @db.Decimal(14, 2)
+
+  createdAt DateTime @default(now())
+
+  @@index([companyId, accountId, createdAt])
+  @@index([companyId, partyId, createdAt])
+}
+
+model AuditSnapshot {
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  entityType   String
+  entityId     String
+  snapshotJson Json
+  hash         String
+
+  createdAt DateTime @default(now())
+
+  auditLogsBefore AuditLog[] @relation("AuditBefore")
+  auditLogsAfter  AuditLog[] @relation("AuditAfter")
+}
+
+model AuditLog {
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  actorType   AuditActorType
+  actorUserId String?
+  actorUser   User?          @relation(fields: [actorUserId], references: [id])
+
+  actorDeviceId String?
+  actorDevice   Device? @relation(fields: [actorDeviceId], references: [id])
+
+  action     String
+  entityType String
+  entityId   String
+
+  requestId String?
+  ip        String?
+  userAgent String?
+
+  beforeSnapshotId String?
+  beforeSnapshot   AuditSnapshot? @relation("AuditBefore", fields: [beforeSnapshotId], references: [id])
+
+  afterSnapshotId String?
+  afterSnapshot   AuditSnapshot? @relation("AuditAfter", fields: [afterSnapshotId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([companyId, createdAt])
+  @@index([companyId, entityType, entityId])
+}
+
+model Device {
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  label    String
+  platform String // windows|mac|linux|web
+  trusted  Boolean @default(false)
+
+  lastSeenAt DateTime?
+  createdAt  DateTime   @default(now())
+  auditLogs  AuditLog[]
+
+  deviceUsers DeviceUserLink[]
+  changeLog   ChangeLog[]
+  syncState   SyncState?
+}
+
+model DeviceUserLink {
+  id       String @id @default(uuid())
+  deviceId String
+  userId   String
+
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([deviceId, userId])
+}
+
+model ChangeLog {
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  deviceId String
+  device   Device @relation(fields: [deviceId], references: [id])
+
+  actorUserId String?
+  actorUser   User?   @relation(fields: [actorUserId], references: [id])
+
+  seq            BigInt
+  entityType     String
+  entityId       String
+  op             ChangeOp
+  payload        Json
+  idempotencyKey String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([deviceId, seq])
+  @@index([companyId, createdAt])
+}
+
+model SyncState {
+  id        String @id @default(uuid())
+  companyId String
+  deviceId  String @unique
+
+  company Company @relation(fields: [companyId], references: [id])
+  device  Device  @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  lastPulledChangeId String?
+  updatedAt          DateTime @updatedAt
 }
