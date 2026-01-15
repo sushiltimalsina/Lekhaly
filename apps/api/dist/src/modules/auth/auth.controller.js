@@ -25,6 +25,12 @@ let AuthController = class AuthController {
     login(body) {
         return this.auth.login(body);
     }
+    refresh(body) {
+        return this.auth.refresh(body);
+    }
+    logout(body) {
+        return this.auth.logout(body.refreshToken);
+    }
     setup(body) {
         return this.auth.totpSetup(body.userId);
     }
@@ -44,6 +50,22 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
 ], AuthController.prototype, "login", null);
+__decorate([
+    (0, common_1.Post)("refresh"),
+    (0, common_1.UsePipes)(new zod_pipe_1.ZodValidationPipe(auth_schemas_1.RefreshSchema)),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "refresh", null);
+__decorate([
+    (0, common_1.Post)("logout"),
+    (0, common_1.UsePipes)(new zod_pipe_1.ZodValidationPipe(auth_schemas_1.RefreshSchema)),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "logout", null);
 __decorate([
     (0, common_1.Post)("totp/setup"),
     __param(0, (0, common_1.Body)()),

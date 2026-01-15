@@ -9,6 +9,16 @@ export declare class AuthController {
         companyId: string;
         perms: string[];
     }>;
+    refresh(body: any): Promise<{
+        accessToken: string;
+        refreshToken: string;
+        userId: string;
+        companyId: string;
+        perms: string[];
+    }>;
+    logout(body: any): Promise<{
+        ok: boolean;
+    }>;
     setup(body: {
         userId: string;
     }): Promise<{

@@ -74,6 +74,20 @@ let AuthService = class AuthService {
         }
         return { user, perms: Array.from(perms) };
     }
+    async getUserWithPermsById(userId) {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            include: { userRoles: { include: { role: { include: { rolePermissions: true } } } } }
+        });
+        if (!user)
+            return null;
+        const perms = new Set();
+        for (const ur of user.userRoles) {
+            for (const rp of ur.role.rolePermissions)
+                perms.add(rp.permissionCode);
+        }
+        return { user, perms: Array.from(perms) };
+    }
     signAccessToken(payload) {
         return this.jwt.sign(payload, { expiresIn: "15m" });
     }
@@ -84,16 +98,27 @@ let AuthService = class AuthService {
         return crypto_1.default.createHash("sha256").update(s).digest("hex");
     }
     async login(dto) {
+        console.log('LOGIN_START', { email: dto.email, companyId: dto.companyId });
         try {
+            console.log('LOGIN_STEP: findUser');
             const found = await this.getUserWithPerms(dto.companyId, dto.email);
-            if (!found)
+            if (!found) {
+                console.log('LOGIN_FAILED: User not found');
                 throw new common_1.UnauthorizedException("Invalid credentials");
+            }
             const { user, perms } = found;
-            if (user.status !== "active")
+            console.log('LOGIN_STEP: userFound', { userId: user.id, status: user.status });
+            if (user.status !== "active") {
+                console.log('LOGIN_FAILED: User disabled');
                 throw new common_1.ForbiddenException("User disabled");
+            }
+            console.log('LOGIN_STEP: verifyPassword');
             const ok = await argon2_1.default.verify(user.passwordHash, dto.password);
-            if (!ok)
+            if (!ok) {
+                console.log('LOGIN_FAILED: Password mismatch');
                 throw new common_1.UnauthorizedException("Invalid credentials");
+            }
+            console.log('LOGIN_STEP: totpCheck');
             if (user.totpEnabled) {
                 if (!dto.totpCode)
                     throw new common_1.UnauthorizedException("TOTP required");
@@ -106,11 +131,14 @@ let AuthService = class AuthService {
                     token: dto.totpCode,
                     window: 1
                 });
-                if (!valid)
+                if (!valid) {
+                    console.log('LOGIN_FAILED: Invalid TOTP');
                     throw new common_1.UnauthorizedException("Invalid TOTP");
+                }
             }
             let deviceId = null;
             if (dto.deviceLabel) {
+                console.log('LOGIN_STEP: deviceRegistration');
                 const device = await this.prisma.device.create({
                     data: {
                         companyId: user.companyId,
@@ -122,6 +150,7 @@ let AuthService = class AuthService {
                 deviceId = device.id;
                 await this.prisma.deviceUserLink.create({ data: { deviceId: device.id, userId: user.id } });
             }
+            console.log('LOGIN_STEP: signTokens');
             const access = this.signAccessToken({
                 sub: user.id,
                 companyId: user.companyId,
@@ -130,6 +159,7 @@ let AuthService = class AuthService {
                 ver: user.trustedDeviceVersion
             });
             const refresh = this.signRefreshToken(user.id, user.companyId, user.trustedDeviceVersion);
+            console.log('LOGIN_STEP: createSession');
             await this.prisma.authSession.create({
                 data: {
                     userId: user.id,
@@ -138,13 +168,69 @@ let AuthService = class AuthService {
                     trustedUntil: dto.rememberDevice ? new Date(Date.now() + 30 * 24 * 3600 * 1000) : null
                 }
             });
+            console.log('LOGIN_STEP: updateLastLogin');
             await this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+            console.log('LOGIN_SUCCESS');
             return { accessToken: access, refreshToken: refresh, userId: user.id, companyId: user.companyId, perms };
         }
         catch (e) {
-            console.error('LOGIN_ERROR', e);
+            console.error('LOGIN_ERROR_CAUGHT', e);
+            if (e instanceof common_1.UnauthorizedException || e instanceof common_1.ForbiddenException)
+                throw e;
             throw new common_1.InternalServerErrorException(`Login failed: ${e.message || e}`);
         }
+    }
+    async refresh(dto) {
+        try {
+            const payload = this.jwt.verify(dto.refreshToken);
+            if (payload.typ !== "refresh")
+                throw new common_1.UnauthorizedException("Invalid token");
+            const session = await this.prisma.authSession.findFirst({
+                where: {
+                    userId: payload.sub,
+                    refreshTokenHash: this.sha256(dto.refreshToken),
+                    revokedAt: null
+                }
+            });
+            if (!session)
+                throw new common_1.UnauthorizedException("Invalid token");
+            const found = await this.getUserWithPermsById(payload.sub);
+            if (!found)
+                throw new common_1.UnauthorizedException("Invalid token");
+            const { user, perms } = found;
+            if (user.companyId !== payload.companyId)
+                throw new common_1.UnauthorizedException("Invalid token");
+            if (payload.ver !== user.trustedDeviceVersion)
+                throw new common_1.UnauthorizedException("Invalid token");
+            if (user.status !== "active")
+                throw new common_1.ForbiddenException("User disabled");
+            const access = this.signAccessToken({
+                sub: user.id,
+                companyId: user.companyId,
+                perms,
+                step: "none",
+                ver: user.trustedDeviceVersion
+            });
+            const refresh = this.signRefreshToken(user.id, user.companyId, user.trustedDeviceVersion);
+            await this.prisma.authSession.update({
+                where: { id: session.id },
+                data: { refreshTokenHash: this.sha256(refresh), lastUsedAt: new Date() }
+            });
+            return { accessToken: access, refreshToken: refresh, userId: user.id, companyId: user.companyId, perms };
+        }
+        catch (e) {
+            if (e instanceof common_1.UnauthorizedException || e instanceof common_1.ForbiddenException)
+                throw e;
+            throw new common_1.UnauthorizedException("Invalid token");
+        }
+    }
+    async logout(refreshToken) {
+        const tokenHash = this.sha256(refreshToken);
+        await this.prisma.authSession.updateMany({
+            where: { refreshTokenHash: tokenHash, revokedAt: null },
+            data: { revokedAt: new Date() }
+        });
+        return { ok: true };
     }
     async totpSetup(userId) {
         const user = await this.prisma.user.findUnique({ where: { id: userId } });

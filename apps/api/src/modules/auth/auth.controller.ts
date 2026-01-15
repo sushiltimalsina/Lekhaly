@@ -1,7 +1,6 @@
-﻿import { Body, Controller, Post, Req, UsePipes } from "@nestjs/common";
-import { Request } from "express";
+import { Body, Controller, Post, UsePipes } from "@nestjs/common";
 import { ZodValidationPipe } from "../../common/zod/zod.pipe";
-import { LoginSchema, StepUpSchema, TotpEnableSchema } from "./dto/auth.schemas";
+import { LoginSchema, RefreshSchema, StepUpSchema, TotpEnableSchema } from "./dto/auth.schemas";
 import { AuthService } from "./auth.service";
 
 @Controller("auth")
@@ -12,6 +11,18 @@ export class AuthController {
   @UsePipes(new ZodValidationPipe(LoginSchema))
   login(@Body() body: any) {
     return this.auth.login(body);
+  }
+
+  @Post("refresh")
+  @UsePipes(new ZodValidationPipe(RefreshSchema))
+  refresh(@Body() body: any) {
+    return this.auth.refresh(body);
+  }
+
+  @Post("logout")
+  @UsePipes(new ZodValidationPipe(RefreshSchema))
+  logout(@Body() body: any) {
+    return this.auth.logout(body.refreshToken);
   }
 
   // For MVP: well pass userId in body or from JWT later
@@ -32,3 +43,6 @@ export class AuthController {
     return this.auth.stepUp(body.userId, body.code);
   }
 }
+
+
+

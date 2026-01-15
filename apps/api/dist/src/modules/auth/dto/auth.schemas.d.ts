@@ -16,3 +16,6 @@ export declare const TotpVerifySchema: z.ZodObject<{
 export declare const StepUpSchema: z.ZodObject<{
     code: z.ZodString;
 }, z.core.$strip>;
+export declare const RefreshSchema: z.ZodObject<{
+    refreshToken: z.ZodString;
+}, z.core.$strip>;

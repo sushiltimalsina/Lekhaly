@@ -20,3 +20,7 @@ export const TotpVerifySchema = z.object({
 export const StepUpSchema = z.object({
   code: z.string().trim().min(6).max(10)
 });
+
+export const RefreshSchema = z.object({
+  refreshToken: z.string().trim().min(10)
+});

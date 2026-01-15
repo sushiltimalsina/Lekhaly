@@ -14,6 +14,13 @@ type JwtAccessPayload = {
   ver: number; // trustedDeviceVersion
 };
 
+type JwtRefreshPayload = {
+  sub: string;
+  companyId: string;
+  ver: number;
+  typ: "refresh";
+};
+
 @Injectable()
 export class AuthService {
   constructor(private prisma: PrismaService, private jwt: JwtService) { }
@@ -21,6 +28,20 @@ export class AuthService {
   private async getUserWithPerms(companyId: string, email: string) {
     const user = await this.prisma.user.findUnique({
       where: { companyId_email: { companyId, email } },
+      include: { userRoles: { include: { role: { include: { rolePermissions: true } } } } }
+    });
+    if (!user) return null;
+
+    const perms = new Set<string>();
+    for (const ur of user.userRoles) {
+      for (const rp of ur.role.rolePermissions) perms.add(rp.permissionCode);
+    }
+    return { user, perms: Array.from(perms) };
+  }
+
+  private async getUserWithPermsById(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
       include: { userRoles: { include: { role: { include: { rolePermissions: true } } } } }
     });
     if (!user) return null;
@@ -144,6 +165,58 @@ export class AuthService {
     }
   }
 
+  async refresh(dto: { refreshToken: string }) {
+    try {
+      const payload = this.jwt.verify(dto.refreshToken) as JwtRefreshPayload;
+      if (payload.typ !== "refresh") throw new UnauthorizedException("Invalid token");
+
+      const session = await this.prisma.authSession.findFirst({
+        where: {
+          userId: payload.sub,
+          refreshTokenHash: this.sha256(dto.refreshToken),
+          revokedAt: null
+        }
+      });
+      if (!session) throw new UnauthorizedException("Invalid token");
+
+      const found = await this.getUserWithPermsById(payload.sub);
+      if (!found) throw new UnauthorizedException("Invalid token");
+      const { user, perms } = found;
+      if (user.companyId !== payload.companyId) throw new UnauthorizedException("Invalid token");
+      if (payload.ver !== user.trustedDeviceVersion) throw new UnauthorizedException("Invalid token");
+      if (user.status !== "active") throw new ForbiddenException("User disabled");
+
+      const access = this.signAccessToken({
+        sub: user.id,
+        companyId: user.companyId,
+        perms,
+        step: "none",
+        ver: user.trustedDeviceVersion
+      });
+
+      const refresh = this.signRefreshToken(user.id, user.companyId, user.trustedDeviceVersion);
+
+      await this.prisma.authSession.update({
+        where: { id: session.id },
+        data: { refreshTokenHash: this.sha256(refresh), lastUsedAt: new Date() }
+      });
+
+      return { accessToken: access, refreshToken: refresh, userId: user.id, companyId: user.companyId, perms };
+    } catch (e: any) {
+      if (e instanceof UnauthorizedException || e instanceof ForbiddenException) throw e;
+      throw new UnauthorizedException("Invalid token");
+    }
+  }
+
+  async logout(refreshToken: string) {
+    const tokenHash = this.sha256(refreshToken);
+    await this.prisma.authSession.updateMany({
+      where: { refreshTokenHash: tokenHash, revokedAt: null },
+      data: { revokedAt: new Date() }
+    });
+    return { ok: true };
+  }
+
   async totpSetup(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new UnauthorizedException();
@@ -210,4 +283,3 @@ export class AuthService {
     return { stepUpToken: access };
   }
 }
-

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.StepUpSchema = exports.TotpVerifySchema = exports.TotpEnableSchema = exports.LoginSchema = void 0;
+exports.RefreshSchema = exports.StepUpSchema = exports.TotpVerifySchema = exports.TotpEnableSchema = exports.LoginSchema = void 0;
 const zod_1 = require("zod");
 exports.LoginSchema = zod_1.z.object({
     companyId: zod_1.z.string().uuid(),
@@ -18,5 +18,8 @@ exports.TotpVerifySchema = zod_1.z.object({
 });
 exports.StepUpSchema = zod_1.z.object({
     code: zod_1.z.string().trim().min(6).max(10)
+});
+exports.RefreshSchema = zod_1.z.object({
+    refreshToken: zod_1.z.string().trim().min(10)
 });
 //# sourceMappingURL=auth.schemas.js.map

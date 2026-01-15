@@ -5,6 +5,7 @@ export declare class AuthService {
     private jwt;
     constructor(prisma: PrismaService, jwt: JwtService);
     private getUserWithPerms;
+    private getUserWithPermsById;
     private signAccessToken;
     private signRefreshToken;
     private sha256;
@@ -21,6 +22,18 @@ export declare class AuthService {
         userId: string;
         companyId: string;
         perms: string[];
+    }>;
+    refresh(dto: {
+        refreshToken: string;
+    }): Promise<{
+        accessToken: string;
+        refreshToken: string;
+        userId: string;
+        companyId: string;
+        perms: string[];
+    }>;
+    logout(refreshToken: string): Promise<{
+        ok: boolean;
     }>;
     totpSetup(userId: string): Promise<{
         base32: string;
