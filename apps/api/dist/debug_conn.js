@@ -35,12 +35,27 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 const dotenv = __importStar(require("dotenv"));
 dotenv.config();
-const core_1 = require("@nestjs/core");
-const app_module_1 = require("./app.module");
-async function bootstrap() {
-    const app = await core_1.NestFactory.create(app_module_1.AppModule);
-    app.setGlobalPrefix("v1");
-    await app.listen(process.env.API_PORT ? Number(process.env.API_PORT) : 4000);
+const pg_1 = require("pg");
+const adapter_pg_1 = require("@prisma/adapter-pg");
+const client_1 = require("@prisma/client");
+async function main() {
+    console.log('DATABASE_URL:', process.env.DATABASE_URL);
+    const connectionString = process.env.DATABASE_URL;
+    try {
+        const pool = new pg_1.Pool({ connectionString });
+        const adapter = new adapter_pg_1.PrismaPg(pool);
+        const prisma = new client_1.PrismaClient({ adapter });
+        console.log('Connecting...');
+        await prisma.$connect();
+        console.log('Connected!');
+        const userCount = await prisma.user.count();
+        console.log('User count:', userCount);
+        await prisma.$disconnect();
+        await pool.end();
+    }
+    catch (e) {
+        console.error('Connection failed:', e);
+    }
 }
-bootstrap();
-//# sourceMappingURL=main.js.map
+main();
+//# sourceMappingURL=debug_conn.js.map

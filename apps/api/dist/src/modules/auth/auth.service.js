@@ -143,7 +143,7 @@ let AuthService = class AuthService {
         }
         catch (e) {
             console.error('LOGIN_ERROR', e);
-            throw e;
+            throw new common_1.InternalServerErrorException(`Login failed: ${e.message || e}`);
         }
     }
     async totpSetup(userId) {

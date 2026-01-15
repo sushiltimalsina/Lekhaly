@@ -1,4 +1,4 @@
-﻿import { ForbiddenException, Injectable, UnauthorizedException } from "@nestjs/common";
+﻿import { ForbiddenException, Injectable, UnauthorizedException, InternalServerErrorException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import argon2 from "argon2";
@@ -16,7 +16,7 @@ type JwtAccessPayload = {
 
 @Injectable()
 export class AuthService {
-  constructor(private prisma: PrismaService, private jwt: JwtService) {}
+  constructor(private prisma: PrismaService, private jwt: JwtService) { }
 
   private async getUserWithPerms(companyId: string, email: string) {
     const user = await this.prisma.user.findUnique({
@@ -54,71 +54,71 @@ export class AuthService {
   }) {
     // LOGIN_DEBUG
     try {
-    const found = await this.getUserWithPerms(dto.companyId, dto.email);
-    if (!found) throw new UnauthorizedException("Invalid credentials");
+      const found = await this.getUserWithPerms(dto.companyId, dto.email);
+      if (!found) throw new UnauthorizedException("Invalid credentials");
 
-    const { user, perms } = found;
+      const { user, perms } = found;
 
-    if (user.status !== "active") throw new ForbiddenException("User disabled");
+      if (user.status !== "active") throw new ForbiddenException("User disabled");
 
-    const ok = await argon2.verify(user.passwordHash, dto.password);
-    if (!ok) throw new UnauthorizedException("Invalid credentials");
+      const ok = await argon2.verify(user.passwordHash, dto.password);
+      if (!ok) throw new UnauthorizedException("Invalid credentials");
 
-    // If TOTP enabled, require code on login (online policy). Later we can allow trusted devices.
-    if (user.totpEnabled) {
-      if (!dto.totpCode) throw new UnauthorizedException("TOTP required");
-      const secret = user.totpSecretEnc; // for MVP store plain; later encrypt-at-rest
-      if (!secret) throw new UnauthorizedException("TOTP secret missing");
+      // If TOTP enabled, require code on login (online policy). Later we can allow trusted devices.
+      if (user.totpEnabled) {
+        if (!dto.totpCode) throw new UnauthorizedException("TOTP required");
+        const secret = user.totpSecretEnc; // for MVP store plain; later encrypt-at-rest
+        if (!secret) throw new UnauthorizedException("TOTP secret missing");
 
-      const valid = speakeasy.totp.verify({
-        secret,
-        encoding: "base32",
-        token: dto.totpCode,
-        window: 1
+        const valid = speakeasy.totp.verify({
+          secret,
+          encoding: "base32",
+          token: dto.totpCode,
+          window: 1
+        });
+        if (!valid) throw new UnauthorizedException("Invalid TOTP");
+      }
+
+      // Device registration (minimal)
+      let deviceId: string | null = null;
+      if (dto.deviceLabel) {
+        const device = await this.prisma.device.create({
+          data: {
+            companyId: user.companyId,
+            label: dto.deviceLabel,
+            platform: "web",
+            trusted: Boolean(dto.rememberDevice)
+          }
+        });
+        deviceId = device.id;
+        await this.prisma.deviceUserLink.create({ data: { deviceId: device.id, userId: user.id } });
+      }
+
+      const access = this.signAccessToken({
+        sub: user.id,
+        companyId: user.companyId,
+        perms,
+        step: "none",
+        ver: user.trustedDeviceVersion
       });
-      if (!valid) throw new UnauthorizedException("Invalid TOTP");
-    }
 
-    // Device registration (minimal)
-    let deviceId: string | null = null;
-    if (dto.deviceLabel) {
-      const device = await this.prisma.device.create({
+      const refresh = this.signRefreshToken(user.id, user.companyId, user.trustedDeviceVersion);
+
+      await this.prisma.authSession.create({
         data: {
-          companyId: user.companyId,
-          label: dto.deviceLabel,
-          platform: "web",
-          trusted: Boolean(dto.rememberDevice)
+          userId: user.id,
+          deviceId,
+          refreshTokenHash: this.sha256(refresh),
+          trustedUntil: dto.rememberDevice ? new Date(Date.now() + 30 * 24 * 3600 * 1000) : null
         }
       });
-      deviceId = device.id;
-      await this.prisma.deviceUserLink.create({ data: { deviceId: device.id, userId: user.id } });
-    }
 
-    const access = this.signAccessToken({
-      sub: user.id,
-      companyId: user.companyId,
-      perms,
-      step: "none",
-      ver: user.trustedDeviceVersion
-    });
+      await this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
 
-    const refresh = this.signRefreshToken(user.id, user.companyId, user.trustedDeviceVersion);
-
-    await this.prisma.authSession.create({
-      data: {
-        userId: user.id,
-        deviceId,
-        refreshTokenHash: this.sha256(refresh),
-        trustedUntil: dto.rememberDevice ? new Date(Date.now() + 30 * 24 * 3600 * 1000) : null
-      }
-    });
-
-    await this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
-
-    return { accessToken: access, refreshToken: refresh, userId: user.id, companyId: user.companyId, perms };
-    } catch (e) {
+      return { accessToken: access, refreshToken: refresh, userId: user.id, companyId: user.companyId, perms };
+    } catch (e: any) {
       console.error('LOGIN_ERROR', e);
-      throw e;
+      throw new InternalServerErrorException(`Login failed: ${e.message || e}`);
     }
   }
 

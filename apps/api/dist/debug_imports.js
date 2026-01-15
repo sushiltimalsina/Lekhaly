@@ -32,15 +32,32 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-const dotenv = __importStar(require("dotenv"));
-dotenv.config();
-const core_1 = require("@nestjs/core");
-const app_module_1 = require("./app.module");
-async function bootstrap() {
-    const app = await core_1.NestFactory.create(app_module_1.AppModule);
-    app.setGlobalPrefix("v1");
-    await app.listen(process.env.API_PORT ? Number(process.env.API_PORT) : 4000);
+const fs = __importStar(require("fs"));
+const argon2_1 = __importDefault(require("argon2"));
+const crypto_1 = __importDefault(require("crypto"));
+const output = [];
+try {
+    output.push(`argon2: ${typeof argon2_1.default}`);
+    if (argon2_1.default) {
+        output.push(`argon2.verify: ${typeof argon2_1.default.verify}`);
+        output.push(`argon2 keys: ${Object.keys(argon2_1.default).join(',')}`);
+    }
 }
-bootstrap();
-//# sourceMappingURL=main.js.map
+catch (e) {
+    output.push('argon2 error: ' + e.toString());
+}
+try {
+    output.push(`crypto: ${typeof crypto_1.default}`);
+    if (crypto_1.default)
+        output.push(`crypto.createHash: ${typeof crypto_1.default.createHash}`);
+}
+catch (e) {
+    output.push('crypto error: ' + e.toString());
+}
+fs.writeFileSync('c:/Lekhaly/apps/api/debug_output.txt', output.join('\n'));
+console.log('Done');
+//# sourceMappingURL=debug_imports.js.map
