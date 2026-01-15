@@ -19,18 +19,16 @@ export declare class AuthController {
     logout(body: any): Promise<{
         ok: boolean;
     }>;
-    setup(body: {
-        userId: string;
-    }): Promise<{
+    setup(userId: string): Promise<{
         base32: string;
         otpauthUrl: string | undefined;
         qrDataUrl: string;
     }>;
-    enable(body: any): Promise<{
+    enable(userId: string, body: any): Promise<{
         enabled: boolean;
         backupCodes: string[];
     }>;
-    stepUp(body: any): Promise<{
+    stepUp(userId: string, body: any): Promise<{
         stepUpToken: string;
     }>;
 }

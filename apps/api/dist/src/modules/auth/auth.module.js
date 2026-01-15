@@ -8,7 +8,10 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthModule = void 0;
 const common_1 = require("@nestjs/common");
+const core_1 = require("@nestjs/core");
 const jwt_1 = require("@nestjs/jwt");
+const jwt_auth_guard_1 = require("../../common/auth/jwt-auth.guard");
+const permissions_guard_1 = require("../../common/auth/permissions.guard");
 const auth_controller_1 = require("./auth.controller");
 const auth_service_1 = require("./auth.service");
 let AuthModule = class AuthModule {
@@ -23,7 +26,11 @@ exports.AuthModule = AuthModule = __decorate([
             })
         ],
         controllers: [auth_controller_1.AuthController],
-        providers: [auth_service_1.AuthService]
+        providers: [
+            auth_service_1.AuthService,
+            { provide: core_1.APP_GUARD, useClass: jwt_auth_guard_1.JwtAuthGuard },
+            { provide: core_1.APP_GUARD, useClass: permissions_guard_1.PermissionsGuard }
+        ]
     })
 ], AuthModule);
 //# sourceMappingURL=auth.module.js.map

@@ -1,4 +1,5 @@
 import { Body, Controller, Post, UsePipes } from "@nestjs/common";
+import { CurrentUser, Public, RequirePerm } from "../../common/auth/auth.decorator";
 import { ZodValidationPipe } from "../../common/zod/zod.pipe";
 import { LoginSchema, RefreshSchema, StepUpSchema, TotpEnableSchema } from "./dto/auth.schemas";
 import { AuthService } from "./auth.service";
@@ -8,39 +9,43 @@ export class AuthController {
   constructor(private auth: AuthService) {}
 
   @Post("login")
+  @Public()
   @UsePipes(new ZodValidationPipe(LoginSchema))
   login(@Body() body: any) {
     return this.auth.login(body);
   }
 
   @Post("refresh")
+  @Public()
   @UsePipes(new ZodValidationPipe(RefreshSchema))
   refresh(@Body() body: any) {
     return this.auth.refresh(body);
   }
 
   @Post("logout")
+  @Public()
   @UsePipes(new ZodValidationPipe(RefreshSchema))
   logout(@Body() body: any) {
     return this.auth.logout(body.refreshToken);
   }
 
-  // For MVP: well pass userId in body or from JWT later
+  // Use access token identity for TOTP enrollment
   @Post("totp/setup")
-  setup(@Body() body: { userId: string }) {
-    return this.auth.totpSetup(body.userId);
+  setup(@CurrentUser("sub") userId: string) {
+    return this.auth.totpSetup(userId);
   }
 
   @Post("totp/enable")
-  @UsePipes(new ZodValidationPipe(TotpEnableSchema.extend({ userId: TotpEnableSchema.shape.code.transform(() => undefined) }).passthrough()))
-  enable(@Body() body: any) {
-    return this.auth.totpEnable(body.userId, body.code);
+  @RequirePerm("settings.security")
+  @UsePipes(new ZodValidationPipe(TotpEnableSchema))
+  enable(@CurrentUser("sub") userId: string, @Body() body: any) {
+    return this.auth.totpEnable(userId, body.code);
   }
 
   @Post("step-up")
-  @UsePipes(new ZodValidationPipe(StepUpSchema.extend({ userId: StepUpSchema.shape.code.transform(() => undefined) }).passthrough()))
-  stepUp(@Body() body: any) {
-    return this.auth.stepUp(body.userId, body.code);
+  @UsePipes(new ZodValidationPipe(StepUpSchema))
+  stepUp(@CurrentUser("sub") userId: string, @Body() body: any) {
+    return this.auth.stepUp(userId, body.code);
   }
 }
 

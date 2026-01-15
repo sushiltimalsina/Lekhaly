@@ -1,5 +1,8 @@
-﻿import { Module } from "@nestjs/common";
+import { Module } from "@nestjs/common";
+import { APP_GUARD } from "@nestjs/core";
 import { JwtModule } from "@nestjs/jwt";
+import { JwtAuthGuard } from "../../common/auth/jwt-auth.guard";
+import { PermissionsGuard } from "../../common/auth/permissions.guard";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 
@@ -11,6 +14,10 @@ import { AuthService } from "./auth.service";
     })
   ],
   controllers: [AuthController],
-  providers: [AuthService]
+  providers: [
+    AuthService,
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: PermissionsGuard }
+  ]
 })
 export class AuthModule {}
