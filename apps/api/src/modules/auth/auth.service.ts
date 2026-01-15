@@ -52,18 +52,31 @@ export class AuthService {
     deviceLabel?: string;
     rememberDevice?: boolean;
   }) {
-    // LOGIN_DEBUG
+    console.log('LOGIN_START', { email: dto.email, companyId: dto.companyId });
     try {
+      console.log('LOGIN_STEP: findUser');
       const found = await this.getUserWithPerms(dto.companyId, dto.email);
-      if (!found) throw new UnauthorizedException("Invalid credentials");
+      if (!found) {
+        console.log('LOGIN_FAILED: User not found');
+        throw new UnauthorizedException("Invalid credentials");
+      }
 
       const { user, perms } = found;
+      console.log('LOGIN_STEP: userFound', { userId: user.id, status: user.status });
 
-      if (user.status !== "active") throw new ForbiddenException("User disabled");
+      if (user.status !== "active") {
+        console.log('LOGIN_FAILED: User disabled');
+        throw new ForbiddenException("User disabled");
+      }
 
+      console.log('LOGIN_STEP: verifyPassword');
       const ok = await argon2.verify(user.passwordHash, dto.password);
-      if (!ok) throw new UnauthorizedException("Invalid credentials");
+      if (!ok) {
+        console.log('LOGIN_FAILED: Password mismatch');
+        throw new UnauthorizedException("Invalid credentials");
+      }
 
+      console.log('LOGIN_STEP: totpCheck');
       // If TOTP enabled, require code on login (online policy). Later we can allow trusted devices.
       if (user.totpEnabled) {
         if (!dto.totpCode) throw new UnauthorizedException("TOTP required");
@@ -76,12 +89,16 @@ export class AuthService {
           token: dto.totpCode,
           window: 1
         });
-        if (!valid) throw new UnauthorizedException("Invalid TOTP");
+        if (!valid) {
+          console.log('LOGIN_FAILED: Invalid TOTP');
+          throw new UnauthorizedException("Invalid TOTP");
+        }
       }
 
       // Device registration (minimal)
       let deviceId: string | null = null;
       if (dto.deviceLabel) {
+        console.log('LOGIN_STEP: deviceRegistration');
         const device = await this.prisma.device.create({
           data: {
             companyId: user.companyId,
@@ -94,6 +111,7 @@ export class AuthService {
         await this.prisma.deviceUserLink.create({ data: { deviceId: device.id, userId: user.id } });
       }
 
+      console.log('LOGIN_STEP: signTokens');
       const access = this.signAccessToken({
         sub: user.id,
         companyId: user.companyId,
@@ -104,6 +122,7 @@ export class AuthService {
 
       const refresh = this.signRefreshToken(user.id, user.companyId, user.trustedDeviceVersion);
 
+      console.log('LOGIN_STEP: createSession');
       await this.prisma.authSession.create({
         data: {
           userId: user.id,
@@ -113,11 +132,14 @@ export class AuthService {
         }
       });
 
+      console.log('LOGIN_STEP: updateLastLogin');
       await this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
 
+      console.log('LOGIN_SUCCESS');
       return { accessToken: access, refreshToken: refresh, userId: user.id, companyId: user.companyId, perms };
     } catch (e: any) {
-      console.error('LOGIN_ERROR', e);
+      console.error('LOGIN_ERROR_CAUGHT', e);
+      if (e instanceof UnauthorizedException || e instanceof ForbiddenException) throw e;
       throw new InternalServerErrorException(`Login failed: ${e.message || e}`);
     }
   }
