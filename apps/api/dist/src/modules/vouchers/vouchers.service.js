@@ -8,15 +8,54 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.VouchersService = void 0;
 const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
 const prisma_service_1 = require("../../common/prisma/prisma.service");
+const crypto_1 = __importDefault(require("crypto"));
 let VouchersService = class VouchersService {
     prisma;
     constructor(prisma) {
         this.prisma = prisma;
+    }
+    async idempotencyGuard(user, action, idempotencyKey, payload) {
+        if (!idempotencyKey)
+            return null;
+        const requestHash = payload
+            ? crypto_1.default.createHash("sha256").update(JSON.stringify(payload)).digest("hex")
+            : null;
+        const existing = await this.prisma.apiIdempotency.findUnique({
+            where: {
+                companyId_key_action: {
+                    companyId: user.companyId,
+                    key: idempotencyKey,
+                    action
+                }
+            }
+        });
+        if (existing) {
+            if (requestHash && existing.requestHash && existing.requestHash !== requestHash) {
+                throw new common_1.ConflictException("Idempotency key reused with different payload");
+            }
+            return existing.responseJson;
+        }
+        return { requestHash };
+    }
+    async storeIdempotency(user, action, idempotencyKey, requestHash, responseJson) {
+        await this.prisma.apiIdempotency.create({
+            data: {
+                companyId: user.companyId,
+                userId: user.sub,
+                key: idempotencyKey,
+                action,
+                requestHash,
+                responseJson
+            }
+        });
     }
     async getCompanyOrThrow(companyId) {
         const company = await this.prisma.company.findUnique({ where: { id: companyId } });
@@ -106,12 +145,20 @@ let VouchersService = class VouchersService {
         }
         return { debit, credit };
     }
-    async createDraft(user, input) {
+    async createDraft(user, input, idempotencyKey) {
         if (!input.voucherType || !input.voucherDate || !input.lines) {
             throw new common_1.BadRequestException("Missing draft fields");
         }
         if (input.voucherType === client_1.VoucherType.reversal) {
             throw new common_1.BadRequestException("Reversal vouchers can only be created by void");
+        }
+        if ([client_1.VoucherType.sales_invoice, client_1.VoucherType.receipt, client_1.VoucherType.payment].includes(input.voucherType) &&
+            !input.partyId) {
+            throw new common_1.BadRequestException("Party is required for this voucher type");
+        }
+        const guard = await this.idempotencyGuard(user, "voucher.createDraft", idempotencyKey, input);
+        if (guard && !("requestHash" in guard)) {
+            return guard;
         }
         const company = await this.getCompanyOrThrow(user.companyId);
         this.ensureVoucherDate(company, input.voucherDate);
@@ -132,6 +179,9 @@ let VouchersService = class VouchersService {
             },
             include: { lines: true }
         });
+        if (idempotencyKey && guard && "requestHash" in guard) {
+            await this.storeIdempotency(user, "voucher.createDraft", idempotencyKey, guard.requestHash, voucher);
+        }
         return voucher;
     }
     async updateDraft(user, voucherId, input) {
@@ -144,6 +194,12 @@ let VouchersService = class VouchersService {
             throw new common_1.ForbiddenException("Only draft vouchers can be edited");
         if (input.voucherType === client_1.VoucherType.reversal) {
             throw new common_1.BadRequestException("Reversal vouchers can only be created by void");
+        }
+        const nextType = input.voucherType ?? voucher.voucherType;
+        const nextParty = input.partyId !== undefined ? input.partyId : voucher.partyId ? voucher.partyId : undefined;
+        if ([client_1.VoucherType.sales_invoice, client_1.VoucherType.receipt, client_1.VoucherType.payment].includes(nextType) &&
+            !nextParty) {
+            throw new common_1.BadRequestException("Party is required for this voucher type");
         }
         const data = {};
         if (input.voucherType)
@@ -192,7 +248,11 @@ let VouchersService = class VouchersService {
             balanced
         };
     }
-    async post(user, voucherId) {
+    async post(user, voucherId, idempotencyKey) {
+        const guard = await this.idempotencyGuard(user, "voucher.post", idempotencyKey, { voucherId });
+        if (guard && !("requestHash" in guard)) {
+            return guard;
+        }
         return this.prisma.$transaction(async (tx) => {
             const voucher = await tx.voucher.findFirst({
                 where: { id: voucherId, companyId: user.companyId },
@@ -238,10 +298,27 @@ let VouchersService = class VouchersService {
                 where: { id: company.id },
                 data: { nextInvoiceNumber: sequence + 1 }
             });
-            return tx.voucher.findUnique({ where: { id: posted.id }, include: { lines: true } });
+            const result = await tx.voucher.findUnique({ where: { id: posted.id }, include: { lines: true } });
+            if (idempotencyKey && guard && "requestHash" in guard && result) {
+                await tx.apiIdempotency.create({
+                    data: {
+                        companyId: user.companyId,
+                        userId: user.sub,
+                        key: idempotencyKey,
+                        action: "voucher.post",
+                        requestHash: guard.requestHash,
+                        responseJson: result
+                    }
+                });
+            }
+            return result;
         });
     }
-    async void(user, voucherId) {
+    async void(user, voucherId, idempotencyKey) {
+        const guard = await this.idempotencyGuard(user, "voucher.void", idempotencyKey, { voucherId });
+        if (guard && !("requestHash" in guard)) {
+            return guard;
+        }
         return this.prisma.$transaction(async (tx) => {
             const voucher = await tx.voucher.findFirst({
                 where: { id: voucherId, companyId: user.companyId },
@@ -286,7 +363,20 @@ let VouchersService = class VouchersService {
                     voidedByUserId: user.sub
                 }
             });
-            return { voidedVoucherId: voucher.id, reversalVoucherId: reversal.id };
+            const result = { voidedVoucherId: voucher.id, reversalVoucherId: reversal.id };
+            if (idempotencyKey && guard && "requestHash" in guard) {
+                await tx.apiIdempotency.create({
+                    data: {
+                        companyId: user.companyId,
+                        userId: user.sub,
+                        key: idempotencyKey,
+                        action: "voucher.void",
+                        requestHash: guard.requestHash,
+                        responseJson: result
+                    }
+                });
+            }
+            return result;
         });
     }
     async getById(user, voucherId) {
@@ -306,6 +396,16 @@ let VouchersService = class VouchersService {
             where.voucherType = filters.voucherType;
         if (filters.partyId)
             where.partyId = filters.partyId;
+        if (filters.createdByUserId)
+            where.createdByUserId = filters.createdByUserId;
+        if (filters.postedByUserId)
+            where.postedByUserId = filters.postedByUserId;
+        if (filters.voidedByUserId)
+            where.voidedByUserId = filters.voidedByUserId;
+        if (filters.voucherNumber)
+            where.voucherNumber = filters.voucherNumber;
+        if (filters.memo)
+            where.memo = { contains: filters.memo, mode: "insensitive" };
         if (filters.from || filters.to) {
             where.voucherDate = {};
             if (filters.from)

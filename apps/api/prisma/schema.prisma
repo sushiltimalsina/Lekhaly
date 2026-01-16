@@ -82,6 +82,7 @@ model Company {
   auditLogs    AuditLog[]
   snapshots    AuditSnapshot[]
   syncStates   SyncState[]
+  apiIdempotencies ApiIdempotency[]
 
   changeLog ChangeLog[]
 }
@@ -114,6 +115,7 @@ model User {
   changeLogs      ChangeLog[]
 
   deviceLinks DeviceUserLink[]
+  apiIdempotencies ApiIdempotency[]
 
   @@unique([companyId, email])
   @@index([companyId, status])
@@ -489,4 +491,21 @@ model SyncState {
 
   lastPulledChangeId String?
   updatedAt          DateTime @updatedAt
+}
+
+model ApiIdempotency {
+  id        String   @id @default(uuid())
+  companyId String
+  userId    String?
+  key       String
+  action    String
+  requestHash String?
+  responseJson Json
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id])
+  user    User?   @relation(fields: [userId], references: [id])
+
+  @@unique([companyId, key, action])
+  @@index([companyId, createdAt])
 }

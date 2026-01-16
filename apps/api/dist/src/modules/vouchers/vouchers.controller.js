@@ -23,8 +23,8 @@ let VouchersController = class VouchersController {
     constructor(vouchers) {
         this.vouchers = vouchers;
     }
-    createDraft(user, body) {
-        return this.vouchers.createDraft(user, body);
+    createDraft(user, body, idempotencyKey) {
+        return this.vouchers.createDraft(user, body, idempotencyKey);
     }
     updateDraft(user, id, body) {
         return this.vouchers.updateDraft(user, id, body);
@@ -38,11 +38,11 @@ let VouchersController = class VouchersController {
     list(user, query) {
         return this.vouchers.list(user, query);
     }
-    post(user, id) {
-        return this.vouchers.post(user, id);
+    post(user, id, idempotencyKey) {
+        return this.vouchers.post(user, id, idempotencyKey);
     }
-    void(user, id) {
-        return this.vouchers.void(user, id);
+    void(user, id, idempotencyKey) {
+        return this.vouchers.void(user, id, idempotencyKey);
     }
 };
 exports.VouchersController = VouchersController;
@@ -51,8 +51,9 @@ __decorate([
     (0, auth_decorator_1.RequirePerm)("voucher.draft.create"),
     __param(0, (0, auth_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Body)(new zod_pipe_1.ZodValidationPipe(voucher_schemas_1.CreateVoucherDraftSchema))),
+    __param(2, (0, common_1.Headers)("Idempotency-Key")),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:paramtypes", [Object, Object, String]),
     __metadata("design:returntype", void 0)
 ], VouchersController.prototype, "createDraft", null);
 __decorate([
@@ -98,8 +99,9 @@ __decorate([
     (0, auth_decorator_1.RequireStep)("sensitive"),
     __param(0, (0, auth_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Param)("id")),
+    __param(2, (0, common_1.Headers)("Idempotency-Key")),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", void 0)
 ], VouchersController.prototype, "post", null);
 __decorate([
@@ -108,8 +110,9 @@ __decorate([
     (0, auth_decorator_1.RequireStep)("sensitive"),
     __param(0, (0, auth_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Param)("id")),
+    __param(2, (0, common_1.Headers)("Idempotency-Key")),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", void 0)
 ], VouchersController.prototype, "void", null);
 exports.VouchersController = VouchersController = __decorate([

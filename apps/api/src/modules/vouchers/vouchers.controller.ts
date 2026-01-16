@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Put, Query } from "@nestjs/common";
+import { Body, Controller, Get, Headers, Param, Post, Put, Query } from "@nestjs/common";
 import { CurrentUser, RequirePerm, RequireStep } from "../../common/auth/auth.decorator";
 import { ZodValidationPipe } from "../../common/zod/zod.pipe";
 import type { AuthUser } from "../../common/auth/auth.types";
@@ -13,9 +13,10 @@ export class VouchersController {
   @RequirePerm("voucher.draft.create")
   createDraft(
     @CurrentUser() user: AuthUser,
-    @Body(new ZodValidationPipe(CreateVoucherDraftSchema)) body: any
+    @Body(new ZodValidationPipe(CreateVoucherDraftSchema)) body: any,
+    @Headers("Idempotency-Key") idempotencyKey?: string
   ) {
-    return this.vouchers.createDraft(user, body);
+    return this.vouchers.createDraft(user, body, idempotencyKey);
   }
 
   @Put(":id/draft")
@@ -52,14 +53,22 @@ export class VouchersController {
   @Post(":id/post")
   @RequirePerm("voucher.post")
   @RequireStep("sensitive")
-  post(@CurrentUser() user: AuthUser, @Param("id") id: string) {
-    return this.vouchers.post(user, id);
+  post(
+    @CurrentUser() user: AuthUser,
+    @Param("id") id: string,
+    @Headers("Idempotency-Key") idempotencyKey?: string
+  ) {
+    return this.vouchers.post(user, id, idempotencyKey);
   }
 
   @Post(":id/void")
   @RequirePerm("voucher.void")
   @RequireStep("sensitive")
-  void(@CurrentUser() user: AuthUser, @Param("id") id: string) {
-    return this.vouchers.void(user, id);
+  void(
+    @CurrentUser() user: AuthUser,
+    @Param("id") id: string,
+    @Headers("Idempotency-Key") idempotencyKey?: string
+  ) {
+    return this.vouchers.void(user, id, idempotencyKey);
   }
 }

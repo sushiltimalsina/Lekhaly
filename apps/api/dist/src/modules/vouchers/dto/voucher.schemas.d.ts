@@ -70,6 +70,11 @@ export declare const ListVoucherQuerySchema: z.ZodObject<{
         reversal: "reversal";
     }>>;
     partyId: z.ZodOptional<z.ZodString>;
+    createdByUserId: z.ZodOptional<z.ZodString>;
+    postedByUserId: z.ZodOptional<z.ZodString>;
+    voidedByUserId: z.ZodOptional<z.ZodString>;
+    voucherNumber: z.ZodOptional<z.ZodString>;
+    memo: z.ZodOptional<z.ZodString>;
     from: z.ZodOptional<z.ZodCoercedDate<unknown>>;
     to: z.ZodOptional<z.ZodCoercedDate<unknown>>;
     skip: z.ZodOptional<z.ZodCoercedNumber<unknown>>;

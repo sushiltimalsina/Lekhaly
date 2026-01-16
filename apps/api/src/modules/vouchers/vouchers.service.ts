@@ -1,8 +1,9 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma, VoucherStatus, VoucherType } from "@prisma/client";
 import type { ChartOfAccount, Item, Party, TaxCode } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import type { AuthUser } from "../../common/auth/auth.types";
+import crypto from "crypto";
 
 type DraftInput = {
   voucherType?: VoucherType;
@@ -24,6 +25,56 @@ type DraftInput = {
 @Injectable()
 export class VouchersService {
   constructor(private prisma: PrismaService) {}
+
+  private async idempotencyGuard(
+    user: AuthUser,
+    action: string,
+    idempotencyKey?: string,
+    payload?: unknown
+  ) {
+    if (!idempotencyKey) return null;
+
+    const requestHash = payload
+      ? crypto.createHash("sha256").update(JSON.stringify(payload)).digest("hex")
+      : null;
+
+    const existing = await this.prisma.apiIdempotency.findUnique({
+      where: {
+        companyId_key_action: {
+          companyId: user.companyId,
+          key: idempotencyKey,
+          action
+        }
+      }
+    });
+    if (existing) {
+      if (requestHash && existing.requestHash && existing.requestHash !== requestHash) {
+        throw new ConflictException("Idempotency key reused with different payload");
+      }
+      return existing.responseJson;
+    }
+
+    return { requestHash };
+  }
+
+  private async storeIdempotency(
+    user: AuthUser,
+    action: string,
+    idempotencyKey: string,
+    requestHash: string | null,
+    responseJson: unknown
+  ) {
+    await this.prisma.apiIdempotency.create({
+      data: {
+        companyId: user.companyId,
+        userId: user.sub,
+        key: idempotencyKey,
+        action,
+        requestHash,
+        responseJson
+      }
+    });
+  }
 
   private async getCompanyOrThrow(companyId: string) {
     const company = await this.prisma.company.findUnique({ where: { id: companyId } });
@@ -111,12 +162,23 @@ export class VouchersService {
     return { debit, credit };
   }
 
-  async createDraft(user: AuthUser, input: DraftInput) {
+  async createDraft(user: AuthUser, input: DraftInput, idempotencyKey?: string) {
     if (!input.voucherType || !input.voucherDate || !input.lines) {
       throw new BadRequestException("Missing draft fields");
     }
     if (input.voucherType === VoucherType.reversal) {
       throw new BadRequestException("Reversal vouchers can only be created by void");
+    }
+    if (
+      [VoucherType.sales_invoice, VoucherType.receipt, VoucherType.payment].includes(input.voucherType) &&
+      !input.partyId
+    ) {
+      throw new BadRequestException("Party is required for this voucher type");
+    }
+
+    const guard = await this.idempotencyGuard(user, "voucher.createDraft", idempotencyKey, input);
+    if (guard && !("requestHash" in guard)) {
+      return guard;
     }
 
     const company = await this.getCompanyOrThrow(user.companyId);
@@ -140,6 +202,10 @@ export class VouchersService {
       include: { lines: true }
     });
 
+    if (idempotencyKey && guard && "requestHash" in guard) {
+      await this.storeIdempotency(user, "voucher.createDraft", idempotencyKey, guard.requestHash, voucher);
+    }
+
     return voucher;
   }
 
@@ -151,6 +217,15 @@ export class VouchersService {
     if (voucher.status !== VoucherStatus.draft) throw new ForbiddenException("Only draft vouchers can be edited");
     if (input.voucherType === VoucherType.reversal) {
       throw new BadRequestException("Reversal vouchers can only be created by void");
+    }
+    const nextType = input.voucherType ?? voucher.voucherType;
+    const nextParty =
+      input.partyId !== undefined ? input.partyId : voucher.partyId ? voucher.partyId : undefined;
+    if (
+      [VoucherType.sales_invoice, VoucherType.receipt, VoucherType.payment].includes(nextType) &&
+      !nextParty
+    ) {
+      throw new BadRequestException("Party is required for this voucher type");
     }
 
     const data: Prisma.VoucherUpdateInput = {};
@@ -204,7 +279,12 @@ export class VouchersService {
     };
   }
 
-  async post(user: AuthUser, voucherId: string) {
+  async post(user: AuthUser, voucherId: string, idempotencyKey?: string) {
+    const guard = await this.idempotencyGuard(user, "voucher.post", idempotencyKey, { voucherId });
+    if (guard && !("requestHash" in guard)) {
+      return guard;
+    }
+
     return this.prisma.$transaction(async (tx) => {
       const voucher = await tx.voucher.findFirst({
         where: { id: voucherId, companyId: user.companyId },
@@ -255,11 +335,29 @@ export class VouchersService {
         data: { nextInvoiceNumber: sequence + 1 }
       });
 
-      return tx.voucher.findUnique({ where: { id: posted.id }, include: { lines: true } });
+      const result = await tx.voucher.findUnique({ where: { id: posted.id }, include: { lines: true } });
+      if (idempotencyKey && guard && "requestHash" in guard && result) {
+        await tx.apiIdempotency.create({
+          data: {
+            companyId: user.companyId,
+            userId: user.sub,
+            key: idempotencyKey,
+            action: "voucher.post",
+            requestHash: guard.requestHash,
+            responseJson: result
+          }
+        });
+      }
+      return result;
     });
   }
 
-  async void(user: AuthUser, voucherId: string) {
+  async void(user: AuthUser, voucherId: string, idempotencyKey?: string) {
+    const guard = await this.idempotencyGuard(user, "voucher.void", idempotencyKey, { voucherId });
+    if (guard && !("requestHash" in guard)) {
+      return guard;
+    }
+
     return this.prisma.$transaction(async (tx) => {
       const voucher = await tx.voucher.findFirst({
         where: { id: voucherId, companyId: user.companyId },
@@ -305,7 +403,20 @@ export class VouchersService {
         }
       });
 
-      return { voidedVoucherId: voucher.id, reversalVoucherId: reversal.id };
+      const result = { voidedVoucherId: voucher.id, reversalVoucherId: reversal.id };
+      if (idempotencyKey && guard && "requestHash" in guard) {
+        await tx.apiIdempotency.create({
+          data: {
+            companyId: user.companyId,
+            userId: user.sub,
+            key: idempotencyKey,
+            action: "voucher.void",
+            requestHash: guard.requestHash,
+            responseJson: result
+          }
+        });
+      }
+      return result;
     });
   }
 
@@ -324,6 +435,11 @@ export class VouchersService {
       status?: VoucherStatus;
       voucherType?: VoucherType;
       partyId?: string;
+      createdByUserId?: string;
+      postedByUserId?: string;
+      voidedByUserId?: string;
+      voucherNumber?: string;
+      memo?: string;
       from?: Date;
       to?: Date;
       skip?: number;
@@ -334,6 +450,11 @@ export class VouchersService {
     if (filters.status) where.status = filters.status;
     if (filters.voucherType) where.voucherType = filters.voucherType;
     if (filters.partyId) where.partyId = filters.partyId;
+    if (filters.createdByUserId) where.createdByUserId = filters.createdByUserId;
+    if (filters.postedByUserId) where.postedByUserId = filters.postedByUserId;
+    if (filters.voidedByUserId) where.voidedByUserId = filters.voidedByUserId;
+    if (filters.voucherNumber) where.voucherNumber = filters.voucherNumber;
+    if (filters.memo) where.memo = { contains: filters.memo, mode: "insensitive" };
     if (filters.from || filters.to) {
       where.voucherDate = {};
       if (filters.from) (where.voucherDate as Prisma.DateTimeFilter).gte = filters.from;
