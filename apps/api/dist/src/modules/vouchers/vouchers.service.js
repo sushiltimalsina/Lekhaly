@@ -150,8 +150,9 @@ let VouchersService = class VouchersService {
             data.voucherType = input.voucherType;
         if (input.voucherDate)
             data.voucherDate = input.voucherDate;
-        if (input.partyId !== undefined)
-            data.partyId = input.partyId;
+        if (input.partyId !== undefined) {
+            data.party = input.partyId ? { connect: { id: input.partyId } } : { disconnect: true };
+        }
         if (input.memo !== undefined)
             data.memo = input.memo;
         return this.prisma.$transaction(async (tx) => {

@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma, VoucherStatus, VoucherType } from "@prisma/client";
+import type { ChartOfAccount, Item, Party, TaxCode } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import type { AuthUser } from "../../common/auth/auth.types";
 
@@ -55,16 +56,16 @@ export class VouchersService {
         ? this.prisma.chartOfAccount.findMany({
             where: { id: { in: Array.from(accountIds) }, companyId }
           })
-        : Promise.resolve([]),
+        : Promise.resolve([] as ChartOfAccount[]),
       partyIds.size
         ? this.prisma.party.findMany({ where: { id: { in: Array.from(partyIds) }, companyId } })
-        : Promise.resolve([]),
+        : Promise.resolve([] as Party[]),
       itemIds.size
         ? this.prisma.item.findMany({ where: { id: { in: Array.from(itemIds) }, companyId } })
-        : Promise.resolve([]),
+        : Promise.resolve([] as Item[]),
       taxCodeIds.size
         ? this.prisma.taxCode.findMany({ where: { id: { in: Array.from(taxCodeIds) }, companyId } })
-        : Promise.resolve([])
+        : Promise.resolve([] as TaxCode[])
     ]);
 
     if (accounts.length !== accountIds.size) throw new BadRequestException("Invalid account");
@@ -155,7 +156,9 @@ export class VouchersService {
     const data: Prisma.VoucherUpdateInput = {};
     if (input.voucherType) data.voucherType = input.voucherType;
     if (input.voucherDate) data.voucherDate = input.voucherDate;
-    if (input.partyId !== undefined) data.partyId = input.partyId;
+    if (input.partyId !== undefined) {
+      data.party = input.partyId ? { connect: { id: input.partyId } } : { disconnect: true };
+    }
     if (input.memo !== undefined) data.memo = input.memo;
 
     return this.prisma.$transaction(async (tx) => {
