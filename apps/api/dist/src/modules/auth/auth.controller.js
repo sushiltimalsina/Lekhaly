@@ -90,18 +90,16 @@ __decorate([
 __decorate([
     (0, common_1.Post)("totp/enable"),
     (0, auth_decorator_1.RequirePerm)("settings.security"),
-    (0, common_1.UsePipes)(new zod_pipe_1.ZodValidationPipe(auth_schemas_1.TotpEnableSchema)),
     __param(0, (0, auth_decorator_1.CurrentUser)("sub")),
-    __param(1, (0, common_1.Body)()),
+    __param(1, (0, common_1.Body)(new zod_pipe_1.ZodValidationPipe(auth_schemas_1.TotpEnableSchema))),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
 ], AuthController.prototype, "enable", null);
 __decorate([
     (0, common_1.Post)("step-up"),
-    (0, common_1.UsePipes)(new zod_pipe_1.ZodValidationPipe(auth_schemas_1.StepUpSchema)),
     __param(0, (0, auth_decorator_1.CurrentUser)("sub")),
-    __param(1, (0, common_1.Body)()),
+    __param(1, (0, common_1.Body)(new zod_pipe_1.ZodValidationPipe(auth_schemas_1.StepUpSchema))),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)

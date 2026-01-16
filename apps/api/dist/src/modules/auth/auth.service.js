@@ -91,7 +91,7 @@ let AuthService = class AuthService {
     signAccessToken(payload) {
         const issuer = process.env.JWT_ISSUER;
         const audience = process.env.JWT_AUDIENCE;
-        const signOptions = { expiresIn: "15m" };
+        const signOptions = { expiresIn: 900 };
         if (issuer)
             signOptions.issuer = issuer;
         if (audience)
@@ -101,7 +101,7 @@ let AuthService = class AuthService {
     signRefreshToken(userId, companyId, version) {
         const issuer = process.env.JWT_ISSUER;
         const audience = process.env.JWT_AUDIENCE;
-        const signOptions = { expiresIn: "30d" };
+        const signOptions = { expiresIn: 30 * 24 * 60 * 60 };
         if (issuer)
             signOptions.issuer = issuer;
         if (audience)
@@ -299,10 +299,13 @@ let AuthService = class AuthService {
         });
         if (!valid)
             throw new common_1.UnauthorizedException("Invalid code");
+        const found = await this.getUserWithPermsById(user.id);
+        if (!found)
+            throw new common_1.UnauthorizedException();
         const access = this.signAccessToken({
             sub: user.id,
             companyId: user.companyId,
-            perms: [],
+            perms: found.perms,
             step: "sensitive",
             ver: user.trustedDeviceVersion
         });

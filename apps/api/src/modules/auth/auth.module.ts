@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { JwtModule } from "@nestjs/jwt";
+import type { JwtSignOptions } from "@nestjs/jwt";
 import { JwtAuthGuard } from "../../common/auth/jwt-auth.guard";
 import { PermissionsGuard } from "../../common/auth/permissions.guard";
 import { StepUpGuard } from "../../common/auth/step.guard";
@@ -14,7 +15,7 @@ import { AuthService } from "./auth.service";
       signOptions: (() => {
         const issuer = process.env.JWT_ISSUER;
         const audience = process.env.JWT_AUDIENCE;
-        const options: { expiresIn: string; issuer?: string; audience?: string } = { expiresIn: "15m" };
+        const options: JwtSignOptions = { expiresIn: 900 };
         if (issuer) options.issuer = issuer;
         if (audience) options.audience = audience;
         return options;

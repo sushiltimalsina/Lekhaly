@@ -43,14 +43,18 @@ export class AuthController {
 
   @Post("totp/enable")
   @RequirePerm("settings.security")
-  @UsePipes(new ZodValidationPipe(TotpEnableSchema))
-  enable(@CurrentUser("sub") userId: string, @Body() body: any) {
+  enable(
+    @CurrentUser("sub") userId: string,
+    @Body(new ZodValidationPipe(TotpEnableSchema)) body: any
+  ) {
     return this.auth.totpEnable(userId, body.code);
   }
 
   @Post("step-up")
-  @UsePipes(new ZodValidationPipe(StepUpSchema))
-  stepUp(@CurrentUser("sub") userId: string, @Body() body: any) {
+  stepUp(
+    @CurrentUser("sub") userId: string,
+    @Body(new ZodValidationPipe(StepUpSchema)) body: any
+  ) {
     return this.auth.stepUp(userId, body.code);
   }
 }

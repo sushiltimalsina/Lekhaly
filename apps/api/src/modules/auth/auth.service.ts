@@ -1,5 +1,6 @@
 ﻿import { ForbiddenException, Injectable, UnauthorizedException, InternalServerErrorException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
+import type { JwtSignOptions } from "@nestjs/jwt";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import argon2 from "argon2";
 import * as speakeasy from "speakeasy";
@@ -56,7 +57,7 @@ export class AuthService {
   private signAccessToken(payload: JwtAccessPayload) {
     const issuer = process.env.JWT_ISSUER;
     const audience = process.env.JWT_AUDIENCE;
-    const signOptions: { expiresIn: string; issuer?: string; audience?: string } = { expiresIn: "15m" };
+    const signOptions: JwtSignOptions = { expiresIn: 900 };
     if (issuer) signOptions.issuer = issuer;
     if (audience) signOptions.audience = audience;
     return this.jwt.sign(payload, signOptions);
@@ -65,7 +66,7 @@ export class AuthService {
   private signRefreshToken(userId: string, companyId: string, version: number) {
     const issuer = process.env.JWT_ISSUER;
     const audience = process.env.JWT_AUDIENCE;
-    const signOptions: { expiresIn: string; issuer?: string; audience?: string } = { expiresIn: "30d" };
+    const signOptions: JwtSignOptions = { expiresIn: 30 * 24 * 60 * 60 };
     if (issuer) signOptions.issuer = issuer;
     if (audience) signOptions.audience = audience;
     return this.jwt.sign({ sub: userId, companyId, ver: version, typ: "refresh" }, signOptions);
@@ -287,10 +288,13 @@ export class AuthService {
     if (!valid) throw new UnauthorizedException("Invalid code");
 
     // Step-up token valid for 10 minutes
+    const found = await this.getUserWithPermsById(user.id);
+    if (!found) throw new UnauthorizedException();
+
     const access = this.signAccessToken({
       sub: user.id,
       companyId: user.companyId,
-      perms: [], // will be filled by guard later; for MVP keep it simple and keep perms from normal token only
+      perms: found.perms,
       step: "sensitive",
       ver: user.trustedDeviceVersion
     });
