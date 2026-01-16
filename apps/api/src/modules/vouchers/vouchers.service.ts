@@ -26,6 +26,30 @@ type DraftInput = {
 export class VouchersService {
   constructor(private prisma: PrismaService) {}
 
+  private enforceVoucherRules(voucherType: VoucherType, partyId?: string | null) {
+    const requiresParty: VoucherType[] = [
+      VoucherType.sales_invoice,
+      VoucherType.receipt,
+      VoucherType.payment
+    ];
+    const forbidsParty: VoucherType[] = [
+      VoucherType.journal,
+      VoucherType.opening,
+      VoucherType.reversal
+    ];
+
+    if (requiresParty.includes(voucherType) && !partyId) {
+      throw new BadRequestException("Party is required for this voucher type");
+    }
+    if (forbidsParty.includes(voucherType) && partyId) {
+      throw new BadRequestException("Party is not allowed for this voucher type");
+    }
+  }
+
+  private toJsonSafe(value: unknown) {
+    return JSON.parse(JSON.stringify(value));
+  }
+
   private async idempotencyGuard(
     user: AuthUser,
     action: string,
@@ -169,12 +193,7 @@ export class VouchersService {
     if (input.voucherType === VoucherType.reversal) {
       throw new BadRequestException("Reversal vouchers can only be created by void");
     }
-    if (
-      [VoucherType.sales_invoice, VoucherType.receipt, VoucherType.payment].includes(input.voucherType) &&
-      !input.partyId
-    ) {
-      throw new BadRequestException("Party is required for this voucher type");
-    }
+    this.enforceVoucherRules(input.voucherType, input.partyId);
 
     const guard = await this.idempotencyGuard(user, "voucher.createDraft", idempotencyKey, input);
     if (guard && !("requestHash" in guard)) {
@@ -203,7 +222,13 @@ export class VouchersService {
     });
 
     if (idempotencyKey && guard && "requestHash" in guard) {
-      await this.storeIdempotency(user, "voucher.createDraft", idempotencyKey, guard.requestHash, voucher);
+      await this.storeIdempotency(
+        user,
+        "voucher.createDraft",
+        idempotencyKey,
+        guard.requestHash,
+        this.toJsonSafe(voucher)
+      );
     }
 
     return voucher;
@@ -221,12 +246,7 @@ export class VouchersService {
     const nextType = input.voucherType ?? voucher.voucherType;
     const nextParty =
       input.partyId !== undefined ? input.partyId : voucher.partyId ? voucher.partyId : undefined;
-    if (
-      [VoucherType.sales_invoice, VoucherType.receipt, VoucherType.payment].includes(nextType) &&
-      !nextParty
-    ) {
-      throw new BadRequestException("Party is required for this voucher type");
-    }
+    this.enforceVoucherRules(nextType, nextParty);
 
     const data: Prisma.VoucherUpdateInput = {};
     if (input.voucherType) data.voucherType = input.voucherType;
@@ -293,6 +313,7 @@ export class VouchersService {
       if (!voucher) throw new NotFoundException("Voucher not found");
       if (voucher.status !== VoucherStatus.draft) throw new ForbiddenException("Only draft vouchers can be posted");
       if (voucher.lines.length === 0) throw new BadRequestException("Voucher has no lines");
+      this.enforceVoucherRules(voucher.voucherType, voucher.partyId);
 
       const totals = this.computeTotals(
         voucher.lines.map((l) => ({ debit: l.debit, credit: l.credit }))
@@ -344,7 +365,7 @@ export class VouchersService {
             key: idempotencyKey,
             action: "voucher.post",
             requestHash: guard.requestHash,
-            responseJson: result
+            responseJson: this.toJsonSafe(result)
           }
         });
       }
@@ -412,7 +433,7 @@ export class VouchersService {
             key: idempotencyKey,
             action: "voucher.void",
             requestHash: guard.requestHash,
-            responseJson: result
+            responseJson: this.toJsonSafe(result)
           }
         });
       }

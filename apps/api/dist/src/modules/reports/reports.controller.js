@@ -15,9 +15,22 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ReportsController = void 0;
 const common_1 = require("@nestjs/common");
 const auth_decorator_1 = require("../../common/auth/auth.decorator");
+const zod_pipe_1 = require("../../common/zod/zod.pipe");
+const report_schemas_1 = require("./dto/report.schemas");
+const reports_service_1 = require("./reports.service");
 let ReportsController = class ReportsController {
-    trialBalance() {
-        return { ok: true, report: "trial-balance" };
+    reports;
+    constructor(reports) {
+        this.reports = reports;
+    }
+    trialBalance(user, query) {
+        return this.reports.trialBalance(user.companyId, query);
+    }
+    profitLoss(user, query) {
+        return this.reports.profitAndLoss(user.companyId, query);
+    }
+    balanceSheet(user, query) {
+        return this.reports.balanceSheet(user.companyId, query);
     }
     export(body) {
         return { ok: true, report: body.report || "unknown" };
@@ -27,10 +40,30 @@ exports.ReportsController = ReportsController;
 __decorate([
     (0, common_1.Get)("trial-balance"),
     (0, auth_decorator_1.RequirePerm)("reports.view"),
+    __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Query)(new zod_pipe_1.ZodValidationPipe(report_schemas_1.ReportQuerySchema))),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", void 0)
 ], ReportsController.prototype, "trialBalance", null);
+__decorate([
+    (0, common_1.Get)("profit-loss"),
+    (0, auth_decorator_1.RequirePerm)("reports.view"),
+    __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Query)(new zod_pipe_1.ZodValidationPipe(report_schemas_1.ReportQuerySchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], ReportsController.prototype, "profitLoss", null);
+__decorate([
+    (0, common_1.Get)("balance-sheet"),
+    (0, auth_decorator_1.RequirePerm)("reports.view"),
+    __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Query)(new zod_pipe_1.ZodValidationPipe(report_schemas_1.ReportQuerySchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], ReportsController.prototype, "balanceSheet", null);
 __decorate([
     (0, common_1.Post)("export"),
     (0, auth_decorator_1.RequirePerm)("export.pdf"),
@@ -41,6 +74,7 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], ReportsController.prototype, "export", null);
 exports.ReportsController = ReportsController = __decorate([
-    (0, common_1.Controller)("reports")
+    (0, common_1.Controller)("reports"),
+    __metadata("design:paramtypes", [reports_service_1.ReportsService])
 ], ReportsController);
 //# sourceMappingURL=reports.controller.js.map

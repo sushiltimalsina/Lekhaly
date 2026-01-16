@@ -22,6 +22,27 @@ let VouchersService = class VouchersService {
     constructor(prisma) {
         this.prisma = prisma;
     }
+    enforceVoucherRules(voucherType, partyId) {
+        const requiresParty = [
+            client_1.VoucherType.sales_invoice,
+            client_1.VoucherType.receipt,
+            client_1.VoucherType.payment
+        ];
+        const forbidsParty = [
+            client_1.VoucherType.journal,
+            client_1.VoucherType.opening,
+            client_1.VoucherType.reversal
+        ];
+        if (requiresParty.includes(voucherType) && !partyId) {
+            throw new common_1.BadRequestException("Party is required for this voucher type");
+        }
+        if (forbidsParty.includes(voucherType) && partyId) {
+            throw new common_1.BadRequestException("Party is not allowed for this voucher type");
+        }
+    }
+    toJsonSafe(value) {
+        return JSON.parse(JSON.stringify(value));
+    }
     async idempotencyGuard(user, action, idempotencyKey, payload) {
         if (!idempotencyKey)
             return null;
@@ -152,10 +173,7 @@ let VouchersService = class VouchersService {
         if (input.voucherType === client_1.VoucherType.reversal) {
             throw new common_1.BadRequestException("Reversal vouchers can only be created by void");
         }
-        if ([client_1.VoucherType.sales_invoice, client_1.VoucherType.receipt, client_1.VoucherType.payment].includes(input.voucherType) &&
-            !input.partyId) {
-            throw new common_1.BadRequestException("Party is required for this voucher type");
-        }
+        this.enforceVoucherRules(input.voucherType, input.partyId);
         const guard = await this.idempotencyGuard(user, "voucher.createDraft", idempotencyKey, input);
         if (guard && !("requestHash" in guard)) {
             return guard;
@@ -180,7 +198,7 @@ let VouchersService = class VouchersService {
             include: { lines: true }
         });
         if (idempotencyKey && guard && "requestHash" in guard) {
-            await this.storeIdempotency(user, "voucher.createDraft", idempotencyKey, guard.requestHash, voucher);
+            await this.storeIdempotency(user, "voucher.createDraft", idempotencyKey, guard.requestHash, this.toJsonSafe(voucher));
         }
         return voucher;
     }
@@ -197,10 +215,7 @@ let VouchersService = class VouchersService {
         }
         const nextType = input.voucherType ?? voucher.voucherType;
         const nextParty = input.partyId !== undefined ? input.partyId : voucher.partyId ? voucher.partyId : undefined;
-        if ([client_1.VoucherType.sales_invoice, client_1.VoucherType.receipt, client_1.VoucherType.payment].includes(nextType) &&
-            !nextParty) {
-            throw new common_1.BadRequestException("Party is required for this voucher type");
-        }
+        this.enforceVoucherRules(nextType, nextParty);
         const data = {};
         if (input.voucherType)
             data.voucherType = input.voucherType;
@@ -264,6 +279,7 @@ let VouchersService = class VouchersService {
                 throw new common_1.ForbiddenException("Only draft vouchers can be posted");
             if (voucher.lines.length === 0)
                 throw new common_1.BadRequestException("Voucher has no lines");
+            this.enforceVoucherRules(voucher.voucherType, voucher.partyId);
             const totals = this.computeTotals(voucher.lines.map((l) => ({ debit: l.debit, credit: l.credit })));
             if (!totals.debit.equals(totals.credit))
                 throw new common_1.BadRequestException("Voucher not balanced");
@@ -307,7 +323,7 @@ let VouchersService = class VouchersService {
                         key: idempotencyKey,
                         action: "voucher.post",
                         requestHash: guard.requestHash,
-                        responseJson: result
+                        responseJson: this.toJsonSafe(result)
                     }
                 });
             }
@@ -372,7 +388,7 @@ let VouchersService = class VouchersService {
                         key: idempotencyKey,
                         action: "voucher.void",
                         requestHash: guard.requestHash,
-                        responseJson: result
+                        responseJson: this.toJsonSafe(result)
                     }
                 });
             }
