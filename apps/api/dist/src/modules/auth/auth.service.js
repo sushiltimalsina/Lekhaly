@@ -89,10 +89,24 @@ let AuthService = class AuthService {
         return { user, perms: Array.from(perms) };
     }
     signAccessToken(payload) {
-        return this.jwt.sign(payload, { expiresIn: "15m" });
+        const issuer = process.env.JWT_ISSUER;
+        const audience = process.env.JWT_AUDIENCE;
+        const signOptions = { expiresIn: "15m" };
+        if (issuer)
+            signOptions.issuer = issuer;
+        if (audience)
+            signOptions.audience = audience;
+        return this.jwt.sign(payload, signOptions);
     }
     signRefreshToken(userId, companyId, version) {
-        return this.jwt.sign({ sub: userId, companyId, ver: version, typ: "refresh" }, { expiresIn: "30d" });
+        const issuer = process.env.JWT_ISSUER;
+        const audience = process.env.JWT_AUDIENCE;
+        const signOptions = { expiresIn: "30d" };
+        if (issuer)
+            signOptions.issuer = issuer;
+        if (audience)
+            signOptions.audience = audience;
+        return this.jwt.sign({ sub: userId, companyId, ver: version, typ: "refresh" }, signOptions);
     }
     sha256(s) {
         return crypto_1.default.createHash("sha256").update(s).digest("hex");
@@ -182,7 +196,14 @@ let AuthService = class AuthService {
     }
     async refresh(dto) {
         try {
-            const payload = this.jwt.verify(dto.refreshToken);
+            const issuer = process.env.JWT_ISSUER;
+            const audience = process.env.JWT_AUDIENCE;
+            const verifyOptions = {};
+            if (issuer)
+                verifyOptions.issuer = issuer;
+            if (audience)
+                verifyOptions.audience = audience;
+            const payload = this.jwt.verify(dto.refreshToken, verifyOptions);
             if (payload.typ !== "refresh")
                 throw new common_1.UnauthorizedException("Invalid token");
             const session = await this.prisma.authSession.findFirst({

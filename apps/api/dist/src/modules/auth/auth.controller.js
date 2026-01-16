@@ -32,6 +32,9 @@ let AuthController = class AuthController {
     logout(body) {
         return this.auth.logout(body.refreshToken);
     }
+    me(user) {
+        return user;
+    }
     setup(userId) {
         return this.auth.totpSetup(userId);
     }
@@ -70,6 +73,13 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
 ], AuthController.prototype, "logout", null);
+__decorate([
+    (0, common_1.Get)("me"),
+    __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "me", null);
 __decorate([
     (0, common_1.Post)("totp/setup"),
     __param(0, (0, auth_decorator_1.CurrentUser)("sub")),

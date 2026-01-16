@@ -12,6 +12,7 @@ const core_1 = require("@nestjs/core");
 const jwt_1 = require("@nestjs/jwt");
 const jwt_auth_guard_1 = require("../../common/auth/jwt-auth.guard");
 const permissions_guard_1 = require("../../common/auth/permissions.guard");
+const step_guard_1 = require("../../common/auth/step.guard");
 const auth_controller_1 = require("./auth.controller");
 const auth_service_1 = require("./auth.service");
 let AuthModule = class AuthModule {
@@ -22,14 +23,24 @@ exports.AuthModule = AuthModule = __decorate([
         imports: [
             jwt_1.JwtModule.register({
                 secret: process.env.JWT_ACCESS_SECRET || "dev-secret",
-                signOptions: { expiresIn: "15m" }
+                signOptions: (() => {
+                    const issuer = process.env.JWT_ISSUER;
+                    const audience = process.env.JWT_AUDIENCE;
+                    const options = { expiresIn: "15m" };
+                    if (issuer)
+                        options.issuer = issuer;
+                    if (audience)
+                        options.audience = audience;
+                    return options;
+                })()
             })
         ],
         controllers: [auth_controller_1.AuthController],
         providers: [
             auth_service_1.AuthService,
             { provide: core_1.APP_GUARD, useClass: jwt_auth_guard_1.JwtAuthGuard },
-            { provide: core_1.APP_GUARD, useClass: permissions_guard_1.PermissionsGuard }
+            { provide: core_1.APP_GUARD, useClass: permissions_guard_1.PermissionsGuard },
+            { provide: core_1.APP_GUARD, useClass: step_guard_1.StepUpGuard }
         ]
     })
 ], AuthModule);

@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Post, UsePipes } from "@nestjs/common";
 import { CurrentUser, Public, RequirePerm } from "../../common/auth/auth.decorator";
-import { AuthUser } from "../../common/auth/auth.types";
+import type { AuthUser } from "../../common/auth/auth.types";
 import { ZodValidationPipe } from "../../common/zod/zod.pipe";
 import { LoginSchema, RefreshSchema, StepUpSchema, TotpEnableSchema } from "./dto/auth.schemas";
 import { AuthService } from "./auth.service";

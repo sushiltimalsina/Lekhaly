@@ -35,7 +35,14 @@ let JwtAuthGuard = class JwtAuthGuard {
         const [scheme, token] = header.split(" ");
         if (scheme !== "Bearer" || !token)
             throw new common_1.UnauthorizedException("Invalid token");
-        const payload = this.jwt.verify(token);
+        const issuer = process.env.JWT_ISSUER;
+        const audience = process.env.JWT_AUDIENCE;
+        const verifyOptions = {};
+        if (issuer)
+            verifyOptions.issuer = issuer;
+        if (audience)
+            verifyOptions.audience = audience;
+        const payload = this.jwt.verify(token, verifyOptions);
         if (payload.typ === "refresh")
             throw new common_1.UnauthorizedException("Invalid token");
         req.user = payload;

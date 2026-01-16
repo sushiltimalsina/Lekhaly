@@ -11,11 +11,14 @@ import { AuthService } from "./auth.service";
   imports: [
     JwtModule.register({
       secret: process.env.JWT_ACCESS_SECRET || "dev-secret",
-      signOptions: {
-        expiresIn: "15m",
-        issuer: process.env.JWT_ISSUER || undefined,
-        audience: process.env.JWT_AUDIENCE || undefined
-      }
+      signOptions: (() => {
+        const issuer = process.env.JWT_ISSUER;
+        const audience = process.env.JWT_AUDIENCE;
+        const options: { expiresIn: string; issuer?: string; audience?: string } = { expiresIn: "15m" };
+        if (issuer) options.issuer = issuer;
+        if (audience) options.audience = audience;
+        return options;
+      })()
     })
   ],
   controllers: [AuthController],

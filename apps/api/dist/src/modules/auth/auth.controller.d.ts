@@ -1,3 +1,4 @@
+import type { AuthUser } from "../../common/auth/auth.types";
 import { AuthService } from "./auth.service";
 export declare class AuthController {
     private auth;
@@ -19,6 +20,7 @@ export declare class AuthController {
     logout(body: any): Promise<{
         ok: boolean;
     }>;
+    me(user: AuthUser): AuthUser;
     setup(userId: string): Promise<{
         base32: string;
         otpauthUrl: string | undefined;
