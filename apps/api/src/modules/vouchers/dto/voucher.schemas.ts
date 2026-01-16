@@ -22,3 +22,13 @@ export const CreateVoucherDraftSchema = z.object({
 export const UpdateVoucherDraftSchema = CreateVoucherDraftSchema.partial().extend({
   lines: z.array(VoucherLineSchema).min(1).optional()
 });
+
+export const ListVoucherQuerySchema = z.object({
+  status: z.enum(["draft", "posted", "void"]).optional(),
+  voucherType: z.enum(["sales_invoice", "receipt", "payment", "journal", "opening", "reversal"]).optional(),
+  partyId: z.string().uuid().optional(),
+  from: z.coerce.date().optional(),
+  to: z.coerce.date().optional(),
+  skip: z.coerce.number().int().min(0).optional(),
+  take: z.coerce.number().int().min(1).max(100).optional()
+});

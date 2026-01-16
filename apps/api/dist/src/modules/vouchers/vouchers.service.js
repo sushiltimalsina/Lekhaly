@@ -18,6 +18,61 @@ let VouchersService = class VouchersService {
     constructor(prisma) {
         this.prisma = prisma;
     }
+    async getCompanyOrThrow(companyId) {
+        const company = await this.prisma.company.findUnique({ where: { id: companyId } });
+        if (!company)
+            throw new common_1.BadRequestException("Company not found");
+        return company;
+    }
+    ensureVoucherDate(company, voucherDate) {
+        if (company.lockDate && voucherDate <= company.lockDate) {
+            throw new common_1.BadRequestException("Voucher date is locked");
+        }
+    }
+    async validateReferences(companyId, input) {
+        const partyIds = new Set();
+        const accountIds = new Set();
+        const itemIds = new Set();
+        const taxCodeIds = new Set();
+        if (input.partyId)
+            partyIds.add(input.partyId);
+        for (const line of input.lines || []) {
+            accountIds.add(line.accountId);
+            if (line.partyId)
+                partyIds.add(line.partyId);
+            if (line.itemId)
+                itemIds.add(line.itemId);
+            if (line.taxCodeId)
+                taxCodeIds.add(line.taxCodeId);
+        }
+        const [accounts, parties, items, taxCodes] = await Promise.all([
+            accountIds.size
+                ? this.prisma.chartOfAccount.findMany({
+                    where: { id: { in: Array.from(accountIds) }, companyId }
+                })
+                : Promise.resolve([]),
+            partyIds.size
+                ? this.prisma.party.findMany({ where: { id: { in: Array.from(partyIds) }, companyId } })
+                : Promise.resolve([]),
+            itemIds.size
+                ? this.prisma.item.findMany({ where: { id: { in: Array.from(itemIds) }, companyId } })
+                : Promise.resolve([]),
+            taxCodeIds.size
+                ? this.prisma.taxCode.findMany({ where: { id: { in: Array.from(taxCodeIds) }, companyId } })
+                : Promise.resolve([])
+        ]);
+        if (accounts.length !== accountIds.size)
+            throw new common_1.BadRequestException("Invalid account");
+        if (parties.length !== partyIds.size)
+            throw new common_1.BadRequestException("Invalid party");
+        if (items.length !== itemIds.size)
+            throw new common_1.BadRequestException("Invalid item");
+        if (taxCodes.length !== taxCodeIds.size)
+            throw new common_1.BadRequestException("Invalid tax code");
+        if (accounts.some((a) => !a.isActive || !a.isPostable)) {
+            throw new common_1.BadRequestException("Account not postable");
+        }
+    }
     normalizeLines(lines) {
         if (lines.length === 0)
             throw new common_1.BadRequestException("Lines required");
@@ -55,6 +110,12 @@ let VouchersService = class VouchersService {
         if (!input.voucherType || !input.voucherDate || !input.lines) {
             throw new common_1.BadRequestException("Missing draft fields");
         }
+        if (input.voucherType === client_1.VoucherType.reversal) {
+            throw new common_1.BadRequestException("Reversal vouchers can only be created by void");
+        }
+        const company = await this.getCompanyOrThrow(user.companyId);
+        this.ensureVoucherDate(company, input.voucherDate);
+        await this.validateReferences(user.companyId, input);
         const lines = this.normalizeLines(input.lines);
         const voucher = await this.prisma.voucher.create({
             data: {
@@ -81,6 +142,9 @@ let VouchersService = class VouchersService {
             throw new common_1.NotFoundException("Voucher not found");
         if (voucher.status !== client_1.VoucherStatus.draft)
             throw new common_1.ForbiddenException("Only draft vouchers can be edited");
+        if (input.voucherType === client_1.VoucherType.reversal) {
+            throw new common_1.BadRequestException("Reversal vouchers can only be created by void");
+        }
         const data = {};
         if (input.voucherType)
             data.voucherType = input.voucherType;
@@ -91,6 +155,11 @@ let VouchersService = class VouchersService {
         if (input.memo !== undefined)
             data.memo = input.memo;
         return this.prisma.$transaction(async (tx) => {
+            const company = await this.getCompanyOrThrow(user.companyId);
+            if (input.voucherDate)
+                this.ensureVoucherDate(company, input.voucherDate);
+            if (input.lines || input.partyId)
+                await this.validateReferences(user.companyId, input);
             if (input.lines) {
                 const lines = this.normalizeLines(input.lines);
                 await tx.voucherLine.deleteMany({ where: { voucherId: voucher.id } });
@@ -140,6 +209,16 @@ let VouchersService = class VouchersService {
             const company = await tx.company.findUnique({ where: { id: user.companyId } });
             if (!company)
                 throw new common_1.BadRequestException("Company not found");
+            this.ensureVoucherDate(company, voucher.voucherDate);
+            await this.validateReferences(user.companyId, {
+                partyId: voucher.partyId || undefined,
+                lines: voucher.lines.map((l) => ({
+                    accountId: l.accountId,
+                    partyId: l.partyId || undefined,
+                    itemId: l.itemId || undefined,
+                    taxCodeId: l.taxCodeId || undefined
+                }))
+            });
             const sequence = company.nextInvoiceNumber;
             const prefix = voucher.voucherType === client_1.VoucherType.sales_invoice
                 ? company.invoicePrefix
@@ -217,6 +296,39 @@ let VouchersService = class VouchersService {
         if (!voucher)
             throw new common_1.NotFoundException("Voucher not found");
         return voucher;
+    }
+    async list(user, filters) {
+        const where = { companyId: user.companyId };
+        if (filters.status)
+            where.status = filters.status;
+        if (filters.voucherType)
+            where.voucherType = filters.voucherType;
+        if (filters.partyId)
+            where.partyId = filters.partyId;
+        if (filters.from || filters.to) {
+            where.voucherDate = {};
+            if (filters.from)
+                where.voucherDate.gte = filters.from;
+            if (filters.to)
+                where.voucherDate.lte = filters.to;
+        }
+        return this.prisma.voucher.findMany({
+            where,
+            orderBy: [{ voucherDate: "desc" }, { createdAt: "desc" }],
+            skip: filters.skip || 0,
+            take: filters.take || 50,
+            select: {
+                id: true,
+                voucherNumber: true,
+                voucherDate: true,
+                voucherType: true,
+                status: true,
+                partyId: true,
+                memo: true,
+                createdAt: true,
+                postedAt: true
+            }
+        });
     }
 };
 exports.VouchersService = VouchersService;

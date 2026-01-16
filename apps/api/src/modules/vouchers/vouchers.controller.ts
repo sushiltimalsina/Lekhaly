@@ -1,8 +1,8 @@
-import { Body, Controller, Get, Param, Post, Put } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Put, Query } from "@nestjs/common";
 import { CurrentUser, RequirePerm, RequireStep } from "../../common/auth/auth.decorator";
 import { ZodValidationPipe } from "../../common/zod/zod.pipe";
 import type { AuthUser } from "../../common/auth/auth.types";
-import { CreateVoucherDraftSchema, UpdateVoucherDraftSchema } from "./dto/voucher.schemas";
+import { CreateVoucherDraftSchema, ListVoucherQuerySchema, UpdateVoucherDraftSchema } from "./dto/voucher.schemas";
 import { VouchersService } from "./vouchers.service";
 
 @Controller("vouchers")
@@ -38,6 +38,15 @@ export class VouchersController {
   @RequirePerm("voucher.preview")
   preview(@CurrentUser() user: AuthUser, @Param("id") id: string) {
     return this.vouchers.preview(user, id);
+  }
+
+  @Get()
+  @RequirePerm("voucher.preview")
+  list(
+    @CurrentUser() user: AuthUser,
+    @Query(new ZodValidationPipe(ListVoucherQuerySchema)) query: any
+  ) {
+    return this.vouchers.list(user, query);
   }
 
   @Post(":id/post")

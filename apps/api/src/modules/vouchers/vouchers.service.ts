@@ -24,6 +24,59 @@ type DraftInput = {
 export class VouchersService {
   constructor(private prisma: PrismaService) {}
 
+  private async getCompanyOrThrow(companyId: string) {
+    const company = await this.prisma.company.findUnique({ where: { id: companyId } });
+    if (!company) throw new BadRequestException("Company not found");
+    return company;
+  }
+
+  private ensureVoucherDate(company: { lockDate: Date | null }, voucherDate: Date) {
+    if (company.lockDate && voucherDate <= company.lockDate) {
+      throw new BadRequestException("Voucher date is locked");
+    }
+  }
+
+  private async validateReferences(companyId: string, input: DraftInput) {
+    const partyIds = new Set<string>();
+    const accountIds = new Set<string>();
+    const itemIds = new Set<string>();
+    const taxCodeIds = new Set<string>();
+
+    if (input.partyId) partyIds.add(input.partyId);
+    for (const line of input.lines || []) {
+      accountIds.add(line.accountId);
+      if (line.partyId) partyIds.add(line.partyId);
+      if (line.itemId) itemIds.add(line.itemId);
+      if (line.taxCodeId) taxCodeIds.add(line.taxCodeId);
+    }
+
+    const [accounts, parties, items, taxCodes] = await Promise.all([
+      accountIds.size
+        ? this.prisma.chartOfAccount.findMany({
+            where: { id: { in: Array.from(accountIds) }, companyId }
+          })
+        : Promise.resolve([]),
+      partyIds.size
+        ? this.prisma.party.findMany({ where: { id: { in: Array.from(partyIds) }, companyId } })
+        : Promise.resolve([]),
+      itemIds.size
+        ? this.prisma.item.findMany({ where: { id: { in: Array.from(itemIds) }, companyId } })
+        : Promise.resolve([]),
+      taxCodeIds.size
+        ? this.prisma.taxCode.findMany({ where: { id: { in: Array.from(taxCodeIds) }, companyId } })
+        : Promise.resolve([])
+    ]);
+
+    if (accounts.length !== accountIds.size) throw new BadRequestException("Invalid account");
+    if (parties.length !== partyIds.size) throw new BadRequestException("Invalid party");
+    if (items.length !== itemIds.size) throw new BadRequestException("Invalid item");
+    if (taxCodes.length !== taxCodeIds.size) throw new BadRequestException("Invalid tax code");
+
+    if (accounts.some((a) => !a.isActive || !a.isPostable)) {
+      throw new BadRequestException("Account not postable");
+    }
+  }
+
   private normalizeLines(lines: NonNullable<DraftInput["lines"]>) {
     if (lines.length === 0) throw new BadRequestException("Lines required");
     return lines.map((line, idx) => {
@@ -61,7 +114,13 @@ export class VouchersService {
     if (!input.voucherType || !input.voucherDate || !input.lines) {
       throw new BadRequestException("Missing draft fields");
     }
+    if (input.voucherType === VoucherType.reversal) {
+      throw new BadRequestException("Reversal vouchers can only be created by void");
+    }
 
+    const company = await this.getCompanyOrThrow(user.companyId);
+    this.ensureVoucherDate(company, input.voucherDate);
+    await this.validateReferences(user.companyId, input);
     const lines = this.normalizeLines(input.lines);
 
     const voucher = await this.prisma.voucher.create({
@@ -89,6 +148,9 @@ export class VouchersService {
     });
     if (!voucher) throw new NotFoundException("Voucher not found");
     if (voucher.status !== VoucherStatus.draft) throw new ForbiddenException("Only draft vouchers can be edited");
+    if (input.voucherType === VoucherType.reversal) {
+      throw new BadRequestException("Reversal vouchers can only be created by void");
+    }
 
     const data: Prisma.VoucherUpdateInput = {};
     if (input.voucherType) data.voucherType = input.voucherType;
@@ -97,6 +159,10 @@ export class VouchersService {
     if (input.memo !== undefined) data.memo = input.memo;
 
     return this.prisma.$transaction(async (tx) => {
+      const company = await this.getCompanyOrThrow(user.companyId);
+      if (input.voucherDate) this.ensureVoucherDate(company, input.voucherDate);
+      if (input.lines || input.partyId) await this.validateReferences(user.companyId, input);
+
       if (input.lines) {
         const lines = this.normalizeLines(input.lines);
         await tx.voucherLine.deleteMany({ where: { voucherId: voucher.id } });
@@ -152,6 +218,17 @@ export class VouchersService {
 
       const company = await tx.company.findUnique({ where: { id: user.companyId } });
       if (!company) throw new BadRequestException("Company not found");
+      this.ensureVoucherDate(company, voucher.voucherDate);
+
+      await this.validateReferences(user.companyId, {
+        partyId: voucher.partyId || undefined,
+        lines: voucher.lines.map((l) => ({
+          accountId: l.accountId,
+          partyId: l.partyId || undefined,
+          itemId: l.itemId || undefined,
+          taxCodeId: l.taxCodeId || undefined
+        }))
+      });
 
       const sequence = company.nextInvoiceNumber;
       const prefix =
@@ -236,5 +313,46 @@ export class VouchersService {
     });
     if (!voucher) throw new NotFoundException("Voucher not found");
     return voucher;
+  }
+
+  async list(
+    user: AuthUser,
+    filters: {
+      status?: VoucherStatus;
+      voucherType?: VoucherType;
+      partyId?: string;
+      from?: Date;
+      to?: Date;
+      skip?: number;
+      take?: number;
+    }
+  ) {
+    const where: Prisma.VoucherWhereInput = { companyId: user.companyId };
+    if (filters.status) where.status = filters.status;
+    if (filters.voucherType) where.voucherType = filters.voucherType;
+    if (filters.partyId) where.partyId = filters.partyId;
+    if (filters.from || filters.to) {
+      where.voucherDate = {};
+      if (filters.from) (where.voucherDate as Prisma.DateTimeFilter).gte = filters.from;
+      if (filters.to) (where.voucherDate as Prisma.DateTimeFilter).lte = filters.to;
+    }
+
+    return this.prisma.voucher.findMany({
+      where,
+      orderBy: [{ voucherDate: "desc" }, { createdAt: "desc" }],
+      skip: filters.skip || 0,
+      take: filters.take || 50,
+      select: {
+        id: true,
+        voucherNumber: true,
+        voucherDate: true,
+        voucherType: true,
+        status: true,
+        partyId: true,
+        memo: true,
+        createdAt: true,
+        postedAt: true
+      }
+    });
   }
 }

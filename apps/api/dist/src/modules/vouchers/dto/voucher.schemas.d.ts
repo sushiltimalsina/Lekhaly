@@ -55,3 +55,23 @@ export declare const UpdateVoucherDraftSchema: z.ZodObject<{
         taxAmount: z.ZodDefault<z.ZodNumber>;
     }, z.core.$strip>>>;
 }, z.core.$strip>;
+export declare const ListVoucherQuerySchema: z.ZodObject<{
+    status: z.ZodOptional<z.ZodEnum<{
+        void: "void";
+        draft: "draft";
+        posted: "posted";
+    }>>;
+    voucherType: z.ZodOptional<z.ZodEnum<{
+        sales_invoice: "sales_invoice";
+        receipt: "receipt";
+        payment: "payment";
+        journal: "journal";
+        opening: "opening";
+        reversal: "reversal";
+    }>>;
+    partyId: z.ZodOptional<z.ZodString>;
+    from: z.ZodOptional<z.ZodCoercedDate<unknown>>;
+    to: z.ZodOptional<z.ZodCoercedDate<unknown>>;
+    skip: z.ZodOptional<z.ZodCoercedNumber<unknown>>;
+    take: z.ZodOptional<z.ZodCoercedNumber<unknown>>;
+}, z.core.$strip>;

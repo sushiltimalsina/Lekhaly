@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.UpdateVoucherDraftSchema = exports.CreateVoucherDraftSchema = exports.VoucherLineSchema = void 0;
+exports.ListVoucherQuerySchema = exports.UpdateVoucherDraftSchema = exports.CreateVoucherDraftSchema = exports.VoucherLineSchema = void 0;
 const zod_1 = require("zod");
 exports.VoucherLineSchema = zod_1.z.object({
     accountId: zod_1.z.string().uuid(),
@@ -21,5 +21,14 @@ exports.CreateVoucherDraftSchema = zod_1.z.object({
 });
 exports.UpdateVoucherDraftSchema = exports.CreateVoucherDraftSchema.partial().extend({
     lines: zod_1.z.array(exports.VoucherLineSchema).min(1).optional()
+});
+exports.ListVoucherQuerySchema = zod_1.z.object({
+    status: zod_1.z.enum(["draft", "posted", "void"]).optional(),
+    voucherType: zod_1.z.enum(["sales_invoice", "receipt", "payment", "journal", "opening", "reversal"]).optional(),
+    partyId: zod_1.z.string().uuid().optional(),
+    from: zod_1.z.coerce.date().optional(),
+    to: zod_1.z.coerce.date().optional(),
+    skip: zod_1.z.coerce.number().int().min(0).optional(),
+    take: zod_1.z.coerce.number().int().min(1).max(100).optional()
 });
 //# sourceMappingURL=voucher.schemas.js.map

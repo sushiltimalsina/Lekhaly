@@ -35,6 +35,9 @@ let VouchersController = class VouchersController {
     preview(user, id) {
         return this.vouchers.preview(user, id);
     }
+    list(user, query) {
+        return this.vouchers.list(user, query);
+    }
     post(user, id) {
         return this.vouchers.post(user, id);
     }
@@ -80,6 +83,15 @@ __decorate([
     __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", void 0)
 ], VouchersController.prototype, "preview", null);
+__decorate([
+    (0, common_1.Get)(),
+    (0, auth_decorator_1.RequirePerm)("voucher.preview"),
+    __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Query)(new zod_pipe_1.ZodValidationPipe(voucher_schemas_1.ListVoucherQuerySchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], VouchersController.prototype, "list", null);
 __decorate([
     (0, common_1.Post)(":id/post"),
     (0, auth_decorator_1.RequirePerm)("voucher.post"),
