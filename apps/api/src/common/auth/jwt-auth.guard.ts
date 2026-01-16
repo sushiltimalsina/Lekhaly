@@ -22,7 +22,9 @@ export class JwtAuthGuard implements CanActivate {
     const [scheme, token] = header.split(" ");
     if (scheme !== "Bearer" || !token) throw new UnauthorizedException("Invalid token");
 
-    const payload = this.jwt.verify(token) as AuthUser & { typ?: string };
+    const issuer = process.env.JWT_ISSUER || undefined;
+    const audience = process.env.JWT_AUDIENCE || undefined;
+    const payload = this.jwt.verify(token, { issuer, audience }) as AuthUser & { typ?: string };
     if (payload.typ === "refresh") throw new UnauthorizedException("Invalid token");
 
     req.user = payload;

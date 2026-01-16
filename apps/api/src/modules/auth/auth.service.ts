@@ -54,11 +54,22 @@ export class AuthService {
   }
 
   private signAccessToken(payload: JwtAccessPayload) {
-    return this.jwt.sign(payload, { expiresIn: "15m" });
+    return this.jwt.sign(payload, {
+      expiresIn: "15m",
+      issuer: process.env.JWT_ISSUER || undefined,
+      audience: process.env.JWT_AUDIENCE || undefined
+    });
   }
 
   private signRefreshToken(userId: string, companyId: string, version: number) {
-    return this.jwt.sign({ sub: userId, companyId, ver: version, typ: "refresh" }, { expiresIn: "30d" });
+    return this.jwt.sign(
+      { sub: userId, companyId, ver: version, typ: "refresh" },
+      {
+        expiresIn: "30d",
+        issuer: process.env.JWT_ISSUER || undefined,
+        audience: process.env.JWT_AUDIENCE || undefined
+      }
+    );
   }
 
   private sha256(s: string) {
@@ -167,7 +178,10 @@ export class AuthService {
 
   async refresh(dto: { refreshToken: string }) {
     try {
-      const payload = this.jwt.verify(dto.refreshToken) as JwtRefreshPayload;
+      const payload = this.jwt.verify(dto.refreshToken, {
+        issuer: process.env.JWT_ISSUER || undefined,
+        audience: process.env.JWT_AUDIENCE || undefined
+      }) as JwtRefreshPayload;
       if (payload.typ !== "refresh") throw new UnauthorizedException("Invalid token");
 
       const session = await this.prisma.authSession.findFirst({

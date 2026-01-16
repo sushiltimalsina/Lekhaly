@@ -1,5 +1,6 @@
-import { Body, Controller, Post, UsePipes } from "@nestjs/common";
+import { Body, Controller, Get, Post, UsePipes } from "@nestjs/common";
 import { CurrentUser, Public, RequirePerm } from "../../common/auth/auth.decorator";
+import { AuthUser } from "../../common/auth/auth.types";
 import { ZodValidationPipe } from "../../common/zod/zod.pipe";
 import { LoginSchema, RefreshSchema, StepUpSchema, TotpEnableSchema } from "./dto/auth.schemas";
 import { AuthService } from "./auth.service";
@@ -27,6 +28,11 @@ export class AuthController {
   @UsePipes(new ZodValidationPipe(RefreshSchema))
   logout(@Body() body: any) {
     return this.auth.logout(body.refreshToken);
+  }
+
+  @Get("me")
+  me(@CurrentUser() user: AuthUser) {
+    return user;
   }
 
   // Use access token identity for TOTP enrollment

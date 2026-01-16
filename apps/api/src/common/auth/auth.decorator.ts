@@ -3,9 +3,11 @@ import { AuthUser } from "./auth.types";
 
 export const IS_PUBLIC_KEY = "isPublic";
 export const PERMS_KEY = "requiredPerms";
+export const STEP_KEY = "requiredStep";
 
 export const Public = () => SetMetadata(IS_PUBLIC_KEY, true);
 export const RequirePerm = (...perms: string[]) => SetMetadata(PERMS_KEY, perms);
+export const RequireStep = (step: "sensitive") => SetMetadata(STEP_KEY, step);
 
 export const CurrentUser = createParamDecorator(
   (data: keyof AuthUser | undefined, ctx: ExecutionContext) => {
