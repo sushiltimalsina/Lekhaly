@@ -35,6 +35,9 @@ let AccountsController = class AccountsController {
     list(user, query) {
         return this.accounts.list(user, query);
     }
+    remove(user, id) {
+        return this.accounts.remove(user, id);
+    }
 };
 exports.AccountsController = AccountsController;
 __decorate([
@@ -74,6 +77,15 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", void 0)
 ], AccountsController.prototype, "list", null);
+__decorate([
+    (0, common_1.Delete)(":id"),
+    (0, auth_decorator_1.RequirePerm)("masters.write"),
+    __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)("id")),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", void 0)
+], AccountsController.prototype, "remove", null);
 exports.AccountsController = AccountsController = __decorate([
     (0, common_1.Controller)("accounts"),
     __metadata("design:paramtypes", [accounts_service_1.AccountsService])

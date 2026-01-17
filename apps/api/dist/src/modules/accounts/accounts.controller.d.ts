@@ -51,4 +51,16 @@ export declare class AccountsController {
         companyId: string;
         parentId: string | null;
     }[]>;
+    remove(user: AuthUser, id: string): Promise<{
+        id: string;
+        code: string;
+        name: string;
+        type: import("@prisma/client").$Enums.CoaType;
+        isPostable: boolean;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+        parentId: string | null;
+    }>;
 }

@@ -63,4 +63,19 @@ export declare class ItemsController {
         expenseAccountId: string | null;
         taxCodeId: string | null;
     }[]>;
+    remove(user: AuthUser, id: string): Promise<{
+        id: string;
+        name: string;
+        sku: string | null;
+        unit: string | null;
+        salesPrice: import("@prisma/client/runtime/client").Decimal | null;
+        purchasePrice: import("@prisma/client/runtime/client").Decimal | null;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+        incomeAccountId: string | null;
+        expenseAccountId: string | null;
+        taxCodeId: string | null;
+    }>;
 }

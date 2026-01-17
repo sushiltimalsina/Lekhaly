@@ -58,4 +58,21 @@ export class PartiesService {
       take: filters.take || 50
     });
   }
+
+  async remove(user: AuthUser, id: string) {
+    const party = await this.prisma.party.findFirst({
+      where: { id, companyId: user.companyId }
+    });
+    if (!party) throw new NotFoundException("Party not found");
+
+    const usage = await this.prisma.voucherLine.count({
+      where: { companyId: user.companyId, partyId: id }
+    });
+    if (usage > 0) throw new BadRequestException("Party is referenced by vouchers");
+
+    return this.prisma.party.update({
+      where: { id },
+      data: { isActive: false }
+    });
+  }
 }

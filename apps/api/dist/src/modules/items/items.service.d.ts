@@ -70,4 +70,19 @@ export declare class ItemsService {
         expenseAccountId: string | null;
         taxCodeId: string | null;
     }[]>;
+    remove(user: AuthUser, id: string): Promise<{
+        id: string;
+        name: string;
+        sku: string | null;
+        unit: string | null;
+        salesPrice: Prisma.Decimal | null;
+        purchasePrice: Prisma.Decimal | null;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+        incomeAccountId: string | null;
+        expenseAccountId: string | null;
+        taxCodeId: string | null;
+    }>;
 }

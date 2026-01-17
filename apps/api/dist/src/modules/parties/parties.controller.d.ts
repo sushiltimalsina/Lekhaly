@@ -59,4 +59,18 @@ export declare class PartiesController {
         updatedAt: Date;
         companyId: string;
     }[]>;
+    remove(user: AuthUser, id: string): Promise<{
+        id: string;
+        type: import("@prisma/client").$Enums.PartyType;
+        name: string;
+        email: string | null;
+        phone: string | null;
+        address: string | null;
+        panNumber: string | null;
+        vatNumber: string | null;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+    }>;
 }

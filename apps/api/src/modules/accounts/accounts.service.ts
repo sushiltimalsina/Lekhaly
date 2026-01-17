@@ -61,4 +61,29 @@ export class AccountsService {
       take: filters.take || 200
     });
   }
+
+  async remove(user: AuthUser, id: string) {
+    const account = await this.prisma.chartOfAccount.findFirst({ where: { id, companyId: user.companyId } });
+    if (!account) throw new NotFoundException("Account not found");
+
+    const [children, usage, itemIncome, itemExpense, taxInput, taxOutput] = await Promise.all([
+      this.prisma.chartOfAccount.count({ where: { companyId: user.companyId, parentId: id } }),
+      this.prisma.voucherLine.count({ where: { companyId: user.companyId, accountId: id } }),
+      this.prisma.item.count({ where: { companyId: user.companyId, incomeAccountId: id } }),
+      this.prisma.item.count({ where: { companyId: user.companyId, expenseAccountId: id } }),
+      this.prisma.taxCode.count({ where: { companyId: user.companyId, inputTaxAccountId: id } }),
+      this.prisma.taxCode.count({ where: { companyId: user.companyId, outputTaxAccountId: id } })
+    ]);
+
+    if (children > 0) throw new BadRequestException("Account has child accounts");
+    if (usage > 0) throw new BadRequestException("Account is referenced by vouchers");
+    if (itemIncome + itemExpense + taxInput + taxOutput > 0) {
+      throw new BadRequestException("Account is referenced by items or tax codes");
+    }
+
+    return this.prisma.chartOfAccount.update({
+      where: { id },
+      data: { isActive: false }
+    });
+  }
 }

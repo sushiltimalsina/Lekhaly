@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Put, Query } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Post, Put, Query } from "@nestjs/common";
 import { CurrentUser, RequirePerm } from "../../common/auth/auth.decorator";
 import { ZodValidationPipe } from "../../common/zod/zod.pipe";
 import type { AuthUser } from "../../common/auth/auth.types";
@@ -35,5 +35,11 @@ export class PartiesController {
   @RequirePerm("masters.read")
   list(@CurrentUser() user: AuthUser, @Query(new ZodValidationPipe(ListPartyQuerySchema)) query: any) {
     return this.parties.list(user, query);
+  }
+
+  @Delete(":id")
+  @RequirePerm("masters.write")
+  remove(@CurrentUser() user: AuthUser, @Param("id") id: string) {
+    return this.parties.remove(user, id);
   }
 }

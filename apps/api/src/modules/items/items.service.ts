@@ -73,4 +73,19 @@ export class ItemsService {
       take: filters.take || 50
     });
   }
+
+  async remove(user: AuthUser, id: string) {
+    const item = await this.prisma.item.findFirst({ where: { id, companyId: user.companyId } });
+    if (!item) throw new NotFoundException("Item not found");
+
+    const usage = await this.prisma.voucherLine.count({
+      where: { companyId: user.companyId, itemId: id }
+    });
+    if (usage > 0) throw new BadRequestException("Item is referenced by vouchers");
+
+    return this.prisma.item.update({
+      where: { id },
+      data: { isActive: false }
+    });
+  }
 }
