@@ -26,6 +26,105 @@ export class ReportsService {
     return voucherDate;
   }
 
+  private formatAmount(value: Prisma.Decimal) {
+    return value.toFixed(2);
+  }
+
+  private formatDateRange(filters: ReportFilters) {
+    if (!filters.from && !filters.to) return "All dates";
+    const from = filters.from ? filters.from.toISOString().slice(0, 10) : "Start";
+    const to = filters.to ? filters.to.toISOString().slice(0, 10) : "End";
+    return `${from} to ${to}`;
+  }
+
+  private buildTrialBalanceText(
+    data: { rows: Array<{ accountCode: string; accountName: string; debit: Prisma.Decimal; credit: Prisma.Decimal }> },
+    filters: ReportFilters
+  ) {
+    const lines: string[] = [];
+    lines.push("TRIAL BALANCE");
+    lines.push(`Period: ${this.formatDateRange(filters)}`);
+    lines.push("");
+    lines.push("Account Code | Account Name | Debit | Credit");
+    for (const row of data.rows) {
+      lines.push(
+        `${row.accountCode} | ${row.accountName} | ${this.formatAmount(row.debit)} | ${this.formatAmount(row.credit)}`
+      );
+    }
+    return lines.join("\n");
+  }
+
+  private buildProfitLossText(
+    data: {
+      income: Array<{ label: string; amount: Prisma.Decimal }>;
+      expense: Array<{ label: string; amount: Prisma.Decimal }>;
+      totalIncome: Prisma.Decimal;
+      totalExpense: Prisma.Decimal;
+      netProfit: Prisma.Decimal;
+    },
+    filters: ReportFilters
+  ) {
+    const lines: string[] = [];
+    lines.push("PROFIT AND LOSS");
+    lines.push(`Period: ${this.formatDateRange(filters)}`);
+    lines.push("");
+    lines.push("Income");
+    for (const row of data.income) {
+      lines.push(`${row.label} | ${this.formatAmount(row.amount)}`);
+    }
+    lines.push(`Total Income | ${this.formatAmount(data.totalIncome)}`);
+    lines.push("");
+    lines.push("Expense");
+    for (const row of data.expense) {
+      lines.push(`${row.label} | ${this.formatAmount(row.amount)}`);
+    }
+    lines.push(`Total Expense | ${this.formatAmount(data.totalExpense)}`);
+    lines.push("");
+    lines.push(`Net Profit | ${this.formatAmount(data.netProfit)}`);
+    return lines.join("\n");
+  }
+
+  private buildBalanceSheetText(
+    data: {
+      assets: Array<{ label: string; amount: Prisma.Decimal }>;
+      liabilities: Array<{ label: string; amount: Prisma.Decimal }>;
+      equity: Array<{ label: string; amount: Prisma.Decimal }>;
+      totalAssets: Prisma.Decimal;
+      totalLiabilities: Prisma.Decimal;
+      totalEquity: Prisma.Decimal;
+      netProfit: Prisma.Decimal;
+      totalEquityWithProfit: Prisma.Decimal;
+      balanced: boolean;
+    },
+    filters: ReportFilters
+  ) {
+    const lines: string[] = [];
+    lines.push("BALANCE SHEET");
+    lines.push(`As of: ${this.formatDateRange(filters)}`);
+    lines.push("");
+    lines.push("Assets");
+    for (const row of data.assets) {
+      lines.push(`${row.label} | ${this.formatAmount(row.amount)}`);
+    }
+    lines.push(`Total Assets | ${this.formatAmount(data.totalAssets)}`);
+    lines.push("");
+    lines.push("Liabilities");
+    for (const row of data.liabilities) {
+      lines.push(`${row.label} | ${this.formatAmount(row.amount)}`);
+    }
+    lines.push(`Total Liabilities | ${this.formatAmount(data.totalLiabilities)}`);
+    lines.push("");
+    lines.push("Equity");
+    for (const row of data.equity) {
+      lines.push(`${row.label} | ${this.formatAmount(row.amount)}`);
+    }
+    lines.push(`Total Equity | ${this.formatAmount(data.totalEquity)}`);
+    lines.push(`Net Profit | ${this.formatAmount(data.netProfit)}`);
+    lines.push(`Total Equity With Profit | ${this.formatAmount(data.totalEquityWithProfit)}`);
+    lines.push(`Balanced | ${data.balanced ? "true" : "false"}`);
+    return lines.join("\n");
+  }
+
   async trialBalance(companyId: string, filters: ReportFilters) {
     const voucherDate = this.applyDateFilter(filters);
     const lines = await this.prisma.voucherLine.findMany({
@@ -180,27 +279,34 @@ export class ReportsService {
 
   async exportPdf(companyId: string, input: { report: string; from?: Date; to?: Date }) {
     const filters = { from: input.from, to: input.to };
-    let data: unknown;
+    let data: any;
+    let contentText = "";
 
     if (input.report === "trial-balance") {
       data = await this.trialBalance(companyId, filters);
+      contentText = this.buildTrialBalanceText(data, filters);
     } else if (input.report === "profit-loss") {
       data = await this.profitAndLoss(companyId, filters);
+      contentText = this.buildProfitLossText(data, filters);
     } else if (input.report === "balance-sheet") {
       data = await this.balanceSheet(companyId, filters);
+      contentText = this.buildBalanceSheetText(data, filters);
     } else {
       data = { message: "Unknown report" };
+      contentText = "Unknown report";
     }
 
-    const placeholder = "PDF export not implemented yet";
-    const content = Buffer.from(placeholder, "utf8").toString("base64");
+    const contentBase64 = Buffer.from(contentText, "utf8").toString("base64");
+    const dateStamp = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    const fileName = `${input.report}-${dateStamp}.pdf`;
 
     return {
       report: input.report,
       generatedAt: new Date(),
       format: "pdf",
+      fileName,
       contentType: "application/pdf",
-      contentBase64: content,
+      contentBase64,
       data
     };
   }
