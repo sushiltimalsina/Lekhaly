@@ -97,6 +97,15 @@ let AccountsService = class AccountsService {
             data: { isActive: false }
         });
     }
+    async restore(user, id) {
+        const account = await this.prisma.chartOfAccount.findFirst({ where: { id, companyId: user.companyId } });
+        if (!account)
+            throw new common_1.NotFoundException("Account not found");
+        return this.prisma.chartOfAccount.update({
+            where: { id },
+            data: { isActive: true }
+        });
+    }
 };
 exports.AccountsService = AccountsService;
 exports.AccountsService = AccountsService = __decorate([

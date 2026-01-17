@@ -42,4 +42,10 @@ export class AccountsController {
   remove(@CurrentUser() user: AuthUser, @Param("id") id: string) {
     return this.accounts.remove(user, id);
   }
+
+  @Post(":id/restore")
+  @RequirePerm("masters.write")
+  restore(@CurrentUser() user: AuthUser, @Param("id") id: string) {
+    return this.accounts.restore(user, id);
+  }
 }

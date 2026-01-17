@@ -42,4 +42,10 @@ export class ItemsController {
   remove(@CurrentUser() user: AuthUser, @Param("id") id: string) {
     return this.items.remove(user, id);
   }
+
+  @Post(":id/restore")
+  @RequirePerm("masters.write")
+  restore(@CurrentUser() user: AuthUser, @Param("id") id: string) {
+    return this.items.restore(user, id);
+  }
 }

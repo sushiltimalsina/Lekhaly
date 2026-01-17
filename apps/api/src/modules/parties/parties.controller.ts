@@ -42,4 +42,10 @@ export class PartiesController {
   remove(@CurrentUser() user: AuthUser, @Param("id") id: string) {
     return this.parties.remove(user, id);
   }
+
+  @Post(":id/restore")
+  @RequirePerm("masters.write")
+  restore(@CurrentUser() user: AuthUser, @Param("id") id: string) {
+    return this.parties.restore(user, id);
+  }
 }

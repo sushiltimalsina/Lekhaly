@@ -88,4 +88,14 @@ export class ItemsService {
       data: { isActive: false }
     });
   }
+
+  async restore(user: AuthUser, id: string) {
+    const item = await this.prisma.item.findFirst({ where: { id, companyId: user.companyId } });
+    if (!item) throw new NotFoundException("Item not found");
+
+    return this.prisma.item.update({
+      where: { id },
+      data: { isActive: true }
+    });
+  }
 }

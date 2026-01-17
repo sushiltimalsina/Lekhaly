@@ -86,4 +86,14 @@ export class AccountsService {
       data: { isActive: false }
     });
   }
+
+  async restore(user: AuthUser, id: string) {
+    const account = await this.prisma.chartOfAccount.findFirst({ where: { id, companyId: user.companyId } });
+    if (!account) throw new NotFoundException("Account not found");
+
+    return this.prisma.chartOfAccount.update({
+      where: { id },
+      data: { isActive: true }
+    });
+  }
 }

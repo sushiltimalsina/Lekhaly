@@ -38,6 +38,9 @@ let ItemsController = class ItemsController {
     remove(user, id) {
         return this.items.remove(user, id);
     }
+    restore(user, id) {
+        return this.items.restore(user, id);
+    }
 };
 exports.ItemsController = ItemsController;
 __decorate([
@@ -86,6 +89,15 @@ __decorate([
     __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", void 0)
 ], ItemsController.prototype, "remove", null);
+__decorate([
+    (0, common_1.Post)(":id/restore"),
+    (0, auth_decorator_1.RequirePerm)("masters.write"),
+    __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)("id")),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", void 0)
+], ItemsController.prototype, "restore", null);
 exports.ItemsController = ItemsController = __decorate([
     (0, common_1.Controller)("items"),
     __metadata("design:paramtypes", [items_service_1.ItemsService])

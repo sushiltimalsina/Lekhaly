@@ -65,14 +65,31 @@ export class PartiesService {
     });
     if (!party) throw new NotFoundException("Party not found");
 
-    const usage = await this.prisma.voucherLine.count({
-      where: { companyId: user.companyId, partyId: id }
-    });
-    if (usage > 0) throw new BadRequestException("Party is referenced by vouchers");
+    const [lineUsage, voucherUsage] = await Promise.all([
+      this.prisma.voucherLine.count({
+        where: { companyId: user.companyId, partyId: id }
+      }),
+      this.prisma.voucher.count({
+        where: { companyId: user.companyId, partyId: id }
+      })
+    ]);
+    if (lineUsage + voucherUsage > 0) throw new BadRequestException("Party is referenced by vouchers");
 
     return this.prisma.party.update({
       where: { id },
       data: { isActive: false }
+    });
+  }
+
+  async restore(user: AuthUser, id: string) {
+    const party = await this.prisma.party.findFirst({
+      where: { id, companyId: user.companyId }
+    });
+    if (!party) throw new NotFoundException("Party not found");
+
+    return this.prisma.party.update({
+      where: { id },
+      data: { isActive: true }
     });
   }
 }

@@ -7,38 +7,38 @@ export declare class AccountsService {
     private validateParent;
     create(user: AuthUser, input: Prisma.ChartOfAccountCreateInput): Promise<{
         id: string;
-        companyId: string;
-        name: string;
-        createdAt: Date;
-        updatedAt: Date;
         code: string;
+        name: string;
         type: import("@prisma/client").$Enums.CoaType;
         isPostable: boolean;
         isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
         parentId: string | null;
     }>;
     update(user: AuthUser, id: string, input: Prisma.ChartOfAccountUpdateInput): Promise<{
         id: string;
-        companyId: string;
-        name: string;
-        createdAt: Date;
-        updatedAt: Date;
         code: string;
+        name: string;
         type: import("@prisma/client").$Enums.CoaType;
         isPostable: boolean;
         isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
         parentId: string | null;
     }>;
     get(user: AuthUser, id: string): Promise<{
         id: string;
-        companyId: string;
-        name: string;
-        createdAt: Date;
-        updatedAt: Date;
         code: string;
+        name: string;
         type: import("@prisma/client").$Enums.CoaType;
         isPostable: boolean;
         isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
         parentId: string | null;
     }>;
     list(user: AuthUser, filters: {
@@ -49,26 +49,38 @@ export declare class AccountsService {
         take?: number;
     }): Promise<{
         id: string;
-        companyId: string;
-        name: string;
-        createdAt: Date;
-        updatedAt: Date;
         code: string;
+        name: string;
         type: import("@prisma/client").$Enums.CoaType;
         isPostable: boolean;
         isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
         parentId: string | null;
     }[]>;
     remove(user: AuthUser, id: string): Promise<{
         id: string;
-        companyId: string;
-        name: string;
-        createdAt: Date;
-        updatedAt: Date;
         code: string;
+        name: string;
         type: import("@prisma/client").$Enums.CoaType;
         isPostable: boolean;
         isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+        parentId: string | null;
+    }>;
+    restore(user: AuthUser, id: string): Promise<{
+        id: string;
+        code: string;
+        name: string;
+        type: import("@prisma/client").$Enums.CoaType;
+        isPostable: boolean;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
         parentId: string | null;
     }>;
 }

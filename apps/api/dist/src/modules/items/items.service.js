@@ -95,6 +95,15 @@ let ItemsService = class ItemsService {
             data: { isActive: false }
         });
     }
+    async restore(user, id) {
+        const item = await this.prisma.item.findFirst({ where: { id, companyId: user.companyId } });
+        if (!item)
+            throw new common_1.NotFoundException("Item not found");
+        return this.prisma.item.update({
+            where: { id },
+            data: { isActive: true }
+        });
+    }
 };
 exports.ItemsService = ItemsService;
 exports.ItemsService = ItemsService = __decorate([

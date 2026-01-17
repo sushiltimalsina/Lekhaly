@@ -38,6 +38,9 @@ let PartiesController = class PartiesController {
     remove(user, id) {
         return this.parties.remove(user, id);
     }
+    restore(user, id) {
+        return this.parties.restore(user, id);
+    }
 };
 exports.PartiesController = PartiesController;
 __decorate([
@@ -86,6 +89,15 @@ __decorate([
     __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", void 0)
 ], PartiesController.prototype, "remove", null);
+__decorate([
+    (0, common_1.Post)(":id/restore"),
+    (0, auth_decorator_1.RequirePerm)("masters.write"),
+    __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)("id")),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", void 0)
+], PartiesController.prototype, "restore", null);
 exports.PartiesController = PartiesController = __decorate([
     (0, common_1.Controller)("parties"),
     __metadata("design:paramtypes", [parties_service_1.PartiesService])
