@@ -27,9 +27,10 @@ export declare class VouchersService {
     private getCompanyOrThrow;
     private ensureVoucherDate;
     private validateReferences;
+    private buildTaxLines;
     private normalizeLines;
     private computeTotals;
-    createDraft(user: AuthUser, input: DraftInput, idempotencyKey?: string): Promise<string | number | true | Prisma.JsonObject | Prisma.JsonArray | ({
+    createDraft(user: AuthUser, input: DraftInput, idempotencyKey?: string): Promise<Prisma.JsonValue | ({
         lines: {
             id: string;
             companyId: string;
@@ -108,7 +109,7 @@ export declare class VouchersService {
         totalCredit: Prisma.Decimal;
         balanced: boolean;
     }>;
-    post(user: AuthUser, voucherId: string, idempotencyKey?: string): Promise<string | number | true | Prisma.JsonObject | Prisma.JsonArray | ({
+    post(user: AuthUser, voucherId: string, idempotencyKey?: string): Promise<Prisma.JsonValue | ({
         lines: {
             id: string;
             companyId: string;
@@ -143,8 +144,8 @@ export declare class VouchersService {
         voidedAt: Date | null;
         reversalOfVoucherId: string | null;
         revisionOfVoucherId: string | null;
-    }) | null>;
-    void(user: AuthUser, voucherId: string, idempotencyKey?: string): Promise<string | number | true | Prisma.JsonObject | Prisma.JsonArray | {
+    })>;
+    void(user: AuthUser, voucherId: string, idempotencyKey?: string): Promise<Prisma.JsonValue | {
         voidedVoucherId: string;
         reversalVoucherId: string;
     }>;

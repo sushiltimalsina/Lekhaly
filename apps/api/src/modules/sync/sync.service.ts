@@ -74,16 +74,23 @@ export class SyncService {
       data,
       skipDuplicates: true
     });
+    const conflicts = dto.entries.length - result.count;
 
-    return { accepted: result.count };
+    return { accepted: result.count, conflicts };
   }
 
-  async pullChanges(user: AuthUser, query: { deviceId: string; since?: Date; take?: number }) {
+  async pullChanges(
+    user: AuthUser,
+    query: { deviceId: string; since?: Date; lastChangeId?: string; take?: number }
+  ) {
     await this.requireDeviceAccess(user, query.deviceId);
 
     const where: any = { companyId: user.companyId };
     if (query.since) {
       where.createdAt = { gt: query.since };
+    }
+    if (query.lastChangeId) {
+      where.id = { gt: query.lastChangeId };
     }
 
     const entries = await this.prisma.changeLog.findMany({
@@ -100,6 +107,11 @@ export class SyncService {
       });
     }
 
-    return { entries };
+    const normalized = entries.map((e) => ({
+      ...e,
+      seq: e.seq.toString()
+    }));
+
+    return { entries: normalized };
   }
 }

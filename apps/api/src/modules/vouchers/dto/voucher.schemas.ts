@@ -17,6 +17,15 @@ export const CreateVoucherDraftSchema = z.object({
   partyId: z.string().uuid().optional(),
   memo: z.string().trim().max(500).optional(),
   lines: z.array(VoucherLineSchema).min(1)
+}).superRefine((data, ctx) => {
+  const requiresParty = ["sales_invoice", "receipt", "payment"];
+  const forbidsParty = ["journal", "opening", "reversal"];
+  if (requiresParty.includes(data.voucherType) && !data.partyId) {
+    ctx.addIssue({ code: "custom", message: "Party is required for this voucher type", path: ["partyId"] });
+  }
+  if (forbidsParty.includes(data.voucherType) && data.partyId) {
+    ctx.addIssue({ code: "custom", message: "Party is not allowed for this voucher type", path: ["partyId"] });
+  }
 });
 
 export const UpdateVoucherDraftSchema = CreateVoucherDraftSchema.partial().extend({

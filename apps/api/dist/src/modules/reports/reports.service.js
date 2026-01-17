@@ -69,7 +69,8 @@ let ReportsService = class ReportsService {
             credit: row.credit
         }));
         const totals = this.sumLines(rows);
-        return { rows, totalDebit: totals.debit, totalCredit: totals.credit };
+        const balanced = totals.debit.equals(totals.credit);
+        return { rows, totalDebit: totals.debit, totalCredit: totals.credit, balanced };
     }
     async profitAndLoss(companyId, filters) {
         const voucherDate = this.applyDateFilter(filters);
@@ -124,6 +125,8 @@ let ReportsService = class ReportsService {
         const assets = new Map();
         const liabilities = new Map();
         const equity = new Map();
+        const income = new Map();
+        const expense = new Map();
         for (const line of lines) {
             const key = `${line.account.code} ${line.account.name}`;
             if (line.account.type === "asset") {
@@ -138,6 +141,14 @@ let ReportsService = class ReportsService {
                 const net = line.credit.sub(line.debit);
                 equity.set(key, (equity.get(key) || new client_1.Prisma.Decimal(0)).add(net));
             }
+            if (line.account.type === "income") {
+                const net = line.credit.sub(line.debit);
+                income.set(key, (income.get(key) || new client_1.Prisma.Decimal(0)).add(net));
+            }
+            if (line.account.type === "expense") {
+                const net = line.debit.sub(line.credit);
+                expense.set(key, (expense.get(key) || new client_1.Prisma.Decimal(0)).add(net));
+            }
         }
         const assetRows = Array.from(assets.entries()).map(([label, amount]) => ({ label, amount }));
         const liabilityRows = Array.from(liabilities.entries()).map(([label, amount]) => ({ label, amount }));
@@ -145,7 +156,22 @@ let ReportsService = class ReportsService {
         const totalAssets = assetRows.reduce((acc, r) => acc.add(r.amount), new client_1.Prisma.Decimal(0));
         const totalLiabilities = liabilityRows.reduce((acc, r) => acc.add(r.amount), new client_1.Prisma.Decimal(0));
         const totalEquity = equityRows.reduce((acc, r) => acc.add(r.amount), new client_1.Prisma.Decimal(0));
-        return { assets: assetRows, liabilities: liabilityRows, equity: equityRows, totalAssets, totalLiabilities, totalEquity };
+        const totalIncome = Array.from(income.values()).reduce((acc, v) => acc.add(v), new client_1.Prisma.Decimal(0));
+        const totalExpense = Array.from(expense.values()).reduce((acc, v) => acc.add(v), new client_1.Prisma.Decimal(0));
+        const netProfit = totalIncome.sub(totalExpense);
+        const totalEquityWithProfit = totalEquity.add(netProfit);
+        const balanced = totalAssets.equals(totalLiabilities.add(totalEquityWithProfit));
+        return {
+            assets: assetRows,
+            liabilities: liabilityRows,
+            equity: equityRows,
+            totalAssets,
+            totalLiabilities,
+            totalEquity,
+            netProfit,
+            totalEquityWithProfit,
+            balanced
+        };
     }
 };
 exports.ReportsService = ReportsService;

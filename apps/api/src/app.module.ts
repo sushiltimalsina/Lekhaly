@@ -5,13 +5,22 @@ import { AppService } from "./app.service";
 import { AuditInterceptor } from "./common/audit/audit.interceptor";
 import { PrismaModule } from "./common/prisma/prisma.module";
 import { AuthModule } from "./modules/auth/auth.module";
+import { AuditModule } from "./modules/audit/audit.module";
 import { ReportsModule } from "./modules/reports/reports.module";
 import { SyncModule } from "./modules/sync/sync.module";
 import { VouchersModule } from "./modules/vouchers/vouchers.module";
 import { HealthModule } from "./moduls/health/health.module";
 
 @Module({
-  imports: [PrismaModule, HealthModule, AuthModule, ReportsModule, VouchersModule, SyncModule],
+  imports: [
+    PrismaModule,
+    HealthModule,
+    AuthModule,
+    ReportsModule,
+    VouchersModule,
+    SyncModule,
+    AuditModule
+  ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_INTERCEPTOR, useClass: AuditInterceptor }]
 })

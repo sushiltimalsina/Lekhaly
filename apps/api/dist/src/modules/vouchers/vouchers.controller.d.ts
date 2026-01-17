@@ -3,7 +3,7 @@ import { VouchersService } from "./vouchers.service";
 export declare class VouchersController {
     private vouchers;
     constructor(vouchers: VouchersService);
-    createDraft(user: AuthUser, body: any, idempotencyKey?: string): Promise<string | number | true | import("@prisma/client/runtime/client").JsonObject | import("@prisma/client/runtime/client").JsonArray | ({
+    createDraft(user: AuthUser, body: any, idempotencyKey?: string): Promise<import("@prisma/client/runtime/client").JsonValue | ({
         lines: {
             id: string;
             companyId: string;
@@ -129,7 +129,7 @@ export declare class VouchersController {
         memo: string | null;
         postedAt: Date | null;
     }[]>;
-    post(user: AuthUser, id: string, idempotencyKey?: string): Promise<string | number | true | import("@prisma/client/runtime/client").JsonObject | import("@prisma/client/runtime/client").JsonArray | ({
+    post(user: AuthUser, id: string, idempotencyKey?: string): Promise<import("@prisma/client/runtime/client").JsonValue | ({
         lines: {
             id: string;
             companyId: string;
@@ -164,8 +164,8 @@ export declare class VouchersController {
         voidedAt: Date | null;
         reversalOfVoucherId: string | null;
         revisionOfVoucherId: string | null;
-    }) | null>;
-    void(user: AuthUser, id: string, idempotencyKey?: string): Promise<string | number | true | import("@prisma/client/runtime/client").JsonObject | import("@prisma/client/runtime/client").JsonArray | {
+    })>;
+    void(user: AuthUser, id: string, idempotencyKey?: string): Promise<import("@prisma/client/runtime/client").JsonValue | {
         voidedVoucherId: string;
         reversalVoucherId: string;
     }>;

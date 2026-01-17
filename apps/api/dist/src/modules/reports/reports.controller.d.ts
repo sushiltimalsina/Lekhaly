@@ -12,6 +12,7 @@ export declare class ReportsController {
         }[];
         totalDebit: import("@prisma/client/runtime/client").Decimal;
         totalCredit: import("@prisma/client/runtime/client").Decimal;
+        balanced: boolean;
     }>;
     profitLoss(user: AuthUser, query: any): Promise<{
         income: {
@@ -42,6 +43,9 @@ export declare class ReportsController {
         totalAssets: import("@prisma/client/runtime/client").Decimal;
         totalLiabilities: import("@prisma/client/runtime/client").Decimal;
         totalEquity: import("@prisma/client/runtime/client").Decimal;
+        netProfit: import("@prisma/client/runtime/client").Decimal;
+        totalEquityWithProfit: import("@prisma/client/runtime/client").Decimal;
+        balanced: boolean;
     }>;
     export(body: {
         report: string;

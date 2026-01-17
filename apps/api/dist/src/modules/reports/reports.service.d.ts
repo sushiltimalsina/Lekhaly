@@ -18,6 +18,7 @@ export declare class ReportsService {
         }[];
         totalDebit: Prisma.Decimal;
         totalCredit: Prisma.Decimal;
+        balanced: boolean;
     }>;
     profitAndLoss(companyId: string, filters: ReportFilters): Promise<{
         income: {
@@ -48,6 +49,9 @@ export declare class ReportsService {
         totalAssets: Prisma.Decimal;
         totalLiabilities: Prisma.Decimal;
         totalEquity: Prisma.Decimal;
+        netProfit: Prisma.Decimal;
+        totalEquityWithProfit: Prisma.Decimal;
+        balanced: boolean;
     }>;
 }
 export {};

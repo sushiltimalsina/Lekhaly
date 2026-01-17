@@ -24,5 +24,6 @@ export const PushChangeSchema = z.object({
 export const PullQuerySchema = z.object({
   deviceId: z.string().uuid(),
   since: z.coerce.date().optional(),
+  lastChangeId: z.string().uuid().optional(),
   take: z.coerce.number().int().min(1).max(500).optional()
 });
