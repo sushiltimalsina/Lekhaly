@@ -5,6 +5,7 @@ export const AuditQuerySchema = z.object({
   entityId: z.string().trim().max(128).optional(),
   actorUserId: z.string().uuid().optional(),
   actorDeviceId: z.string().uuid().optional(),
+  q: z.string().trim().max(200).optional(),
   from: z.coerce.date().optional(),
   to: z.coerce.date().optional(),
   skip: z.coerce.number().int().min(0).optional(),
