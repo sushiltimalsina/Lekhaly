@@ -58,25 +58,63 @@ export class SyncService {
   ) {
     await this.requireDeviceAccess(user, dto.deviceId);
 
-    const data = dto.entries.map((e) => ({
-      companyId: user.companyId,
-      deviceId: dto.deviceId,
-      actorUserId: user.sub,
-      seq: BigInt(e.seq),
-      entityType: e.entityType,
-      entityId: e.entityId,
-      op: e.op,
-      payload: e.payload as Prisma.InputJsonValue,
-      idempotencyKey: e.idempotencyKey || null
-    }));
+    const seqs = dto.entries.map((e) => e.seq);
+    const uniqueSeqs = Array.from(new Set(seqs));
+    const duplicateSeqs = seqs.filter((seq, idx) => seqs.indexOf(seq) !== idx);
 
-    const result = await this.prisma.changeLog.createMany({
-      data,
-      skipDuplicates: true
-    });
-    const conflicts = dto.entries.length - result.count;
+    const existing = uniqueSeqs.length
+      ? await this.prisma.changeLog.findMany({
+          where: {
+            deviceId: dto.deviceId,
+            seq: { in: uniqueSeqs.map((s) => BigInt(s)) }
+          },
+          select: { id: true, seq: true, entityType: true, entityId: true }
+        })
+      : [];
 
-    return { accepted: result.count, conflicts };
+    const existingSeqs = new Set(existing.map((e) => Number(e.seq)));
+    const conflictSeqs = new Set<number>([...existingSeqs, ...duplicateSeqs]);
+
+    const data = dto.entries
+      .filter((e) => !conflictSeqs.has(e.seq))
+      .map((e) => ({
+        companyId: user.companyId,
+        deviceId: dto.deviceId,
+        actorUserId: user.sub,
+        seq: BigInt(e.seq),
+        entityType: e.entityType,
+        entityId: e.entityId,
+        op: e.op,
+        payload: e.payload as Prisma.InputJsonValue,
+        idempotencyKey: e.idempotencyKey || null
+      }));
+
+    const result = data.length
+      ? await this.prisma.changeLog.createMany({
+          data,
+          skipDuplicates: true
+        })
+      : { count: 0 };
+
+    const conflicts = [
+      ...existing.map((e) => ({
+        seq: Number(e.seq),
+        reason: "duplicate_seq",
+        existingChangeId: e.id,
+        entityType: e.entityType,
+        entityId: e.entityId
+      })),
+      ...Array.from(new Set(duplicateSeqs)).map((seq) => ({
+        seq,
+        reason: "duplicate_in_batch"
+      }))
+    ];
+
+    return {
+      accepted: result.count,
+      rejected: conflicts.length,
+      conflicts
+    };
   }
 
   async pullChanges(

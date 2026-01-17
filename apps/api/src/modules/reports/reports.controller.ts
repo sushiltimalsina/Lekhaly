@@ -2,7 +2,7 @@ import { Body, Controller, Get, Post, Query } from "@nestjs/common";
 import { CurrentUser, RequirePerm, RequireStep } from "../../common/auth/auth.decorator";
 import { ZodValidationPipe } from "../../common/zod/zod.pipe";
 import type { AuthUser } from "../../common/auth/auth.types";
-import { ReportQuerySchema } from "./dto/report.schemas";
+import { ExportReportSchema, ReportQuerySchema } from "./dto/report.schemas";
 import { ReportsService } from "./reports.service";
 
 @Controller("reports")
@@ -39,7 +39,10 @@ export class ReportsController {
   @Post("export")
   @RequirePerm("export.pdf")
   @RequireStep("sensitive")
-  export(@Body() body: { report: string }) {
-    return { ok: true, report: body.report || "unknown" };
+  export(
+    @CurrentUser() user: AuthUser,
+    @Body(new ZodValidationPipe(ExportReportSchema)) body: any
+  ) {
+    return this.reports.exportPdf(user.companyId, body);
   }
 }

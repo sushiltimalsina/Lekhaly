@@ -177,4 +177,31 @@ export class ReportsService {
       balanced
     };
   }
+
+  async exportPdf(companyId: string, input: { report: string; from?: Date; to?: Date }) {
+    const filters = { from: input.from, to: input.to };
+    let data: unknown;
+
+    if (input.report === "trial-balance") {
+      data = await this.trialBalance(companyId, filters);
+    } else if (input.report === "profit-loss") {
+      data = await this.profitAndLoss(companyId, filters);
+    } else if (input.report === "balance-sheet") {
+      data = await this.balanceSheet(companyId, filters);
+    } else {
+      data = { message: "Unknown report" };
+    }
+
+    const placeholder = "PDF export not implemented yet";
+    const content = Buffer.from(placeholder, "utf8").toString("base64");
+
+    return {
+      report: input.report,
+      generatedAt: new Date(),
+      format: "pdf",
+      contentType: "application/pdf",
+      contentBase64: content,
+      data
+    };
+  }
 }
