@@ -65,13 +65,17 @@ let SyncService = class SyncService {
             data,
             skipDuplicates: true
         });
-        return { accepted: result.count };
+        const conflicts = dto.entries.length - result.count;
+        return { accepted: result.count, conflicts };
     }
     async pullChanges(user, query) {
         await this.requireDeviceAccess(user, query.deviceId);
         const where = { companyId: user.companyId };
         if (query.since) {
             where.createdAt = { gt: query.since };
+        }
+        if (query.lastChangeId) {
+            where.id = { gt: query.lastChangeId };
         }
         const entries = await this.prisma.changeLog.findMany({
             where,

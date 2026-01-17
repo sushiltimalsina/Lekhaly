@@ -9,15 +9,21 @@ export const VoucherLineSchema = z.object({
   credit: z.number().nonnegative().default(0),
   taxCodeId: z.string().uuid().optional(),
   taxAmount: z.number().nonnegative().default(0)
+}).superRefine((data, ctx) => {
+  if (data.taxCodeId && (!data.taxAmount || data.taxAmount <= 0)) {
+    ctx.addIssue({ code: "custom", message: "Tax amount required when tax code is set", path: ["taxAmount"] });
+  }
 });
 
-export const CreateVoucherDraftSchema = z.object({
+const VoucherDraftBaseSchema = z.object({
   voucherType: z.enum(["sales_invoice", "receipt", "payment", "journal", "opening", "reversal"]),
   voucherDate: z.coerce.date(),
   partyId: z.string().uuid().optional(),
   memo: z.string().trim().max(500).optional(),
   lines: z.array(VoucherLineSchema).min(1)
-}).superRefine((data, ctx) => {
+});
+
+export const CreateVoucherDraftSchema = VoucherDraftBaseSchema.superRefine((data, ctx) => {
   const requiresParty = ["sales_invoice", "receipt", "payment"];
   const forbidsParty = ["journal", "opening", "reversal"];
   if (requiresParty.includes(data.voucherType) && !data.partyId) {
@@ -28,7 +34,7 @@ export const CreateVoucherDraftSchema = z.object({
   }
 });
 
-export const UpdateVoucherDraftSchema = CreateVoucherDraftSchema.partial().extend({
+export const UpdateVoucherDraftSchema = VoucherDraftBaseSchema.partial().extend({
   lines: z.array(VoucherLineSchema).min(1).optional()
 });
 

@@ -11,15 +11,29 @@ exports.VoucherLineSchema = zod_1.z.object({
     credit: zod_1.z.number().nonnegative().default(0),
     taxCodeId: zod_1.z.string().uuid().optional(),
     taxAmount: zod_1.z.number().nonnegative().default(0)
+}).superRefine((data, ctx) => {
+    if (data.taxCodeId && (!data.taxAmount || data.taxAmount <= 0)) {
+        ctx.addIssue({ code: "custom", message: "Tax amount required when tax code is set", path: ["taxAmount"] });
+    }
 });
-exports.CreateVoucherDraftSchema = zod_1.z.object({
+const VoucherDraftBaseSchema = zod_1.z.object({
     voucherType: zod_1.z.enum(["sales_invoice", "receipt", "payment", "journal", "opening", "reversal"]),
     voucherDate: zod_1.z.coerce.date(),
     partyId: zod_1.z.string().uuid().optional(),
     memo: zod_1.z.string().trim().max(500).optional(),
     lines: zod_1.z.array(exports.VoucherLineSchema).min(1)
 });
-exports.UpdateVoucherDraftSchema = exports.CreateVoucherDraftSchema.partial().extend({
+exports.CreateVoucherDraftSchema = VoucherDraftBaseSchema.superRefine((data, ctx) => {
+    const requiresParty = ["sales_invoice", "receipt", "payment"];
+    const forbidsParty = ["journal", "opening", "reversal"];
+    if (requiresParty.includes(data.voucherType) && !data.partyId) {
+        ctx.addIssue({ code: "custom", message: "Party is required for this voucher type", path: ["partyId"] });
+    }
+    if (forbidsParty.includes(data.voucherType) && data.partyId) {
+        ctx.addIssue({ code: "custom", message: "Party is not allowed for this voucher type", path: ["partyId"] });
+    }
+});
+exports.UpdateVoucherDraftSchema = VoucherDraftBaseSchema.partial().extend({
     lines: zod_1.z.array(exports.VoucherLineSchema).min(1).optional()
 });
 exports.ListVoucherQuerySchema = zod_1.z.object({

@@ -23,21 +23,23 @@ export declare class SyncService {
         }>;
     }): Promise<{
         accepted: number;
+        conflicts: number;
     }>;
     pullChanges(user: AuthUser, query: {
         deviceId: string;
         since?: Date;
+        lastChangeId?: string;
         take?: number;
     }): Promise<{
         entries: {
             seq: string;
             id: string;
-            createdAt: Date;
             companyId: string;
-            deviceId: string;
-            actorUserId: string | null;
+            createdAt: Date;
             entityType: string;
             entityId: string;
+            actorUserId: string | null;
+            deviceId: string;
             op: import("@prisma/client").$Enums.ChangeOp;
             payload: Prisma.JsonValue;
             idempotencyKey: string | null;

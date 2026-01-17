@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Headers, Param, Post, Put, Query } from "@nestjs/common";
+import { Audit } from "../../common/audit/audit.decorator";
 import { CurrentUser, RequirePerm, RequireStep } from "../../common/auth/auth.decorator";
 import { ZodValidationPipe } from "../../common/zod/zod.pipe";
 import type { AuthUser } from "../../common/auth/auth.types";
@@ -6,6 +7,7 @@ import { CreateVoucherDraftSchema, ListVoucherQuerySchema, UpdateVoucherDraftSch
 import { VouchersService } from "./vouchers.service";
 
 @Controller("vouchers")
+@Audit({ entityType: "voucher", idParam: "id" })
 export class VouchersController {
   constructor(private vouchers: VouchersService) {}
 

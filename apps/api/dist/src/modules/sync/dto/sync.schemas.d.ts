@@ -26,5 +26,6 @@ export declare const PushChangeSchema: z.ZodObject<{
 export declare const PullQuerySchema: z.ZodObject<{
     deviceId: z.ZodString;
     since: z.ZodOptional<z.ZodCoercedDate<unknown>>;
+    lastChangeId: z.ZodOptional<z.ZodString>;
     take: z.ZodOptional<z.ZodCoercedNumber<unknown>>;
 }, z.core.$strip>;

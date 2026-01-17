@@ -22,6 +22,7 @@ exports.PushChangeSchema = zod_1.z.object({
 exports.PullQuerySchema = zod_1.z.object({
     deviceId: zod_1.z.string().uuid(),
     since: zod_1.z.coerce.date().optional(),
+    lastChangeId: zod_1.z.string().uuid().optional(),
     take: zod_1.z.coerce.number().int().min(1).max(500).optional()
 });
 //# sourceMappingURL=sync.schemas.js.map

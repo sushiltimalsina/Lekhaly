@@ -14,6 +14,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.VouchersController = void 0;
 const common_1 = require("@nestjs/common");
+const audit_decorator_1 = require("../../common/audit/audit.decorator");
 const auth_decorator_1 = require("../../common/auth/auth.decorator");
 const zod_pipe_1 = require("../../common/zod/zod.pipe");
 const voucher_schemas_1 = require("./dto/voucher.schemas");
@@ -117,6 +118,7 @@ __decorate([
 ], VouchersController.prototype, "void", null);
 exports.VouchersController = VouchersController = __decorate([
     (0, common_1.Controller)("vouchers"),
+    (0, audit_decorator_1.Audit)({ entityType: "voucher", idParam: "id" }),
     __metadata("design:paramtypes", [vouchers_service_1.VouchersService])
 ], VouchersController);
 //# sourceMappingURL=vouchers.controller.js.map
