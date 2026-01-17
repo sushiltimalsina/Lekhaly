@@ -22,6 +22,16 @@ type DraftInput = {
   }>;
 };
 
+type TaxLineInput = {
+  lineNo: number;
+  accountId: string;
+  description?: string;
+  debit: Prisma.Decimal;
+  credit: Prisma.Decimal;
+  taxCodeId?: string;
+  taxAmount?: Prisma.Decimal;
+};
+
 @Injectable()
 export class VouchersService {
   constructor(private prisma: PrismaService) {}
@@ -46,8 +56,8 @@ export class VouchersService {
     }
   }
 
-  private toJsonSafe(value: unknown) {
-    return JSON.parse(JSON.stringify(value));
+  private toJsonSafe(value: unknown): Prisma.InputJsonValue {
+    return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
   }
 
   private async idempotencyGuard(
@@ -55,7 +65,7 @@ export class VouchersService {
     action: string,
     idempotencyKey?: string,
     payload?: unknown
-  ) {
+  ): Promise<{ kind: "existing"; response: Prisma.JsonValue } | { kind: "new"; requestHash: string | null } | null> {
     if (!idempotencyKey) return null;
 
     const requestHash = payload
@@ -75,10 +85,10 @@ export class VouchersService {
       if (requestHash && existing.requestHash && existing.requestHash !== requestHash) {
         throw new ConflictException("Idempotency key reused with different payload");
       }
-      return existing.responseJson;
+      return { kind: "existing", response: existing.responseJson };
     }
 
-    return { requestHash };
+    return { kind: "new", requestHash };
   }
 
   private async storeIdempotency(
@@ -86,7 +96,7 @@ export class VouchersService {
     action: string,
     idempotencyKey: string,
     requestHash: string | null,
-    responseJson: unknown
+    responseJson: Prisma.InputJsonValue
   ) {
     await this.prisma.apiIdempotency.create({
       data: {
@@ -112,7 +122,7 @@ export class VouchersService {
     }
   }
 
-  private async validateReferences(companyId: string, input: DraftInput) {
+  private async validateReferences(companyId: string, input: DraftInput, voucherType?: VoucherType) {
     const partyIds = new Set<string>();
     const accountIds = new Set<string>();
     const itemIds = new Set<string>();
@@ -151,6 +161,114 @@ export class VouchersService {
     if (accounts.some((a) => !a.isActive || !a.isPostable)) {
       throw new BadRequestException("Account not postable");
     }
+
+    if (voucherType && itemIds.size) {
+      const itemMap = new Map(items.map((i) => [i.id, i]));
+      for (const line of input.lines || []) {
+        if (!line.itemId) continue;
+        const item = itemMap.get(line.itemId);
+        if (!item) throw new BadRequestException("Invalid item");
+        if (voucherType === VoucherType.sales_invoice || voucherType === VoucherType.receipt) {
+          if (!item.incomeAccountId) throw new BadRequestException("Item missing income account");
+          if (item.incomeAccountId !== line.accountId) {
+            throw new BadRequestException("Item income account mismatch");
+          }
+        }
+        if (voucherType === VoucherType.payment) {
+          if (!item.expenseAccountId) throw new BadRequestException("Item missing expense account");
+          if (item.expenseAccountId !== line.accountId) {
+            throw new BadRequestException("Item expense account mismatch");
+          }
+        }
+      }
+    }
+  }
+
+  private async buildTaxLines(
+    companyId: string,
+    voucherType: VoucherType,
+    lines: Array<{
+      lineNo: number;
+      accountId: string;
+      debit: Prisma.Decimal;
+      credit: Prisma.Decimal;
+      taxCodeId?: string;
+      taxAmount?: Prisma.Decimal;
+    }>
+  ): Promise<TaxLineInput[]> {
+    const taxCodeIds = Array.from(new Set(lines.map((l) => l.taxCodeId).filter(Boolean))) as string[];
+    if (taxCodeIds.length === 0) return [];
+
+    if (
+      voucherType === VoucherType.journal ||
+      voucherType === VoucherType.opening ||
+      voucherType === VoucherType.reversal
+    ) {
+      throw new BadRequestException("Tax codes are not allowed for this voucher type");
+    }
+
+    const taxCodes = await this.prisma.taxCode.findMany({
+      where: { id: { in: taxCodeIds }, companyId }
+    });
+    const taxMap = new Map(taxCodes.map((t) => [t.id, t]));
+    const accountIds = new Set<string>();
+
+    const result: TaxLineInput[] = [];
+    let nextLineNo = Math.max(...lines.map((l) => l.lineNo), 0) + 1;
+
+    for (const line of lines) {
+      if (!line.taxCodeId) continue;
+      const taxCode = taxMap.get(line.taxCodeId);
+      if (!taxCode) throw new BadRequestException("Invalid tax code");
+      const taxAmount = line.taxAmount ? new Prisma.Decimal(line.taxAmount) : new Prisma.Decimal(0);
+      if (taxAmount.lte(0)) throw new BadRequestException("Tax amount must be greater than zero");
+
+      if (voucherType === VoucherType.sales_invoice || voucherType === VoucherType.receipt) {
+        if (line.credit.lte(0)) {
+          throw new BadRequestException("Tax on sales must be on credit lines");
+        }
+        if (!taxCode.outputTaxAccountId) throw new BadRequestException("Tax code missing output account");
+        accountIds.add(taxCode.outputTaxAccountId);
+        result.push({
+          lineNo: nextLineNo++,
+          accountId: taxCode.outputTaxAccountId,
+          description: "Tax",
+          debit: new Prisma.Decimal(0),
+          credit: taxAmount,
+          taxCodeId: taxCode.id,
+          taxAmount
+        });
+      }
+
+      if (voucherType === VoucherType.payment) {
+        if (line.debit.lte(0)) {
+          throw new BadRequestException("Tax on purchases must be on debit lines");
+        }
+        if (!taxCode.inputTaxAccountId) throw new BadRequestException("Tax code missing input account");
+        accountIds.add(taxCode.inputTaxAccountId);
+        result.push({
+          lineNo: nextLineNo++,
+          accountId: taxCode.inputTaxAccountId,
+          description: "Tax",
+          debit: taxAmount,
+          credit: new Prisma.Decimal(0),
+          taxCodeId: taxCode.id,
+          taxAmount
+        });
+      }
+    }
+
+    if (accountIds.size) {
+      const accounts = await this.prisma.chartOfAccount.findMany({
+        where: { id: { in: Array.from(accountIds) }, companyId }
+      });
+      if (accounts.length !== accountIds.size) throw new BadRequestException("Invalid tax account");
+      if (accounts.some((a) => !a.isActive || !a.isPostable)) {
+        throw new BadRequestException("Tax account not postable");
+      }
+    }
+
+    return result;
   }
 
   private normalizeLines(lines: NonNullable<DraftInput["lines"]>) {
@@ -196,13 +314,13 @@ export class VouchersService {
     this.enforceVoucherRules(input.voucherType, input.partyId);
 
     const guard = await this.idempotencyGuard(user, "voucher.createDraft", idempotencyKey, input);
-    if (guard && !("requestHash" in guard)) {
-      return guard;
+    if (guard?.kind === "existing") {
+      return guard.response;
     }
 
     const company = await this.getCompanyOrThrow(user.companyId);
     this.ensureVoucherDate(company, input.voucherDate);
-    await this.validateReferences(user.companyId, input);
+    await this.validateReferences(user.companyId, input, input.voucherType);
     const lines = this.normalizeLines(input.lines);
 
     const voucher = await this.prisma.voucher.create({
@@ -221,7 +339,7 @@ export class VouchersService {
       include: { lines: true }
     });
 
-    if (idempotencyKey && guard && "requestHash" in guard) {
+    if (idempotencyKey && guard?.kind === "new") {
       await this.storeIdempotency(
         user,
         "voucher.createDraft",
@@ -259,7 +377,7 @@ export class VouchersService {
     return this.prisma.$transaction(async (tx) => {
       const company = await this.getCompanyOrThrow(user.companyId);
       if (input.voucherDate) this.ensureVoucherDate(company, input.voucherDate);
-      if (input.lines || input.partyId) await this.validateReferences(user.companyId, input);
+      if (input.lines || input.partyId) await this.validateReferences(user.companyId, input, nextType);
 
       if (input.lines) {
         const lines = this.normalizeLines(input.lines);
@@ -285,8 +403,17 @@ export class VouchersService {
     });
     if (!voucher) throw new NotFoundException("Voucher not found");
 
+    const normalized = voucher.lines.map((l) => ({
+      lineNo: l.lineNo,
+      accountId: l.accountId,
+      debit: l.debit,
+      credit: l.credit,
+      taxCodeId: l.taxCodeId || undefined,
+      taxAmount: l.taxAmount
+    }));
+    const taxLines = await this.buildTaxLines(user.companyId, voucher.voucherType, normalized);
     const totals = this.computeTotals(
-      voucher.lines.map((l) => ({ debit: l.debit, credit: l.credit }))
+      [...normalized, ...taxLines].map((l) => ({ debit: l.debit, credit: l.credit }))
     );
     const balanced = totals.debit.equals(totals.credit);
 
@@ -301,8 +428,8 @@ export class VouchersService {
 
   async post(user: AuthUser, voucherId: string, idempotencyKey?: string) {
     const guard = await this.idempotencyGuard(user, "voucher.post", idempotencyKey, { voucherId });
-    if (guard && !("requestHash" in guard)) {
-      return guard;
+    if (guard?.kind === "existing") {
+      return guard.response;
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -315,8 +442,17 @@ export class VouchersService {
       if (voucher.lines.length === 0) throw new BadRequestException("Voucher has no lines");
       this.enforceVoucherRules(voucher.voucherType, voucher.partyId);
 
+      const normalized = voucher.lines.map((l) => ({
+        lineNo: l.lineNo,
+        accountId: l.accountId,
+        debit: l.debit,
+        credit: l.credit,
+        taxCodeId: l.taxCodeId || undefined,
+        taxAmount: l.taxAmount
+      }));
+      const taxLines = await this.buildTaxLines(user.companyId, voucher.voucherType, normalized);
       const totals = this.computeTotals(
-        voucher.lines.map((l) => ({ debit: l.debit, credit: l.credit }))
+        [...normalized, ...taxLines].map((l) => ({ debit: l.debit, credit: l.credit }))
       );
       if (!totals.debit.equals(totals.credit)) throw new BadRequestException("Voucher not balanced");
 
@@ -332,7 +468,7 @@ export class VouchersService {
           itemId: l.itemId || undefined,
           taxCodeId: l.taxCodeId || undefined
         }))
-      });
+      }, voucher.voucherType);
 
       const sequence = company.nextInvoiceNumber;
       const prefix =
@@ -356,8 +492,24 @@ export class VouchersService {
         data: { nextInvoiceNumber: sequence + 1 }
       });
 
+      if (taxLines.length) {
+        await tx.voucherLine.createMany({
+          data: taxLines.map((l) => ({
+            voucherId: voucher.id,
+            companyId: user.companyId,
+            lineNo: l.lineNo,
+            accountId: l.accountId,
+            description: l.description,
+            debit: l.debit,
+            credit: l.credit,
+            taxCodeId: l.taxCodeId,
+            taxAmount: l.taxAmount
+          }))
+        });
+      }
+
       const result = await tx.voucher.findUnique({ where: { id: posted.id }, include: { lines: true } });
-      if (idempotencyKey && guard && "requestHash" in guard && result) {
+      if (idempotencyKey && guard?.kind === "new" && result) {
         await tx.apiIdempotency.create({
           data: {
             companyId: user.companyId,
@@ -375,8 +527,8 @@ export class VouchersService {
 
   async void(user: AuthUser, voucherId: string, idempotencyKey?: string) {
     const guard = await this.idempotencyGuard(user, "voucher.void", idempotencyKey, { voucherId });
-    if (guard && !("requestHash" in guard)) {
-      return guard;
+    if (guard?.kind === "existing") {
+      return guard.response;
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -425,7 +577,7 @@ export class VouchersService {
       });
 
       const result = { voidedVoucherId: voucher.id, reversalVoucherId: reversal.id };
-      if (idempotencyKey && guard && "requestHash" in guard) {
+      if (idempotencyKey && guard?.kind === "new") {
         await tx.apiIdempotency.create({
           data: {
             companyId: user.companyId,

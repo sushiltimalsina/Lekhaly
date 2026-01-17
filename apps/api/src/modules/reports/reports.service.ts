@@ -61,7 +61,8 @@ export class ReportsService {
     }));
 
     const totals = this.sumLines(rows);
-    return { rows, totalDebit: totals.debit, totalCredit: totals.credit };
+    const balanced = totals.debit.equals(totals.credit);
+    return { rows, totalDebit: totals.debit, totalCredit: totals.credit, balanced };
   }
 
   async profitAndLoss(companyId: string, filters: ReportFilters) {
@@ -124,6 +125,8 @@ export class ReportsService {
     const assets = new Map<string, Prisma.Decimal>();
     const liabilities = new Map<string, Prisma.Decimal>();
     const equity = new Map<string, Prisma.Decimal>();
+    const income = new Map<string, Prisma.Decimal>();
+    const expense = new Map<string, Prisma.Decimal>();
 
     for (const line of lines) {
       const key = `${line.account.code} ${line.account.name}`;
@@ -139,6 +142,14 @@ export class ReportsService {
         const net = line.credit.sub(line.debit);
         equity.set(key, (equity.get(key) || new Prisma.Decimal(0)).add(net));
       }
+      if (line.account.type === "income") {
+        const net = line.credit.sub(line.debit);
+        income.set(key, (income.get(key) || new Prisma.Decimal(0)).add(net));
+      }
+      if (line.account.type === "expense") {
+        const net = line.debit.sub(line.credit);
+        expense.set(key, (expense.get(key) || new Prisma.Decimal(0)).add(net));
+      }
     }
 
     const assetRows = Array.from(assets.entries()).map(([label, amount]) => ({ label, amount }));
@@ -148,7 +159,22 @@ export class ReportsService {
     const totalAssets = assetRows.reduce((acc, r) => acc.add(r.amount), new Prisma.Decimal(0));
     const totalLiabilities = liabilityRows.reduce((acc, r) => acc.add(r.amount), new Prisma.Decimal(0));
     const totalEquity = equityRows.reduce((acc, r) => acc.add(r.amount), new Prisma.Decimal(0));
+    const totalIncome = Array.from(income.values()).reduce((acc, v) => acc.add(v), new Prisma.Decimal(0));
+    const totalExpense = Array.from(expense.values()).reduce((acc, v) => acc.add(v), new Prisma.Decimal(0));
+    const netProfit = totalIncome.sub(totalExpense);
+    const totalEquityWithProfit = totalEquity.add(netProfit);
+    const balanced = totalAssets.equals(totalLiabilities.add(totalEquityWithProfit));
 
-    return { assets: assetRows, liabilities: liabilityRows, equity: equityRows, totalAssets, totalLiabilities, totalEquity };
+    return {
+      assets: assetRows,
+      liabilities: liabilityRows,
+      equity: equityRows,
+      totalAssets,
+      totalLiabilities,
+      totalEquity,
+      netProfit,
+      totalEquityWithProfit,
+      balanced
+    };
   }
 }
