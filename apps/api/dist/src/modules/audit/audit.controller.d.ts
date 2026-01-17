@@ -7,10 +7,10 @@ export declare class AuditController {
         id: string;
         companyId: string;
         createdAt: Date;
-        actorType: import("@prisma/client").$Enums.AuditActorType;
-        action: string;
         entityType: string;
         entityId: string;
+        actorType: import("@prisma/client").$Enums.AuditActorType;
+        action: string;
         requestId: string | null;
         ip: string | null;
         userAgent: string | null;

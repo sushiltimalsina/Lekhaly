@@ -36,14 +36,14 @@ export declare class VouchersService {
             companyId: string;
             createdAt: Date;
             description: string | null;
+            partyId: string | null;
+            taxCodeId: string | null;
             voucherId: string;
             lineNo: number;
             accountId: string;
-            partyId: string | null;
             itemId: string | null;
             debit: Prisma.Decimal;
             credit: Prisma.Decimal;
-            taxCodeId: string | null;
             taxAmount: Prisma.Decimal;
         }[];
     } & {
@@ -52,10 +52,10 @@ export declare class VouchersService {
         status: import("@prisma/client").$Enums.VoucherStatus;
         createdAt: Date;
         updatedAt: Date;
-        partyId: string | null;
         voucherType: import("@prisma/client").$Enums.VoucherType;
         voucherNumber: string | null;
         voucherDate: Date;
+        partyId: string | null;
         memo: string | null;
         source: string;
         createdByUserId: string | null;
@@ -72,14 +72,14 @@ export declare class VouchersService {
             companyId: string;
             createdAt: Date;
             description: string | null;
+            partyId: string | null;
+            taxCodeId: string | null;
             voucherId: string;
             lineNo: number;
             accountId: string;
-            partyId: string | null;
             itemId: string | null;
             debit: Prisma.Decimal;
             credit: Prisma.Decimal;
-            taxCodeId: string | null;
             taxAmount: Prisma.Decimal;
         }[];
     } & {
@@ -88,10 +88,10 @@ export declare class VouchersService {
         status: import("@prisma/client").$Enums.VoucherStatus;
         createdAt: Date;
         updatedAt: Date;
-        partyId: string | null;
         voucherType: import("@prisma/client").$Enums.VoucherType;
         voucherNumber: string | null;
         voucherDate: Date;
+        partyId: string | null;
         memo: string | null;
         source: string;
         createdByUserId: string | null;
@@ -115,14 +115,14 @@ export declare class VouchersService {
             companyId: string;
             createdAt: Date;
             description: string | null;
+            partyId: string | null;
+            taxCodeId: string | null;
             voucherId: string;
             lineNo: number;
             accountId: string;
-            partyId: string | null;
             itemId: string | null;
             debit: Prisma.Decimal;
             credit: Prisma.Decimal;
-            taxCodeId: string | null;
             taxAmount: Prisma.Decimal;
         }[];
     } & {
@@ -131,10 +131,10 @@ export declare class VouchersService {
         status: import("@prisma/client").$Enums.VoucherStatus;
         createdAt: Date;
         updatedAt: Date;
-        partyId: string | null;
         voucherType: import("@prisma/client").$Enums.VoucherType;
         voucherNumber: string | null;
         voucherDate: Date;
+        partyId: string | null;
         memo: string | null;
         source: string;
         createdByUserId: string | null;
@@ -155,14 +155,14 @@ export declare class VouchersService {
             companyId: string;
             createdAt: Date;
             description: string | null;
+            partyId: string | null;
+            taxCodeId: string | null;
             voucherId: string;
             lineNo: number;
             accountId: string;
-            partyId: string | null;
             itemId: string | null;
             debit: Prisma.Decimal;
             credit: Prisma.Decimal;
-            taxCodeId: string | null;
             taxAmount: Prisma.Decimal;
         }[];
     } & {
@@ -171,10 +171,10 @@ export declare class VouchersService {
         status: import("@prisma/client").$Enums.VoucherStatus;
         createdAt: Date;
         updatedAt: Date;
-        partyId: string | null;
         voucherType: import("@prisma/client").$Enums.VoucherType;
         voucherNumber: string | null;
         voucherDate: Date;
+        partyId: string | null;
         memo: string | null;
         source: string;
         createdByUserId: string | null;
@@ -202,10 +202,10 @@ export declare class VouchersService {
         id: string;
         status: import("@prisma/client").$Enums.VoucherStatus;
         createdAt: Date;
-        partyId: string | null;
         voucherType: import("@prisma/client").$Enums.VoucherType;
         voucherNumber: string | null;
         voucherDate: Date;
+        partyId: string | null;
         memo: string | null;
         postedAt: Date | null;
     }[]>;

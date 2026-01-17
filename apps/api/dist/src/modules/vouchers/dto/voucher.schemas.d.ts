@@ -57,9 +57,9 @@ export declare const UpdateVoucherDraftSchema: z.ZodObject<{
 }, z.core.$strip>;
 export declare const ListVoucherQuerySchema: z.ZodObject<{
     status: z.ZodOptional<z.ZodEnum<{
-        void: "void";
         draft: "draft";
         posted: "posted";
+        void: "void";
     }>>;
     voucherType: z.ZodOptional<z.ZodEnum<{
         sales_invoice: "sales_invoice";
