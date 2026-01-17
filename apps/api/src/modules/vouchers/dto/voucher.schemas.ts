@@ -47,6 +47,7 @@ export const ListVoucherQuerySchema = z.object({
   voidedByUserId: z.string().uuid().optional(),
   voucherNumber: z.string().trim().max(64).optional(),
   memo: z.string().trim().max(200).optional(),
+  q: z.string().trim().max(200).optional(),
   from: z.coerce.date().optional(),
   to: z.coerce.date().optional(),
   skip: z.coerce.number().int().min(0).optional(),

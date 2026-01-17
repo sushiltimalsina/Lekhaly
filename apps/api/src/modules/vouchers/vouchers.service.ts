@@ -613,6 +613,7 @@ export class VouchersService {
       voidedByUserId?: string;
       voucherNumber?: string;
       memo?: string;
+      q?: string;
       from?: Date;
       to?: Date;
       skip?: number;
@@ -633,6 +634,13 @@ export class VouchersService {
       if (filters.from) (where.voucherDate as Prisma.DateTimeFilter).gte = filters.from;
       if (filters.to) (where.voucherDate as Prisma.DateTimeFilter).lte = filters.to;
     }
+    if (filters.q) {
+      where.OR = [
+        { voucherNumber: { contains: filters.q, mode: "insensitive" } },
+        { memo: { contains: filters.q, mode: "insensitive" } },
+        { party: { name: { contains: filters.q, mode: "insensitive" } } }
+      ];
+    }
 
     return this.prisma.voucher.findMany({
       where,
@@ -646,6 +654,7 @@ export class VouchersService {
         voucherType: true,
         status: true,
         partyId: true,
+        party: { select: { id: true, name: true } },
         memo: true,
         createdAt: true,
         postedAt: true
