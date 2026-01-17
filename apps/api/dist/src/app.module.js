@@ -13,8 +13,11 @@ const app_controller_1 = require("./app.controller");
 const app_service_1 = require("./app.service");
 const audit_interceptor_1 = require("./common/audit/audit.interceptor");
 const prisma_module_1 = require("./common/prisma/prisma.module");
+const accounts_module_1 = require("./modules/accounts/accounts.module");
 const auth_module_1 = require("./modules/auth/auth.module");
 const audit_module_1 = require("./modules/audit/audit.module");
+const items_module_1 = require("./modules/items/items.module");
+const parties_module_1 = require("./modules/parties/parties.module");
 const reports_module_1 = require("./modules/reports/reports.module");
 const sync_module_1 = require("./modules/sync/sync.module");
 const vouchers_module_1 = require("./modules/vouchers/vouchers.module");
@@ -31,7 +34,10 @@ exports.AppModule = AppModule = __decorate([
             reports_module_1.ReportsModule,
             vouchers_module_1.VouchersModule,
             sync_module_1.SyncModule,
-            audit_module_1.AuditModule
+            audit_module_1.AuditModule,
+            parties_module_1.PartiesModule,
+            items_module_1.ItemsModule,
+            accounts_module_1.AccountsModule
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService, { provide: core_1.APP_INTERCEPTOR, useClass: audit_interceptor_1.AuditInterceptor }]

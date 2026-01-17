@@ -1,0 +1,66 @@
+import type { AuthUser } from "../../common/auth/auth.types";
+import { ItemsService } from "./items.service";
+export declare class ItemsController {
+    private items;
+    constructor(items: ItemsService);
+    create(user: AuthUser, body: any): Promise<{
+        id: string;
+        name: string;
+        sku: string | null;
+        unit: string | null;
+        salesPrice: import("@prisma/client/runtime/client").Decimal | null;
+        purchasePrice: import("@prisma/client/runtime/client").Decimal | null;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+        incomeAccountId: string | null;
+        expenseAccountId: string | null;
+        taxCodeId: string | null;
+    }>;
+    update(user: AuthUser, id: string, body: any): Promise<{
+        id: string;
+        name: string;
+        sku: string | null;
+        unit: string | null;
+        salesPrice: import("@prisma/client/runtime/client").Decimal | null;
+        purchasePrice: import("@prisma/client/runtime/client").Decimal | null;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+        incomeAccountId: string | null;
+        expenseAccountId: string | null;
+        taxCodeId: string | null;
+    }>;
+    get(user: AuthUser, id: string): Promise<{
+        id: string;
+        name: string;
+        sku: string | null;
+        unit: string | null;
+        salesPrice: import("@prisma/client/runtime/client").Decimal | null;
+        purchasePrice: import("@prisma/client/runtime/client").Decimal | null;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+        incomeAccountId: string | null;
+        expenseAccountId: string | null;
+        taxCodeId: string | null;
+    }>;
+    list(user: AuthUser, query: any): Promise<{
+        id: string;
+        name: string;
+        sku: string | null;
+        unit: string | null;
+        salesPrice: import("@prisma/client/runtime/client").Decimal | null;
+        purchasePrice: import("@prisma/client/runtime/client").Decimal | null;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+        incomeAccountId: string | null;
+        expenseAccountId: string | null;
+        taxCodeId: string | null;
+    }[]>;
+}
