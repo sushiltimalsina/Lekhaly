@@ -16,6 +16,9 @@ const prisma_module_1 = require("./common/prisma/prisma.module");
 const accounts_module_1 = require("./modules/accounts/accounts.module");
 const auth_module_1 = require("./modules/auth/auth.module");
 const audit_module_1 = require("./modules/audit/audit.module");
+const outbox_module_1 = require("./modules/outbox/outbox.module");
+const roles_module_1 = require("./modules/roles/roles.module");
+const devices_module_1 = require("./modules/devices/devices.module");
 const items_module_1 = require("./modules/items/items.module");
 const parties_module_1 = require("./modules/parties/parties.module");
 const reports_module_1 = require("./modules/reports/reports.module");
@@ -35,6 +38,9 @@ exports.AppModule = AppModule = __decorate([
             vouchers_module_1.VouchersModule,
             sync_module_1.SyncModule,
             audit_module_1.AuditModule,
+            outbox_module_1.OutboxModule,
+            roles_module_1.RolesModule,
+            devices_module_1.DevicesModule,
             parties_module_1.PartiesModule,
             items_module_1.ItemsModule,
             accounts_module_1.AccountsModule

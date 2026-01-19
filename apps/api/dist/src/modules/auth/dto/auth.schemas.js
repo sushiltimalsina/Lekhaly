@@ -7,6 +7,7 @@ exports.LoginSchema = zod_1.z.object({
     email: zod_1.z.string().email(),
     password: zod_1.z.string().min(8).max(128),
     totpCode: zod_1.z.string().trim().optional(),
+    deviceId: zod_1.z.string().uuid().optional(),
     deviceLabel: zod_1.z.string().trim().min(2).max(64).optional(),
     rememberDevice: zod_1.z.boolean().optional()
 });

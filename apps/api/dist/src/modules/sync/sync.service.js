@@ -50,7 +50,23 @@ let SyncService = class SyncService {
     }
     async pushChanges(user, dto) {
         await this.requireDeviceAccess(user, dto.deviceId);
-        const data = dto.entries.map((e) => ({
+        const seqs = dto.entries.map((e) => e.seq);
+        const uniqueSeqs = Array.from(new Set(seqs));
+        const duplicateSeqs = seqs.filter((seq, idx) => seqs.indexOf(seq) !== idx);
+        const existing = uniqueSeqs.length
+            ? await this.prisma.changeLog.findMany({
+                where: {
+                    deviceId: dto.deviceId,
+                    seq: { in: uniqueSeqs.map((s) => BigInt(s)) }
+                },
+                select: { id: true, seq: true, entityType: true, entityId: true }
+            })
+            : [];
+        const existingSeqs = new Set(existing.map((e) => Number(e.seq)));
+        const conflictSeqs = new Set([...existingSeqs, ...duplicateSeqs]);
+        const data = dto.entries
+            .filter((e) => !conflictSeqs.has(e.seq))
+            .map((e) => ({
             companyId: user.companyId,
             deviceId: dto.deviceId,
             actorUserId: user.sub,
@@ -61,12 +77,30 @@ let SyncService = class SyncService {
             payload: e.payload,
             idempotencyKey: e.idempotencyKey || null
         }));
-        const result = await this.prisma.changeLog.createMany({
-            data,
-            skipDuplicates: true
-        });
-        const conflicts = dto.entries.length - result.count;
-        return { accepted: result.count, conflicts };
+        const result = data.length
+            ? await this.prisma.changeLog.createMany({
+                data,
+                skipDuplicates: true
+            })
+            : { count: 0 };
+        const conflicts = [
+            ...existing.map((e) => ({
+                seq: Number(e.seq),
+                reason: "duplicate_seq",
+                existingChangeId: e.id,
+                entityType: e.entityType,
+                entityId: e.entityId
+            })),
+            ...Array.from(new Set(duplicateSeqs)).map((seq) => ({
+                seq,
+                reason: "duplicate_in_batch"
+            }))
+        ];
+        return {
+            accepted: result.count,
+            rejected: conflicts.length,
+            conflicts
+        };
     }
     async pullChanges(user, query) {
         await this.requireDeviceAccess(user, query.deviceId);

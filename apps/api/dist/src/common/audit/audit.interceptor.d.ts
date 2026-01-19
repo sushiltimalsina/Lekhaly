@@ -8,5 +8,7 @@ export declare class AuditInterceptor implements NestInterceptor {
     constructor(prisma: PrismaService, reflector: Reflector);
     private snapshot;
     private fetchEntity;
+    private computeVoucherTotals;
+    private enrichVoucherSnapshot;
     intercept(context: ExecutionContext, next: CallHandler): Observable<any>;
 }

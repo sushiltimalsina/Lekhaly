@@ -32,8 +32,11 @@ let ReportsController = class ReportsController {
     balanceSheet(user, query) {
         return this.reports.balanceSheet(user.companyId, query);
     }
-    export(body) {
-        return { ok: true, report: body.report || "unknown" };
+    partyAging(user, query) {
+        return this.reports.partyAging(user.companyId, query);
+    }
+    export(user, body) {
+        return this.reports.exportPdf(user.companyId, body);
     }
 };
 exports.ReportsController = ReportsController;
@@ -65,12 +68,22 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], ReportsController.prototype, "balanceSheet", null);
 __decorate([
+    (0, common_1.Get)("party-aging"),
+    (0, auth_decorator_1.RequirePerm)("reports.view"),
+    __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Query)(new zod_pipe_1.ZodValidationPipe(report_schemas_1.PartyAgingQuerySchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], ReportsController.prototype, "partyAging", null);
+__decorate([
     (0, common_1.Post)("export"),
     (0, auth_decorator_1.RequirePerm)("export.pdf"),
     (0, auth_decorator_1.RequireStep)("sensitive"),
-    __param(0, (0, common_1.Body)()),
+    __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Body)(new zod_pipe_1.ZodValidationPipe(report_schemas_1.ExportReportSchema))),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", void 0)
 ], ReportsController.prototype, "export", null);
 exports.ReportsController = ReportsController = __decorate([

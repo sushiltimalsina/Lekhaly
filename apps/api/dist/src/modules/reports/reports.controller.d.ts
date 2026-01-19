@@ -47,10 +47,22 @@ export declare class ReportsController {
         totalEquityWithProfit: import("@prisma/client/runtime/client").Decimal;
         balanced: boolean;
     }>;
-    export(body: {
+    partyAging(user: AuthUser, query: any): Promise<{
+        asOf: Date;
+        rows: {
+            partyId: string;
+            partyName: string;
+            buckets: Record<string, import("@prisma/client/runtime/client").Decimal>;
+            total: import("@prisma/client/runtime/client").Decimal;
+        }[];
+    }>;
+    export(user: AuthUser, body: any): Promise<{
         report: string;
-    }): {
-        ok: boolean;
-        report: string;
-    };
+        generatedAt: Date;
+        format: string;
+        fileName: string;
+        contentType: string;
+        contentBase64: string;
+        data: any;
+    }>;
 }

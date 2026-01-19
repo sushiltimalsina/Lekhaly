@@ -8,7 +8,11 @@ export declare class SyncController {
     }>;
     push(user: AuthUser, body: any): Promise<{
         accepted: number;
-        conflicts: number;
+        rejected: number;
+        conflicts: {
+            seq: number;
+            reason: string;
+        }[];
     }>;
     pull(user: AuthUser, query: any): Promise<{
         entries: {
@@ -18,10 +22,10 @@ export declare class SyncController {
             createdAt: Date;
             entityType: string;
             entityId: string;
-            actorUserId: string | null;
             deviceId: string;
-            op: import("@prisma/client").$Enums.ChangeOp;
+            actorUserId: string | null;
             payload: import("@prisma/client/runtime/client").JsonValue;
+            op: import("@prisma/client").$Enums.ChangeOp;
             idempotencyKey: string | null;
         }[];
     }>;

@@ -9,6 +9,7 @@ export declare class AuthController {
         userId: string;
         companyId: string;
         perms: string[];
+        deviceId: string | null;
     }>;
     refresh(body: any): Promise<{
         accessToken: string;

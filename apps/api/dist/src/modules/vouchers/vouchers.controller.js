@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const audit_decorator_1 = require("../../common/audit/audit.decorator");
 const auth_decorator_1 = require("../../common/auth/auth.decorator");
 const zod_pipe_1 = require("../../common/zod/zod.pipe");
+const attachment_schemas_1 = require("./dto/attachment.schemas");
 const voucher_schemas_1 = require("./dto/voucher.schemas");
 const vouchers_service_1 = require("./vouchers.service");
 let VouchersController = class VouchersController {
@@ -38,6 +39,18 @@ let VouchersController = class VouchersController {
     }
     list(user, query) {
         return this.vouchers.list(user, query);
+    }
+    listAttachments(user, id) {
+        return this.vouchers.listAttachments(user, id);
+    }
+    attachmentUrl(user, id, attachmentId) {
+        return this.vouchers.getAttachmentUrl(user, id, attachmentId);
+    }
+    addAttachment(user, id, body) {
+        return this.vouchers.addAttachment(user, id, body);
+    }
+    removeAttachment(user, id, attachmentId) {
+        return this.vouchers.removeAttachment(user, id, attachmentId);
     }
     post(user, id, idempotencyKey) {
         return this.vouchers.post(user, id, idempotencyKey);
@@ -94,6 +107,45 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", void 0)
 ], VouchersController.prototype, "list", null);
+__decorate([
+    (0, common_1.Get)(":id/attachments"),
+    (0, auth_decorator_1.RequirePerm)("voucher.preview"),
+    __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)("id")),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", void 0)
+], VouchersController.prototype, "listAttachments", null);
+__decorate([
+    (0, common_1.Get)(":id/attachments/:attachmentId/url"),
+    (0, auth_decorator_1.RequirePerm)("voucher.preview"),
+    __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)("id")),
+    __param(2, (0, common_1.Param)("attachmentId")),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String]),
+    __metadata("design:returntype", void 0)
+], VouchersController.prototype, "attachmentUrl", null);
+__decorate([
+    (0, common_1.Post)(":id/attachments"),
+    (0, auth_decorator_1.RequirePerm)("voucher.draft.edit"),
+    __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)("id")),
+    __param(2, (0, common_1.Body)(new zod_pipe_1.ZodValidationPipe(attachment_schemas_1.CreateVoucherAttachmentSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, Object]),
+    __metadata("design:returntype", void 0)
+], VouchersController.prototype, "addAttachment", null);
+__decorate([
+    (0, common_1.Delete)(":id/attachments/:attachmentId"),
+    (0, auth_decorator_1.RequirePerm)("voucher.draft.edit"),
+    __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)("id")),
+    __param(2, (0, common_1.Param)("attachmentId")),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String]),
+    __metadata("design:returntype", void 0)
+], VouchersController.prototype, "removeAttachment", null);
 __decorate([
     (0, common_1.Post)(":id/post"),
     (0, auth_decorator_1.RequirePerm)("voucher.post"),

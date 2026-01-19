@@ -45,6 +45,7 @@ exports.ListVoucherQuerySchema = zod_1.z.object({
     voidedByUserId: zod_1.z.string().uuid().optional(),
     voucherNumber: zod_1.z.string().trim().max(64).optional(),
     memo: zod_1.z.string().trim().max(200).optional(),
+    q: zod_1.z.string().trim().max(200).optional(),
     from: zod_1.z.coerce.date().optional(),
     to: zod_1.z.coerce.date().optional(),
     skip: zod_1.z.coerce.number().int().min(0).optional(),

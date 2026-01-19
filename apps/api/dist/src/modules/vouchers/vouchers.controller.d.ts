@@ -122,6 +122,10 @@ export declare class VouchersController {
         id: string;
         status: import("@prisma/client").$Enums.VoucherStatus;
         createdAt: Date;
+        party: {
+            id: string;
+            name: string;
+        } | null;
         voucherType: import("@prisma/client").$Enums.VoucherType;
         voucherNumber: string | null;
         voucherDate: Date;
@@ -129,6 +133,45 @@ export declare class VouchersController {
         memo: string | null;
         postedAt: Date | null;
     }[]>;
+    listAttachments(user: AuthUser, id: string): Promise<({
+        uploadedByUser: {
+            id: string;
+            email: string;
+            name: string | null;
+        } | null;
+    } & {
+        id: string;
+        companyId: string;
+        createdAt: Date;
+        voucherId: string;
+        fileName: string;
+        mimeType: string;
+        sizeBytes: number;
+        storageKey: string;
+        uploadedByUserId: string | null;
+    })[]>;
+    attachmentUrl(user: AuthUser, id: string, attachmentId: string): Promise<{
+        attachmentId: string;
+        fileName: string;
+        mimeType: string;
+        url: string;
+        expiresAt: Date;
+    }>;
+    addAttachment(user: AuthUser, id: string, body: any): Promise<{
+        id: string;
+        companyId: string;
+        createdAt: Date;
+        voucherId: string;
+        fileName: string;
+        mimeType: string;
+        sizeBytes: number;
+        storageKey: string;
+        uploadedByUserId: string | null;
+    }>;
+    removeAttachment(user: AuthUser, id: string, attachmentId: string): Promise<{
+        id: string;
+        deleted: boolean;
+    }>;
     post(user: AuthUser, id: string, idempotencyKey?: string): Promise<import("@prisma/client/runtime/client").JsonValue | ({
         lines: {
             id: string;

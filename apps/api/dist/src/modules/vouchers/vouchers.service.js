@@ -558,6 +558,13 @@ let VouchersService = class VouchersService {
             if (filters.to)
                 where.voucherDate.lte = filters.to;
         }
+        if (filters.q) {
+            where.OR = [
+                { voucherNumber: { contains: filters.q, mode: "insensitive" } },
+                { memo: { contains: filters.q, mode: "insensitive" } },
+                { party: { name: { contains: filters.q, mode: "insensitive" } } }
+            ];
+        }
         return this.prisma.voucher.findMany({
             where,
             orderBy: [{ voucherDate: "desc" }, { createdAt: "desc" }],
@@ -570,11 +577,82 @@ let VouchersService = class VouchersService {
                 voucherType: true,
                 status: true,
                 partyId: true,
+                party: { select: { id: true, name: true } },
                 memo: true,
                 createdAt: true,
                 postedAt: true
             }
         });
+    }
+    async listAttachments(user, voucherId) {
+        const voucher = await this.prisma.voucher.findFirst({
+            where: { id: voucherId, companyId: user.companyId }
+        });
+        if (!voucher)
+            throw new common_1.NotFoundException("Voucher not found");
+        return this.prisma.voucherAttachment.findMany({
+            where: { voucherId: voucher.id, companyId: user.companyId },
+            orderBy: { createdAt: "desc" },
+            include: {
+                uploadedByUser: { select: { id: true, email: true, name: true } }
+            }
+        });
+    }
+    async getAttachmentUrl(user, voucherId, attachmentId) {
+        const voucher = await this.prisma.voucher.findFirst({
+            where: { id: voucherId, companyId: user.companyId }
+        });
+        if (!voucher)
+            throw new common_1.NotFoundException("Voucher not found");
+        const attachment = await this.prisma.voucherAttachment.findFirst({
+            where: { id: attachmentId, voucherId: voucher.id, companyId: user.companyId }
+        });
+        if (!attachment)
+            throw new common_1.NotFoundException("Attachment not found");
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+        const url = `https://files.local/${attachment.storageKey}?expires=${encodeURIComponent(expiresAt.toISOString())}`;
+        return {
+            attachmentId: attachment.id,
+            fileName: attachment.fileName,
+            mimeType: attachment.mimeType,
+            url,
+            expiresAt
+        };
+    }
+    async addAttachment(user, voucherId, input) {
+        const voucher = await this.prisma.voucher.findFirst({
+            where: { id: voucherId, companyId: user.companyId }
+        });
+        if (!voucher)
+            throw new common_1.NotFoundException("Voucher not found");
+        if (voucher.status === client_1.VoucherStatus.void) {
+            throw new common_1.ForbiddenException("Cannot attach to void vouchers");
+        }
+        return this.prisma.voucherAttachment.create({
+            data: {
+                companyId: user.companyId,
+                voucherId: voucher.id,
+                uploadedByUserId: user.sub,
+                fileName: input.fileName,
+                mimeType: input.mimeType,
+                sizeBytes: input.sizeBytes,
+                storageKey: input.storageKey
+            }
+        });
+    }
+    async removeAttachment(user, voucherId, attachmentId) {
+        const voucher = await this.prisma.voucher.findFirst({
+            where: { id: voucherId, companyId: user.companyId }
+        });
+        if (!voucher)
+            throw new common_1.NotFoundException("Voucher not found");
+        const attachment = await this.prisma.voucherAttachment.findFirst({
+            where: { id: attachmentId, voucherId: voucher.id, companyId: user.companyId }
+        });
+        if (!attachment)
+            throw new common_1.NotFoundException("Attachment not found");
+        await this.prisma.voucherAttachment.delete({ where: { id: attachment.id } });
+        return { id: attachment.id, deleted: true };
     }
 };
 exports.VouchersService = VouchersService;

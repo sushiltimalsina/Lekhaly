@@ -194,6 +194,7 @@ export declare class VouchersService {
         voidedByUserId?: string;
         voucherNumber?: string;
         memo?: string;
+        q?: string;
         from?: Date;
         to?: Date;
         skip?: number;
@@ -202,6 +203,10 @@ export declare class VouchersService {
         id: string;
         status: import("@prisma/client").$Enums.VoucherStatus;
         createdAt: Date;
+        party: {
+            id: string;
+            name: string;
+        } | null;
         voucherType: import("@prisma/client").$Enums.VoucherType;
         voucherNumber: string | null;
         voucherDate: Date;
@@ -209,5 +214,49 @@ export declare class VouchersService {
         memo: string | null;
         postedAt: Date | null;
     }[]>;
+    listAttachments(user: AuthUser, voucherId: string): Promise<({
+        uploadedByUser: {
+            id: string;
+            email: string;
+            name: string | null;
+        } | null;
+    } & {
+        id: string;
+        companyId: string;
+        createdAt: Date;
+        voucherId: string;
+        fileName: string;
+        mimeType: string;
+        sizeBytes: number;
+        storageKey: string;
+        uploadedByUserId: string | null;
+    })[]>;
+    getAttachmentUrl(user: AuthUser, voucherId: string, attachmentId: string): Promise<{
+        attachmentId: string;
+        fileName: string;
+        mimeType: string;
+        url: string;
+        expiresAt: Date;
+    }>;
+    addAttachment(user: AuthUser, voucherId: string, input: {
+        fileName: string;
+        mimeType: string;
+        sizeBytes: number;
+        storageKey: string;
+    }): Promise<{
+        id: string;
+        companyId: string;
+        createdAt: Date;
+        voucherId: string;
+        fileName: string;
+        mimeType: string;
+        sizeBytes: number;
+        storageKey: string;
+        uploadedByUserId: string | null;
+    }>;
+    removeAttachment(user: AuthUser, voucherId: string, attachmentId: string): Promise<{
+        id: string;
+        deleted: boolean;
+    }>;
 }
 export {};

@@ -14,6 +14,7 @@ export declare class AuthService {
         email: string;
         password: string;
         totpCode?: string;
+        deviceId?: string;
         deviceLabel?: string;
         rememberDevice?: boolean;
     }): Promise<{
@@ -22,6 +23,7 @@ export declare class AuthService {
         userId: string;
         companyId: string;
         perms: string[];
+        deviceId: string | null;
     }>;
     refresh(dto: {
         refreshToken: string;

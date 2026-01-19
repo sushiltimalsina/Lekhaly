@@ -26,6 +26,9 @@ let AuditController = class AuditController {
     list(user, query) {
         return this.audit.list(user, query);
     }
+    export(user, query) {
+        return this.audit.exportCsv(user, query);
+    }
 };
 exports.AuditController = AuditController;
 __decorate([
@@ -37,6 +40,15 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", void 0)
 ], AuditController.prototype, "list", null);
+__decorate([
+    (0, common_1.Get)("export"),
+    (0, auth_decorator_1.RequirePerm)("settings.security"),
+    __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Query)(new zod_pipe_1.ZodValidationPipe(audit_schemas_1.AuditExportSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], AuditController.prototype, "export", null);
 exports.AuditController = AuditController = __decorate([
     (0, common_1.Controller)("audit"),
     __metadata("design:paramtypes", [audit_service_1.AuditService])

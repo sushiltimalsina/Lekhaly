@@ -4,6 +4,7 @@ export declare const LoginSchema: z.ZodObject<{
     email: z.ZodString;
     password: z.ZodString;
     totpCode: z.ZodOptional<z.ZodString>;
+    deviceId: z.ZodOptional<z.ZodString>;
     deviceLabel: z.ZodOptional<z.ZodString>;
     rememberDevice: z.ZodOptional<z.ZodBoolean>;
 }, z.core.$strip>;

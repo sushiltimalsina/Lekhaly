@@ -1,14 +1,28 @@
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { OutboxService } from "../outbox/outbox.service";
 type ReportFilters = {
     from?: Date;
     to?: Date;
 };
+type PartyAgingFilters = ReportFilters & {
+    asOf?: Date;
+};
 export declare class ReportsService {
     private prisma;
-    constructor(prisma: PrismaService);
+    private outbox;
+    constructor(prisma: PrismaService, outbox: OutboxService);
     private sumLines;
     private applyDateFilter;
+    private formatAmount;
+    private formatDateRange;
+    private buildTrialBalanceText;
+    private buildProfitLossText;
+    private buildBalanceSheetText;
+    private toCsv;
+    private buildTrialBalanceCsv;
+    private buildProfitLossCsv;
+    private buildBalanceSheetCsv;
     trialBalance(companyId: string, filters: ReportFilters): Promise<{
         rows: {
             accountCode: string;
@@ -52,6 +66,29 @@ export declare class ReportsService {
         netProfit: Prisma.Decimal;
         totalEquityWithProfit: Prisma.Decimal;
         balanced: boolean;
+    }>;
+    partyAging(companyId: string, filters: PartyAgingFilters): Promise<{
+        asOf: Date;
+        rows: {
+            partyId: string;
+            partyName: string;
+            buckets: Record<string, Prisma.Decimal>;
+            total: Prisma.Decimal;
+        }[];
+    }>;
+    exportPdf(companyId: string, input: {
+        report: string;
+        format?: string;
+        from?: Date;
+        to?: Date;
+    }): Promise<{
+        report: string;
+        generatedAt: Date;
+        format: string;
+        fileName: string;
+        contentType: string;
+        contentBase64: string;
+        data: any;
     }>;
 }
 export {};
