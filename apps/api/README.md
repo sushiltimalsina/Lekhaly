@@ -25,6 +25,36 @@
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
+## Audit API
+
+### List audit logs
+
+`GET /audit` supports filters (query params):
+
+- `entityType`, `entityId`, `actorUserId`, `actorDeviceId`
+- `q` for text search (action, entity type/id, IP, user agent, actor user/device)
+- `from`, `to` (ISO date)
+- `skip`, `take`
+- Cursor paging: `cursorId` + `cursorCreatedAt` (returns `nextCursor`)
+
+Example:
+
+```bash
+curl -H "Authorization: Bearer <token>" \
+  "http://localhost:3000/audit?q=voucher&take=50"
+```
+
+### Export audit logs (CSV)
+
+`GET /audit/export` returns base64 CSV content and filename.
+
+Example:
+
+```bash
+curl -H "Authorization: Bearer <token>" \
+  "http://localhost:3000/audit/export?format=csv&from=2024-01-01&to=2024-12-31"
+```
+
 ## Project setup
 
 ```bash
