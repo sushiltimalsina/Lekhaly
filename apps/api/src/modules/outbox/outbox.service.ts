@@ -38,7 +38,8 @@ export class OutboxService {
       data: {
         status: input.status,
         lastError: input.lastError || null,
-        processedAt: input.status === "processed" ? new Date() : null
+        processedAt: input.status === "processed" ? new Date() : null,
+        nextAttemptAt: input.status === "processed" ? null : event.nextAttemptAt
       }
     });
   }
