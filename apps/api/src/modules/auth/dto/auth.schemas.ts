@@ -5,6 +5,7 @@ export const LoginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8).max(128),
   totpCode: z.string().trim().optional(),
+  deviceId: z.string().uuid().optional(),
   deviceLabel: z.string().trim().min(2).max(64).optional(),
   rememberDevice: z.boolean().optional()
 });

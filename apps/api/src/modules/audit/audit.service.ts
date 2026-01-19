@@ -109,8 +109,8 @@ export class AuditService {
       to?: Date;
     }
   ) {
-    const rows = await this.list(user, { ...filters, skip: 0, take: 1000 });
-    const normalized = rows.map((row) => ({
+    const result = await this.list(user, { ...filters, skip: 0, take: 1000 });
+    const normalized = result.rows.map((row) => ({
       id: row.id,
       createdAt: row.createdAt.toISOString(),
       action: row.action,

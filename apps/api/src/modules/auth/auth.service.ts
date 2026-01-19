@@ -81,6 +81,7 @@ export class AuthService {
     email: string;
     password: string;
     totpCode?: string;
+    deviceId?: string;
     deviceLabel?: string;
     rememberDevice?: boolean;
   }) {
@@ -109,8 +110,23 @@ export class AuthService {
       }
 
       console.log('LOGIN_STEP: totpCheck');
-      // If TOTP enabled, require code on login (online policy). Later we can allow trusted devices.
-      if (user.totpEnabled) {
+      let trustedDevice: { id: string; trusted: boolean } | null = null;
+      if (dto.deviceId) {
+        const link = await this.prisma.deviceUserLink.findFirst({
+          where: { deviceId: dto.deviceId, userId: user.id },
+          include: { device: true }
+        });
+        if (link?.device && link.device.companyId === user.companyId) {
+          trustedDevice = { id: link.device.id, trusted: link.device.trusted };
+          await this.prisma.device.update({
+            where: { id: link.device.id },
+            data: { lastSeenAt: new Date() }
+          });
+        }
+      }
+
+      // If TOTP enabled, allow trusted devices to skip the code.
+      if (user.totpEnabled && !trustedDevice?.trusted) {
         if (!dto.totpCode) throw new UnauthorizedException("TOTP required");
         const secret = user.totpSecretEnc; // for MVP store plain; later encrypt-at-rest
         if (!secret) throw new UnauthorizedException("TOTP secret missing");
@@ -128,7 +144,7 @@ export class AuthService {
       }
 
       // Device registration (minimal)
-      let deviceId: string | null = null;
+      let deviceId: string | null = trustedDevice?.id || null;
       if (dto.deviceLabel) {
         console.log('LOGIN_STEP: deviceRegistration');
         const device = await this.prisma.device.create({
@@ -141,6 +157,11 @@ export class AuthService {
         });
         deviceId = device.id;
         await this.prisma.deviceUserLink.create({ data: { deviceId: device.id, userId: user.id } });
+      } else if (trustedDevice?.id && dto.rememberDevice && !trustedDevice.trusted) {
+        await this.prisma.device.update({
+          where: { id: trustedDevice.id },
+          data: { trusted: true }
+        });
       }
 
       console.log('LOGIN_STEP: signTokens');
@@ -168,7 +189,7 @@ export class AuthService {
       await this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
 
       console.log('LOGIN_SUCCESS');
-      return { accessToken: access, refreshToken: refresh, userId: user.id, companyId: user.companyId, perms };
+      return { accessToken: access, refreshToken: refresh, userId: user.id, companyId: user.companyId, perms, deviceId };
     } catch (e: any) {
       console.error('LOGIN_ERROR_CAUGHT', e);
       if (e instanceof UnauthorizedException || e instanceof ForbiddenException) throw e;
