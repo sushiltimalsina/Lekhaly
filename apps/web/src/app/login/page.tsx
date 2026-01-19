@@ -16,7 +16,8 @@ export default function LoginPage() {
     const [formData, setFormData] = useState({
         companyId: "",
         email: "",
-        password: ""
+        password: "",
+        totpCode: ""
     });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -196,6 +197,29 @@ export default function LoginPage() {
                                         onChange={handleChange}
                                         autoComplete="current-password"
                                         required
+                                        className="w-full bg-white/60 dark:bg-white/5 border border-white/30 dark:border-white/10 rounded-xl px-12 py-3.5 outline-none focus:ring-2 focus:ring-amber-300/40 focus:border-amber-300/60 transition-all"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* TOTP Code Field */}
+                            <div className="space-y-2">
+                                <label
+                                    htmlFor="totpCode"
+                                    className="text-sm font-medium text-foreground ml-1"
+                                >
+                                    TOTP Code
+                                </label>
+                                <div className="relative">
+                                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                                    <input
+                                        id="totpCode"
+                                        type="text"
+                                        inputMode="numeric"
+                                        pattern="[0-9]*"
+                                        placeholder="6-digit code"
+                                        value={formData.totpCode}
+                                        onChange={handleChange}
                                         className="w-full bg-white/60 dark:bg-white/5 border border-white/30 dark:border-white/10 rounded-xl px-12 py-3.5 outline-none focus:ring-2 focus:ring-amber-300/40 focus:border-amber-300/60 transition-all"
                                     />
                                 </div>
