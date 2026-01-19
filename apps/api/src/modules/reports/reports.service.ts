@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
 
 type ReportFilters = { from?: Date; to?: Date };
+type PartyAgingFilters = ReportFilters & { asOf?: Date };
 
 @Injectable()
 export class ReportsService {
@@ -366,6 +367,74 @@ export class ReportsService {
       netProfit,
       totalEquityWithProfit,
       balanced
+    };
+  }
+
+  async partyAging(companyId: string, filters: PartyAgingFilters) {
+    const asOf = filters.asOf || filters.to || new Date();
+    const voucherDate = this.applyDateFilter({ from: filters.from, to: asOf });
+
+    const lines = await this.prisma.voucherLine.findMany({
+      where: {
+        companyId,
+        partyId: { not: null },
+        voucher: {
+          status: "posted",
+          ...(voucherDate ? { voucherDate } : {})
+        }
+      },
+      include: { party: true, voucher: true }
+    });
+
+    const buckets = [
+      { label: "0-30", min: 0, max: 30 },
+      { label: "31-60", min: 31, max: 60 },
+      { label: "61-90", min: 61, max: 90 },
+      { label: "91+", min: 91, max: Number.POSITIVE_INFINITY }
+    ];
+
+    const byParty = new Map<
+      string,
+      {
+        partyId: string;
+        partyName: string;
+        buckets: Record<string, Prisma.Decimal>;
+        total: Prisma.Decimal;
+      }
+    >();
+
+    for (const line of lines) {
+      if (!line.partyId || !line.party) continue;
+      const ageDays = Math.floor((asOf.getTime() - line.voucher.voucherDate.getTime()) / 86400000);
+      const bucket = buckets.find((b) => ageDays >= b.min && ageDays <= b.max) || buckets[buckets.length - 1];
+
+      const amount = line.debit.sub(line.credit);
+      if (!byParty.has(line.partyId)) {
+        const bucketMap: Record<string, Prisma.Decimal> = {};
+        for (const b of buckets) bucketMap[b.label] = new Prisma.Decimal(0);
+        byParty.set(line.partyId, {
+          partyId: line.partyId,
+          partyName: line.party.name,
+          buckets: bucketMap,
+          total: new Prisma.Decimal(0)
+        });
+      }
+
+      const entry = byParty.get(line.partyId)!;
+      entry.buckets[bucket.label] = entry.buckets[bucket.label].add(amount);
+      entry.total = entry.total.add(amount);
+    }
+
+    const rows = Array.from(byParty.values()).map((entry) => ({
+      partyId: entry.partyId,
+      partyName: entry.partyName,
+      buckets: entry.buckets,
+      total: entry.total
+    }));
+
+    return {
+      asOf,
+      rows
     };
   }
 

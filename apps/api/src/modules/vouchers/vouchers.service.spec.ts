@@ -1,4 +1,4 @@
-import { BadRequestException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
 import { Prisma, VoucherStatus, VoucherType } from "@prisma/client";
 import type { AuthUser } from "../../common/auth/auth.types";
 import { VouchersService } from "./vouchers.service";
@@ -41,6 +41,12 @@ describe("VouchersService", () => {
       },
       taxCode: {
         findMany: jest.fn()
+      },
+      voucherAttachment: {
+        findMany: jest.fn(),
+        create: jest.fn(),
+        findFirst: jest.fn(),
+        delete: jest.fn()
       },
       $transaction: jest.fn()
     };
@@ -194,5 +200,77 @@ describe("VouchersService", () => {
       status: VoucherStatus.posted,
       lines: []
     });
+  });
+
+  it("lists voucher attachments", async () => {
+    prisma.voucher.findFirst.mockResolvedValue({ id: "voucher-1", companyId: user.companyId });
+    prisma.voucherAttachment.findMany.mockResolvedValue([
+      {
+        id: "att-1",
+        fileName: "invoice.pdf",
+        uploadedByUser: { id: "user-1", email: "user@example.com", name: "User" }
+      }
+    ]);
+
+    const result = await service.listAttachments(user, "voucher-1");
+
+    expect(prisma.voucherAttachment.findMany).toHaveBeenCalled();
+    expect(result).toHaveLength(1);
+    expect(result[0].fileName).toBe("invoice.pdf");
+  });
+
+  it("prevents adding attachments to void vouchers", async () => {
+    prisma.voucher.findFirst.mockResolvedValue({
+      id: "voucher-3",
+      companyId: user.companyId,
+      status: VoucherStatus.void
+    });
+
+    await expect(
+      service.addAttachment(user, "voucher-3", {
+        fileName: "file.pdf",
+        mimeType: "application/pdf",
+        sizeBytes: 1000,
+        storageKey: "s3/key"
+      })
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it("adds and removes attachments", async () => {
+    prisma.voucher.findFirst.mockResolvedValue({
+      id: "voucher-4",
+      companyId: user.companyId,
+      status: VoucherStatus.draft
+    });
+    prisma.voucherAttachment.create.mockResolvedValue({ id: "att-2" });
+
+    const created = await service.addAttachment(user, "voucher-4", {
+      fileName: "file.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 1000,
+      storageKey: "s3/key"
+    });
+
+    expect(created.id).toBe("att-2");
+
+    prisma.voucherAttachment.findFirst.mockResolvedValue({
+      id: "att-2",
+      voucherId: "voucher-4",
+      companyId: user.companyId
+    });
+
+    const removed = await service.removeAttachment(user, "voucher-4", "att-2");
+    expect(removed).toEqual({ id: "att-2", deleted: true });
+  });
+
+  it("fails when attachment is missing", async () => {
+    prisma.voucher.findFirst.mockResolvedValue({
+      id: "voucher-5",
+      companyId: user.companyId,
+      status: VoucherStatus.draft
+    });
+    prisma.voucherAttachment.findFirst.mockResolvedValue(null);
+
+    await expect(service.removeAttachment(user, "voucher-5", "missing")).rejects.toThrow(NotFoundException);
   });
 });
