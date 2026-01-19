@@ -7,6 +7,7 @@ import { PrismaModule } from "./common/prisma/prisma.module";
 import { AccountsModule } from "./modules/accounts/accounts.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { AuditModule } from "./modules/audit/audit.module";
+import { RolesModule } from "./modules/roles/roles.module";
 import { DevicesModule } from "./modules/devices/devices.module";
 import { ItemsModule } from "./modules/items/items.module";
 import { PartiesModule } from "./modules/parties/parties.module";
@@ -24,6 +25,7 @@ import { HealthModule } from "./moduls/health/health.module";
     VouchersModule,
     SyncModule,
     AuditModule,
+    RolesModule,
     DevicesModule,
     PartiesModule,
     ItemsModule,
