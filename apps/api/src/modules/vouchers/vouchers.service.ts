@@ -661,4 +661,60 @@ export class VouchersService {
       }
     });
   }
+
+  async listAttachments(user: AuthUser, voucherId: string) {
+    const voucher = await this.prisma.voucher.findFirst({
+      where: { id: voucherId, companyId: user.companyId }
+    });
+    if (!voucher) throw new NotFoundException("Voucher not found");
+
+    return this.prisma.voucherAttachment.findMany({
+      where: { voucherId: voucher.id, companyId: user.companyId },
+      orderBy: { createdAt: "desc" },
+      include: {
+        uploadedByUser: { select: { id: true, email: true, name: true } }
+      }
+    });
+  }
+
+  async addAttachment(
+    user: AuthUser,
+    voucherId: string,
+    input: { fileName: string; mimeType: string; sizeBytes: number; storageKey: string }
+  ) {
+    const voucher = await this.prisma.voucher.findFirst({
+      where: { id: voucherId, companyId: user.companyId }
+    });
+    if (!voucher) throw new NotFoundException("Voucher not found");
+    if (voucher.status === VoucherStatus.void) {
+      throw new ForbiddenException("Cannot attach to void vouchers");
+    }
+
+    return this.prisma.voucherAttachment.create({
+      data: {
+        companyId: user.companyId,
+        voucherId: voucher.id,
+        uploadedByUserId: user.sub,
+        fileName: input.fileName,
+        mimeType: input.mimeType,
+        sizeBytes: input.sizeBytes,
+        storageKey: input.storageKey
+      }
+    });
+  }
+
+  async removeAttachment(user: AuthUser, voucherId: string, attachmentId: string) {
+    const voucher = await this.prisma.voucher.findFirst({
+      where: { id: voucherId, companyId: user.companyId }
+    });
+    if (!voucher) throw new NotFoundException("Voucher not found");
+
+    const attachment = await this.prisma.voucherAttachment.findFirst({
+      where: { id: attachmentId, voucherId: voucher.id, companyId: user.companyId }
+    });
+    if (!attachment) throw new NotFoundException("Attachment not found");
+
+    await this.prisma.voucherAttachment.delete({ where: { id: attachment.id } });
+    return { id: attachment.id, deleted: true };
+  }
 }

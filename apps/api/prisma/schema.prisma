@@ -76,8 +76,9 @@ model Company {
   items        Item[]
   taxCodes     TaxCode[]
   accounts     ChartOfAccount[]
-  vouchers     Voucher[]
-  voucherLines VoucherLine[]
+    vouchers     Voucher[]
+    voucherLines VoucherLine[]
+    voucherAttachments VoucherAttachment[]
   devices      Device[]
   auditLogs    AuditLog[]
   snapshots    AuditSnapshot[]
@@ -111,8 +112,9 @@ model User {
   createdVouchers Voucher[]     @relation("VoucherCreatedBy")
   postedVouchers  Voucher[]     @relation("VoucherPostedBy")
   voidedVouchers  Voucher[]     @relation("VoucherVoidedBy")
-  auditLogs       AuditLog[]
-  changeLogs      ChangeLog[]
+    auditLogs       AuditLog[]
+    changeLogs      ChangeLog[]
+    uploadedVoucherAttachments VoucherAttachment[]
 
   deviceLinks DeviceUserLink[]
   apiIdempotencies ApiIdempotency[]
@@ -333,16 +335,17 @@ model Voucher {
   revisionOfVoucher   Voucher?  @relation("VoucherRevision", fields: [revisionOfVoucherId], references: [id])
   revisions           Voucher[] @relation("VoucherRevision")
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
 
-  lines VoucherLine[]
+    lines VoucherLine[]
+    attachments VoucherAttachment[]
 
   @@unique([companyId, voucherNumber])
   @@index([companyId, status, voucherDate])
 }
 
-model VoucherLine {
+  model VoucherLine {
   id String @id @default(uuid())
 
   voucherId String
@@ -375,8 +378,29 @@ model VoucherLine {
   createdAt DateTime @default(now())
 
   @@index([companyId, accountId, createdAt])
-  @@index([companyId, partyId, createdAt])
-}
+    @@index([companyId, partyId, createdAt])
+  }
+
+  model VoucherAttachment {
+    id        String  @id @default(uuid())
+    companyId String
+    company   Company @relation(fields: [companyId], references: [id])
+
+    voucherId String
+    voucher   Voucher @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+
+    uploadedByUserId String?
+    uploadedByUser   User? @relation(fields: [uploadedByUserId], references: [id])
+
+    fileName   String
+    mimeType   String
+    sizeBytes  Int
+    storageKey String
+
+    createdAt DateTime @default(now())
+
+    @@index([companyId, voucherId, createdAt])
+  }
 
 model AuditSnapshot {
   id        String  @id @default(uuid())

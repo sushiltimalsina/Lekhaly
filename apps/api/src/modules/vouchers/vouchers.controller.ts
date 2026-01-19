@@ -1,8 +1,9 @@
-import { Body, Controller, Get, Headers, Param, Post, Put, Query } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Headers, Param, Post, Put, Query } from "@nestjs/common";
 import { Audit } from "../../common/audit/audit.decorator";
 import { CurrentUser, RequirePerm, RequireStep } from "../../common/auth/auth.decorator";
 import { ZodValidationPipe } from "../../common/zod/zod.pipe";
 import type { AuthUser } from "../../common/auth/auth.types";
+import { CreateVoucherAttachmentSchema } from "./dto/attachment.schemas";
 import { CreateVoucherDraftSchema, ListVoucherQuerySchema, UpdateVoucherDraftSchema } from "./dto/voucher.schemas";
 import { VouchersService } from "./vouchers.service";
 
@@ -50,6 +51,32 @@ export class VouchersController {
     @Query(new ZodValidationPipe(ListVoucherQuerySchema)) query: any
   ) {
     return this.vouchers.list(user, query);
+  }
+
+  @Get(":id/attachments")
+  @RequirePerm("voucher.preview")
+  listAttachments(@CurrentUser() user: AuthUser, @Param("id") id: string) {
+    return this.vouchers.listAttachments(user, id);
+  }
+
+  @Post(":id/attachments")
+  @RequirePerm("voucher.draft.edit")
+  addAttachment(
+    @CurrentUser() user: AuthUser,
+    @Param("id") id: string,
+    @Body(new ZodValidationPipe(CreateVoucherAttachmentSchema)) body: any
+  ) {
+    return this.vouchers.addAttachment(user, id, body);
+  }
+
+  @Delete(":id/attachments/:attachmentId")
+  @RequirePerm("voucher.draft.edit")
+  removeAttachment(
+    @CurrentUser() user: AuthUser,
+    @Param("id") id: string,
+    @Param("attachmentId") attachmentId: string
+  ) {
+    return this.vouchers.removeAttachment(user, id, attachmentId);
   }
 
   @Post(":id/post")
