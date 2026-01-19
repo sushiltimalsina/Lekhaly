@@ -8,6 +8,12 @@ export const AuditQuerySchema = z.object({
   q: z.string().trim().max(200).optional(),
   from: z.coerce.date().optional(),
   to: z.coerce.date().optional(),
+  cursorId: z.string().uuid().optional(),
+  cursorCreatedAt: z.coerce.date().optional(),
   skip: z.coerce.number().int().min(0).optional(),
   take: z.coerce.number().int().min(1).max(200).optional()
+});
+
+export const AuditExportSchema = AuditQuerySchema.extend({
+  format: z.enum(["csv"]).default("csv")
 });

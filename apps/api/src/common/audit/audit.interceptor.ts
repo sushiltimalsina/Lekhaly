@@ -43,6 +43,32 @@ export class AuditInterceptor implements NestInterceptor {
     }
   }
 
+  private computeVoucherTotals(lines: Array<{ debit: Prisma.Decimal; credit: Prisma.Decimal }>) {
+    let debit = new Prisma.Decimal(0);
+    let credit = new Prisma.Decimal(0);
+    for (const line of lines) {
+      debit = debit.add(line.debit);
+      credit = credit.add(line.credit);
+    }
+    return { totalDebit: debit.toString(), totalCredit: credit.toString() };
+  }
+
+  private enrichVoucherSnapshot(voucher: any, extra?: { reversalVoucher?: unknown }) {
+    if (!voucher || typeof voucher !== "object") return voucher;
+    const lines = Array.isArray(voucher.lines) ? voucher.lines : null;
+    if (!lines) return voucher;
+    const totals = this.computeVoucherTotals(lines);
+    return {
+      ...voucher,
+      audit: {
+        lineCount: lines.length,
+        totalDebit: totals.totalDebit,
+        totalCredit: totals.totalCredit
+      },
+      ...(extra?.reversalVoucher ? { reversalVoucher: extra.reversalVoucher } : {})
+    };
+  }
+
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const ctx = context.switchToHttp();
     const req = ctx.getRequest();
@@ -86,11 +112,27 @@ export class AuditInterceptor implements NestInterceptor {
             const after =
               entityId ? await this.fetchEntity(entityType, entityId) : data && typeof data === "object" ? data : null;
 
-            const beforeSnap = before
-              ? await this.snapshot(entityType, entityId as string, { ...before, companyId: user.companyId })
+            const responseData = data && typeof data === "object" ? (data as Record<string, unknown>) : null;
+            let reversalVoucher: unknown = null;
+            if (entityType === "voucher" && responseData?.reversalVoucherId) {
+              const reversalId = responseData.reversalVoucherId;
+              if (typeof reversalId === "string") {
+                reversalVoucher = await this.prisma.voucher.findUnique({
+                  where: { id: reversalId },
+                  select: { id: true, voucherNumber: true, voucherDate: true, status: true }
+                });
+              }
+            }
+
+            const enrichedBefore = entityType === "voucher" ? this.enrichVoucherSnapshot(before) : before;
+            const enrichedAfter =
+              entityType === "voucher" ? this.enrichVoucherSnapshot(after, { reversalVoucher }) : after;
+
+            const beforeSnap = enrichedBefore
+              ? await this.snapshot(entityType, entityId as string, { ...enrichedBefore, companyId: user.companyId })
               : null;
-            const afterSnap = after && entityId
-              ? await this.snapshot(entityType, entityId, { ...after, companyId: user.companyId })
+            const afterSnap = enrichedAfter && entityId
+              ? await this.snapshot(entityType, entityId, { ...enrichedAfter, companyId: user.companyId })
               : null;
 
             await this.prisma.auditLog.create({

@@ -125,6 +125,98 @@ export class ReportsService {
     return lines.join("\n");
   }
 
+  private toCsv(rows: Array<Record<string, unknown>>) {
+    if (rows.length === 0) return "";
+    const headers = Object.keys(rows[0]);
+    const escape = (value: unknown) => {
+      if (value === null || value === undefined) return "";
+      const text = String(value);
+      if (text.includes(",") || text.includes("\"") || text.includes("\n")) {
+        return `"${text.replace(/\"/g, "\"\"")}"`;
+      }
+      return text;
+    };
+    const lines = [headers.join(",")];
+    for (const row of rows) {
+      lines.push(headers.map((key) => escape(row[key])).join(","));
+    }
+    return lines.join("\n");
+  }
+
+  private buildTrialBalanceCsv(data: {
+    rows: Array<{ accountCode: string; accountName: string; debit: Prisma.Decimal; credit: Prisma.Decimal }>;
+    totalDebit: Prisma.Decimal;
+    totalCredit: Prisma.Decimal;
+  }) {
+    const rows = data.rows.map((row) => ({
+      accountCode: row.accountCode,
+      accountName: row.accountName,
+      debit: this.formatAmount(row.debit),
+      credit: this.formatAmount(row.credit)
+    }));
+    rows.push({
+      accountCode: "TOTAL",
+      accountName: "",
+      debit: this.formatAmount(data.totalDebit),
+      credit: this.formatAmount(data.totalCredit)
+    });
+    return this.toCsv(rows);
+  }
+
+  private buildProfitLossCsv(data: {
+    income: Array<{ label: string; amount: Prisma.Decimal }>;
+    expense: Array<{ label: string; amount: Prisma.Decimal }>;
+    totalIncome: Prisma.Decimal;
+    totalExpense: Prisma.Decimal;
+    netProfit: Prisma.Decimal;
+  }) {
+    const rows: Array<Record<string, string>> = [];
+    for (const row of data.income) {
+      rows.push({ section: "income", label: row.label, amount: this.formatAmount(row.amount) });
+    }
+    rows.push({ section: "income", label: "Total Income", amount: this.formatAmount(data.totalIncome) });
+    for (const row of data.expense) {
+      rows.push({ section: "expense", label: row.label, amount: this.formatAmount(row.amount) });
+    }
+    rows.push({ section: "expense", label: "Total Expense", amount: this.formatAmount(data.totalExpense) });
+    rows.push({ section: "summary", label: "Net Profit", amount: this.formatAmount(data.netProfit) });
+    return this.toCsv(rows);
+  }
+
+  private buildBalanceSheetCsv(data: {
+    assets: Array<{ label: string; amount: Prisma.Decimal }>;
+    liabilities: Array<{ label: string; amount: Prisma.Decimal }>;
+    equity: Array<{ label: string; amount: Prisma.Decimal }>;
+    totalAssets: Prisma.Decimal;
+    totalLiabilities: Prisma.Decimal;
+    totalEquity: Prisma.Decimal;
+    netProfit: Prisma.Decimal;
+    totalEquityWithProfit: Prisma.Decimal;
+    balanced: boolean;
+  }) {
+    const rows: Array<Record<string, string>> = [];
+    for (const row of data.assets) {
+      rows.push({ section: "assets", label: row.label, amount: this.formatAmount(row.amount) });
+    }
+    rows.push({ section: "assets", label: "Total Assets", amount: this.formatAmount(data.totalAssets) });
+    for (const row of data.liabilities) {
+      rows.push({ section: "liabilities", label: row.label, amount: this.formatAmount(row.amount) });
+    }
+    rows.push({ section: "liabilities", label: "Total Liabilities", amount: this.formatAmount(data.totalLiabilities) });
+    for (const row of data.equity) {
+      rows.push({ section: "equity", label: row.label, amount: this.formatAmount(row.amount) });
+    }
+    rows.push({ section: "equity", label: "Total Equity", amount: this.formatAmount(data.totalEquity) });
+    rows.push({ section: "equity", label: "Net Profit", amount: this.formatAmount(data.netProfit) });
+    rows.push({
+      section: "equity",
+      label: "Total Equity With Profit",
+      amount: this.formatAmount(data.totalEquityWithProfit)
+    });
+    rows.push({ section: "summary", label: "Balanced", amount: data.balanced ? "true" : "false" });
+    return this.toCsv(rows);
+  }
+
   async trialBalance(companyId: string, filters: ReportFilters) {
     const voucherDate = this.applyDateFilter(filters);
     const lines = await this.prisma.voucherLine.findMany({
@@ -277,20 +369,25 @@ export class ReportsService {
     };
   }
 
-  async exportPdf(companyId: string, input: { report: string; from?: Date; to?: Date }) {
+  async exportPdf(companyId: string, input: { report: string; format?: string; from?: Date; to?: Date }) {
     const filters = { from: input.from, to: input.to };
     let data: any;
     let contentText = "";
+    let contentType = "application/pdf";
+    let format = input.format || "pdf";
 
     if (input.report === "trial-balance") {
       data = await this.trialBalance(companyId, filters);
-      contentText = this.buildTrialBalanceText(data, filters);
+      contentText =
+        format === "csv" ? this.buildTrialBalanceCsv(data) : this.buildTrialBalanceText(data, filters);
     } else if (input.report === "profit-loss") {
       data = await this.profitAndLoss(companyId, filters);
-      contentText = this.buildProfitLossText(data, filters);
+      contentText =
+        format === "csv" ? this.buildProfitLossCsv(data) : this.buildProfitLossText(data, filters);
     } else if (input.report === "balance-sheet") {
       data = await this.balanceSheet(companyId, filters);
-      contentText = this.buildBalanceSheetText(data, filters);
+      contentText =
+        format === "csv" ? this.buildBalanceSheetCsv(data) : this.buildBalanceSheetText(data, filters);
     } else {
       data = { message: "Unknown report" };
       contentText = "Unknown report";
@@ -298,14 +395,18 @@ export class ReportsService {
 
     const contentBase64 = Buffer.from(contentText, "utf8").toString("base64");
     const dateStamp = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-    const fileName = `${input.report}-${dateStamp}.pdf`;
+    const extension = format === "csv" ? "csv" : "pdf";
+    if (format === "csv") {
+      contentType = "text/csv";
+    }
+    const fileName = `${input.report}-${dateStamp}.${extension}`;
 
     return {
       report: input.report,
       generatedAt: new Date(),
-      format: "pdf",
+      format,
       fileName,
-      contentType: "application/pdf",
+      contentType,
       contentBase64,
       data
     };

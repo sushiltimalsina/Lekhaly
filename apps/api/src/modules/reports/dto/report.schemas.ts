@@ -7,6 +7,7 @@ export const ReportQuerySchema = z.object({
 
 export const ExportReportSchema = z.object({
   report: z.enum(["trial-balance", "profit-loss", "balance-sheet"]),
+  format: z.enum(["pdf", "csv"]).default("pdf"),
   from: z.coerce.date().optional(),
   to: z.coerce.date().optional()
 });
