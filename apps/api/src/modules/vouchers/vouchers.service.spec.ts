@@ -273,4 +273,26 @@ describe("VouchersService", () => {
 
     await expect(service.removeAttachment(user, "voucher-5", "missing")).rejects.toThrow(NotFoundException);
   });
+
+  it("returns a signed url for attachments", async () => {
+    prisma.voucher.findFirst.mockResolvedValue({
+      id: "voucher-6",
+      companyId: user.companyId,
+      status: VoucherStatus.draft
+    });
+    prisma.voucherAttachment.findFirst.mockResolvedValue({
+      id: "att-3",
+      voucherId: "voucher-6",
+      companyId: user.companyId,
+      fileName: "scan.png",
+      mimeType: "image/png",
+      storageKey: "local/scan.png"
+    });
+
+    const result = await service.getAttachmentUrl(user, "voucher-6", "att-3");
+
+    expect(result.attachmentId).toBe("att-3");
+    expect(result.url).toContain("local/scan.png");
+    expect(result.expiresAt).toBeInstanceOf(Date);
+  });
 });

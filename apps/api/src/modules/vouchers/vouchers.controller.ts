@@ -59,6 +59,16 @@ export class VouchersController {
     return this.vouchers.listAttachments(user, id);
   }
 
+  @Get(":id/attachments/:attachmentId/url")
+  @RequirePerm("voucher.preview")
+  attachmentUrl(
+    @CurrentUser() user: AuthUser,
+    @Param("id") id: string,
+    @Param("attachmentId") attachmentId: string
+  ) {
+    return this.vouchers.getAttachmentUrl(user, id, attachmentId);
+  }
+
   @Post(":id/attachments")
   @RequirePerm("voucher.draft.edit")
   addAttachment(

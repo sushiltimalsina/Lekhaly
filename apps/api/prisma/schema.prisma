@@ -54,6 +54,12 @@ enum ChangeOp {
   command
 }
 
+enum OutboxStatus {
+  pending
+  processed
+  failed
+}
+
 model Company {
   id           String @id @default(uuid())
   name         String
@@ -82,8 +88,9 @@ model Company {
   devices      Device[]
   auditLogs    AuditLog[]
   snapshots    AuditSnapshot[]
-  syncStates   SyncState[]
-  apiIdempotencies ApiIdempotency[]
+    syncStates   SyncState[]
+    apiIdempotencies ApiIdempotency[]
+    outboxEvents OutboxEvent[]
 
   changeLog ChangeLog[]
 }
@@ -532,4 +539,20 @@ model ApiIdempotency {
 
   @@unique([companyId, key, action])
   @@index([companyId, createdAt])
+}
+
+model OutboxEvent {
+  id        String @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  type   String
+  status OutboxStatus @default(pending)
+  payload Json
+
+  createdAt   DateTime @default(now())
+  processedAt DateTime?
+  lastError   String?
+
+  @@index([companyId, status, createdAt])
 }

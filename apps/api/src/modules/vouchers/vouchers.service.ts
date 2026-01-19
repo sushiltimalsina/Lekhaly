@@ -677,6 +677,31 @@ export class VouchersService {
     });
   }
 
+  async getAttachmentUrl(user: AuthUser, voucherId: string, attachmentId: string) {
+    const voucher = await this.prisma.voucher.findFirst({
+      where: { id: voucherId, companyId: user.companyId }
+    });
+    if (!voucher) throw new NotFoundException("Voucher not found");
+
+    const attachment = await this.prisma.voucherAttachment.findFirst({
+      where: { id: attachmentId, voucherId: voucher.id, companyId: user.companyId }
+    });
+    if (!attachment) throw new NotFoundException("Attachment not found");
+
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    const url = `https://files.local/${attachment.storageKey}?expires=${encodeURIComponent(
+      expiresAt.toISOString()
+    )}`;
+
+    return {
+      attachmentId: attachment.id,
+      fileName: attachment.fileName,
+      mimeType: attachment.mimeType,
+      url,
+      expiresAt
+    };
+  }
+
   async addAttachment(
     user: AuthUser,
     voucherId: string,

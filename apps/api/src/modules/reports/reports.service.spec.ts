@@ -11,7 +11,7 @@ describe("ReportsService export", () => {
         findMany: jest.fn()
       }
     };
-    service = new ReportsService(prisma);
+    service = new ReportsService(prisma, { enqueue: jest.fn() } as any);
   });
 
   it("exports trial balance as CSV", async () => {

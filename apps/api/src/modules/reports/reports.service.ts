@@ -1,13 +1,14 @@
 import { Injectable } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { OutboxService } from "../outbox/outbox.service";
 
 type ReportFilters = { from?: Date; to?: Date };
 type PartyAgingFilters = ReportFilters & { asOf?: Date };
 
 @Injectable()
 export class ReportsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private outbox: OutboxService) {}
 
   private sumLines(lines: { debit: Prisma.Decimal; credit: Prisma.Decimal }[]) {
     let debit = new Prisma.Decimal(0);
@@ -469,6 +470,14 @@ export class ReportsService {
       contentType = "text/csv";
     }
     const fileName = `${input.report}-${dateStamp}.${extension}`;
+
+    await this.outbox.enqueue(companyId, "report.export", {
+      report: input.report,
+      format,
+      from: input.from ? input.from.toISOString() : null,
+      to: input.to ? input.to.toISOString() : null,
+      fileName
+    });
 
     return {
       report: input.report,
