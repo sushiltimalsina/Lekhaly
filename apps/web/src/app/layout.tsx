@@ -37,6 +37,27 @@ export default function RootLayout({
                                 <Link href="/invoices" className="hover:text-foreground transition-colors">
                                     Invoices
                                 </Link>
+                                <Link href="/vouchers" className="hover:text-foreground transition-colors">
+                                    Vouchers
+                                </Link>
+                                <Link href="/payments" className="hover:text-foreground transition-colors">
+                                    Payments
+                                </Link>
+                                <Link href="/customers" className="hover:text-foreground transition-colors">
+                                    Customers
+                                </Link>
+                                <Link href="/vendors" className="hover:text-foreground transition-colors">
+                                    Vendors
+                                </Link>
+                                <Link href="/items" className="hover:text-foreground transition-colors">
+                                    Items
+                                </Link>
+                                <Link href="/users" className="hover:text-foreground transition-colors">
+                                    Users
+                                </Link>
+                                <Link href="/coa" className="hover:text-foreground transition-colors">
+                                    CoA
+                                </Link>
                                 <Link href="/settings" className="hover:text-foreground transition-colors">
                                     Settings
                                 </Link>
