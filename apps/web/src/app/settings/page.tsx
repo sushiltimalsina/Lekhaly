@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Bell, Building2, CreditCard, Lock, Mail, Moon, ShieldCheck, Sun, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 const container = {
     hidden: { opacity: 0 },
@@ -16,7 +17,12 @@ const item = {
 };
 
 export default function SettingsPage() {
+    const router = useRouter();
     const [themeMode, setThemeMode] = useState<"system" | "light" | "dark">("system");
+    const [profile, setProfile] = useState({ name: "", email: "" });
+    const [isSaving, setIsSaving] = useState(false);
+    const [message, setMessage] = useState("");
+    const [error, setError] = useState("");
 
     useEffect(() => {
         const stored = localStorage.getItem("lekhaly-theme");
@@ -25,10 +31,67 @@ export default function SettingsPage() {
         }
     }, []);
 
+    useEffect(() => {
+        const token = localStorage.getItem("accessToken");
+        if (!token) {
+            router.push("/login");
+            return;
+        }
+
+        fetch("http://localhost:4000/v1/auth/profile", {
+            headers: { Authorization: `Bearer ${token}` },
+        })
+            .then((res) => res.json())
+            .then((data) => {
+                setProfile({ name: data.name ?? "", email: data.email ?? "" });
+            })
+            .catch(() => {
+                setError("Failed to load profile.");
+            });
+    }, [router]);
+
     const handleThemeChange = (mode: "system" | "light" | "dark") => {
         setThemeMode(mode);
         localStorage.setItem("lekhaly-theme", mode);
         window.dispatchEvent(new CustomEvent("lekhaly-theme-change", { detail: { theme: mode } }));
+    };
+
+    const handleProfileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const { id, value } = event.target;
+        setProfile((prev) => ({ ...prev, [id]: value }));
+        setMessage("");
+        setError("");
+    };
+
+    const handleProfileSave = async () => {
+        const token = localStorage.getItem("accessToken");
+        if (!token) {
+            router.push("/login");
+            return;
+        }
+
+        setIsSaving(true);
+        setMessage("");
+        setError("");
+
+        try {
+            const res = await fetch("http://localhost:4000/v1/auth/profile", {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify(profile)
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || "Update failed");
+            setProfile({ name: data.name ?? "", email: data.email ?? "" });
+            setMessage("Profile updated.");
+        } catch (err: any) {
+            setError(err.message || "Update failed.");
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     return (
@@ -72,6 +135,21 @@ export default function SettingsPage() {
                             </div>
                         </div>
 
+                        {(error || message) && (
+                            <div className="mt-4 space-y-2 text-sm">
+                                {error && (
+                                    <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-500">
+                                        {error}
+                                    </div>
+                                )}
+                                {message && (
+                                    <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-emerald-500">
+                                        {message}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         <div className="mt-6 grid gap-5 sm:grid-cols-2">
                             <label className="space-y-2 text-sm text-muted-foreground">
                                 Full name
@@ -80,6 +158,9 @@ export default function SettingsPage() {
                                     <input
                                         type="text"
                                         placeholder="Lekhaly Admin"
+                                        id="name"
+                                        value={profile.name}
+                                        onChange={handleProfileChange}
                                         className="w-full rounded-xl border border-white/30 bg-white/60 px-12 py-3 text-foreground outline-none transition focus:border-amber-300/60 focus:ring-2 focus:ring-amber-300/40 dark:border-white/10 dark:bg-white/5"
                                     />
                                 </div>
@@ -91,6 +172,9 @@ export default function SettingsPage() {
                                     <input
                                         type="email"
                                         placeholder="you@company.com"
+                                        id="email"
+                                        value={profile.email}
+                                        onChange={handleProfileChange}
                                         className="w-full rounded-xl border border-white/30 bg-white/60 px-12 py-3 text-foreground outline-none transition focus:border-amber-300/60 focus:ring-2 focus:ring-amber-300/40 dark:border-white/10 dark:bg-white/5"
                                     />
                                 </div>
@@ -101,12 +185,14 @@ export default function SettingsPage() {
                             <div className="text-sm text-muted-foreground">
                                 Your profile is visible to your organization.
                             </div>
-                        <Link
-                            href="/coming-soon?feature=Profile%20save"
-                            className="rounded-full bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-300 px-6 py-3 text-sm font-semibold text-amber-950 shadow-lg shadow-amber-500/30 transition hover:shadow-xl hover:shadow-amber-500/40"
+                        <button
+                            type="button"
+                            onClick={handleProfileSave}
+                            disabled={isSaving}
+                            className="rounded-full bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-300 px-6 py-3 text-sm font-semibold text-amber-950 shadow-lg shadow-amber-500/30 transition hover:shadow-xl hover:shadow-amber-500/40 disabled:opacity-70 disabled:cursor-not-allowed"
                         >
-                            Save profile
-                        </Link>
+                            {isSaving ? "Saving..." : "Save profile"}
+                        </button>
                         </div>
                     </motion.section>
 

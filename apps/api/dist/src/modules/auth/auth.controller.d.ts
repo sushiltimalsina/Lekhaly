@@ -11,6 +11,10 @@ export declare class AuthController {
         perms: string[];
         deviceId: string | null;
     }>;
+    register(body: any): Promise<{
+        companyId: string;
+        userId: string;
+    }>;
     refresh(body: any): Promise<{
         accessToken: string;
         refreshToken: string;
@@ -22,6 +26,18 @@ export declare class AuthController {
         ok: boolean;
     }>;
     me(user: AuthUser): AuthUser;
+    profile(userId: string): Promise<{
+        companyId: string;
+        id: string;
+        name: string | null;
+        email: string;
+    }>;
+    updateProfile(userId: string, body: any): Promise<{
+        companyId: string;
+        id: string;
+        name: string | null;
+        email: string;
+    }>;
     setup(userId: string): Promise<{
         base32: string;
         otpauthUrl: string | undefined;

@@ -1,8 +1,8 @@
-import { Body, Controller, Get, Post, UsePipes } from "@nestjs/common";
+import { Body, Controller, Get, Patch, Post, UsePipes } from "@nestjs/common";
 import { CurrentUser, Public, RequirePerm } from "../../common/auth/auth.decorator";
 import type { AuthUser } from "../../common/auth/auth.types";
 import { ZodValidationPipe } from "../../common/zod/zod.pipe";
-import { LoginSchema, RefreshSchema, StepUpSchema, TotpEnableSchema } from "./dto/auth.schemas";
+import { LoginSchema, RefreshSchema, RegisterSchema, StepUpSchema, TotpEnableSchema, ProfileSchema } from "./dto/auth.schemas";
 import { AuthService } from "./auth.service";
 
 @Controller("auth")
@@ -14,6 +14,13 @@ export class AuthController {
   @UsePipes(new ZodValidationPipe(LoginSchema))
   login(@Body() body: any) {
     return this.auth.login(body);
+  }
+
+  @Post("register")
+  @Public()
+  @UsePipes(new ZodValidationPipe(RegisterSchema))
+  register(@Body() body: any) {
+    return this.auth.register(body);
   }
 
   @Post("refresh")
@@ -33,6 +40,17 @@ export class AuthController {
   @Get("me")
   me(@CurrentUser() user: AuthUser) {
     return user;
+  }
+
+  @Get("profile")
+  profile(@CurrentUser("sub") userId: string) {
+    return this.auth.getProfile(userId);
+  }
+
+  @Patch("profile")
+  @UsePipes(new ZodValidationPipe(ProfileSchema))
+  updateProfile(@CurrentUser("sub") userId: string, @Body() body: any) {
+    return this.auth.updateProfile(userId, body);
   }
 
   // Use access token identity for TOTP enrollment

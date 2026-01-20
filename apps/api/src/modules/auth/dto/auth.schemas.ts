@@ -25,3 +25,15 @@ export const StepUpSchema = z.object({
 export const RefreshSchema = z.object({
   refreshToken: z.string().trim().min(10)
 });
+
+export const RegisterSchema = z.object({
+  companyName: z.string().trim().min(2).max(120),
+  name: z.string().trim().min(2).max(120),
+  email: z.string().email(),
+  password: z.string().min(8).max(128)
+});
+
+export const ProfileSchema = z.object({
+  name: z.string().trim().min(2).max(120).optional(),
+  email: z.string().email().optional()
+});

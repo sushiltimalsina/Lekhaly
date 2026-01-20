@@ -4,13 +4,67 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { ArrowLeft, Mail, Lock, Building2, User } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function RegisterPage() {
     const router = useRouter();
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState("");
+    const [success, setSuccess] = useState("");
+    const [formData, setFormData] = useState({
+        companyName: "",
+        fullName: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+        accepted: false
+    });
 
-    const handleSubmit = (event: React.FormEvent) => {
+    const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const { id, value, type, checked } = event.target;
+        setFormData((prev) => ({ ...prev, [id]: type === "checkbox" ? checked : value }));
+        setError("");
+        setSuccess("");
+    };
+
+    const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
-        router.push("/coming-soon?feature=Registration");
+
+        if (formData.password !== formData.confirmPassword) {
+            setError("Passwords do not match.");
+            return;
+        }
+        if (!formData.accepted) {
+            setError("Please accept the terms to continue.");
+            return;
+        }
+
+        setIsLoading(true);
+        setError("");
+        setSuccess("");
+
+        try {
+            const res = await fetch("http://localhost:4000/v1/auth/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    companyName: formData.companyName,
+                    name: formData.fullName,
+                    email: formData.email,
+                    password: formData.password
+                })
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || "Registration failed");
+
+            setSuccess(`Registration complete. Company ID: ${data.companyId}`);
+            setTimeout(() => router.push("/login"), 1200);
+        } catch (err: any) {
+            setError(err.message || "Registration failed");
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -72,6 +126,17 @@ export default function RegisterPage() {
                             </p>
                         </div>
 
+                        {error && (
+                            <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-500">
+                                {error}
+                            </div>
+                        )}
+                        {success && (
+                            <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-500">
+                                {success}
+                            </div>
+                        )}
+
                         <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
                             <div className="space-y-2">
                                 <label
@@ -87,6 +152,8 @@ export default function RegisterPage() {
                                         type="text"
                                         placeholder="Lekhaly Labs"
                                         autoComplete="organization"
+                                        value={formData.companyName}
+                                        onChange={handleChange}
                                         className="w-full bg-white/60 dark:bg-white/5 border border-white/30 dark:border-white/10 rounded-xl px-12 py-3.5 outline-none focus:ring-2 focus:ring-amber-300/40 focus:border-amber-300/60 transition-all"
                                     />
                                 </div>
@@ -106,6 +173,8 @@ export default function RegisterPage() {
                                         type="text"
                                         placeholder="Lekhaly Admin"
                                         autoComplete="name"
+                                        value={formData.fullName}
+                                        onChange={handleChange}
                                         className="w-full bg-white/60 dark:bg-white/5 border border-white/30 dark:border-white/10 rounded-xl px-12 py-3.5 outline-none focus:ring-2 focus:ring-amber-300/40 focus:border-amber-300/60 transition-all"
                                     />
                                 </div>
@@ -125,6 +194,8 @@ export default function RegisterPage() {
                                         type="email"
                                         placeholder="you@company.com"
                                         autoComplete="email"
+                                        value={formData.email}
+                                        onChange={handleChange}
                                         className="w-full bg-white/60 dark:bg-white/5 border border-white/30 dark:border-white/10 rounded-xl px-12 py-3.5 outline-none focus:ring-2 focus:ring-amber-300/40 focus:border-amber-300/60 transition-all"
                                     />
                                 </div>
@@ -144,6 +215,8 @@ export default function RegisterPage() {
                                         type="password"
                                         placeholder="Create a strong password"
                                         autoComplete="new-password"
+                                        value={formData.password}
+                                        onChange={handleChange}
                                         className="w-full bg-white/60 dark:bg-white/5 border border-white/30 dark:border-white/10 rounded-xl px-12 py-3.5 outline-none focus:ring-2 focus:ring-amber-300/40 focus:border-amber-300/60 transition-all"
                                     />
                                 </div>
@@ -163,6 +236,8 @@ export default function RegisterPage() {
                                         type="password"
                                         placeholder="Re-enter your password"
                                         autoComplete="new-password"
+                                        value={formData.confirmPassword}
+                                        onChange={handleChange}
                                         className="w-full bg-white/60 dark:bg-white/5 border border-white/30 dark:border-white/10 rounded-xl px-12 py-3.5 outline-none focus:ring-2 focus:ring-amber-300/40 focus:border-amber-300/60 transition-all"
                                     />
                                 </div>
@@ -170,7 +245,10 @@ export default function RegisterPage() {
 
                             <label className="flex items-start gap-3 text-sm text-muted-foreground">
                                 <input
+                                    id="accepted"
                                     type="checkbox"
+                                    checked={formData.accepted}
+                                    onChange={handleChange}
                                     className="mt-1 h-4 w-4 rounded border-white/30 bg-white/60 text-amber-500 focus:ring-amber-300/40"
                                 />
                                 <span>
@@ -180,9 +258,10 @@ export default function RegisterPage() {
 
                             <button
                                 type="submit"
-                                className="w-full py-4 bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-300 text-amber-950 rounded-xl font-semibold shadow-lg shadow-amber-500/30 hover:shadow-xl hover:shadow-amber-500/40 transition-all duration-300 transform hover:-translate-y-0.5"
+                                disabled={isLoading}
+                                className="w-full py-4 bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-300 text-amber-950 rounded-xl font-semibold shadow-lg shadow-amber-500/30 hover:shadow-xl hover:shadow-amber-500/40 transition-all duration-300 transform hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed"
                             >
-                                Create account
+                                {isLoading ? "Creating..." : "Create account"}
                             </button>
                         </form>
 

@@ -2,6 +2,7 @@
 import { JwtService } from "@nestjs/jwt";
 import type { JwtSignOptions } from "@nestjs/jwt";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import type { Prisma } from "@prisma/client";
 import argon2 from "argon2";
 import * as speakeasy from "speakeasy";
 import * as qrcode from "qrcode";
@@ -74,6 +75,117 @@ export class AuthService {
 
   private sha256(s: string) {
     return crypto.createHash("sha256").update(s).digest("hex");
+  }
+
+  private async ensurePermissions(tx: Prisma.TransactionClient) {
+    const permissions = [
+      { code: "masters.read", description: "Read masters" },
+      { code: "masters.write", description: "Create/update masters" },
+      { code: "voucher.draft.create", description: "Create voucher drafts" },
+      { code: "voucher.draft.edit", description: "Edit voucher drafts" },
+      { code: "voucher.preview", description: "Preview voucher posting" },
+      { code: "voucher.post", description: "Post vouchers" },
+      { code: "voucher.void", description: "Void vouchers" },
+      { code: "reports.view", description: "View reports" },
+      { code: "export.pdf", description: "Export PDFs" },
+      { code: "settings.security", description: "Manage security settings" },
+      { code: "settings.tax", description: "Manage tax settings" },
+      { code: "settings.coa", description: "Manage chart of accounts" },
+      { code: "settings.users", description: "Manage users/roles" }
+    ];
+
+    for (const p of permissions) {
+      await tx.permission.upsert({
+        where: { code: p.code },
+        update: { description: p.description },
+        create: p
+      });
+    }
+
+    return permissions.map(p => p.code);
+  }
+
+  async register(dto: { companyName: string; name: string; email: string; password: string }) {
+    const passwordHash = await argon2.hash(dto.password);
+
+    return this.prisma.$transaction(async (tx) => {
+      const permAll = await this.ensurePermissions(tx);
+
+      const company = await tx.company.create({
+        data: {
+          name: dto.companyName,
+          baseCurrency: "NPR",
+          timezone: "Asia/Kathmandu",
+          fiscalYearStartMonth: 4,
+          invoicePrefix: "INV",
+          nextInvoiceNumber: 1
+        }
+      });
+
+      const [adminRole, accountantRole, salesRole, viewerRole] = await Promise.all([
+        tx.role.create({ data: { companyId: company.id, name: "Admin" } }),
+        tx.role.create({ data: { companyId: company.id, name: "Accountant" } }),
+        tx.role.create({ data: { companyId: company.id, name: "Sales" } }),
+        tx.role.create({ data: { companyId: company.id, name: "Viewer" } })
+      ]);
+
+      const permSales = ["masters.read", "voucher.draft.create", "voucher.draft.edit", "voucher.preview", "reports.view", "export.pdf"];
+      const permViewer = ["masters.read", "reports.view"];
+
+      const attach = async (roleId: string, codes: string[]) => {
+        await tx.rolePermission.createMany({
+          data: codes.map(code => ({ roleId, permissionCode: code })),
+          skipDuplicates: true
+        });
+      };
+
+      await attach(adminRole.id, permAll);
+      await attach(accountantRole.id, permAll);
+      await attach(salesRole.id, permSales);
+      await attach(viewerRole.id, permViewer);
+
+      const user = await tx.user.create({
+        data: {
+          companyId: company.id,
+          email: dto.email,
+          name: dto.name,
+          passwordHash
+        }
+      });
+      await tx.userRole.create({ data: { userId: user.id, roleId: adminRole.id } });
+
+      return { companyId: company.id, userId: user.id };
+    });
+  }
+
+  async getProfile(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, name: true, companyId: true }
+    });
+    if (!user) throw new UnauthorizedException();
+    return user;
+  }
+
+  async updateProfile(userId: string, dto: { name?: string; email?: string }) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, companyId: true }
+    });
+    if (!user) throw new UnauthorizedException();
+
+    if (dto.email && dto.email !== user.email) {
+      const existing = await this.prisma.user.findFirst({
+        where: { companyId: user.companyId, email: dto.email }
+      });
+      if (existing) throw new ForbiddenException("Email already in use");
+    }
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { name: dto.name ?? undefined, email: dto.email ?? undefined },
+      select: { id: true, email: true, name: true, companyId: true }
+    });
   }
 
   async login(dto: {

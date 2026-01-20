@@ -26,6 +26,9 @@ let AuthController = class AuthController {
     login(body) {
         return this.auth.login(body);
     }
+    register(body) {
+        return this.auth.register(body);
+    }
     refresh(body) {
         return this.auth.refresh(body);
     }
@@ -34,6 +37,12 @@ let AuthController = class AuthController {
     }
     me(user) {
         return user;
+    }
+    profile(userId) {
+        return this.auth.getProfile(userId);
+    }
+    updateProfile(userId, body) {
+        return this.auth.updateProfile(userId, body);
     }
     setup(userId) {
         return this.auth.totpSetup(userId);
@@ -55,6 +64,15 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
 ], AuthController.prototype, "login", null);
+__decorate([
+    (0, common_1.Post)("register"),
+    (0, auth_decorator_1.Public)(),
+    (0, common_1.UsePipes)(new zod_pipe_1.ZodValidationPipe(auth_schemas_1.RegisterSchema)),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "register", null);
 __decorate([
     (0, common_1.Post)("refresh"),
     (0, auth_decorator_1.Public)(),
@@ -80,6 +98,22 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
 ], AuthController.prototype, "me", null);
+__decorate([
+    (0, common_1.Get)("profile"),
+    __param(0, (0, auth_decorator_1.CurrentUser)("sub")),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "profile", null);
+__decorate([
+    (0, common_1.Patch)("profile"),
+    (0, common_1.UsePipes)(new zod_pipe_1.ZodValidationPipe(auth_schemas_1.ProfileSchema)),
+    __param(0, (0, auth_decorator_1.CurrentUser)("sub")),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "updateProfile", null);
 __decorate([
     (0, common_1.Post)("totp/setup"),
     __param(0, (0, auth_decorator_1.CurrentUser)("sub")),

@@ -9,6 +9,31 @@ export declare class AuthService {
     private signAccessToken;
     private signRefreshToken;
     private sha256;
+    private ensurePermissions;
+    register(dto: {
+        companyName: string;
+        name: string;
+        email: string;
+        password: string;
+    }): Promise<{
+        companyId: string;
+        userId: string;
+    }>;
+    getProfile(userId: string): Promise<{
+        companyId: string;
+        id: string;
+        name: string | null;
+        email: string;
+    }>;
+    updateProfile(userId: string, dto: {
+        name?: string;
+        email?: string;
+    }): Promise<{
+        companyId: string;
+        id: string;
+        name: string | null;
+        email: string;
+    }>;
     login(dto: {
         companyId: string;
         email: string;
