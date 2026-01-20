@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowRight, Sparkles, ShieldCheck, TrendingUp, Layers, Check } from "lucide-react";
+import { formatCurrency } from "./lib/format";
 
 const container = {
     hidden: { opacity: 0 },
@@ -162,9 +163,9 @@ export default function Home() {
                         </p>
                         <div className="mt-6 grid gap-4 sm:grid-cols-2">
                             {[
-                                { label: "Revenue", value: "??0.00" },
+                                { label: "Revenue", value: formatCurrency(0) },
                                 { label: "Open invoices", value: "0" },
-                                { label: "Cash on hand", value: "??0.00" },
+                                { label: "Cash on hand", value: formatCurrency(0) },
                                 { label: "Reports ready", value: "12" },
                             ].map((metric) => (
                                 <div key={metric.label} className="rounded-2xl border border-white/20 bg-white/40 p-4 text-sm dark:border-white/10 dark:bg-white/5">

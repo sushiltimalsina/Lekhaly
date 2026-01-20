@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { BarChart3, FileText, PieChart, TrendingUp } from "lucide-react";
+import { formatCurrency } from "../lib/format";
 
 const container = {
     hidden: { opacity: 0 },
@@ -47,9 +48,9 @@ export default function ReportsPage() {
                     className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4"
                 >
                     {[
-                        { title: "Profit & Loss", value: "??0.00", icon: <TrendingUp className="h-5 w-5" /> },
-                        { title: "Balance Sheet", value: "??0.00", icon: <BarChart3 className="h-5 w-5" /> },
-                        { title: "Cashflow", value: "??0.00", icon: <PieChart className="h-5 w-5" /> },
+                        { title: "Profit & Loss", value: formatCurrency(0), icon: <TrendingUp className="h-5 w-5" /> },
+                        { title: "Balance Sheet", value: formatCurrency(0), icon: <BarChart3 className="h-5 w-5" /> },
+                        { title: "Cashflow", value: formatCurrency(0), icon: <PieChart className="h-5 w-5" /> },
                         { title: "VAT Summary", value: "0 filings", icon: <FileText className="h-5 w-5" /> },
                     ].map((card) => (
                         <motion.div
