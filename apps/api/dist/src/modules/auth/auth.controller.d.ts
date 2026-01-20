@@ -27,16 +27,38 @@ export declare class AuthController {
     }>;
     me(user: AuthUser): AuthUser;
     profile(userId: string): Promise<{
-        companyId: string;
         id: string;
-        name: string | null;
+        companyId: string;
         email: string;
+        name: string | null;
     }>;
     updateProfile(userId: string, body: any): Promise<{
-        companyId: string;
         id: string;
-        name: string | null;
+        companyId: string;
         email: string;
+        name: string | null;
+    }>;
+    company(userId: string): Promise<{
+        id: string;
+        name: string;
+        baseCurrency: string;
+        timezone: string;
+        fiscalYearStartMonth: number;
+        invoicePrefix: string;
+    } | null>;
+    updateCompany(userId: string, body: any): Promise<{
+        id: string;
+        name: string;
+        baseCurrency: string;
+        timezone: string;
+        fiscalYearStartMonth: number;
+        invoicePrefix: string;
+    }>;
+    updateNotifications(userId: string, body: any): Promise<{
+        ok: boolean;
+    }>;
+    billingPortal(userId: string): Promise<{
+        ok: boolean;
     }>;
     setup(userId: string): Promise<{
         base32: string;

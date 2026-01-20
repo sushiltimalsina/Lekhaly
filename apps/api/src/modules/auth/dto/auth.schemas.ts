@@ -37,3 +37,17 @@ export const ProfileSchema = z.object({
   name: z.string().trim().min(2).max(120).optional(),
   email: z.string().email().optional()
 });
+
+export const CompanySchema = z.object({
+  name: z.string().trim().min(2).max(120).optional(),
+  baseCurrency: z.string().trim().min(3).max(3).optional(),
+  timezone: z.string().trim().min(2).max(120).optional(),
+  fiscalYearStartMonth: z.number().int().min(1).max(12).optional(),
+  invoicePrefix: z.string().trim().min(1).max(10).optional()
+});
+
+export const NotificationsSchema = z.object({
+  emailAlerts: z.boolean().optional(),
+  reportAlerts: z.boolean().optional(),
+  securityAlerts: z.boolean().optional()
+});

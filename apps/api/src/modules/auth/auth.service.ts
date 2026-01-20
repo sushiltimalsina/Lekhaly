@@ -2,7 +2,7 @@
 import { JwtService } from "@nestjs/jwt";
 import type { JwtSignOptions } from "@nestjs/jwt";
 import { PrismaService } from "../../common/prisma/prisma.service";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import argon2 from "argon2";
 import * as speakeasy from "speakeasy";
 import * as qrcode from "qrcode";
@@ -108,54 +108,61 @@ export class AuthService {
   async register(dto: { companyName: string; name: string; email: string; password: string }) {
     const passwordHash = await argon2.hash(dto.password);
 
-    return this.prisma.$transaction(async (tx) => {
-      const permAll = await this.ensurePermissions(tx);
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const permAll = await this.ensurePermissions(tx);
 
-      const company = await tx.company.create({
-        data: {
-          name: dto.companyName,
-          baseCurrency: "NPR",
-          timezone: "Asia/Kathmandu",
-          fiscalYearStartMonth: 4,
-          invoicePrefix: "INV",
-          nextInvoiceNumber: 1
-        }
-      });
-
-      const [adminRole, accountantRole, salesRole, viewerRole] = await Promise.all([
-        tx.role.create({ data: { companyId: company.id, name: "Admin" } }),
-        tx.role.create({ data: { companyId: company.id, name: "Accountant" } }),
-        tx.role.create({ data: { companyId: company.id, name: "Sales" } }),
-        tx.role.create({ data: { companyId: company.id, name: "Viewer" } })
-      ]);
-
-      const permSales = ["masters.read", "voucher.draft.create", "voucher.draft.edit", "voucher.preview", "reports.view", "export.pdf"];
-      const permViewer = ["masters.read", "reports.view"];
-
-      const attach = async (roleId: string, codes: string[]) => {
-        await tx.rolePermission.createMany({
-          data: codes.map(code => ({ roleId, permissionCode: code })),
-          skipDuplicates: true
+        const company = await tx.company.create({
+          data: {
+            name: dto.companyName,
+            baseCurrency: "NPR",
+            timezone: "Asia/Kathmandu",
+            fiscalYearStartMonth: 4,
+            invoicePrefix: "INV",
+            nextInvoiceNumber: 1
+          }
         });
-      };
 
-      await attach(adminRole.id, permAll);
-      await attach(accountantRole.id, permAll);
-      await attach(salesRole.id, permSales);
-      await attach(viewerRole.id, permViewer);
+        const [adminRole, accountantRole, salesRole, viewerRole] = await Promise.all([
+          tx.role.create({ data: { companyId: company.id, name: "Admin" } }),
+          tx.role.create({ data: { companyId: company.id, name: "Accountant" } }),
+          tx.role.create({ data: { companyId: company.id, name: "Sales" } }),
+          tx.role.create({ data: { companyId: company.id, name: "Viewer" } })
+        ]);
 
-      const user = await tx.user.create({
-        data: {
-          companyId: company.id,
-          email: dto.email,
-          name: dto.name,
-          passwordHash
-        }
+        const permSales = ["masters.read", "voucher.draft.create", "voucher.draft.edit", "voucher.preview", "reports.view", "export.pdf"];
+        const permViewer = ["masters.read", "reports.view"];
+
+        const attach = async (roleId: string, codes: string[]) => {
+          await tx.rolePermission.createMany({
+            data: codes.map(code => ({ roleId, permissionCode: code })),
+            skipDuplicates: true
+          });
+        };
+
+        await attach(adminRole.id, permAll);
+        await attach(accountantRole.id, permAll);
+        await attach(salesRole.id, permSales);
+        await attach(viewerRole.id, permViewer);
+
+        const user = await tx.user.create({
+          data: {
+            companyId: company.id,
+            email: dto.email,
+            name: dto.name,
+            passwordHash
+          }
+        });
+        await tx.userRole.create({ data: { userId: user.id, roleId: adminRole.id } });
+
+        return { companyId: company.id, userId: user.id };
       });
-      await tx.userRole.create({ data: { userId: user.id, roleId: adminRole.id } });
-
-      return { companyId: company.id, userId: user.id };
-    });
+    } catch (e: any) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+        throw new ForbiddenException("Email already in use");
+      }
+      throw e;
+    }
   }
 
   async getProfile(userId: string) {
@@ -186,6 +193,101 @@ export class AuthService {
       data: { name: dto.name ?? undefined, email: dto.email ?? undefined },
       select: { id: true, email: true, name: true, companyId: true }
     });
+  }
+
+  async getCompany(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { companyId: true }
+    });
+    if (!user) throw new UnauthorizedException();
+    return this.prisma.company.findUnique({
+      where: { id: user.companyId },
+      select: {
+        id: true,
+        name: true,
+        baseCurrency: true,
+        timezone: true,
+        fiscalYearStartMonth: true,
+        invoicePrefix: true
+      }
+    });
+  }
+
+  async updateCompany(userId: string, dto: {
+    name?: string;
+    baseCurrency?: string;
+    timezone?: string;
+    fiscalYearStartMonth?: number;
+    invoicePrefix?: string;
+  }) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { companyId: true }
+    });
+    if (!user) throw new UnauthorizedException();
+
+    return this.prisma.company.update({
+      where: { id: user.companyId },
+      data: {
+        name: dto.name ?? undefined,
+        baseCurrency: dto.baseCurrency ?? undefined,
+        timezone: dto.timezone ?? undefined,
+        fiscalYearStartMonth: dto.fiscalYearStartMonth ?? undefined,
+        invoicePrefix: dto.invoicePrefix ?? undefined
+      },
+      select: {
+        id: true,
+        name: true,
+        baseCurrency: true,
+        timezone: true,
+        fiscalYearStartMonth: true,
+        invoicePrefix: true
+      }
+    });
+  }
+
+  async updateNotifications(userId: string, dto: {
+    emailAlerts?: boolean;
+    reportAlerts?: boolean;
+    securityAlerts?: boolean;
+  }) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { companyId: true }
+    });
+    if (!user) throw new UnauthorizedException();
+
+    await this.prisma.outboxEvent.create({
+      data: {
+        companyId: user.companyId,
+        type: "notifications.update",
+        payload: {
+          userId,
+          ...dto
+        }
+      }
+    });
+
+    return { ok: true };
+  }
+
+  async startBillingPortal(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { companyId: true }
+    });
+    if (!user) throw new UnauthorizedException();
+
+    await this.prisma.outboxEvent.create({
+      data: {
+        companyId: user.companyId,
+        type: "billing.portal",
+        payload: { userId }
+      }
+    });
+
+    return { ok: true };
   }
 
   async login(dto: {

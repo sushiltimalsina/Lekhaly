@@ -2,7 +2,7 @@ import { Body, Controller, Get, Patch, Post, UsePipes } from "@nestjs/common";
 import { CurrentUser, Public, RequirePerm } from "../../common/auth/auth.decorator";
 import type { AuthUser } from "../../common/auth/auth.types";
 import { ZodValidationPipe } from "../../common/zod/zod.pipe";
-import { LoginSchema, RefreshSchema, RegisterSchema, StepUpSchema, TotpEnableSchema, ProfileSchema } from "./dto/auth.schemas";
+import { CompanySchema, LoginSchema, NotificationsSchema, RefreshSchema, RegisterSchema, StepUpSchema, TotpEnableSchema, ProfileSchema } from "./dto/auth.schemas";
 import { AuthService } from "./auth.service";
 
 @Controller("auth")
@@ -18,8 +18,7 @@ export class AuthController {
 
   @Post("register")
   @Public()
-  @UsePipes(new ZodValidationPipe(RegisterSchema))
-  register(@Body() body: any) {
+  register(@Body(new ZodValidationPipe(RegisterSchema)) body: any) {
     return this.auth.register(body);
   }
 
@@ -48,9 +47,37 @@ export class AuthController {
   }
 
   @Patch("profile")
-  @UsePipes(new ZodValidationPipe(ProfileSchema))
-  updateProfile(@CurrentUser("sub") userId: string, @Body() body: any) {
+  updateProfile(
+    @CurrentUser("sub") userId: string,
+    @Body(new ZodValidationPipe(ProfileSchema)) body: any
+  ) {
     return this.auth.updateProfile(userId, body);
+  }
+
+  @Get("company")
+  company(@CurrentUser("sub") userId: string) {
+    return this.auth.getCompany(userId);
+  }
+
+  @Patch("company")
+  updateCompany(
+    @CurrentUser("sub") userId: string,
+    @Body(new ZodValidationPipe(CompanySchema)) body: any
+  ) {
+    return this.auth.updateCompany(userId, body);
+  }
+
+  @Patch("notifications")
+  updateNotifications(
+    @CurrentUser("sub") userId: string,
+    @Body(new ZodValidationPipe(NotificationsSchema)) body: any
+  ) {
+    return this.auth.updateNotifications(userId, body);
+  }
+
+  @Post("billing/portal")
+  billingPortal(@CurrentUser("sub") userId: string) {
+    return this.auth.startBillingPortal(userId);
   }
 
   // Use access token identity for TOTP enrollment

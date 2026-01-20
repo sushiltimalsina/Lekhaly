@@ -20,7 +20,22 @@ export default function SettingsPage() {
     const router = useRouter();
     const [themeMode, setThemeMode] = useState<"system" | "light" | "dark">("system");
     const [profile, setProfile] = useState({ name: "", email: "" });
+    const [company, setCompany] = useState({
+        name: "",
+        baseCurrency: "NPR",
+        timezone: "Asia/Kathmandu",
+        fiscalYearStartMonth: 4,
+        invoicePrefix: "INV"
+    });
+    const [notifications, setNotifications] = useState({
+        emailAlerts: true,
+        reportAlerts: true,
+        securityAlerts: true
+    });
     const [isSaving, setIsSaving] = useState(false);
+    const [isCompanySaving, setIsCompanySaving] = useState(false);
+    const [isNotificationsSaving, setIsNotificationsSaving] = useState(false);
+    const [isBilling, setIsBilling] = useState(false);
     const [message, setMessage] = useState("");
     const [error, setError] = useState("");
 
@@ -48,6 +63,39 @@ export default function SettingsPage() {
             .catch(() => {
                 setError("Failed to load profile.");
             });
+
+        fetch("http://localhost:4000/v1/auth/company", {
+            headers: { Authorization: `Bearer ${token}` },
+        })
+            .then((res) => res.json())
+            .then((data) => {
+                if (data) {
+                    setCompany({
+                        name: data.name ?? "",
+                        baseCurrency: data.baseCurrency ?? "NPR",
+                        timezone: data.timezone ?? "Asia/Kathmandu",
+                        fiscalYearStartMonth: data.fiscalYearStartMonth ?? 4,
+                        invoicePrefix: data.invoicePrefix ?? "INV"
+                    });
+                }
+            })
+            .catch(() => {
+                setError("Failed to load company.");
+            });
+
+        const storedNotifications = localStorage.getItem("lekhaly-notifications");
+        if (storedNotifications) {
+            try {
+                const parsed = JSON.parse(storedNotifications);
+                setNotifications({
+                    emailAlerts: Boolean(parsed.emailAlerts),
+                    reportAlerts: Boolean(parsed.reportAlerts),
+                    securityAlerts: Boolean(parsed.securityAlerts)
+                });
+            } catch {
+                // Ignore parsing errors
+            }
+        }
     }, [router]);
 
     const handleThemeChange = (mode: "system" | "light" | "dark") => {
@@ -91,6 +139,121 @@ export default function SettingsPage() {
             setError(err.message || "Update failed.");
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const handleCompanyChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const { id, value } = event.target;
+        setCompany((prev) => ({
+            ...prev,
+            [id]: id === "fiscalYearStartMonth" ? Number(value) : value
+        }));
+        setMessage("");
+        setError("");
+    };
+
+    const handleCompanySave = async () => {
+        const token = localStorage.getItem("accessToken");
+        if (!token) {
+            router.push("/login");
+            return;
+        }
+
+        setIsCompanySaving(true);
+        setMessage("");
+        setError("");
+
+        try {
+            const res = await fetch("http://localhost:4000/v1/auth/company", {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify(company)
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || "Update failed");
+            setCompany({
+                name: data.name ?? "",
+                baseCurrency: data.baseCurrency ?? "NPR",
+                timezone: data.timezone ?? "Asia/Kathmandu",
+                fiscalYearStartMonth: data.fiscalYearStartMonth ?? 4,
+                invoicePrefix: data.invoicePrefix ?? "INV"
+            });
+            setMessage("Company updated.");
+        } catch (err: any) {
+            setError(err.message || "Update failed.");
+        } finally {
+            setIsCompanySaving(false);
+        }
+    };
+
+    const handleNotificationsToggle = (key: keyof typeof notifications) => {
+        setNotifications((prev) => {
+            const next = { ...prev, [key]: !prev[key] };
+            localStorage.setItem("lekhaly-notifications", JSON.stringify(next));
+            return next;
+        });
+        setMessage("");
+        setError("");
+    };
+
+    const handleNotificationsSave = async () => {
+        const token = localStorage.getItem("accessToken");
+        if (!token) {
+            router.push("/login");
+            return;
+        }
+
+        setIsNotificationsSaving(true);
+        setMessage("");
+        setError("");
+
+        try {
+            const res = await fetch("http://localhost:4000/v1/auth/notifications", {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify(notifications)
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || "Update failed");
+            setMessage("Notifications updated.");
+        } catch (err: any) {
+            setError(err.message || "Update failed.");
+        } finally {
+            setIsNotificationsSaving(false);
+        }
+    };
+
+    const handleBillingPortal = async () => {
+        const token = localStorage.getItem("accessToken");
+        if (!token) {
+            router.push("/login");
+            return;
+        }
+
+        setIsBilling(true);
+        setMessage("");
+        setError("");
+
+        try {
+            const res = await fetch("http://localhost:4000/v1/auth/billing/portal", {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || "Billing portal unavailable");
+            setMessage("Billing portal request submitted.");
+        } catch (err: any) {
+            setError(err.message || "Billing portal unavailable.");
+        } finally {
+            setIsBilling(false);
         }
     };
 
@@ -185,14 +348,14 @@ export default function SettingsPage() {
                             <div className="text-sm text-muted-foreground">
                                 Your profile is visible to your organization.
                             </div>
-                        <button
-                            type="button"
-                            onClick={handleProfileSave}
-                            disabled={isSaving}
-                            className="rounded-full bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-300 px-6 py-3 text-sm font-semibold text-amber-950 shadow-lg shadow-amber-500/30 transition hover:shadow-xl hover:shadow-amber-500/40 disabled:opacity-70 disabled:cursor-not-allowed"
-                        >
-                            {isSaving ? "Saving..." : "Save profile"}
-                        </button>
+                            <button
+                                type="button"
+                                onClick={handleProfileSave}
+                                disabled={isSaving}
+                                className="rounded-full bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-300 px-6 py-3 text-sm font-semibold text-amber-950 shadow-lg shadow-amber-500/30 transition hover:shadow-xl hover:shadow-amber-500/40 disabled:opacity-70 disabled:cursor-not-allowed"
+                            >
+                                {isSaving ? "Saving..." : "Save profile"}
+                            </button>
                         </div>
                     </motion.section>
 
@@ -246,12 +409,72 @@ export default function SettingsPage() {
                         <p className="mt-2 text-sm text-muted-foreground">
                             Configure your company name, fiscal calendar, and base currency.
                         </p>
-                        <Link
-                            href="/coming-soon?feature=Company%20settings"
-                            className="mt-6 w-full rounded-full border border-white/40 bg-white/50 px-6 py-3 text-sm font-semibold text-foreground transition hover:bg-white/70 dark:border-white/10 dark:bg-white/5 text-center"
-                        >
-                            Update company
-                        </Link>
+                        <div className="mt-6 space-y-4 text-sm text-muted-foreground">
+                            <label className="space-y-2 text-sm text-muted-foreground">
+                                Company name
+                                <input
+                                    id="name"
+                                    type="text"
+                                    value={company.name}
+                                    onChange={handleCompanyChange}
+                                    className="w-full rounded-xl border border-white/30 bg-white/60 px-4 py-3 text-foreground outline-none transition focus:border-amber-300/60 focus:ring-2 focus:ring-amber-300/40 dark:border-white/10 dark:bg-white/5"
+                                />
+                            </label>
+                            <div className="grid gap-3 sm:grid-cols-2">
+                                <label className="space-y-2 text-sm text-muted-foreground">
+                                    Base currency
+                                    <input
+                                        id="baseCurrency"
+                                        type="text"
+                                        value={company.baseCurrency}
+                                        onChange={handleCompanyChange}
+                                        className="w-full rounded-xl border border-white/30 bg-white/60 px-4 py-3 text-foreground outline-none transition focus:border-amber-300/60 focus:ring-2 focus:ring-amber-300/40 dark:border-white/10 dark:bg-white/5"
+                                    />
+                                </label>
+                                <label className="space-y-2 text-sm text-muted-foreground">
+                                    Fiscal start month
+                                    <input
+                                        id="fiscalYearStartMonth"
+                                        type="number"
+                                        min={1}
+                                        max={12}
+                                        value={company.fiscalYearStartMonth}
+                                        onChange={handleCompanyChange}
+                                        className="w-full rounded-xl border border-white/30 bg-white/60 px-4 py-3 text-foreground outline-none transition focus:border-amber-300/60 focus:ring-2 focus:ring-amber-300/40 dark:border-white/10 dark:bg-white/5"
+                                    />
+                                </label>
+                            </div>
+                            <div className="grid gap-3 sm:grid-cols-2">
+                                <label className="space-y-2 text-sm text-muted-foreground">
+                                    Timezone
+                                    <input
+                                        id="timezone"
+                                        type="text"
+                                        value={company.timezone}
+                                        onChange={handleCompanyChange}
+                                        className="w-full rounded-xl border border-white/30 bg-white/60 px-4 py-3 text-foreground outline-none transition focus:border-amber-300/60 focus:ring-2 focus:ring-amber-300/40 dark:border-white/10 dark:bg-white/5"
+                                    />
+                                </label>
+                                <label className="space-y-2 text-sm text-muted-foreground">
+                                    Invoice prefix
+                                    <input
+                                        id="invoicePrefix"
+                                        type="text"
+                                        value={company.invoicePrefix}
+                                        onChange={handleCompanyChange}
+                                        className="w-full rounded-xl border border-white/30 bg-white/60 px-4 py-3 text-foreground outline-none transition focus:border-amber-300/60 focus:ring-2 focus:ring-amber-300/40 dark:border-white/10 dark:bg-white/5"
+                                    />
+                                </label>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={handleCompanySave}
+                                disabled={isCompanySaving}
+                                className="w-full rounded-full border border-white/40 bg-white/50 px-6 py-3 text-sm font-semibold text-foreground transition hover:bg-white/70 dark:border-white/10 dark:bg-white/5 disabled:opacity-70 disabled:cursor-not-allowed"
+                            >
+                                {isCompanySaving ? "Saving..." : "Update company"}
+                            </button>
+                        </div>
                     </motion.section>
 
                     <motion.section variants={item} className="glass-panel rounded-3xl p-8">
@@ -262,12 +485,31 @@ export default function SettingsPage() {
                         <p className="mt-2 text-sm text-muted-foreground">
                             Manage alerts for approvals, reports, and team invites.
                         </p>
-                        <Link
-                            href="/coming-soon?feature=Notification%20preferences"
-                            className="mt-6 w-full rounded-full border border-white/40 bg-white/50 px-6 py-3 text-sm font-semibold text-foreground transition hover:bg-white/70 dark:border-white/10 dark:bg-white/5 text-center"
-                        >
-                            Configure alerts
-                        </Link>
+                        <div className="mt-6 space-y-3 text-sm text-muted-foreground">
+                            {[
+                                { key: "emailAlerts", label: "Email alerts" },
+                                { key: "reportAlerts", label: "Report summaries" },
+                                { key: "securityAlerts", label: "Security alerts" }
+                            ].map((row) => (
+                                <label key={row.key} className="flex items-center justify-between rounded-2xl border border-white/20 bg-white/40 px-4 py-3 dark:border-white/10 dark:bg-white/5">
+                                    <span>{row.label}</span>
+                                    <input
+                                        type="checkbox"
+                                        checked={notifications[row.key as keyof typeof notifications]}
+                                        onChange={() => handleNotificationsToggle(row.key as keyof typeof notifications)}
+                                        className="h-4 w-4 rounded border-white/30 bg-white/60 text-amber-500 focus:ring-amber-300/40"
+                                    />
+                                </label>
+                            ))}
+                            <button
+                                type="button"
+                                onClick={handleNotificationsSave}
+                                disabled={isNotificationsSaving}
+                                className="w-full rounded-full border border-white/40 bg-white/50 px-6 py-3 text-sm font-semibold text-foreground transition hover:bg-white/70 dark:border-white/10 dark:bg-white/5 disabled:opacity-70 disabled:cursor-not-allowed"
+                            >
+                                {isNotificationsSaving ? "Saving..." : "Configure alerts"}
+                            </button>
+                        </div>
                     </motion.section>
 
                     <motion.section variants={item} className="glass-panel rounded-3xl p-8">
@@ -278,12 +520,14 @@ export default function SettingsPage() {
                         <p className="mt-2 text-sm text-muted-foreground">
                             Review your plan, invoices, and payment methods.
                         </p>
-                        <Link
-                            href="/coming-soon?feature=Billing%20management"
-                            className="mt-6 w-full rounded-full border border-white/40 bg-white/50 px-6 py-3 text-sm font-semibold text-foreground transition hover:bg-white/70 dark:border-white/10 dark:bg-white/5 text-center"
+                        <button
+                            type="button"
+                            onClick={handleBillingPortal}
+                            disabled={isBilling}
+                            className="mt-6 w-full rounded-full border border-white/40 bg-white/50 px-6 py-3 text-sm font-semibold text-foreground transition hover:bg-white/70 dark:border-white/10 dark:bg-white/5 disabled:opacity-70 disabled:cursor-not-allowed"
                         >
-                            Manage billing
-                        </Link>
+                            {isBilling ? "Opening..." : "Manage billing"}
+                        </button>
                     </motion.section>
                 </div>
 

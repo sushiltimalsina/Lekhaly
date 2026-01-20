@@ -17,7 +17,16 @@ let ZodValidationPipe = class ZodValidationPipe {
         this.schema = schema;
     }
     transform(value) {
-        const parsed = this.schema.safeParse(value);
+        let candidate = value;
+        if (typeof value === "string") {
+            try {
+                candidate = JSON.parse(value);
+            }
+            catch {
+                candidate = value;
+            }
+        }
+        const parsed = this.schema.safeParse(candidate);
         if (!parsed.success) {
             throw new common_1.BadRequestException({
                 message: "Validation failed",

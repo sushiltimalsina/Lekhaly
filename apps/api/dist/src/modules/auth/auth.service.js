@@ -49,6 +49,7 @@ exports.AuthService = void 0;
 const common_1 = require("@nestjs/common");
 const jwt_1 = require("@nestjs/jwt");
 const prisma_service_1 = require("../../common/prisma/prisma.service");
+const client_1 = require("@prisma/client");
 const argon2_1 = __importDefault(require("argon2"));
 const speakeasy = __importStar(require("speakeasy"));
 const qrcode = __importStar(require("qrcode"));
@@ -138,47 +139,55 @@ let AuthService = class AuthService {
     }
     async register(dto) {
         const passwordHash = await argon2_1.default.hash(dto.password);
-        return this.prisma.$transaction(async (tx) => {
-            const permAll = await this.ensurePermissions(tx);
-            const company = await tx.company.create({
-                data: {
-                    name: dto.companyName,
-                    baseCurrency: "NPR",
-                    timezone: "Asia/Kathmandu",
-                    fiscalYearStartMonth: 4,
-                    invoicePrefix: "INV",
-                    nextInvoiceNumber: 1
-                }
-            });
-            const [adminRole, accountantRole, salesRole, viewerRole] = await Promise.all([
-                tx.role.create({ data: { companyId: company.id, name: "Admin" } }),
-                tx.role.create({ data: { companyId: company.id, name: "Accountant" } }),
-                tx.role.create({ data: { companyId: company.id, name: "Sales" } }),
-                tx.role.create({ data: { companyId: company.id, name: "Viewer" } })
-            ]);
-            const permSales = ["masters.read", "voucher.draft.create", "voucher.draft.edit", "voucher.preview", "reports.view", "export.pdf"];
-            const permViewer = ["masters.read", "reports.view"];
-            const attach = async (roleId, codes) => {
-                await tx.rolePermission.createMany({
-                    data: codes.map(code => ({ roleId, permissionCode: code })),
-                    skipDuplicates: true
+        try {
+            return await this.prisma.$transaction(async (tx) => {
+                const permAll = await this.ensurePermissions(tx);
+                const company = await tx.company.create({
+                    data: {
+                        name: dto.companyName,
+                        baseCurrency: "NPR",
+                        timezone: "Asia/Kathmandu",
+                        fiscalYearStartMonth: 4,
+                        invoicePrefix: "INV",
+                        nextInvoiceNumber: 1
+                    }
                 });
-            };
-            await attach(adminRole.id, permAll);
-            await attach(accountantRole.id, permAll);
-            await attach(salesRole.id, permSales);
-            await attach(viewerRole.id, permViewer);
-            const user = await tx.user.create({
-                data: {
-                    companyId: company.id,
-                    email: dto.email,
-                    name: dto.name,
-                    passwordHash
-                }
+                const [adminRole, accountantRole, salesRole, viewerRole] = await Promise.all([
+                    tx.role.create({ data: { companyId: company.id, name: "Admin" } }),
+                    tx.role.create({ data: { companyId: company.id, name: "Accountant" } }),
+                    tx.role.create({ data: { companyId: company.id, name: "Sales" } }),
+                    tx.role.create({ data: { companyId: company.id, name: "Viewer" } })
+                ]);
+                const permSales = ["masters.read", "voucher.draft.create", "voucher.draft.edit", "voucher.preview", "reports.view", "export.pdf"];
+                const permViewer = ["masters.read", "reports.view"];
+                const attach = async (roleId, codes) => {
+                    await tx.rolePermission.createMany({
+                        data: codes.map(code => ({ roleId, permissionCode: code })),
+                        skipDuplicates: true
+                    });
+                };
+                await attach(adminRole.id, permAll);
+                await attach(accountantRole.id, permAll);
+                await attach(salesRole.id, permSales);
+                await attach(viewerRole.id, permViewer);
+                const user = await tx.user.create({
+                    data: {
+                        companyId: company.id,
+                        email: dto.email,
+                        name: dto.name,
+                        passwordHash
+                    }
+                });
+                await tx.userRole.create({ data: { userId: user.id, roleId: adminRole.id } });
+                return { companyId: company.id, userId: user.id };
             });
-            await tx.userRole.create({ data: { userId: user.id, roleId: adminRole.id } });
-            return { companyId: company.id, userId: user.id };
-        });
+        }
+        catch (e) {
+            if (e instanceof client_1.Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+                throw new common_1.ForbiddenException("Email already in use");
+            }
+            throw e;
+        }
     }
     async getProfile(userId) {
         const user = await this.prisma.user.findUnique({
@@ -208,6 +217,86 @@ let AuthService = class AuthService {
             data: { name: dto.name ?? undefined, email: dto.email ?? undefined },
             select: { id: true, email: true, name: true, companyId: true }
         });
+    }
+    async getCompany(userId) {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { companyId: true }
+        });
+        if (!user)
+            throw new common_1.UnauthorizedException();
+        return this.prisma.company.findUnique({
+            where: { id: user.companyId },
+            select: {
+                id: true,
+                name: true,
+                baseCurrency: true,
+                timezone: true,
+                fiscalYearStartMonth: true,
+                invoicePrefix: true
+            }
+        });
+    }
+    async updateCompany(userId, dto) {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { companyId: true }
+        });
+        if (!user)
+            throw new common_1.UnauthorizedException();
+        return this.prisma.company.update({
+            where: { id: user.companyId },
+            data: {
+                name: dto.name ?? undefined,
+                baseCurrency: dto.baseCurrency ?? undefined,
+                timezone: dto.timezone ?? undefined,
+                fiscalYearStartMonth: dto.fiscalYearStartMonth ?? undefined,
+                invoicePrefix: dto.invoicePrefix ?? undefined
+            },
+            select: {
+                id: true,
+                name: true,
+                baseCurrency: true,
+                timezone: true,
+                fiscalYearStartMonth: true,
+                invoicePrefix: true
+            }
+        });
+    }
+    async updateNotifications(userId, dto) {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { companyId: true }
+        });
+        if (!user)
+            throw new common_1.UnauthorizedException();
+        await this.prisma.outboxEvent.create({
+            data: {
+                companyId: user.companyId,
+                type: "notifications.update",
+                payload: {
+                    userId,
+                    ...dto
+                }
+            }
+        });
+        return { ok: true };
+    }
+    async startBillingPortal(userId) {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { companyId: true }
+        });
+        if (!user)
+            throw new common_1.UnauthorizedException();
+        await this.prisma.outboxEvent.create({
+            data: {
+                companyId: user.companyId,
+                type: "billing.portal",
+                payload: { userId }
+            }
+        });
+        return { ok: true };
     }
     async login(dto) {
         console.log('LOGIN_START', { email: dto.email, companyId: dto.companyId });

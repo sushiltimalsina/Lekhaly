@@ -15,9 +15,9 @@ export declare class OutboxService {
         status: import("@prisma/client").$Enums.OutboxStatus;
         createdAt: Date;
         type: string;
-        lastError: string | null;
         payload: Prisma.JsonValue;
         processedAt: Date | null;
+        lastError: string | null;
         attempts: number;
         nextAttemptAt: Date | null;
     }[]>;
@@ -30,9 +30,9 @@ export declare class OutboxService {
         status: import("@prisma/client").$Enums.OutboxStatus;
         createdAt: Date;
         type: string;
-        lastError: string | null;
         payload: Prisma.JsonValue;
         processedAt: Date | null;
+        lastError: string | null;
         attempts: number;
         nextAttemptAt: Date | null;
     }>;
@@ -42,9 +42,9 @@ export declare class OutboxService {
         status: import("@prisma/client").$Enums.OutboxStatus;
         createdAt: Date;
         type: string;
-        lastError: string | null;
         payload: Prisma.JsonValue;
         processedAt: Date | null;
+        lastError: string | null;
         attempts: number;
         nextAttemptAt: Date | null;
     }>;

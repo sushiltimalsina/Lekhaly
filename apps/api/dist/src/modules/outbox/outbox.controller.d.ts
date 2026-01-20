@@ -9,9 +9,9 @@ export declare class OutboxController {
         status: import("@prisma/client").$Enums.OutboxStatus;
         createdAt: Date;
         type: string;
-        lastError: string | null;
         payload: import("@prisma/client/runtime/client").JsonValue;
         processedAt: Date | null;
+        lastError: string | null;
         attempts: number;
         nextAttemptAt: Date | null;
     }[]>;
@@ -21,9 +21,9 @@ export declare class OutboxController {
         status: import("@prisma/client").$Enums.OutboxStatus;
         createdAt: Date;
         type: string;
-        lastError: string | null;
         payload: import("@prisma/client/runtime/client").JsonValue;
         processedAt: Date | null;
+        lastError: string | null;
         attempts: number;
         nextAttemptAt: Date | null;
     }>;

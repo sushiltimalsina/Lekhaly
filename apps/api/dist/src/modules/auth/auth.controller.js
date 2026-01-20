@@ -44,6 +44,18 @@ let AuthController = class AuthController {
     updateProfile(userId, body) {
         return this.auth.updateProfile(userId, body);
     }
+    company(userId) {
+        return this.auth.getCompany(userId);
+    }
+    updateCompany(userId, body) {
+        return this.auth.updateCompany(userId, body);
+    }
+    updateNotifications(userId, body) {
+        return this.auth.updateNotifications(userId, body);
+    }
+    billingPortal(userId) {
+        return this.auth.startBillingPortal(userId);
+    }
     setup(userId) {
         return this.auth.totpSetup(userId);
     }
@@ -67,8 +79,7 @@ __decorate([
 __decorate([
     (0, common_1.Post)("register"),
     (0, auth_decorator_1.Public)(),
-    (0, common_1.UsePipes)(new zod_pipe_1.ZodValidationPipe(auth_schemas_1.RegisterSchema)),
-    __param(0, (0, common_1.Body)()),
+    __param(0, (0, common_1.Body)(new zod_pipe_1.ZodValidationPipe(auth_schemas_1.RegisterSchema))),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
@@ -107,13 +118,42 @@ __decorate([
 ], AuthController.prototype, "profile", null);
 __decorate([
     (0, common_1.Patch)("profile"),
-    (0, common_1.UsePipes)(new zod_pipe_1.ZodValidationPipe(auth_schemas_1.ProfileSchema)),
     __param(0, (0, auth_decorator_1.CurrentUser)("sub")),
-    __param(1, (0, common_1.Body)()),
+    __param(1, (0, common_1.Body)(new zod_pipe_1.ZodValidationPipe(auth_schemas_1.ProfileSchema))),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
 ], AuthController.prototype, "updateProfile", null);
+__decorate([
+    (0, common_1.Get)("company"),
+    __param(0, (0, auth_decorator_1.CurrentUser)("sub")),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "company", null);
+__decorate([
+    (0, common_1.Patch)("company"),
+    __param(0, (0, auth_decorator_1.CurrentUser)("sub")),
+    __param(1, (0, common_1.Body)(new zod_pipe_1.ZodValidationPipe(auth_schemas_1.CompanySchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "updateCompany", null);
+__decorate([
+    (0, common_1.Patch)("notifications"),
+    __param(0, (0, auth_decorator_1.CurrentUser)("sub")),
+    __param(1, (0, common_1.Body)(new zod_pipe_1.ZodValidationPipe(auth_schemas_1.NotificationsSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "updateNotifications", null);
+__decorate([
+    (0, common_1.Post)("billing/portal"),
+    __param(0, (0, auth_decorator_1.CurrentUser)("sub")),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "billingPortal", null);
 __decorate([
     (0, common_1.Post)("totp/setup"),
     __param(0, (0, auth_decorator_1.CurrentUser)("sub")),

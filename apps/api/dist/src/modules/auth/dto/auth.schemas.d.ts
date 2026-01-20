@@ -30,3 +30,15 @@ export declare const ProfileSchema: z.ZodObject<{
     name: z.ZodOptional<z.ZodString>;
     email: z.ZodOptional<z.ZodString>;
 }, z.core.$strip>;
+export declare const CompanySchema: z.ZodObject<{
+    name: z.ZodOptional<z.ZodString>;
+    baseCurrency: z.ZodOptional<z.ZodString>;
+    timezone: z.ZodOptional<z.ZodString>;
+    fiscalYearStartMonth: z.ZodOptional<z.ZodNumber>;
+    invoicePrefix: z.ZodOptional<z.ZodString>;
+}, z.core.$strip>;
+export declare const NotificationsSchema: z.ZodObject<{
+    emailAlerts: z.ZodOptional<z.ZodBoolean>;
+    reportAlerts: z.ZodOptional<z.ZodBoolean>;
+    securityAlerts: z.ZodOptional<z.ZodBoolean>;
+}, z.core.$strip>;

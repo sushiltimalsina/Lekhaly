@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ProfileSchema = exports.RegisterSchema = exports.RefreshSchema = exports.StepUpSchema = exports.TotpVerifySchema = exports.TotpEnableSchema = exports.LoginSchema = void 0;
+exports.NotificationsSchema = exports.CompanySchema = exports.ProfileSchema = exports.RegisterSchema = exports.RefreshSchema = exports.StepUpSchema = exports.TotpVerifySchema = exports.TotpEnableSchema = exports.LoginSchema = void 0;
 const zod_1 = require("zod");
 exports.LoginSchema = zod_1.z.object({
     companyId: zod_1.z.string().uuid(),
@@ -32,5 +32,17 @@ exports.RegisterSchema = zod_1.z.object({
 exports.ProfileSchema = zod_1.z.object({
     name: zod_1.z.string().trim().min(2).max(120).optional(),
     email: zod_1.z.string().email().optional()
+});
+exports.CompanySchema = zod_1.z.object({
+    name: zod_1.z.string().trim().min(2).max(120).optional(),
+    baseCurrency: zod_1.z.string().trim().min(3).max(3).optional(),
+    timezone: zod_1.z.string().trim().min(2).max(120).optional(),
+    fiscalYearStartMonth: zod_1.z.number().int().min(1).max(12).optional(),
+    invoicePrefix: zod_1.z.string().trim().min(1).max(10).optional()
+});
+exports.NotificationsSchema = zod_1.z.object({
+    emailAlerts: zod_1.z.boolean().optional(),
+    reportAlerts: zod_1.z.boolean().optional(),
+    securityAlerts: zod_1.z.boolean().optional()
 });
 //# sourceMappingURL=auth.schemas.js.map
