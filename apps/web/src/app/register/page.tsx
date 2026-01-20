@@ -3,8 +3,16 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { ArrowLeft, Mail, Lock, Building2, User } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function RegisterPage() {
+    const router = useRouter();
+
+    const handleSubmit = (event: React.FormEvent) => {
+        event.preventDefault();
+        router.push("/coming-soon?feature=Registration");
+    };
+
     return (
         <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-10 relative overflow-hidden">
             {/* Premium Background */}
@@ -64,7 +72,7 @@ export default function RegisterPage() {
                             </p>
                         </div>
 
-                        <form className="space-y-5 sm:space-y-6">
+                        <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
                             <div className="space-y-2">
                                 <label
                                     htmlFor="companyName"

@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { BarChart3, FileText, PieChart, TrendingUp } from "lucide-react";
+import Link from "next/link";
 import { formatCurrency } from "../lib/format";
 
 const container = {
@@ -102,12 +103,13 @@ export default function ReportsPage() {
                             <p className="mt-1 text-sm text-muted-foreground">Quick access to favorites</p>
                             <div className="mt-5 grid gap-3">
                                 {["Trial balance", "Aging summary", "Tax liability"].map((label) => (
-                                    <button
+                                    <Link
                                         key={label}
+                                        href={`/coming-soon?feature=${encodeURIComponent(label)}`}
                                         className="w-full rounded-xl border border-white/30 bg-white/40 px-4 py-3 text-left text-sm font-semibold text-foreground transition hover:bg-white/60 dark:border-white/10 dark:bg-white/5"
                                     >
                                         {label}
-                                    </button>
+                                    </Link>
                                 ))}
                             </div>
                         </motion.section>

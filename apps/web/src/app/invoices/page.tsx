@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { FileText, Filter, Plus, Search } from "lucide-react";
+import Link from "next/link";
 import { formatCurrency } from "../lib/format";
 
 const container = {
@@ -50,14 +51,20 @@ export default function InvoicesPage() {
                         </div>
                     </div>
                     <div className="flex flex-col gap-3 sm:flex-row">
-                        <button className="inline-flex items-center justify-center gap-2 rounded-full border border-white/40 bg-white/50 px-6 py-3 text-sm font-semibold text-foreground transition hover:bg-white/70 dark:border-white/10 dark:bg-white/5">
+                        <Link
+                            href="/coming-soon?feature=Invoice%20filters"
+                            className="inline-flex items-center justify-center gap-2 rounded-full border border-white/40 bg-white/50 px-6 py-3 text-sm font-semibold text-foreground transition hover:bg-white/70 dark:border-white/10 dark:bg-white/5"
+                        >
                             <Filter className="h-4 w-4" />
                             Filters
-                        </button>
-                        <button className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-300 px-6 py-3 text-sm font-semibold text-amber-950 shadow-lg shadow-amber-500/30 transition hover:shadow-xl hover:shadow-amber-500/40">
+                        </Link>
+                        <Link
+                            href="/coming-soon?feature=Invoice%20creation"
+                            className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-300 px-6 py-3 text-sm font-semibold text-amber-950 shadow-lg shadow-amber-500/30 transition hover:shadow-xl hover:shadow-amber-500/40"
+                        >
                             <Plus className="h-4 w-4" />
                             New invoice
-                        </button>
+                        </Link>
                     </div>
                 </motion.header>
 
@@ -71,10 +78,13 @@ export default function InvoicesPage() {
                                 className="w-full rounded-full border border-white/30 bg-white/60 py-3 pl-12 pr-4 text-sm text-foreground outline-none transition focus:border-amber-300/60 focus:ring-2 focus:ring-amber-300/40 dark:border-white/10 dark:bg-white/5"
                             />
                         </div>
-                        <button className="inline-flex items-center justify-center gap-2 rounded-full border border-white/40 bg-white/50 px-5 py-3 text-sm font-semibold text-foreground transition hover:bg-white/70 dark:border-white/10 dark:bg-white/5">
+                        <Link
+                            href="/coming-soon?feature=Invoice%20export"
+                            className="inline-flex items-center justify-center gap-2 rounded-full border border-white/40 bg-white/50 px-5 py-3 text-sm font-semibold text-foreground transition hover:bg-white/70 dark:border-white/10 dark:bg-white/5"
+                        >
                             <FileText className="h-4 w-4" />
                             Export
-                        </button>
+                        </Link>
                     </div>
 
                     <div className="mt-6 space-y-4">

@@ -17,11 +17,14 @@ export default function LoginPage() {
         companyId: "",
         email: "",
         password: "",
-        totpCode: ""
+        totpCode: "",
+        rememberDevice: false
     });
+    const [deviceLabel] = useState("Web");
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData({ ...formData, [e.target.id]: e.target.value });
+        const { id, value, type, checked } = e.target;
+        setFormData({ ...formData, [id]: type === "checkbox" ? checked : value });
         setError("");
     };
 
@@ -34,7 +37,7 @@ export default function LoginPage() {
             const res = await fetch("http://localhost:4000/v1/auth/login", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(formData),
+                body: JSON.stringify({ ...formData, deviceLabel }),
             });
 
             const data = await res.json();
@@ -180,12 +183,12 @@ export default function LoginPage() {
                                     >
                                         Password
                                     </label>
-                                    <a
-                                        href="#"
-                                        className="text-xs text-amber-600 hover:text-amber-500 transition-colors"
-                                    >
-                                        Forgot password?
-                                    </a>
+                                <Link
+                                    href="/coming-soon?feature=Password%20reset"
+                                    className="text-xs text-amber-600 hover:text-amber-500 transition-colors"
+                                >
+                                    Forgot password?
+                                </Link>
                                 </div>
                                 <div className="relative">
                                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -224,6 +227,17 @@ export default function LoginPage() {
                                     />
                                 </div>
                             </div>
+
+                            <label className="flex items-start gap-3 text-sm text-muted-foreground">
+                                <input
+                                    id="rememberDevice"
+                                    type="checkbox"
+                                    checked={formData.rememberDevice}
+                                    onChange={handleChange}
+                                    className="mt-1 h-4 w-4 rounded border-white/30 bg-white/60 text-amber-500 focus:ring-amber-300/40"
+                                />
+                                <span>Remember this device to skip TOTP next time.</span>
+                            </label>
 
                             <button
                                 type="submit"

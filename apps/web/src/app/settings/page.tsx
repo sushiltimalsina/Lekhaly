@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { Bell, Building2, CreditCard, Lock, Mail, Moon, ShieldCheck, Sun, User } from "lucide-react";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 const container = {
     hidden: { opacity: 0 },
@@ -100,9 +101,12 @@ export default function SettingsPage() {
                             <div className="text-sm text-muted-foreground">
                                 Your profile is visible to your organization.
                             </div>
-                            <button className="rounded-full bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-300 px-6 py-3 text-sm font-semibold text-amber-950 shadow-lg shadow-amber-500/30 transition hover:shadow-xl hover:shadow-amber-500/40">
-                                Save profile
-                            </button>
+                        <Link
+                            href="/coming-soon?feature=Profile%20save"
+                            className="rounded-full bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-300 px-6 py-3 text-sm font-semibold text-amber-950 shadow-lg shadow-amber-500/30 transition hover:shadow-xl hover:shadow-amber-500/40"
+                        >
+                            Save profile
+                        </Link>
                         </div>
                     </motion.section>
 
@@ -138,9 +142,12 @@ export default function SettingsPage() {
                             ))}
                         </div>
 
-                        <button className="mt-6 w-full rounded-full border border-white/40 bg-white/50 px-6 py-3 text-sm font-semibold text-foreground transition hover:bg-white/70 dark:border-white/10 dark:bg-white/5">
+                        <Link
+                            href="/coming-soon?feature=Security%20settings"
+                            className="mt-6 w-full rounded-full border border-white/40 bg-white/50 px-6 py-3 text-sm font-semibold text-foreground transition hover:bg-white/70 dark:border-white/10 dark:bg-white/5 text-center"
+                        >
                             Manage security
-                        </button>
+                        </Link>
                     </motion.section>
                 </div>
 
@@ -153,9 +160,12 @@ export default function SettingsPage() {
                         <p className="mt-2 text-sm text-muted-foreground">
                             Configure your company name, fiscal calendar, and base currency.
                         </p>
-                        <button className="mt-6 w-full rounded-full border border-white/40 bg-white/50 px-6 py-3 text-sm font-semibold text-foreground transition hover:bg-white/70 dark:border-white/10 dark:bg-white/5">
+                        <Link
+                            href="/coming-soon?feature=Company%20settings"
+                            className="mt-6 w-full rounded-full border border-white/40 bg-white/50 px-6 py-3 text-sm font-semibold text-foreground transition hover:bg-white/70 dark:border-white/10 dark:bg-white/5 text-center"
+                        >
                             Update company
-                        </button>
+                        </Link>
                     </motion.section>
 
                     <motion.section variants={item} className="glass-panel rounded-3xl p-8">
@@ -166,9 +176,12 @@ export default function SettingsPage() {
                         <p className="mt-2 text-sm text-muted-foreground">
                             Manage alerts for approvals, reports, and team invites.
                         </p>
-                        <button className="mt-6 w-full rounded-full border border-white/40 bg-white/50 px-6 py-3 text-sm font-semibold text-foreground transition hover:bg-white/70 dark:border-white/10 dark:bg-white/5">
+                        <Link
+                            href="/coming-soon?feature=Notification%20preferences"
+                            className="mt-6 w-full rounded-full border border-white/40 bg-white/50 px-6 py-3 text-sm font-semibold text-foreground transition hover:bg-white/70 dark:border-white/10 dark:bg-white/5 text-center"
+                        >
                             Configure alerts
-                        </button>
+                        </Link>
                     </motion.section>
 
                     <motion.section variants={item} className="glass-panel rounded-3xl p-8">
@@ -179,9 +192,12 @@ export default function SettingsPage() {
                         <p className="mt-2 text-sm text-muted-foreground">
                             Review your plan, invoices, and payment methods.
                         </p>
-                        <button className="mt-6 w-full rounded-full border border-white/40 bg-white/50 px-6 py-3 text-sm font-semibold text-foreground transition hover:bg-white/70 dark:border-white/10 dark:bg-white/5">
+                        <Link
+                            href="/coming-soon?feature=Billing%20management"
+                            className="mt-6 w-full rounded-full border border-white/40 bg-white/50 px-6 py-3 text-sm font-semibold text-foreground transition hover:bg-white/70 dark:border-white/10 dark:bg-white/5 text-center"
+                        >
                             Manage billing
-                        </button>
+                        </Link>
                     </motion.section>
                 </div>
 

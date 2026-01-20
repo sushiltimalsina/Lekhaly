@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { formatCurrency } from "../lib/format";
 
@@ -70,11 +71,12 @@ export default function Dashboard() {
                     </div>
 
                     <div className="flex flex-col gap-3 sm:flex-row">
-                        <button
+                        <Link
+                            href="/coming-soon?feature=Team%20invites"
                             className="px-4 py-2 rounded-xl border border-white/40 bg-white/40 text-sm font-semibold text-foreground shadow-sm hover:bg-white/60 transition"
                         >
                             Invite teammate
-                        </button>
+                        </Link>
                         <button
                             onClick={() => {
                                 localStorage.removeItem("accessToken");
@@ -141,13 +143,18 @@ export default function Dashboard() {
                             <h3 className="text-lg font-semibold">Quick actions</h3>
                             <p className="mt-1 text-sm text-muted-foreground">Jump-start your workflow</p>
                             <div className="mt-5 grid gap-3">
-                                {["Create invoice", "Add customer", "Post voucher"].map((label) => (
-                                    <button
-                                        key={label}
+                                {[
+                                    { label: "Create invoice", href: "/invoices" },
+                                    { label: "Add customer", href: "/coming-soon?feature=Customers" },
+                                    { label: "Post voucher", href: "/coming-soon?feature=Vouchers" }
+                                ].map((action) => (
+                                    <Link
+                                        key={action.label}
+                                        href={action.href}
                                         className="w-full rounded-xl border border-white/30 bg-white/40 px-4 py-3 text-left text-sm font-semibold text-foreground transition hover:bg-white/60 dark:border-white/10 dark:bg-white/5"
                                     >
-                                        {label}
-                                    </button>
+                                        {action.label}
+                                    </Link>
                                 ))}
                             </div>
                         </motion.div>
