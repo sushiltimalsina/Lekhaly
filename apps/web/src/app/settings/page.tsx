@@ -1,7 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Bell, Building2, CreditCard, Lock, Mail, ShieldCheck, User } from "lucide-react";
+import { Bell, Building2, CreditCard, Lock, Mail, Moon, ShieldCheck, Sun, User } from "lucide-react";
+import { useEffect, useState } from "react";
 
 const container = {
     hidden: { opacity: 0 },
@@ -14,6 +15,21 @@ const item = {
 };
 
 export default function SettingsPage() {
+    const [themeMode, setThemeMode] = useState<"system" | "light" | "dark">("system");
+
+    useEffect(() => {
+        const stored = localStorage.getItem("lekhaly-theme");
+        if (stored === "light" || stored === "dark" || stored === "system") {
+            setThemeMode(stored);
+        }
+    }, []);
+
+    const handleThemeChange = (mode: "system" | "light" | "dark") => {
+        setThemeMode(mode);
+        localStorage.setItem("lekhaly-theme", mode);
+        window.dispatchEvent(new CustomEvent("lekhaly-theme-change", { detail: { theme: mode } }));
+    };
+
     return (
         <div className="min-h-screen relative overflow-hidden">
             {/* Background */}
@@ -168,6 +184,43 @@ export default function SettingsPage() {
                         </button>
                     </motion.section>
                 </div>
+
+                <motion.section variants={item} className="mt-6 glass-panel rounded-3xl p-8 sm:p-10">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h3 className="text-lg font-semibold">Theme</h3>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                                Choose how the interface appears for your workspace.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="mt-6 grid gap-4 sm:grid-cols-3">
+                        {[
+                            { id: "theme-system", label: "System", icon: <ShieldCheck className="h-4 w-4" /> },
+                            { id: "theme-light", label: "Light", icon: <Sun className="h-4 w-4" /> },
+                            { id: "theme-dark", label: "Dark", icon: <Moon className="h-4 w-4" /> },
+                        ].map((option) => (
+                            <label
+                                key={option.id}
+                                htmlFor={option.id}
+                                className="flex cursor-pointer items-center gap-3 rounded-2xl border border-white/20 bg-white/40 px-4 py-3 text-sm text-muted-foreground transition hover:bg-white/60 dark:border-white/10 dark:bg-white/5"
+                            >
+                                <input
+                                    id={option.id}
+                                    name="theme"
+                                    type="radio"
+                                    checked={themeMode === option.label.toLowerCase()}
+                                    onChange={() => handleThemeChange(option.label.toLowerCase() as "system" | "light" | "dark")}
+                                    className="h-4 w-4 border-white/30 text-amber-500 focus:ring-amber-300/40"
+                                />
+                                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/60 text-muted-foreground dark:bg-white/5">
+                                    {option.icon}
+                                </span>
+                                <span className="text-foreground">{option.label}</span>
+                            </label>
+                        ))}
+                    </div>
+                </motion.section>
             </motion.div>
         </div>
     );
