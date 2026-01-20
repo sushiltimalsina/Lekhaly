@@ -92,10 +92,10 @@ export default function Dashboard() {
                     className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4"
                 >
                     {[
-                        { title: "Total Revenue", value: "$0.00", note: "No entries yet" },
+                        { title: "Total Revenue", value: "??0.00", note: "No entries yet" },
                         { title: "Active Users", value: "1", note: "Owner account" },
                         { title: "Open Invoices", value: "0", note: "All settled" },
-                        { title: "Cash on Hand", value: "$0.00", note: "Linked to Cash in Hand" }
+                        { title: "Cash on Hand", value: "??0.00", note: "Linked to Cash in Hand" }
                     ].map((card) => (
                         <motion.div
                             key={card.title}
