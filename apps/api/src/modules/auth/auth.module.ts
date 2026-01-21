@@ -6,6 +6,7 @@ import { JwtAuthGuard } from "../../common/auth/jwt-auth.guard";
 import { PermissionsGuard } from "../../common/auth/permissions.guard";
 import { StepUpGuard } from "../../common/auth/step.guard";
 import { AuthController } from "./auth.controller";
+import { AuthV1Controller } from "./auth.controller.v1";
 import { AuthService } from "./auth.service";
 
 @Module({
@@ -22,7 +23,7 @@ import { AuthService } from "./auth.service";
       })()
     })
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, AuthV1Controller],
   providers: [
     AuthService,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
