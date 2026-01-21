@@ -63,6 +63,13 @@ enum OutboxStatus {
   failed
 }
 
+enum PdfJobStatus {
+  pending
+  processing
+  done
+  failed
+}
+
 model Company {
   id           String @id @default(uuid())
   name         String
@@ -101,6 +108,7 @@ model Company {
     syncStates   SyncState[]
     apiIdempotencies ApiIdempotency[]
     outboxEvents OutboxEvent[]
+    pdfJobs PdfJob[]
 
   changeLog ChangeLog[]
 }
@@ -777,4 +785,21 @@ model OutboxEvent {
 
   @@index([companyId, status, createdAt])
   @@index([status, nextAttemptAt])
+}
+
+model PdfJob {
+  id        String @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  type   String
+  status PdfJobStatus @default(pending)
+  payload Json
+  resultKey String?
+  error     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId, status, createdAt])
 }

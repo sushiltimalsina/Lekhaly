@@ -21,6 +21,7 @@ import { InvoicesModule } from "./modules/invoices/invoices.module";
 import { InventoryModule } from "./modules/inventory/inventory.module";
 import { ExpensesModule } from "./modules/expenses/expenses.module";
 import { TaxesModule } from "./modules/taxes/taxes.module";
+import { PdfModule } from "./modules/pdf/pdf.module";
 import { HealthModule } from "./moduls/health/health.module";
 
 @Module({
@@ -41,6 +42,7 @@ import { HealthModule } from "./moduls/health/health.module";
     InventoryModule,
     ExpensesModule,
     TaxesModule,
+    PdfModule,
     PartiesModule,
     ItemsModule,
     AccountsModule
