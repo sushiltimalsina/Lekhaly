@@ -46,4 +46,10 @@ export class PdfController {
   getJob(@CurrentUser() user: AuthUser, @Param("id") id: string) {
     return this.pdf.getJob(user, id);
   }
+
+  @Get("jobs/:id/url")
+  @RequirePerm("export.pdf")
+  getJobUrl(@CurrentUser() user: AuthUser, @Param("id") id: string) {
+    return this.pdf.getJobDownloadUrl(user, id);
+  }
 }

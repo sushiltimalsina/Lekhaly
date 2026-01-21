@@ -21,4 +21,15 @@ describe("PdfService", () => {
     const result = await service.createJob(user, "invoice", { invoiceId: "inv-1" });
     expect(result.id).toBe("job-1");
   });
+
+  it("returns job download url", async () => {
+    prisma.pdfJob.findFirst.mockResolvedValue({
+      id: "job-2",
+      companyId: user.companyId,
+      resultKey: "pdf/invoice/job-2.pdf"
+    });
+
+    const result = await service.getJobDownloadUrl(user, "job-2");
+    expect(result.url).toContain("pdf/invoice/job-2.pdf");
+  });
 });

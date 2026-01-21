@@ -23,4 +23,14 @@ export class PdfService {
     if (!job) throw new NotFoundException("PDF job not found");
     return job;
   }
+
+  async getJobDownloadUrl(user: AuthUser, id: string) {
+    const job = await this.getJob(user, id);
+    if (!job.resultKey) throw new NotFoundException("PDF not ready");
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    const url = `https://files.local/${job.resultKey}?expires=${encodeURIComponent(
+      expiresAt.toISOString()
+    )}`;
+    return { jobId: job.id, url, expiresAt };
+  }
 }
