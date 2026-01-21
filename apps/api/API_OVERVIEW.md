@@ -4,7 +4,7 @@ This is a lightweight reference for frontend integration (not exhaustive).
 
 ## Nepali (BS) dates
 
-For key date fields, BS dates are primary. Clients can send BS-only and the backend converts to AD for storage. AD is still accepted. Responses include both AD and BS fields when available.
+For key date fields, BS dates are primary. Clients can send BS-only and the backend converts to AD for storage. AD is still accepted. Responses include both AD and BS fields when available. If a report has no date range, it defaults to the current BS fiscal year (company fiscalYearStartMonth).
 
 - Vouchers: `voucherDateBs`
 - Invoices: `dateBs`, `dueDateBs`

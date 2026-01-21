@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
-import { resolveAdDate } from "../../common/date/nepali-date";
+import { bsFiscalYearRange, getCurrentBsDate, resolveAdDate } from "../../common/date/nepali-date";
 import { OutboxService } from "../outbox/outbox.service";
 
 type ReportFilters = { from?: Date; fromBs?: string; to?: Date; toBs?: string };
@@ -11,6 +11,25 @@ type PartyLedgerFilters = { partyId: string; from?: Date; fromBs?: string; to?: 
 @Injectable()
 export class ReportsService {
   constructor(private prisma: PrismaService, private outbox: OutboxService) {}
+
+  private async getCompany(companyId: string) {
+    const company = await this.prisma.company.findUnique({ where: { id: companyId } });
+    if (!company) throw new Error("Company not found");
+    return company;
+  }
+
+  private async resolveReportRange(companyId: string, filters: ReportFilters) {
+    if (filters.from || filters.to || filters.fromBs || filters.toBs) {
+      return {
+        from: filters.from || (filters.fromBs ? resolveAdDate(undefined, filters.fromBs).date : undefined),
+        to: filters.to || (filters.toBs ? resolveAdDate(undefined, filters.toBs).date : undefined)
+      };
+    }
+    const company = await this.getCompany(companyId);
+    const currentBs = getCurrentBsDate();
+    const fy = bsFiscalYearRange(currentBs, company.fiscalYearStartMonth || 4);
+    return { from: fy.from, to: fy.to };
+  }
 
   private sumLines(lines: { debit: Prisma.Decimal; credit: Prisma.Decimal }[]) {
     let debit = new Prisma.Decimal(0);
@@ -22,9 +41,9 @@ export class ReportsService {
     return { debit, credit };
   }
 
-  private applyDateFilter(filters: ReportFilters) {
-    const from = filters.from || (filters.fromBs ? resolveAdDate(undefined, filters.fromBs).date : undefined);
-    const to = filters.to || (filters.toBs ? resolveAdDate(undefined, filters.toBs).date : undefined);
+  private applyDateFilter(filters: { from?: Date; to?: Date }) {
+    const from = filters.from;
+    const to = filters.to;
     if (!from && !to) return undefined;
     const voucherDate: Prisma.DateTimeFilter = {};
     if (from) voucherDate.gte = from;
@@ -36,20 +55,20 @@ export class ReportsService {
     return value.toFixed(2);
   }
 
-  private formatDateRange(filters: ReportFilters) {
-    if (!filters.from && !filters.to) return "All dates";
-    const from = filters.from ? filters.from.toISOString().slice(0, 10) : "Start";
-    const to = filters.to ? filters.to.toISOString().slice(0, 10) : "End";
+  private formatDateRange(range: { from?: Date; to?: Date }) {
+    if (!range.from && !range.to) return "All dates";
+    const from = range.from ? range.from.toISOString().slice(0, 10) : "Start";
+    const to = range.to ? range.to.toISOString().slice(0, 10) : "End";
     return `${from} to ${to}`;
   }
 
   private buildTrialBalanceText(
     data: { rows: Array<{ accountCode: string; accountName: string; debit: Prisma.Decimal; credit: Prisma.Decimal }> },
-    filters: ReportFilters
+    range: { from?: Date; to?: Date }
   ) {
     const lines: string[] = [];
     lines.push("TRIAL BALANCE");
-    lines.push(`Period: ${this.formatDateRange(filters)}`);
+    lines.push(`Period: ${this.formatDateRange(range)}`);
     lines.push("");
     lines.push("Account Code | Account Name | Debit | Credit");
     for (const row of data.rows) {
@@ -68,11 +87,11 @@ export class ReportsService {
       totalExpense: Prisma.Decimal;
       netProfit: Prisma.Decimal;
     },
-    filters: ReportFilters
+    range: { from?: Date; to?: Date }
   ) {
     const lines: string[] = [];
     lines.push("PROFIT AND LOSS");
-    lines.push(`Period: ${this.formatDateRange(filters)}`);
+    lines.push(`Period: ${this.formatDateRange(range)}`);
     lines.push("");
     lines.push("Income");
     for (const row of data.income) {
@@ -102,11 +121,11 @@ export class ReportsService {
       totalEquityWithProfit: Prisma.Decimal;
       balanced: boolean;
     },
-    filters: ReportFilters
+    range: { from?: Date; to?: Date }
   ) {
     const lines: string[] = [];
     lines.push("BALANCE SHEET");
-    lines.push(`As of: ${this.formatDateRange(filters)}`);
+    lines.push(`As of: ${this.formatDateRange(range)}`);
     lines.push("");
     lines.push("Assets");
     for (const row of data.assets) {
@@ -224,7 +243,8 @@ export class ReportsService {
   }
 
   async trialBalance(companyId: string, filters: ReportFilters) {
-    const voucherDate = this.applyDateFilter(filters);
+    const range = await this.resolveReportRange(companyId, filters);
+    const voucherDate = this.applyDateFilter(range);
     const lines = await this.prisma.voucherLine.findMany({
       where: {
         companyId,
@@ -263,7 +283,8 @@ export class ReportsService {
   }
 
   async profitAndLoss(companyId: string, filters: ReportFilters) {
-    const voucherDate = this.applyDateFilter(filters);
+    const range = await this.resolveReportRange(companyId, filters);
+    const voucherDate = this.applyDateFilter(range);
     const lines = await this.prisma.voucherLine.findMany({
       where: {
         companyId,
@@ -307,7 +328,8 @@ export class ReportsService {
   }
 
   async balanceSheet(companyId: string, filters: ReportFilters) {
-    const voucherDate = this.applyDateFilter(filters);
+    const range = await this.resolveReportRange(companyId, filters);
+    const voucherDate = this.applyDateFilter(range);
     const lines = await this.prisma.voucherLine.findMany({
       where: {
         companyId,
@@ -381,7 +403,8 @@ export class ReportsService {
       || filters.to
       || (filters.toBs ? resolveAdDate(undefined, filters.toBs).date : undefined)
       || new Date();
-    const voucherDate = this.applyDateFilter({ from: filters.from, fromBs: filters.fromBs, to: asOf });
+    const range = await this.resolveReportRange(companyId, { from: filters.from, fromBs: filters.fromBs, to: asOf });
+    const voucherDate = this.applyDateFilter(range);
 
     const lines = await this.prisma.voucherLine.findMany({
       where: {
@@ -448,7 +471,13 @@ export class ReportsService {
   }
 
   async partyLedger(companyId: string, filters: PartyLedgerFilters) {
-    const voucherDate = this.applyDateFilter({ from: filters.from, fromBs: filters.fromBs, to: filters.to, toBs: filters.toBs });
+    const range = await this.resolveReportRange(companyId, {
+      from: filters.from,
+      fromBs: filters.fromBs,
+      to: filters.to,
+      toBs: filters.toBs
+    });
+    const voucherDate = this.applyDateFilter(range);
     const lines = await this.prisma.voucherLine.findMany({
       where: {
         companyId,
@@ -486,6 +515,7 @@ export class ReportsService {
 
   async exportPdf(companyId: string, input: { report: string; format?: string; from?: Date; to?: Date }) {
     const filters = { from: input.from, to: input.to };
+    const range = await this.resolveReportRange(companyId, filters);
     let data: any;
     let contentText = "";
     let contentType = "application/pdf";
@@ -494,15 +524,15 @@ export class ReportsService {
     if (input.report === "trial-balance") {
       data = await this.trialBalance(companyId, filters);
       contentText =
-        format === "csv" ? this.buildTrialBalanceCsv(data) : this.buildTrialBalanceText(data, filters);
+        format === "csv" ? this.buildTrialBalanceCsv(data) : this.buildTrialBalanceText(data, range);
     } else if (input.report === "profit-loss") {
       data = await this.profitAndLoss(companyId, filters);
       contentText =
-        format === "csv" ? this.buildProfitLossCsv(data) : this.buildProfitLossText(data, filters);
+        format === "csv" ? this.buildProfitLossCsv(data) : this.buildProfitLossText(data, range);
     } else if (input.report === "balance-sheet") {
       data = await this.balanceSheet(companyId, filters);
       contentText =
-        format === "csv" ? this.buildBalanceSheetCsv(data) : this.buildBalanceSheetText(data, filters);
+        format === "csv" ? this.buildBalanceSheetCsv(data) : this.buildBalanceSheetText(data, range);
     } else {
       data = { message: "Unknown report" };
       contentText = "Unknown report";

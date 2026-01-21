@@ -9,8 +9,12 @@ describe("ReportsService export", () => {
     prisma = {
       voucherLine: {
         findMany: jest.fn()
+      },
+      company: {
+        findUnique: jest.fn()
       }
     };
+    prisma.company.findUnique.mockResolvedValue({ id: "company-1", fiscalYearStartMonth: 4 });
     service = new ReportsService(prisma, { enqueue: jest.fn() } as any);
   });
 
