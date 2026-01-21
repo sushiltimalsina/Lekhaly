@@ -85,6 +85,7 @@ model Company {
   items        Item[]
   taxCodes     TaxCode[]
   invoices     Invoice[]
+  stockLedger  StockLedger[]
   bankAccounts BankAccount[]
     bankStatements BankStatement[]
     bankStatementLines BankStatementLine[]
@@ -376,10 +377,12 @@ model Item {
   voucherLines VoucherLine[]
   invoiceItems InvoiceItem[]
 
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
+    isActive  Boolean  @default(true)
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    stockLedger StockLedger[]
+  }
 
 model Voucher {
   id        String  @id @default(uuid())
@@ -423,9 +426,10 @@ model Voucher {
     updatedAt DateTime @updatedAt
 
     lines VoucherLine[]
-    attachments VoucherAttachment[]
-    bankStatementLines BankStatementLine[]
-    invoice Invoice?
+  attachments VoucherAttachment[]
+  bankStatementLines BankStatementLine[]
+  invoice Invoice?
+  stockLedger StockLedger[]
 
   @@unique([companyId, voucherNumber])
   @@index([companyId, status, voucherDate])
@@ -482,6 +486,28 @@ model InvoiceItem {
   taxAmount Decimal @db.Decimal(14, 2)
 
   createdAt DateTime @default(now())
+}
+
+model StockLedger {
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  itemId String
+  item   Item @relation(fields: [itemId], references: [id])
+
+  date     DateTime
+  voucherId String?
+  voucher   Voucher? @relation(fields: [voucherId], references: [id])
+
+  qtyIn  Decimal @db.Decimal(14, 2)
+  qtyOut Decimal @db.Decimal(14, 2)
+  rate   Decimal @db.Decimal(14, 2)
+  amount Decimal @db.Decimal(14, 2)
+
+  createdAt DateTime @default(now())
+
+  @@index([companyId, itemId, date])
 }
 
   model VoucherLine {

@@ -2,12 +2,17 @@ import { Body, Controller, Delete, Get, Param, Post, Put, Query } from "@nestjs/
 import { CurrentUser, RequirePerm } from "../../common/auth/auth.decorator";
 import { ZodValidationPipe } from "../../common/zod/zod.pipe";
 import type { AuthUser } from "../../common/auth/auth.types";
+import { StockQuerySchema } from "../inventory/dto/inventory.schemas";
 import { CreateItemSchema, ListItemQuerySchema, UpdateItemSchema } from "./dto/item.schemas";
 import { ItemsService } from "./items.service";
+import { InventoryService } from "../inventory/inventory.service";
 
 @Controller("items")
 export class ItemsController {
-  constructor(private items: ItemsService) {}
+  constructor(
+    private items: ItemsService,
+    private inventory: InventoryService
+  ) {}
 
   @Post()
   @RequirePerm("masters.write")
@@ -29,6 +34,16 @@ export class ItemsController {
   @RequirePerm("masters.read")
   get(@CurrentUser() user: AuthUser, @Param("id") id: string) {
     return this.items.get(user, id);
+  }
+
+  @Get(":id/stock")
+  @RequirePerm("masters.read")
+  stock(
+    @CurrentUser() user: AuthUser,
+    @Param("id") id: string,
+    @Query(new ZodValidationPipe(StockQuerySchema)) query: any
+  ) {
+    return this.inventory.getStock(user, id, query);
   }
 
   @Get()

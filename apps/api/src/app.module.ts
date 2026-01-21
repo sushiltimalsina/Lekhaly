@@ -18,6 +18,7 @@ import { SyncModule } from "./modules/sync/sync.module";
 import { VouchersModule } from "./modules/vouchers/vouchers.module";
 import { UsersModule } from "./modules/users/users.module";
 import { InvoicesModule } from "./modules/invoices/invoices.module";
+import { InventoryModule } from "./modules/inventory/inventory.module";
 import { HealthModule } from "./moduls/health/health.module";
 
 @Module({
@@ -35,6 +36,7 @@ import { HealthModule } from "./moduls/health/health.module";
     BankingModule,
     UsersModule,
     InvoicesModule,
+    InventoryModule,
     PartiesModule,
     ItemsModule,
     AccountsModule
