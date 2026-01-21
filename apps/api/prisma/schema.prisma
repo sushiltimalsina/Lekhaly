@@ -248,8 +248,9 @@ model ChartOfAccount {
   incomeItems    Item[]        @relation("IncomeAccount")
   expenseItems   Item[]        @relation("ExpenseAccount")
   // Back-relations for Tax codes
-  inputTaxCodes  TaxCode[]     @relation("TaxInputAccount")
-  outputTaxCodes TaxCode[]     @relation("TaxOutputAccount")
+    inputTaxCodes  TaxCode[]     @relation("TaxInputAccount")
+    outputTaxCodes TaxCode[]     @relation("TaxOutputAccount")
+    bankAccounts   BankAccount[]
 
   @@unique([companyId, code])
   @@index([companyId, type])
@@ -276,7 +277,6 @@ model TaxCode {
 
     voucherLines VoucherLine[]
     items        Item[]
-    bankAccounts BankAccount[]
 
   @@index([companyId, isActive])
 }
@@ -416,6 +416,7 @@ model Voucher {
 
     lines VoucherLine[]
     attachments VoucherAttachment[]
+    bankStatementLines BankStatementLine[]
 
   @@unique([companyId, voucherNumber])
   @@index([companyId, status, voucherDate])
@@ -449,11 +450,13 @@ model Voucher {
   taxCodeId String?
   taxCode   TaxCode? @relation(fields: [taxCodeId], references: [id])
 
-  taxAmount Decimal @default(0) @db.Decimal(14, 2)
+    taxAmount Decimal @default(0) @db.Decimal(14, 2)
 
-  createdAt DateTime @default(now())
+    createdAt DateTime @default(now())
 
-  @@index([companyId, accountId, createdAt])
+    bankStatementLines BankStatementLine[]
+
+    @@index([companyId, accountId, createdAt])
     @@index([companyId, partyId, createdAt])
   }
 

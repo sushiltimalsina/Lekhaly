@@ -11,6 +11,7 @@ import { OutboxModule } from "./modules/outbox/outbox.module";
 import { RolesModule } from "./modules/roles/roles.module";
 import { DevicesModule } from "./modules/devices/devices.module";
 import { ItemsModule } from "./modules/items/items.module";
+import { BankingModule } from "./modules/banking/banking.module";
 import { PartiesModule } from "./modules/parties/parties.module";
 import { ReportsModule } from "./modules/reports/reports.module";
 import { SyncModule } from "./modules/sync/sync.module";
@@ -30,6 +31,7 @@ import { HealthModule } from "./moduls/health/health.module";
     OutboxModule,
     RolesModule,
     DevicesModule,
+    BankingModule,
     UsersModule,
     PartiesModule,
     ItemsModule,
