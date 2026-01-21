@@ -80,7 +80,10 @@ model Company {
   roles        Role[]
   parties      Party[]
   items        Item[]
-  taxCodes     TaxCode[]
+    taxCodes     TaxCode[]
+    bankAccounts BankAccount[]
+    bankStatements BankStatement[]
+    bankStatementLines BankStatementLine[]
   accounts     ChartOfAccount[]
     vouchers     Voucher[]
     voucherLines VoucherLine[]
@@ -271,10 +274,76 @@ model TaxCode {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  voucherLines VoucherLine[]
-  items        Item[]
+    voucherLines VoucherLine[]
+    items        Item[]
+    bankAccounts BankAccount[]
 
   @@index([companyId, isActive])
+}
+
+model BankAccount {
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  accountId String
+  account   ChartOfAccount @relation(fields: [accountId], references: [id])
+
+  bankName      String?
+  accountNumber String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  statements BankStatement[]
+
+  @@unique([companyId, accountId])
+  @@index([companyId, createdAt])
+}
+
+model BankStatement {
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  bankAccountId String
+  bankAccount   BankAccount @relation(fields: [bankAccountId], references: [id])
+
+  periodFrom     DateTime
+  periodTo       DateTime
+  openingBalance Decimal @db.Decimal(14, 2)
+  closingBalance Decimal @db.Decimal(14, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lines BankStatementLine[]
+
+  @@index([companyId, bankAccountId, periodFrom, periodTo])
+}
+
+model BankStatementLine {
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  statementId String
+  statement   BankStatement @relation(fields: [statementId], references: [id], onDelete: Cascade)
+
+  date        DateTime
+  description String?
+  amount      Decimal @db.Decimal(14, 2)
+  debitCredit String // debit | credit
+
+  matchedVoucherId String?
+  matchedVoucher   Voucher? @relation(fields: [matchedVoucherId], references: [id])
+
+  matchedLineId String?
+  matchedLine   VoucherLine? @relation(fields: [matchedLineId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([companyId, statementId, date])
 }
 
 model Item {

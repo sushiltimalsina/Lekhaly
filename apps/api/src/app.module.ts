@@ -15,6 +15,7 @@ import { PartiesModule } from "./modules/parties/parties.module";
 import { ReportsModule } from "./modules/reports/reports.module";
 import { SyncModule } from "./modules/sync/sync.module";
 import { VouchersModule } from "./modules/vouchers/vouchers.module";
+import { UsersModule } from "./modules/users/users.module";
 import { HealthModule } from "./moduls/health/health.module";
 
 @Module({
@@ -29,6 +30,7 @@ import { HealthModule } from "./moduls/health/health.module";
     OutboxModule,
     RolesModule,
     DevicesModule,
+    UsersModule,
     PartiesModule,
     ItemsModule,
     AccountsModule
