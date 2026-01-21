@@ -6,6 +6,7 @@ import type { AuthUser } from "../../common/auth/auth.types";
 import {
   AddStatementLineSchema,
   BankStatementListQuerySchema,
+  BankSyncConnectSchema,
   CreateBankAccountSchema,
   CreateBankStatementSchema,
   ReconcileSchema
@@ -77,5 +78,26 @@ export class BankingController {
   @RequirePerm("masters.read")
   getStatement(@CurrentUser() user: AuthUser, @Param("id") id: string) {
     return this.banking.getStatement(user, id);
+  }
+
+  @Post("sync/connect")
+  @RequirePerm("settings.security")
+  connectSync(
+    @CurrentUser() user: AuthUser,
+    @Body(new ZodValidationPipe(BankSyncConnectSchema)) body: any
+  ) {
+    return this.banking.connectBankSync(user, body);
+  }
+
+  @Get("sync/status")
+  @RequirePerm("settings.security")
+  syncStatus(@CurrentUser() user: AuthUser) {
+    return this.banking.syncStatus(user);
+  }
+
+  @Post("sync/refresh")
+  @RequirePerm("settings.security")
+  refreshSync(@CurrentUser() user: AuthUser) {
+    return this.banking.refreshSync(user);
   }
 }

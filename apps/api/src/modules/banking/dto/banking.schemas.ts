@@ -34,3 +34,8 @@ export const BankStatementListQuerySchema = z.object({
   skip: z.coerce.number().int().min(0).optional(),
   take: z.coerce.number().int().min(1).max(200).optional()
 });
+
+export const BankSyncConnectSchema = z.object({
+  provider: z.string().trim().min(2).max(50),
+  bankAccountId: z.string().uuid().optional()
+});

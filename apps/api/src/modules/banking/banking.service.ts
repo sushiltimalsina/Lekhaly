@@ -163,4 +163,33 @@ export class BankingService {
       }
     });
   }
+
+  async connectBankSync(user: AuthUser, input: { provider: string; bankAccountId?: string }) {
+    if (input.bankAccountId) {
+      const account = await this.prisma.bankAccount.findFirst({
+        where: { id: input.bankAccountId, companyId: user.companyId }
+      });
+      if (!account) throw new BadRequestException("Bank account not found");
+    }
+
+    return {
+      provider: input.provider,
+      status: "pending",
+      message: "Bank sync integration is not enabled yet"
+    };
+  }
+
+  async syncStatus(user: AuthUser) {
+    return {
+      status: "not_configured",
+      lastSyncedAt: null
+    };
+  }
+
+  async refreshSync(user: AuthUser) {
+    return {
+      status: "queued",
+      message: "Sync refresh is not enabled yet"
+    };
+  }
 }
