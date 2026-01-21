@@ -16,7 +16,17 @@ export const VoucherLineSchema = z.object({
 });
 
 const VoucherDraftBaseSchema = z.object({
-  voucherType: z.enum(["sales_invoice", "receipt", "payment", "journal", "opening", "reversal"]),
+  voucherType: z.enum([
+    "sales_invoice",
+    "sales_return",
+    "purchase",
+    "purchase_return",
+    "receipt",
+    "payment",
+    "journal",
+    "opening",
+    "reversal"
+  ]),
   voucherDate: z.coerce.date(),
   partyId: z.string().uuid().optional(),
   memo: z.string().trim().max(500).optional(),
@@ -24,7 +34,7 @@ const VoucherDraftBaseSchema = z.object({
 });
 
 export const CreateVoucherDraftSchema = VoucherDraftBaseSchema.superRefine((data, ctx) => {
-  const requiresParty = ["sales_invoice", "receipt", "payment"];
+  const requiresParty = ["sales_invoice", "sales_return", "purchase", "purchase_return", "receipt", "payment"];
   const forbidsParty = ["journal", "opening", "reversal"];
   if (requiresParty.includes(data.voucherType) && !data.partyId) {
     ctx.addIssue({ code: "custom", message: "Party is required for this voucher type", path: ["partyId"] });
@@ -40,7 +50,17 @@ export const UpdateVoucherDraftSchema = VoucherDraftBaseSchema.partial().extend(
 
 export const ListVoucherQuerySchema = z.object({
   status: z.enum(["draft", "posted", "void"]).optional(),
-  voucherType: z.enum(["sales_invoice", "receipt", "payment", "journal", "opening", "reversal"]).optional(),
+  voucherType: z.enum([
+    "sales_invoice",
+    "sales_return",
+    "purchase",
+    "purchase_return",
+    "receipt",
+    "payment",
+    "journal",
+    "opening",
+    "reversal"
+  ]).optional(),
   partyId: z.string().uuid().optional(),
   createdByUserId: z.string().uuid().optional(),
   postedByUserId: z.string().uuid().optional(),

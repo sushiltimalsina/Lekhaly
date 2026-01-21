@@ -39,6 +39,9 @@ export class VouchersService {
   private enforceVoucherRules(voucherType: VoucherType, partyId?: string | null) {
     const requiresParty: VoucherType[] = [
       VoucherType.sales_invoice,
+      VoucherType.sales_return,
+      VoucherType.purchase,
+      VoucherType.purchase_return,
       VoucherType.receipt,
       VoucherType.payment
     ];
@@ -168,13 +171,17 @@ export class VouchersService {
         if (!line.itemId) continue;
         const item = itemMap.get(line.itemId);
         if (!item) throw new BadRequestException("Invalid item");
-        if (voucherType === VoucherType.sales_invoice || voucherType === VoucherType.receipt) {
+        if (
+          voucherType === VoucherType.sales_invoice ||
+          voucherType === VoucherType.sales_return ||
+          voucherType === VoucherType.receipt
+        ) {
           if (!item.incomeAccountId) throw new BadRequestException("Item missing income account");
           if (item.incomeAccountId !== line.accountId) {
             throw new BadRequestException("Item income account mismatch");
           }
         }
-        if (voucherType === VoucherType.payment) {
+        if (voucherType === VoucherType.payment || voucherType === VoucherType.purchase || voucherType === VoucherType.purchase_return) {
           if (!item.expenseAccountId) throw new BadRequestException("Item missing expense account");
           if (item.expenseAccountId !== line.accountId) {
             throw new BadRequestException("Item expense account mismatch");
@@ -223,7 +230,11 @@ export class VouchersService {
       const taxAmount = line.taxAmount ? new Prisma.Decimal(line.taxAmount) : new Prisma.Decimal(0);
       if (taxAmount.lte(0)) throw new BadRequestException("Tax amount must be greater than zero");
 
-      if (voucherType === VoucherType.sales_invoice || voucherType === VoucherType.receipt) {
+      if (
+        voucherType === VoucherType.sales_invoice ||
+        voucherType === VoucherType.receipt ||
+        voucherType === VoucherType.purchase_return
+      ) {
         if (line.credit.lte(0)) {
           throw new BadRequestException("Tax on sales must be on credit lines");
         }
@@ -240,7 +251,7 @@ export class VouchersService {
         });
       }
 
-      if (voucherType === VoucherType.payment) {
+      if (voucherType === VoucherType.payment || voucherType === VoucherType.purchase || voucherType === VoucherType.sales_return) {
         if (line.debit.lte(0)) {
           throw new BadRequestException("Tax on purchases must be on debit lines");
         }

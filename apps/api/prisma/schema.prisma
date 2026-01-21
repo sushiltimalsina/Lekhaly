@@ -27,6 +27,9 @@ enum CoaType {
 
 enum VoucherType {
   sales_invoice
+  sales_return
+  purchase
+  purchase_return
   receipt
   payment
   journal
@@ -80,8 +83,9 @@ model Company {
   roles        Role[]
   parties      Party[]
   items        Item[]
-    taxCodes     TaxCode[]
-    bankAccounts BankAccount[]
+  taxCodes     TaxCode[]
+  invoices     Invoice[]
+  bankAccounts BankAccount[]
     bankStatements BankStatement[]
     bankStatementLines BankStatementLine[]
   accounts     ChartOfAccount[]
@@ -221,6 +225,7 @@ model Party {
 
   vouchers     Voucher[]
   voucherLines VoucherLine[]
+  invoices     Invoice[]
 
   @@index([companyId, type, isActive])
   @@index([companyId, name])
@@ -251,6 +256,7 @@ model ChartOfAccount {
     inputTaxCodes  TaxCode[]     @relation("TaxInputAccount")
     outputTaxCodes TaxCode[]     @relation("TaxOutputAccount")
     bankAccounts   BankAccount[]
+    invoices       Invoice[]     @relation("InvoiceReceivableAccount")
 
   @@unique([companyId, code])
   @@index([companyId, type])
@@ -275,8 +281,9 @@ model TaxCode {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-    voucherLines VoucherLine[]
-    items        Item[]
+  voucherLines VoucherLine[]
+  items        Item[]
+  invoiceItems InvoiceItem[]
 
   @@index([companyId, isActive])
 }
@@ -367,6 +374,7 @@ model Item {
   taxCodeId    String?
   taxCode      TaxCode?      @relation(fields: [taxCodeId], references: [id])
   voucherLines VoucherLine[]
+  invoiceItems InvoiceItem[]
 
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -417,9 +425,63 @@ model Voucher {
     lines VoucherLine[]
     attachments VoucherAttachment[]
     bankStatementLines BankStatementLine[]
+    invoice Invoice?
 
   @@unique([companyId, voucherNumber])
   @@index([companyId, status, voucherDate])
+}
+
+model Invoice {
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  voucherId String? @unique
+  voucher   Voucher? @relation(fields: [voucherId], references: [id])
+
+  invoiceNo String?
+  type      String // sales | sales_return
+
+  partyId String
+  party   Party @relation(fields: [partyId], references: [id])
+
+  receivableAccountId String
+  receivableAccount   ChartOfAccount @relation("InvoiceReceivableAccount", fields: [receivableAccountId], references: [id])
+
+  date    DateTime
+  dueDate DateTime?
+
+  subtotal  Decimal @db.Decimal(14, 2)
+  vatAmount Decimal @db.Decimal(14, 2)
+  total     Decimal @db.Decimal(14, 2)
+  status    String
+
+  items InvoiceItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId, date])
+}
+
+model InvoiceItem {
+  id        String  @id @default(uuid())
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  itemId String?
+  item   Item? @relation(fields: [itemId], references: [id])
+
+  description String?
+  qty         Decimal @db.Decimal(14, 2)
+  rate        Decimal @db.Decimal(14, 2)
+  amount      Decimal @db.Decimal(14, 2)
+
+  taxCodeId String?
+  taxCode   TaxCode? @relation(fields: [taxCodeId], references: [id])
+  taxAmount Decimal @db.Decimal(14, 2)
+
+  createdAt DateTime @default(now())
 }
 
   model VoucherLine {
