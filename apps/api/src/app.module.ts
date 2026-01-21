@@ -19,6 +19,7 @@ import { VouchersModule } from "./modules/vouchers/vouchers.module";
 import { UsersModule } from "./modules/users/users.module";
 import { InvoicesModule } from "./modules/invoices/invoices.module";
 import { InventoryModule } from "./modules/inventory/inventory.module";
+import { ExpensesModule } from "./modules/expenses/expenses.module";
 import { HealthModule } from "./moduls/health/health.module";
 
 @Module({
@@ -37,6 +38,7 @@ import { HealthModule } from "./moduls/health/health.module";
     UsersModule,
     InvoicesModule,
     InventoryModule,
+    ExpensesModule,
     PartiesModule,
     ItemsModule,
     AccountsModule

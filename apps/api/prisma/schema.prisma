@@ -83,13 +83,14 @@ model Company {
   roles        Role[]
   parties      Party[]
   items        Item[]
-  taxCodes     TaxCode[]
-  invoices     Invoice[]
-  stockLedger  StockLedger[]
-  bankAccounts BankAccount[]
+    taxCodes     TaxCode[]
+    invoices     Invoice[]
+    stockLedger  StockLedger[]
+    expenses     Expense[]
+    bankAccounts BankAccount[]
     bankStatements BankStatement[]
     bankStatementLines BankStatementLine[]
-  accounts     ChartOfAccount[]
+    accounts     ChartOfAccount[]
     vouchers     Voucher[]
     voucherLines VoucherLine[]
     voucherAttachments VoucherAttachment[]
@@ -226,6 +227,7 @@ model Party {
 
   vouchers     Voucher[]
   voucherLines VoucherLine[]
+  expenses     Expense[]
   invoices     Invoice[]
 
   @@index([companyId, type, isActive])
@@ -285,6 +287,7 @@ model TaxCode {
   voucherLines VoucherLine[]
   items        Item[]
   invoiceItems InvoiceItem[]
+  expenses     Expense[]
 
   @@index([companyId, isActive])
 }
@@ -430,6 +433,7 @@ model Voucher {
   bankStatementLines BankStatementLine[]
   invoice Invoice?
   stockLedger StockLedger[]
+  expenses Expense[]
 
   @@unique([companyId, voucherNumber])
   @@index([companyId, status, voucherDate])
@@ -548,7 +552,7 @@ model StockLedger {
     @@index([companyId, partyId, createdAt])
   }
 
-  model VoucherAttachment {
+model VoucherAttachment {
     id        String  @id @default(uuid())
     companyId String
     company   Company @relation(fields: [companyId], references: [id])
@@ -564,10 +568,37 @@ model StockLedger {
     sizeBytes  Int
     storageKey String
 
-    createdAt DateTime @default(now())
+  createdAt DateTime @default(now())
 
-    @@index([companyId, voucherId, createdAt])
-  }
+  @@index([companyId, voucherId, createdAt])
+  expenses Expense[]
+}
+
+model Expense {
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  voucherId String? @unique
+  voucher   Voucher? @relation(fields: [voucherId], references: [id])
+
+  date       DateTime
+  vendorId   String?
+  vendor     Party? @relation(fields: [vendorId], references: [id])
+  amount     Decimal @db.Decimal(14, 2)
+  taxCodeId  String?
+  taxCode    TaxCode? @relation(fields: [taxCodeId], references: [id])
+  description String?
+  attachmentId String?
+  attachment   VoucherAttachment? @relation(fields: [attachmentId], references: [id])
+
+  status String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId, date])
+}
 
 model AuditSnapshot {
   id        String  @id @default(uuid())
