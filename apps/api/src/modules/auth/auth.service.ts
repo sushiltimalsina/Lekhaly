@@ -105,18 +105,19 @@ export class AuthService {
     return permissions.map(p => p.code);
   }
 
-  async register(dto: { companyName: string; name: string; email: string; password: string }) {
+  async register(dto: { companyCode: string; companyName: string; name: string; email: string; password: string }) {
     const passwordHash = await argon2.hash(dto.password);
 
     try {
       return await this.prisma.$transaction(async (tx) => {
         const permAll = await this.ensurePermissions(tx);
 
-        const company = await tx.company.create({
-          data: {
-            name: dto.companyName,
-            baseCurrency: "NPR",
-            timezone: "Asia/Kathmandu",
+          const company = await tx.company.create({
+            data: {
+              code: dto.companyCode,
+              name: dto.companyName,
+              baseCurrency: "NPR",
+              timezone: "Asia/Kathmandu",
             fiscalYearStartMonth: 4,
             invoicePrefix: "INV",
             nextInvoiceNumber: 1
@@ -291,7 +292,7 @@ export class AuthService {
   }
 
   async login(dto: {
-    companyId: string;
+    companyCode: string;
     email: string;
     password: string;
     totpCode?: string;
@@ -299,10 +300,12 @@ export class AuthService {
     deviceLabel?: string;
     rememberDevice?: boolean;
   }) {
-    console.log('LOGIN_START', { email: dto.email, companyId: dto.companyId });
+    console.log('LOGIN_START', { email: dto.email, companyCode: dto.companyCode });
     try {
       console.log('LOGIN_STEP: findUser');
-      const found = await this.getUserWithPerms(dto.companyId, dto.email);
+      const company = await this.prisma.company.findUnique({ where: { code: dto.companyCode } });
+      if (!company) throw new UnauthorizedException("Invalid credentials");
+      const found = await this.getUserWithPerms(company.id, dto.email);
       if (!found) {
         console.log('LOGIN_FAILED: User not found');
         throw new UnauthorizedException("Invalid credentials");

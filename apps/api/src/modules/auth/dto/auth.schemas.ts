@@ -1,7 +1,7 @@
 ﻿import { z } from "zod";
 
 export const LoginSchema = z.object({
-  companyId: z.string().uuid(),
+  companyCode: z.string().trim().min(3).max(20),
   email: z.string().email(),
   password: z.string().min(8).max(128),
   totpCode: z.string().trim().optional(),
@@ -27,6 +27,7 @@ export const RefreshSchema = z.object({
 });
 
 export const RegisterSchema = z.object({
+  companyCode: z.string().trim().min(3).max(20),
   companyName: z.string().trim().min(2).max(120),
   name: z.string().trim().min(2).max(120),
   email: z.string().email(),

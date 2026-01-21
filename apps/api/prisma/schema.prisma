@@ -72,7 +72,7 @@ enum PdfJobStatus {
 
 model Company {
   id           String @id @default(uuid())
-  code         String @unique
+  code         String? @unique
   name         String
   baseCurrency String @default("NPR")
   timezone     String @default("Asia/Kathmandu")
