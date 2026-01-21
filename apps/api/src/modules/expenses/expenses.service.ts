@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { Prisma, VoucherStatus, VoucherType } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import type { AuthUser } from "../../common/auth/auth.types";
+import { resolveAdDate } from "../../common/date/nepali-date";
 
 @Injectable()
 export class ExpensesService {
@@ -93,11 +94,13 @@ export class ExpensesService {
   async createDraft(user: AuthUser, input: any) {
     await this.validateRefs(user, input);
     const { lines, total, taxAmount } = await this.buildVoucherLines(user, input);
+    const resolved = resolveAdDate(input.date, input.dateBs);
 
     return this.prisma.expense.create({
       data: {
         companyId: user.companyId,
-        date: input.date,
+        date: resolved.date,
+        dateBs: resolved.bs || null,
         vendorId: input.vendorId,
         amount: total,
         taxCodeId: input.taxCodeId,

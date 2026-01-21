@@ -41,12 +41,13 @@ components:
         taxAmount: { type: number }
     VoucherDraftInput:
       type: object
-      required: [voucherType, voucherDate, lines]
+      required: [voucherType, lines]
       properties:
         voucherType:
           type: string
           enum: [sales_invoice, sales_return, purchase, purchase_return, receipt, payment, journal, opening, reversal]
         voucherDate: { type: string, format: date-time }
+        voucherDateBs: { type: string }
         partyId: { type: string }
         memo: { type: string }
         lines:
@@ -62,21 +63,24 @@ components:
         taxCodeId: { type: string }
     InvoiceDraftInput:
       type: object
-      required: [type, partyId, date, receivableAccountId, items]
+      required: [type, partyId, receivableAccountId, items]
       properties:
         type: { type: string, enum: [sales, sales_return] }
         partyId: { type: string }
         date: { type: string, format: date-time }
+        dateBs: { type: string }
         dueDate: { type: string, format: date-time }
+        dueDateBs: { type: string }
         receivableAccountId: { type: string }
         items:
           type: array
           items: { $ref: "#/components/schemas/InvoiceItemInput" }
     ExpenseDraftInput:
       type: object
-      required: [date, amount, expenseAccountId, paymentAccountId]
+      required: [amount, expenseAccountId, paymentAccountId]
       properties:
         date: { type: string, format: date-time }
+        dateBs: { type: string }
         vendorId: { type: string }
         amount: { type: number }
         taxCodeId: { type: string }
@@ -93,21 +97,35 @@ components:
         accountNumber: { type: string }
     BankStatementInput:
       type: object
-      required: [bankAccountId, periodFrom, periodTo, openingBalance, closingBalance]
+      required: [bankAccountId, openingBalance, closingBalance]
       properties:
         bankAccountId: { type: string }
         periodFrom: { type: string, format: date-time }
+        periodFromBs: { type: string }
         periodTo: { type: string, format: date-time }
+        periodToBs: { type: string }
         openingBalance: { type: number }
         closingBalance: { type: number }
     BankStatementLineInput:
       type: object
-      required: [date, amount, debitCredit]
+      required: [amount, debitCredit]
       properties:
         date: { type: string, format: date-time }
+        dateBs: { type: string }
         description: { type: string }
         amount: { type: number }
         debitCredit: { type: string, enum: [debit, credit] }
+    StockAdjustmentInput:
+      type: object
+      required: [itemId, qty, accountId]
+      properties:
+        itemId: { type: string }
+        date: { type: string, format: date-time }
+        dateBs: { type: string }
+        qty: { type: number }
+        rate: { type: number }
+        accountId: { type: string }
+        memo: { type: string }
     ReconcileInput:
       type: object
       required: [statementLineId, voucherId]
@@ -450,6 +468,17 @@ paths:
       responses: { "200": { description: OK } }
   /banking/sync/refresh:
     post:
+      responses: { "200": { description: OK } }
+  /inventory/adjustment:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StockAdjustmentInput" }
+      responses: { "200": { description: OK } }
+  /items/{id}/stock:
+    get:
       responses: { "200": { description: OK } }
   /reports/trial-balance:
     get:

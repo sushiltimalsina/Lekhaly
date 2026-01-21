@@ -11,10 +11,16 @@ export const InvoiceItemSchema = z.object({
 export const CreateInvoiceDraftSchema = z.object({
   type: z.enum(["sales", "sales_return"]),
   partyId: z.string().uuid(),
-  date: z.coerce.date(),
+  date: z.coerce.date().optional(),
+  dateBs: z.string().trim().max(20).optional(),
   dueDate: z.coerce.date().optional(),
+  dueDateBs: z.string().trim().max(20).optional(),
   receivableAccountId: z.string().uuid(),
   items: z.array(InvoiceItemSchema).min(1)
+}).superRefine((data, ctx) => {
+  if (!data.date && !data.dateBs) {
+    ctx.addIssue({ code: "custom", message: "date or dateBs is required", path: ["date"] });
+  }
 });
 
 export const InvoiceListQuerySchema = z.object({

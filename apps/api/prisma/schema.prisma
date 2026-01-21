@@ -332,8 +332,10 @@ model BankStatement {
   bankAccountId String
   bankAccount   BankAccount @relation(fields: [bankAccountId], references: [id])
 
-  periodFrom     DateTime
-  periodTo       DateTime
+    periodFrom     DateTime
+    periodFromBs   String?
+    periodTo       DateTime
+    periodToBs     String?
   openingBalance Decimal @db.Decimal(14, 2)
   closingBalance Decimal @db.Decimal(14, 2)
 
@@ -353,7 +355,8 @@ model BankStatementLine {
   statementId String
   statement   BankStatement @relation(fields: [statementId], references: [id], onDelete: Cascade)
 
-  date        DateTime
+    date        DateTime
+    dateBs      String?
   description String?
   amount      Decimal @db.Decimal(14, 2)
   debitCredit String // debit | credit
@@ -409,6 +412,7 @@ model Voucher {
 
   voucherNumber String?
   voucherDate   DateTime
+  voucherDateBs String?
 
   partyId String?
   party   Party?  @relation(fields: [partyId], references: [id])
@@ -470,7 +474,9 @@ model Invoice {
   receivableAccount   ChartOfAccount @relation("InvoiceReceivableAccount", fields: [receivableAccountId], references: [id])
 
   date    DateTime
+  dateBs  String?
   dueDate DateTime?
+  dueDateBs String?
 
   subtotal  Decimal @db.Decimal(14, 2)
   vatAmount Decimal @db.Decimal(14, 2)
@@ -514,6 +520,7 @@ model StockLedger {
   item   Item @relation(fields: [itemId], references: [id])
 
   date     DateTime
+  dateBs   String?
   voucherId String?
   voucher   Voucher? @relation(fields: [voucherId], references: [id])
 
@@ -596,6 +603,7 @@ model Expense {
   voucher   Voucher? @relation(fields: [voucherId], references: [id])
 
   date       DateTime
+  dateBs     String?
   vendorId   String?
   vendor     Party? @relation(fields: [vendorId], references: [id])
   amount     Decimal @db.Decimal(14, 2)

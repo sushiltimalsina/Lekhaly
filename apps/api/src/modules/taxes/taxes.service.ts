@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from "@nestjs/comm
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import type { AuthUser } from "../../common/auth/auth.types";
+import { resolveAdDate } from "../../common/date/nepali-date";
 
 @Injectable()
 export class TaxesService {
@@ -90,13 +91,17 @@ export class TaxesService {
     return rows;
   }
 
-  async vatReport(user: AuthUser, from?: Date, to?: Date) {
-    const rows = await this.buildVatRegister(user.companyId, from, to);
+  async vatReport(user: AuthUser, from?: Date, to?: Date, fromBs?: string, toBs?: string) {
+    const fromResolved = from || (fromBs ? resolveAdDate(undefined, fromBs).date : undefined);
+    const toResolved = to || (toBs ? resolveAdDate(undefined, toBs).date : undefined);
+    const rows = await this.buildVatRegister(user.companyId, fromResolved, toResolved);
     return { rows };
   }
 
-  async vatSummary(user: AuthUser, from?: Date, to?: Date) {
-    const rows = await this.buildVatRegister(user.companyId, from, to);
+  async vatSummary(user: AuthUser, from?: Date, to?: Date, fromBs?: string, toBs?: string) {
+    const fromResolved = from || (fromBs ? resolveAdDate(undefined, fromBs).date : undefined);
+    const toResolved = to || (toBs ? resolveAdDate(undefined, toBs).date : undefined);
+    const rows = await this.buildVatRegister(user.companyId, fromResolved, toResolved);
     let totalSalesVat = new Prisma.Decimal(0);
     let totalPurchaseVat = new Prisma.Decimal(0);
     for (const row of rows) {

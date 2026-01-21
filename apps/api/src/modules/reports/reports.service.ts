@@ -1,11 +1,12 @@
 import { Injectable } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { resolveAdDate } from "../../common/date/nepali-date";
 import { OutboxService } from "../outbox/outbox.service";
 
-type ReportFilters = { from?: Date; to?: Date };
-type PartyAgingFilters = ReportFilters & { asOf?: Date };
-type PartyLedgerFilters = { partyId: string; from?: Date; to?: Date };
+type ReportFilters = { from?: Date; fromBs?: string; to?: Date; toBs?: string };
+type PartyAgingFilters = ReportFilters & { asOf?: Date; asOfBs?: string };
+type PartyLedgerFilters = { partyId: string; from?: Date; fromBs?: string; to?: Date; toBs?: string };
 
 @Injectable()
 export class ReportsService {
@@ -22,10 +23,12 @@ export class ReportsService {
   }
 
   private applyDateFilter(filters: ReportFilters) {
-    if (!filters.from && !filters.to) return undefined;
+    const from = filters.from || (filters.fromBs ? resolveAdDate(undefined, filters.fromBs).date : undefined);
+    const to = filters.to || (filters.toBs ? resolveAdDate(undefined, filters.toBs).date : undefined);
+    if (!from && !to) return undefined;
     const voucherDate: Prisma.DateTimeFilter = {};
-    if (filters.from) voucherDate.gte = filters.from;
-    if (filters.to) voucherDate.lte = filters.to;
+    if (from) voucherDate.gte = from;
+    if (to) voucherDate.lte = to;
     return voucherDate;
   }
 
@@ -373,8 +376,12 @@ export class ReportsService {
   }
 
   async partyAging(companyId: string, filters: PartyAgingFilters) {
-    const asOf = filters.asOf || filters.to || new Date();
-    const voucherDate = this.applyDateFilter({ from: filters.from, to: asOf });
+    const asOf = filters.asOf
+      || (filters.asOfBs ? resolveAdDate(undefined, filters.asOfBs).date : undefined)
+      || filters.to
+      || (filters.toBs ? resolveAdDate(undefined, filters.toBs).date : undefined)
+      || new Date();
+    const voucherDate = this.applyDateFilter({ from: filters.from, fromBs: filters.fromBs, to: asOf });
 
     const lines = await this.prisma.voucherLine.findMany({
       where: {
@@ -441,7 +448,7 @@ export class ReportsService {
   }
 
   async partyLedger(companyId: string, filters: PartyLedgerFilters) {
-    const voucherDate = this.applyDateFilter({ from: filters.from, to: filters.to });
+    const voucherDate = this.applyDateFilter({ from: filters.from, fromBs: filters.fromBs, to: filters.to, toBs: filters.toBs });
     const lines = await this.prisma.voucherLine.findMany({
       where: {
         companyId,
@@ -463,6 +470,7 @@ export class ReportsService {
         running = running.add(debit).sub(credit);
         return {
           date: line.voucher.voucherDate,
+          dateBs: line.voucher.voucherDateBs || null,
           voucherId: line.voucherId,
           voucherNumber: line.voucher.voucherNumber,
           accountCode: line.account.code,

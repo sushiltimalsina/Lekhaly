@@ -8,17 +8,31 @@ export const CreateBankAccountSchema = z.object({
 
 export const CreateBankStatementSchema = z.object({
   bankAccountId: z.string().uuid(),
-  periodFrom: z.coerce.date(),
-  periodTo: z.coerce.date(),
+  periodFrom: z.coerce.date().optional(),
+  periodFromBs: z.string().trim().max(20).optional(),
+  periodTo: z.coerce.date().optional(),
+  periodToBs: z.string().trim().max(20).optional(),
   openingBalance: z.number(),
   closingBalance: z.number()
+}).superRefine((data, ctx) => {
+  if (!data.periodFrom && !data.periodFromBs) {
+    ctx.addIssue({ code: "custom", message: "periodFrom or periodFromBs is required", path: ["periodFrom"] });
+  }
+  if (!data.periodTo && !data.periodToBs) {
+    ctx.addIssue({ code: "custom", message: "periodTo or periodToBs is required", path: ["periodTo"] });
+  }
 });
 
 export const AddStatementLineSchema = z.object({
-  date: z.coerce.date(),
+  date: z.coerce.date().optional(),
+  dateBs: z.string().trim().max(20).optional(),
   description: z.string().trim().max(500).optional(),
   amount: z.number(),
   debitCredit: z.enum(["debit", "credit"])
+}).superRefine((data, ctx) => {
+  if (!data.date && !data.dateBs) {
+    ctx.addIssue({ code: "custom", message: "date or dateBs is required", path: ["date"] });
+  }
 });
 
 export const ReconcileSchema = z.object({

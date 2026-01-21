@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { Prisma, VoucherStatus, VoucherType } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import type { AuthUser } from "../../common/auth/auth.types";
+import { resolveAdDate } from "../../common/date/nepali-date";
 
 @Injectable()
 export class InvoicesService {
@@ -46,8 +47,10 @@ export class InvoicesService {
     input: {
       type: "sales" | "sales_return";
       partyId: string;
-      date: Date;
+      date?: Date;
+      dateBs?: string;
       dueDate?: Date;
+      dueDateBs?: string;
       receivableAccountId: string;
       items: Array<{ itemId?: string; description?: string; qty: number; rate: number; taxCodeId?: string }>;
     }
@@ -57,6 +60,9 @@ export class InvoicesService {
       where: { id: input.partyId, companyId: user.companyId }
     });
     if (!party) throw new BadRequestException("Party not found");
+
+    const resolvedDate = resolveAdDate(input.date, input.dateBs);
+    const resolvedDue = input.dueDate || input.dueDateBs ? resolveAdDate(input.dueDate, input.dueDateBs) : null;
 
     const itemsWithTax = await Promise.all(
       input.items.map(async (item) => {
@@ -187,7 +193,11 @@ export class InvoicesService {
       voucherType: input.type === "sales" ? VoucherType.sales_invoice : VoucherType.sales_return,
       voucherLines,
       receivableAccountId: receivable.id,
-      items: itemsWithTax
+      items: itemsWithTax,
+      date: resolvedDate.date,
+      dateBs: resolvedDate.bs || input.dateBs,
+      dueDate: resolvedDue?.date,
+      dueDateBs: resolvedDue?.bs || input.dueDateBs
     };
   }
 
@@ -196,8 +206,10 @@ export class InvoicesService {
     input: {
       type: "sales" | "sales_return";
       partyId: string;
-      date: Date;
+      date?: Date;
+      dateBs?: string;
       dueDate?: Date;
+      dueDateBs?: string;
       receivableAccountId: string;
       items: Array<{ itemId?: string; description?: string; qty: number; rate: number; taxCodeId?: string }>;
     }
@@ -210,8 +222,10 @@ export class InvoicesService {
         companyId: user.companyId,
         type: input.type,
         partyId: input.partyId,
-        date: input.date,
-        dueDate: input.dueDate,
+        date: preview.date,
+        dateBs: preview.dateBs || null,
+        dueDate: preview.dueDate,
+        dueDateBs: preview.dueDateBs || null,
         receivableAccountId: input.receivableAccountId,
         subtotal: totals.subtotal,
         vatAmount: totals.vatAmount,

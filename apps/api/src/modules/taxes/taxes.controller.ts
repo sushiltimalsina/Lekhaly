@@ -54,7 +54,7 @@ export class TaxesController {
     @CurrentUser() user: AuthUser,
     @Query(new ZodValidationPipe(VatReportQuerySchema)) query: any
   ) {
-    return this.taxes.vatReport(user, query.from, query.to);
+    return this.taxes.vatReport(user, query.from, query.to, query.fromBs, query.toBs);
   }
 
   @Get("reports/vat/summary")
@@ -63,6 +63,6 @@ export class TaxesController {
     @CurrentUser() user: AuthUser,
     @Query(new ZodValidationPipe(VatReportQuerySchema)) query: any
   ) {
-    return this.taxes.vatSummary(user, query.from, query.to);
+    return this.taxes.vatSummary(user, query.from, query.to, query.fromBs, query.toBs);
   }
 }

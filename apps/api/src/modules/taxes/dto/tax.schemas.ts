@@ -15,5 +15,7 @@ export const TaxListQuerySchema = z.object({
 
 export const VatReportQuerySchema = z.object({
   from: z.coerce.date().optional(),
-  to: z.coerce.date().optional()
+  fromBs: z.string().trim().max(20).optional(),
+  to: z.coerce.date().optional(),
+  toBs: z.string().trim().max(20).optional()
 });

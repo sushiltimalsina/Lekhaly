@@ -4,10 +4,12 @@ import type { ChartOfAccount, Item, Party, TaxCode } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import type { AuthUser } from "../../common/auth/auth.types";
 import crypto from "crypto";
+import { resolveAdDate } from "../../common/date/nepali-date";
 
 type DraftInput = {
   voucherType?: VoucherType;
   voucherDate?: Date;
+  voucherDateBs?: string;
   partyId?: string;
   memo?: string;
   lines?: Array<{
@@ -316,7 +318,7 @@ export class VouchersService {
   }
 
   async createDraft(user: AuthUser, input: DraftInput, idempotencyKey?: string) {
-    if (!input.voucherType || !input.voucherDate || !input.lines) {
+    if (!input.voucherType || (!input.voucherDate && !input.voucherDateBs) || !input.lines) {
       throw new BadRequestException("Missing draft fields");
     }
     if (input.voucherType === VoucherType.reversal) {
@@ -330,7 +332,8 @@ export class VouchersService {
     }
 
     const company = await this.getCompanyOrThrow(user.companyId);
-    this.ensureVoucherDate(company, input.voucherDate);
+    const resolved = resolveAdDate(input.voucherDate, input.voucherDateBs);
+    this.ensureVoucherDate(company, resolved.date);
     await this.validateReferences(user.companyId, input, input.voucherType);
     const lines = this.normalizeLines(input.lines);
 
@@ -339,7 +342,8 @@ export class VouchersService {
         companyId: user.companyId,
         voucherType: input.voucherType,
         status: VoucherStatus.draft,
-        voucherDate: input.voucherDate,
+        voucherDate: resolved.date,
+        voucherDateBs: resolved.bs || null,
         partyId: input.partyId,
         memo: input.memo,
         createdByUserId: user.sub,
@@ -379,7 +383,7 @@ export class VouchersService {
 
     const data: Prisma.VoucherUpdateInput = {};
     if (input.voucherType) data.voucherType = input.voucherType;
-    if (input.voucherDate) data.voucherDate = input.voucherDate;
+    // date fields resolved in transaction below
     if (input.partyId !== undefined) {
       data.party = input.partyId ? { connect: { id: input.partyId } } : { disconnect: true };
     }
@@ -387,7 +391,12 @@ export class VouchersService {
 
     return this.prisma.$transaction(async (tx) => {
       const company = await this.getCompanyOrThrow(user.companyId);
-      if (input.voucherDate) this.ensureVoucherDate(company, input.voucherDate);
+      if (input.voucherDate || input.voucherDateBs) {
+        const resolved = resolveAdDate(input.voucherDate, input.voucherDateBs);
+        data.voucherDate = resolved.date;
+        data.voucherDateBs = resolved.bs || null;
+        this.ensureVoucherDate(company, resolved.date);
+      }
       if (input.lines || input.partyId) await this.validateReferences(user.companyId, input, nextType);
 
       if (input.lines) {
@@ -662,6 +671,7 @@ export class VouchersService {
         id: true,
         voucherNumber: true,
         voucherDate: true,
+        voucherDateBs: true,
         voucherType: true,
         status: true,
         partyId: true,

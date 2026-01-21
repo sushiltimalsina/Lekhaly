@@ -2,6 +2,17 @@
 
 This is a lightweight reference for frontend integration (not exhaustive).
 
+## Nepali (BS) dates
+
+For key date fields, BS dates are primary. Clients can send BS-only and the backend converts to AD for storage. AD is still accepted. Responses include both AD and BS fields when available.
+
+- Vouchers: `voucherDateBs`
+- Invoices: `dateBs`, `dueDateBs`
+- Expenses: `dateBs`
+- Bank statements: `periodFromBs`, `periodToBs`
+- Bank statement lines: `dateBs`
+- Stock adjustments: `dateBs`
+
 ## Auth
 
 - `POST /auth/login` and `POST /v1/auth/login`
@@ -114,4 +125,3 @@ This is a lightweight reference for frontend integration (not exhaustive).
 - `GET /users/:id`
 - `POST /users`
 - `PUT /users/:id`
-

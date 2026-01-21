@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from "@nestjs/common";
 import { Prisma, VoucherStatus, VoucherType } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import type { AuthUser } from "../../common/auth/auth.types";
+import { resolveAdDate } from "../../common/date/nepali-date";
 
 @Injectable()
 export class InventoryService {
@@ -35,7 +36,7 @@ export class InventoryService {
 
   async adjustStock(
     user: AuthUser,
-    input: { itemId: string; date: Date; qty: number; rate?: number; accountId: string; memo?: string }
+    input: { itemId: string; date?: Date; dateBs?: string; qty: number; rate?: number; accountId: string; memo?: string }
   ) {
     const item = await this.prisma.item.findFirst({
       where: { id: input.itemId, companyId: user.companyId }
@@ -54,6 +55,7 @@ export class InventoryService {
     if (qty.equals(0)) throw new BadRequestException("Quantity cannot be zero");
     const rate = new Prisma.Decimal(input.rate ?? 0);
     const amount = qty.abs().mul(rate);
+    const resolved = resolveAdDate(input.date, input.dateBs);
 
     return this.prisma.$transaction(async (tx) => {
       const voucher = await tx.voucher.create({
@@ -61,7 +63,8 @@ export class InventoryService {
           companyId: user.companyId,
           voucherType: VoucherType.journal,
           status: VoucherStatus.posted,
-          voucherDate: input.date,
+          voucherDate: resolved.date,
+          voucherDateBs: resolved.bs || null,
           memo: input.memo || "Stock adjustment",
           postedAt: new Date(),
           postedByUserId: user.sub,
@@ -111,7 +114,8 @@ export class InventoryService {
         data: {
           companyId: user.companyId,
           itemId: item.id,
-          date: input.date,
+          date: resolved.date,
+          dateBs: resolved.bs || null,
           voucherId: voucher.id,
           qtyIn: qty.gt(0) ? qty : new Prisma.Decimal(0),
           qtyOut: qty.lt(0) ? qty.abs() : new Prisma.Decimal(0),

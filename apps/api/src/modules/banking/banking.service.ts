@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import type { AuthUser } from "../../common/auth/auth.types";
+import { resolveAdDate } from "../../common/date/nepali-date";
 
 @Injectable()
 export class BankingService {
@@ -67,8 +68,10 @@ export class BankingService {
     user: AuthUser,
     input: {
       bankAccountId: string;
-      periodFrom: Date;
-      periodTo: Date;
+      periodFrom?: Date;
+      periodFromBs?: string;
+      periodTo?: Date;
+      periodToBs?: string;
       openingBalance: number;
       closingBalance: number;
     }
@@ -78,7 +81,9 @@ export class BankingService {
     });
     if (!account) throw new BadRequestException("Bank account not found");
 
-    if (input.periodTo < input.periodFrom) {
+    const fromResolved = resolveAdDate(input.periodFrom, input.periodFromBs);
+    const toResolved = resolveAdDate(input.periodTo, input.periodToBs);
+    if (toResolved.date < fromResolved.date) {
       throw new BadRequestException("Invalid statement period");
     }
 
@@ -86,8 +91,10 @@ export class BankingService {
       data: {
         companyId: user.companyId,
         bankAccountId: input.bankAccountId,
-        periodFrom: input.periodFrom,
-        periodTo: input.periodTo,
+        periodFrom: fromResolved.date,
+        periodFromBs: fromResolved.bs || null,
+        periodTo: toResolved.date,
+        periodToBs: toResolved.bs || null,
         openingBalance: new Prisma.Decimal(input.openingBalance),
         closingBalance: new Prisma.Decimal(input.closingBalance)
       }
@@ -97,18 +104,20 @@ export class BankingService {
   async addStatementLine(
     user: AuthUser,
     statementId: string,
-    input: { date: Date; description?: string; amount: number; debitCredit: "debit" | "credit" }
+    input: { date?: Date; dateBs?: string; description?: string; amount: number; debitCredit: "debit" | "credit" }
   ) {
     const statement = await this.prisma.bankStatement.findFirst({
       where: { id: statementId, companyId: user.companyId }
     });
     if (!statement) throw new NotFoundException("Statement not found");
 
+    const resolved = resolveAdDate(input.date, input.dateBs);
     return this.prisma.bankStatementLine.create({
       data: {
         companyId: user.companyId,
         statementId: statement.id,
-        date: input.date,
+        date: resolved.date,
+        dateBs: resolved.bs || null,
         description: input.description,
         amount: new Prisma.Decimal(input.amount),
         debitCredit: input.debitCredit
