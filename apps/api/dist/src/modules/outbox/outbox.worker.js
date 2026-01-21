@@ -84,6 +84,10 @@ let OutboxWorkerService = OutboxWorkerService_1 = class OutboxWorkerService {
                 }
             }
         }
+        catch (err) {
+            const message = err?.message || String(err);
+            this.logger.warn(`Outbox worker skipped (db unavailable): ${message}`);
+        }
         finally {
             this.running = false;
         }

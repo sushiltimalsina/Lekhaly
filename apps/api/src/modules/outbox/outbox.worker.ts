@@ -75,6 +75,9 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
           this.logger.warn(`Outbox ${event.id} failed: ${err?.message || err}`);
         }
       }
+    } catch (err: any) {
+      const message = err?.message || String(err);
+      this.logger.warn(`Outbox worker skipped (db unavailable): ${message}`);
     } finally {
       this.running = false;
     }
