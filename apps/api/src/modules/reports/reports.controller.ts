@@ -2,7 +2,7 @@ import { Body, Controller, Get, Post, Query } from "@nestjs/common";
 import { CurrentUser, RequirePerm, RequireStep } from "../../common/auth/auth.decorator";
 import { ZodValidationPipe } from "../../common/zod/zod.pipe";
 import type { AuthUser } from "../../common/auth/auth.types";
-import { ExportReportSchema, PartyAgingQuerySchema, ReportQuerySchema } from "./dto/report.schemas";
+import { ExportReportSchema, PartyAgingQuerySchema, PartyLedgerQuerySchema, ReportQuerySchema } from "./dto/report.schemas";
 import { ReportsService } from "./reports.service";
 
 @Controller("reports")
@@ -43,6 +43,15 @@ export class ReportsController {
     @Query(new ZodValidationPipe(PartyAgingQuerySchema)) query: any
   ) {
     return this.reports.partyAging(user.companyId, query);
+  }
+
+  @Get("ledger")
+  @RequirePerm("reports.view")
+  partyLedger(
+    @CurrentUser() user: AuthUser,
+    @Query(new ZodValidationPipe(PartyLedgerQuerySchema)) query: any
+  ) {
+    return this.reports.partyLedger(user.companyId, query);
   }
 
   @Post("export")

@@ -110,4 +110,29 @@ describe("ReportsService export", () => {
     expect(alpha?.buckets["31-60"].toString()).toBe("-50");
     expect(beta?.buckets["91+"].toString()).toBe("200");
   });
+
+  it("returns party ledger with running balance", async () => {
+    prisma.voucherLine.findMany.mockResolvedValue([
+      {
+        partyId: "party-1",
+        voucherId: "v-1",
+        debit: new Prisma.Decimal(100),
+        credit: new Prisma.Decimal(0),
+        voucher: { voucherDate: new Date("2026-01-01"), voucherNumber: "INV-1" },
+        account: { code: "1000", name: "Cash" }
+      },
+      {
+        partyId: "party-1",
+        voucherId: "v-2",
+        debit: new Prisma.Decimal(0),
+        credit: new Prisma.Decimal(40),
+        voucher: { voucherDate: new Date("2026-01-02"), voucherNumber: "RCPT-1" },
+        account: { code: "2000", name: "AR" }
+      }
+    ]);
+
+    const result = await service.partyLedger("company-1", { partyId: "party-1" });
+    expect(result.rows).toHaveLength(2);
+    expect(result.balance.toString()).toBe("60");
+  });
 });

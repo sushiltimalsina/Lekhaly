@@ -5,6 +5,7 @@ import { OutboxService } from "../outbox/outbox.service";
 
 type ReportFilters = { from?: Date; to?: Date };
 type PartyAgingFilters = ReportFilters & { asOf?: Date };
+type PartyLedgerFilters = { partyId: string; from?: Date; to?: Date };
 
 @Injectable()
 export class ReportsService {
@@ -437,6 +438,42 @@ export class ReportsService {
       asOf,
       rows
     };
+  }
+
+  async partyLedger(companyId: string, filters: PartyLedgerFilters) {
+    const voucherDate = this.applyDateFilter({ from: filters.from, to: filters.to });
+    const lines = await this.prisma.voucherLine.findMany({
+      where: {
+        companyId,
+        partyId: filters.partyId,
+        voucher: {
+          status: "posted",
+          ...(voucherDate ? { voucherDate } : {})
+        }
+      },
+      include: { voucher: true, account: true }
+    });
+
+    let running = new Prisma.Decimal(0);
+    const rows = lines
+      .sort((a, b) => a.voucher.voucherDate.getTime() - b.voucher.voucherDate.getTime())
+      .map((line) => {
+        const debit = line.debit;
+        const credit = line.credit;
+        running = running.add(debit).sub(credit);
+        return {
+          date: line.voucher.voucherDate,
+          voucherId: line.voucherId,
+          voucherNumber: line.voucher.voucherNumber,
+          accountCode: line.account.code,
+          accountName: line.account.name,
+          debit,
+          credit,
+          balance: running
+        };
+      });
+
+    return { partyId: filters.partyId, rows, balance: running };
   }
 
   async exportPdf(companyId: string, input: { report: string; format?: string; from?: Date; to?: Date }) {

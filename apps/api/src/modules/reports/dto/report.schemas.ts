@@ -9,6 +9,12 @@ export const PartyAgingQuerySchema = ReportQuerySchema.extend({
   asOf: z.coerce.date().optional()
 });
 
+export const PartyLedgerQuerySchema = z.object({
+  partyId: z.string().uuid(),
+  from: z.coerce.date().optional(),
+  to: z.coerce.date().optional()
+});
+
 export const ExportReportSchema = z.object({
   report: z.enum(["trial-balance", "profit-loss", "balance-sheet"]),
   format: z.enum(["pdf", "csv"]).default("pdf"),
