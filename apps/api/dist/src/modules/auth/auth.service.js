@@ -144,6 +144,7 @@ let AuthService = class AuthService {
                 const permAll = await this.ensurePermissions(tx);
                 const company = await tx.company.create({
                     data: {
+                        code: dto.companyCode,
                         name: dto.companyName,
                         baseCurrency: "NPR",
                         timezone: "Asia/Kathmandu",
@@ -299,10 +300,13 @@ let AuthService = class AuthService {
         return { ok: true };
     }
     async login(dto) {
-        console.log('LOGIN_START', { email: dto.email, companyId: dto.companyId });
+        console.log('LOGIN_START', { email: dto.email, companyCode: dto.companyCode });
         try {
             console.log('LOGIN_STEP: findUser');
-            const found = await this.getUserWithPerms(dto.companyId, dto.email);
+            const company = await this.prisma.company.findUnique({ where: { code: dto.companyCode } });
+            if (!company)
+                throw new common_1.UnauthorizedException("Invalid credentials");
+            const found = await this.getUserWithPerms(company.id, dto.email);
             if (!found) {
                 console.log('LOGIN_FAILED: User not found');
                 throw new common_1.UnauthorizedException("Invalid credentials");

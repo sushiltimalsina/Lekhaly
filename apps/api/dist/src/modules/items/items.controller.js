@@ -16,12 +16,16 @@ exports.ItemsController = void 0;
 const common_1 = require("@nestjs/common");
 const auth_decorator_1 = require("../../common/auth/auth.decorator");
 const zod_pipe_1 = require("../../common/zod/zod.pipe");
+const inventory_schemas_1 = require("../inventory/dto/inventory.schemas");
 const item_schemas_1 = require("./dto/item.schemas");
 const items_service_1 = require("./items.service");
+const inventory_service_1 = require("../inventory/inventory.service");
 let ItemsController = class ItemsController {
     items;
-    constructor(items) {
+    inventory;
+    constructor(items, inventory) {
         this.items = items;
+        this.inventory = inventory;
     }
     create(user, body) {
         return this.items.create(user, body);
@@ -31,6 +35,9 @@ let ItemsController = class ItemsController {
     }
     get(user, id) {
         return this.items.get(user, id);
+    }
+    stock(user, id, query) {
+        return this.inventory.getStock(user, id, query);
     }
     list(user, query) {
         return this.items.list(user, query);
@@ -72,6 +79,16 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], ItemsController.prototype, "get", null);
 __decorate([
+    (0, common_1.Get)(":id/stock"),
+    (0, auth_decorator_1.RequirePerm)("masters.read"),
+    __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)("id")),
+    __param(2, (0, common_1.Query)(new zod_pipe_1.ZodValidationPipe(inventory_schemas_1.StockQuerySchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, Object]),
+    __metadata("design:returntype", void 0)
+], ItemsController.prototype, "stock", null);
+__decorate([
     (0, common_1.Get)(),
     (0, auth_decorator_1.RequirePerm)("masters.read"),
     __param(0, (0, auth_decorator_1.CurrentUser)()),
@@ -100,6 +117,7 @@ __decorate([
 ], ItemsController.prototype, "restore", null);
 exports.ItemsController = ItemsController = __decorate([
     (0, common_1.Controller)("items"),
-    __metadata("design:paramtypes", [items_service_1.ItemsService])
+    __metadata("design:paramtypes", [items_service_1.ItemsService,
+        inventory_service_1.InventoryService])
 ], ItemsController);
 //# sourceMappingURL=items.controller.js.map

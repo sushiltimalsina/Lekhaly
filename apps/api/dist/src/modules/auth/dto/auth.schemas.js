@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.NotificationsSchema = exports.CompanySchema = exports.ProfileSchema = exports.RegisterSchema = exports.RefreshSchema = exports.StepUpSchema = exports.TotpVerifySchema = exports.TotpEnableSchema = exports.LoginSchema = void 0;
 const zod_1 = require("zod");
 exports.LoginSchema = zod_1.z.object({
-    companyId: zod_1.z.string().uuid(),
+    companyCode: zod_1.z.string().trim().min(3).max(20),
     email: zod_1.z.string().email(),
     password: zod_1.z.string().min(8).max(128),
     totpCode: zod_1.z.string().trim().optional(),
@@ -24,6 +24,7 @@ exports.RefreshSchema = zod_1.z.object({
     refreshToken: zod_1.z.string().trim().min(10)
 });
 exports.RegisterSchema = zod_1.z.object({
+    companyCode: zod_1.z.string().trim().min(3).max(20),
     companyName: zod_1.z.string().trim().min(2).max(120),
     name: zod_1.z.string().trim().min(2).max(120),
     email: zod_1.z.string().email(),

@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
 const prisma_service_1 = require("../../common/prisma/prisma.service");
 const crypto_1 = __importDefault(require("crypto"));
+const nepali_date_1 = require("../../common/date/nepali-date");
 let VouchersService = class VouchersService {
     prisma;
     constructor(prisma) {
@@ -25,6 +26,9 @@ let VouchersService = class VouchersService {
     enforceVoucherRules(voucherType, partyId) {
         const requiresParty = [
             client_1.VoucherType.sales_invoice,
+            client_1.VoucherType.sales_return,
+            client_1.VoucherType.purchase,
+            client_1.VoucherType.purchase_return,
             client_1.VoucherType.receipt,
             client_1.VoucherType.payment
         ];
@@ -140,14 +144,16 @@ let VouchersService = class VouchersService {
                 const item = itemMap.get(line.itemId);
                 if (!item)
                     throw new common_1.BadRequestException("Invalid item");
-                if (voucherType === client_1.VoucherType.sales_invoice || voucherType === client_1.VoucherType.receipt) {
+                if (voucherType === client_1.VoucherType.sales_invoice ||
+                    voucherType === client_1.VoucherType.sales_return ||
+                    voucherType === client_1.VoucherType.receipt) {
                     if (!item.incomeAccountId)
                         throw new common_1.BadRequestException("Item missing income account");
                     if (item.incomeAccountId !== line.accountId) {
                         throw new common_1.BadRequestException("Item income account mismatch");
                     }
                 }
-                if (voucherType === client_1.VoucherType.payment) {
+                if (voucherType === client_1.VoucherType.payment || voucherType === client_1.VoucherType.purchase || voucherType === client_1.VoucherType.purchase_return) {
                     if (!item.expenseAccountId)
                         throw new common_1.BadRequestException("Item missing expense account");
                     if (item.expenseAccountId !== line.accountId) {
@@ -182,7 +188,9 @@ let VouchersService = class VouchersService {
             const taxAmount = line.taxAmount ? new client_1.Prisma.Decimal(line.taxAmount) : new client_1.Prisma.Decimal(0);
             if (taxAmount.lte(0))
                 throw new common_1.BadRequestException("Tax amount must be greater than zero");
-            if (voucherType === client_1.VoucherType.sales_invoice || voucherType === client_1.VoucherType.receipt) {
+            if (voucherType === client_1.VoucherType.sales_invoice ||
+                voucherType === client_1.VoucherType.receipt ||
+                voucherType === client_1.VoucherType.purchase_return) {
                 if (line.credit.lte(0)) {
                     throw new common_1.BadRequestException("Tax on sales must be on credit lines");
                 }
@@ -199,7 +207,7 @@ let VouchersService = class VouchersService {
                     taxAmount
                 });
             }
-            if (voucherType === client_1.VoucherType.payment) {
+            if (voucherType === client_1.VoucherType.payment || voucherType === client_1.VoucherType.purchase || voucherType === client_1.VoucherType.sales_return) {
                 if (line.debit.lte(0)) {
                     throw new common_1.BadRequestException("Tax on purchases must be on debit lines");
                 }
@@ -263,7 +271,7 @@ let VouchersService = class VouchersService {
         return { debit, credit };
     }
     async createDraft(user, input, idempotencyKey) {
-        if (!input.voucherType || !input.voucherDate || !input.lines) {
+        if (!input.voucherType || (!input.voucherDate && !input.voucherDateBs) || !input.lines) {
             throw new common_1.BadRequestException("Missing draft fields");
         }
         if (input.voucherType === client_1.VoucherType.reversal) {
@@ -275,7 +283,8 @@ let VouchersService = class VouchersService {
             return guard.response;
         }
         const company = await this.getCompanyOrThrow(user.companyId);
-        this.ensureVoucherDate(company, input.voucherDate);
+        const resolved = (0, nepali_date_1.resolveAdDate)(input.voucherDate, input.voucherDateBs);
+        this.ensureVoucherDate(company, resolved.date);
         await this.validateReferences(user.companyId, input, input.voucherType);
         const lines = this.normalizeLines(input.lines);
         const voucher = await this.prisma.voucher.create({
@@ -283,7 +292,8 @@ let VouchersService = class VouchersService {
                 companyId: user.companyId,
                 voucherType: input.voucherType,
                 status: client_1.VoucherStatus.draft,
-                voucherDate: input.voucherDate,
+                voucherDate: resolved.date,
+                voucherDateBs: resolved.bs || null,
                 partyId: input.partyId,
                 memo: input.memo,
                 createdByUserId: user.sub,
@@ -315,8 +325,6 @@ let VouchersService = class VouchersService {
         const data = {};
         if (input.voucherType)
             data.voucherType = input.voucherType;
-        if (input.voucherDate)
-            data.voucherDate = input.voucherDate;
         if (input.partyId !== undefined) {
             data.party = input.partyId ? { connect: { id: input.partyId } } : { disconnect: true };
         }
@@ -324,8 +332,12 @@ let VouchersService = class VouchersService {
             data.memo = input.memo;
         return this.prisma.$transaction(async (tx) => {
             const company = await this.getCompanyOrThrow(user.companyId);
-            if (input.voucherDate)
-                this.ensureVoucherDate(company, input.voucherDate);
+            if (input.voucherDate || input.voucherDateBs) {
+                const resolved = (0, nepali_date_1.resolveAdDate)(input.voucherDate, input.voucherDateBs);
+                data.voucherDate = resolved.date;
+                data.voucherDateBs = resolved.bs || null;
+                this.ensureVoucherDate(company, resolved.date);
+            }
             if (input.lines || input.partyId)
                 await this.validateReferences(user.companyId, input, nextType);
             if (input.lines) {
@@ -574,6 +586,7 @@ let VouchersService = class VouchersService {
                 id: true,
                 voucherNumber: true,
                 voucherDate: true,
+                voucherDateBs: true,
                 voucherType: true,
                 status: true,
                 partyId: true,

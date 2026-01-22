@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Search, Sun, Moon, UserCircle, Building2, CalendarDays } from "lucide-react";
-import { useTheme } from "next-themes";
+import { Search, Sun, Moon, UserCircle, Building2, CalendarDays, Menu, X } from "lucide-react";
+import Sidebar from "@/components/app/sidebar";
 
 type TopbarProps = {
   title?: string;
@@ -11,17 +11,43 @@ type TopbarProps = {
 };
 
 export default function Topbar({ title, subtitle, rightSlot }: TopbarProps) {
-  const { theme, setTheme } = useTheme();
+  const [mobileOpen, setMobileOpen] = React.useState(false);
+  const [theme, setThemeState] = React.useState<"light" | "dark">("light");
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const root = document.documentElement;
+    const stored = localStorage.getItem("lekhaly-theme");
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const nextTheme = stored === "dark" || (!stored && prefersDark) ? "dark" : "light";
+    root.classList.toggle("dark", nextTheme === "dark");
+    setThemeState(nextTheme);
+  }, []);
 
   const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark");
+    const next = theme === "dark" ? "light" : "dark";
+    setThemeState(next);
+    if (typeof window === "undefined") return;
+    const root = document.documentElement;
+    root.classList.toggle("dark", next === "dark");
+    localStorage.setItem("lekhaly-theme", next);
+    window.dispatchEvent(new CustomEvent("lekhaly-theme-change", { detail: { theme: next } }));
   };
 
   return (
-    <header className="sticky top-0 z-20 border-b bg-card/80 backdrop-blur">
+    <>
+      <header className="sticky top-0 z-20 border-b bg-card/80 backdrop-blur">
       <div className="flex items-center justify-between gap-3 px-4 py-3">
         {/* Left */}
-        <div className="min-w-0">
+        <div className="min-w-0 flex items-center gap-2">
+          <button
+            type="button"
+            className="grid h-9 w-9 place-items-center rounded-lg border bg-background hover:bg-muted md:hidden"
+            onClick={() => setMobileOpen(true)}
+            aria-label="Open menu"
+          >
+            <Menu className="h-4 w-4 text-muted-foreground" />
+          </button>
           {title ? (
             <div className="truncate text-sm font-semibold">{title}</div>
           ) : (
@@ -106,6 +132,29 @@ export default function Topbar({ title, subtitle, rightSlot }: TopbarProps) {
           />
         </div>
       </div>
-    </header>
+      </header>
+      {mobileOpen && (
+        <div className="fixed inset-0 z-40 md:hidden">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur"
+            onClick={() => setMobileOpen(false)}
+          />
+          <div className="absolute left-0 top-0 h-full w-80 max-w-[85vw] bg-card shadow-2xl">
+            <div className="flex items-center justify-between border-b px-4 py-3">
+              <div className="text-sm font-semibold">Menu</div>
+              <button
+                type="button"
+                className="grid h-9 w-9 place-items-center rounded-lg border bg-background hover:bg-muted"
+                onClick={() => setMobileOpen(false)}
+                aria-label="Close menu"
+              >
+                <X className="h-4 w-4 text-muted-foreground" />
+              </button>
+            </div>
+            <Sidebar onNavigate={() => setMobileOpen(false)} />
+          </div>
+        </div>
+      )}
+    </>
   );
 }

@@ -28,6 +28,7 @@ export declare class VouchersController {
         voucherType: import("@prisma/client").$Enums.VoucherType;
         voucherNumber: string | null;
         voucherDate: Date;
+        voucherDateBs: string | null;
         partyId: string | null;
         memo: string | null;
         source: string;
@@ -64,6 +65,7 @@ export declare class VouchersController {
         voucherType: import("@prisma/client").$Enums.VoucherType;
         voucherNumber: string | null;
         voucherDate: Date;
+        voucherDateBs: string | null;
         partyId: string | null;
         memo: string | null;
         source: string;
@@ -100,6 +102,7 @@ export declare class VouchersController {
         voucherType: import("@prisma/client").$Enums.VoucherType;
         voucherNumber: string | null;
         voucherDate: Date;
+        voucherDateBs: string | null;
         partyId: string | null;
         memo: string | null;
         source: string;
@@ -129,6 +132,7 @@ export declare class VouchersController {
         voucherType: import("@prisma/client").$Enums.VoucherType;
         voucherNumber: string | null;
         voucherDate: Date;
+        voucherDateBs: string | null;
         partyId: string | null;
         memo: string | null;
         postedAt: Date | null;
@@ -197,6 +201,7 @@ export declare class VouchersController {
         voucherType: import("@prisma/client").$Enums.VoucherType;
         voucherNumber: string | null;
         voucherDate: Date;
+        voucherDateBs: string | null;
         partyId: string | null;
         memo: string | null;
         source: string;

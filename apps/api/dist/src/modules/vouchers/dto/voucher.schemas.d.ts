@@ -12,13 +12,17 @@ export declare const VoucherLineSchema: z.ZodObject<{
 export declare const CreateVoucherDraftSchema: z.ZodObject<{
     voucherType: z.ZodEnum<{
         sales_invoice: "sales_invoice";
+        sales_return: "sales_return";
+        purchase: "purchase";
+        purchase_return: "purchase_return";
         receipt: "receipt";
         payment: "payment";
         journal: "journal";
         opening: "opening";
         reversal: "reversal";
     }>;
-    voucherDate: z.ZodCoercedDate<unknown>;
+    voucherDate: z.ZodOptional<z.ZodCoercedDate<unknown>>;
+    voucherDateBs: z.ZodOptional<z.ZodString>;
     partyId: z.ZodOptional<z.ZodString>;
     memo: z.ZodOptional<z.ZodString>;
     lines: z.ZodArray<z.ZodObject<{
@@ -35,13 +39,17 @@ export declare const CreateVoucherDraftSchema: z.ZodObject<{
 export declare const UpdateVoucherDraftSchema: z.ZodObject<{
     voucherType: z.ZodOptional<z.ZodEnum<{
         sales_invoice: "sales_invoice";
+        sales_return: "sales_return";
+        purchase: "purchase";
+        purchase_return: "purchase_return";
         receipt: "receipt";
         payment: "payment";
         journal: "journal";
         opening: "opening";
         reversal: "reversal";
     }>>;
-    voucherDate: z.ZodOptional<z.ZodCoercedDate<unknown>>;
+    voucherDate: z.ZodOptional<z.ZodOptional<z.ZodCoercedDate<unknown>>>;
+    voucherDateBs: z.ZodOptional<z.ZodOptional<z.ZodString>>;
     partyId: z.ZodOptional<z.ZodOptional<z.ZodString>>;
     memo: z.ZodOptional<z.ZodOptional<z.ZodString>>;
     lines: z.ZodOptional<z.ZodArray<z.ZodObject<{
@@ -63,6 +71,9 @@ export declare const ListVoucherQuerySchema: z.ZodObject<{
     }>>;
     voucherType: z.ZodOptional<z.ZodEnum<{
         sales_invoice: "sales_invoice";
+        sales_return: "sales_return";
+        purchase: "purchase";
+        purchase_return: "purchase_return";
         receipt: "receipt";
         payment: "payment";
         journal: "journal";

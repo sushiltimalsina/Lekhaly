@@ -14,6 +14,7 @@ const jwt_auth_guard_1 = require("../../common/auth/jwt-auth.guard");
 const permissions_guard_1 = require("../../common/auth/permissions.guard");
 const step_guard_1 = require("../../common/auth/step.guard");
 const auth_controller_1 = require("./auth.controller");
+const auth_controller_v1_1 = require("./auth.controller.v1");
 const auth_service_1 = require("./auth.service");
 let AuthModule = class AuthModule {
 };
@@ -35,7 +36,7 @@ exports.AuthModule = AuthModule = __decorate([
                 })()
             })
         ],
-        controllers: [auth_controller_1.AuthController],
+        controllers: [auth_controller_1.AuthController, auth_controller_v1_1.AuthV1Controller],
         providers: [
             auth_service_1.AuthService,
             { provide: core_1.APP_GUARD, useClass: jwt_auth_guard_1.JwtAuthGuard },

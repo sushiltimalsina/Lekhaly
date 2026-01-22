@@ -11,6 +11,7 @@ export declare class AuthService {
     private sha256;
     private ensurePermissions;
     register(dto: {
+        companyCode: string;
         companyName: string;
         name: string;
         email: string;
@@ -67,7 +68,7 @@ export declare class AuthService {
         ok: boolean;
     }>;
     login(dto: {
-        companyId: string;
+        companyCode: string;
         email: string;
         password: string;
         totpCode?: string;

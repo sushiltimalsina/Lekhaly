@@ -17,14 +17,28 @@ exports.VoucherLineSchema = zod_1.z.object({
     }
 });
 const VoucherDraftBaseSchema = zod_1.z.object({
-    voucherType: zod_1.z.enum(["sales_invoice", "receipt", "payment", "journal", "opening", "reversal"]),
-    voucherDate: zod_1.z.coerce.date(),
+    voucherType: zod_1.z.enum([
+        "sales_invoice",
+        "sales_return",
+        "purchase",
+        "purchase_return",
+        "receipt",
+        "payment",
+        "journal",
+        "opening",
+        "reversal"
+    ]),
+    voucherDate: zod_1.z.coerce.date().optional(),
+    voucherDateBs: zod_1.z.string().trim().max(20).optional(),
     partyId: zod_1.z.string().uuid().optional(),
     memo: zod_1.z.string().trim().max(500).optional(),
     lines: zod_1.z.array(exports.VoucherLineSchema).min(1)
 });
 exports.CreateVoucherDraftSchema = VoucherDraftBaseSchema.superRefine((data, ctx) => {
-    const requiresParty = ["sales_invoice", "receipt", "payment"];
+    if (!data.voucherDate && !data.voucherDateBs) {
+        ctx.addIssue({ code: "custom", message: "voucherDate or voucherDateBs is required", path: ["voucherDate"] });
+    }
+    const requiresParty = ["sales_invoice", "sales_return", "purchase", "purchase_return", "receipt", "payment"];
     const forbidsParty = ["journal", "opening", "reversal"];
     if (requiresParty.includes(data.voucherType) && !data.partyId) {
         ctx.addIssue({ code: "custom", message: "Party is required for this voucher type", path: ["partyId"] });
@@ -38,7 +52,17 @@ exports.UpdateVoucherDraftSchema = VoucherDraftBaseSchema.partial().extend({
 });
 exports.ListVoucherQuerySchema = zod_1.z.object({
     status: zod_1.z.enum(["draft", "posted", "void"]).optional(),
-    voucherType: zod_1.z.enum(["sales_invoice", "receipt", "payment", "journal", "opening", "reversal"]).optional(),
+    voucherType: zod_1.z.enum([
+        "sales_invoice",
+        "sales_return",
+        "purchase",
+        "purchase_return",
+        "receipt",
+        "payment",
+        "journal",
+        "opening",
+        "reversal"
+    ]).optional(),
     partyId: zod_1.z.string().uuid().optional(),
     createdByUserId: zod_1.z.string().uuid().optional(),
     postedByUserId: zod_1.z.string().uuid().optional(),

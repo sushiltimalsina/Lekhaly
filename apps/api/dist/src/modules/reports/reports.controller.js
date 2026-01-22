@@ -35,6 +35,9 @@ let ReportsController = class ReportsController {
     partyAging(user, query) {
         return this.reports.partyAging(user.companyId, query);
     }
+    partyLedger(user, query) {
+        return this.reports.partyLedger(user.companyId, query);
+    }
     export(user, body) {
         return this.reports.exportPdf(user.companyId, body);
     }
@@ -76,6 +79,15 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", void 0)
 ], ReportsController.prototype, "partyAging", null);
+__decorate([
+    (0, common_1.Get)("ledger"),
+    (0, auth_decorator_1.RequirePerm)("reports.view"),
+    __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Query)(new zod_pipe_1.ZodValidationPipe(report_schemas_1.PartyLedgerQuerySchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], ReportsController.prototype, "partyLedger", null);
 __decorate([
     (0, common_1.Post)("export"),
     (0, auth_decorator_1.RequirePerm)("export.pdf"),

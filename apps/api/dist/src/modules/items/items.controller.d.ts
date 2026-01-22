@@ -1,8 +1,10 @@
 import type { AuthUser } from "../../common/auth/auth.types";
 import { ItemsService } from "./items.service";
+import { InventoryService } from "../inventory/inventory.service";
 export declare class ItemsController {
     private items;
-    constructor(items: ItemsService);
+    private inventory;
+    constructor(items: ItemsService, inventory: InventoryService);
     create(user: AuthUser, body: any): Promise<{
         id: string;
         companyId: string;
@@ -47,6 +49,23 @@ export declare class ItemsController {
         incomeAccountId: string | null;
         expenseAccountId: string | null;
         taxCodeId: string | null;
+    }>;
+    stock(user: AuthUser, id: string, query: any): Promise<{
+        itemId: string;
+        qty: import("@prisma/client/runtime/client").Decimal;
+        entries: {
+            id: string;
+            companyId: string;
+            createdAt: Date;
+            rate: import("@prisma/client/runtime/client").Decimal;
+            voucherId: string | null;
+            itemId: string;
+            date: Date;
+            dateBs: string | null;
+            qtyIn: import("@prisma/client/runtime/client").Decimal;
+            qtyOut: import("@prisma/client/runtime/client").Decimal;
+            amount: import("@prisma/client/runtime/client").Decimal;
+        }[];
     }>;
     list(user: AuthUser, query: any): Promise<{
         id: string;

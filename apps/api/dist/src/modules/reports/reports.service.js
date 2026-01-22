@@ -13,6 +13,7 @@ exports.ReportsService = void 0;
 const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
 const prisma_service_1 = require("../../common/prisma/prisma.service");
+const nepali_date_1 = require("../../common/date/nepali-date");
 const outbox_service_1 = require("../outbox/outbox.service");
 let ReportsService = class ReportsService {
     prisma;
@@ -20,6 +21,24 @@ let ReportsService = class ReportsService {
     constructor(prisma, outbox) {
         this.prisma = prisma;
         this.outbox = outbox;
+    }
+    async getCompany(companyId) {
+        const company = await this.prisma.company.findUnique({ where: { id: companyId } });
+        if (!company)
+            throw new Error("Company not found");
+        return company;
+    }
+    async resolveReportRange(companyId, filters) {
+        if (filters.from || filters.to || filters.fromBs || filters.toBs) {
+            return {
+                from: filters.from || (filters.fromBs ? (0, nepali_date_1.resolveAdDate)(undefined, filters.fromBs).date : undefined),
+                to: filters.to || (filters.toBs ? (0, nepali_date_1.resolveAdDate)(undefined, filters.toBs).date : undefined)
+            };
+        }
+        const company = await this.getCompany(companyId);
+        const currentBs = (0, nepali_date_1.getCurrentBsDate)();
+        const fy = (0, nepali_date_1.bsFiscalYearRange)(currentBs, company.fiscalYearStartMonth || 4);
+        return { from: fy.from, to: fy.to };
     }
     sumLines(lines) {
         let debit = new client_1.Prisma.Decimal(0);
@@ -31,29 +50,31 @@ let ReportsService = class ReportsService {
         return { debit, credit };
     }
     applyDateFilter(filters) {
-        if (!filters.from && !filters.to)
+        const from = filters.from;
+        const to = filters.to;
+        if (!from && !to)
             return undefined;
         const voucherDate = {};
-        if (filters.from)
-            voucherDate.gte = filters.from;
-        if (filters.to)
-            voucherDate.lte = filters.to;
+        if (from)
+            voucherDate.gte = from;
+        if (to)
+            voucherDate.lte = to;
         return voucherDate;
     }
     formatAmount(value) {
         return value.toFixed(2);
     }
-    formatDateRange(filters) {
-        if (!filters.from && !filters.to)
+    formatDateRange(range) {
+        if (!range.from && !range.to)
             return "All dates";
-        const from = filters.from ? filters.from.toISOString().slice(0, 10) : "Start";
-        const to = filters.to ? filters.to.toISOString().slice(0, 10) : "End";
+        const from = range.from ? range.from.toISOString().slice(0, 10) : "Start";
+        const to = range.to ? range.to.toISOString().slice(0, 10) : "End";
         return `${from} to ${to}`;
     }
-    buildTrialBalanceText(data, filters) {
+    buildTrialBalanceText(data, range) {
         const lines = [];
         lines.push("TRIAL BALANCE");
-        lines.push(`Period: ${this.formatDateRange(filters)}`);
+        lines.push(`Period: ${this.formatDateRange(range)}`);
         lines.push("");
         lines.push("Account Code | Account Name | Debit | Credit");
         for (const row of data.rows) {
@@ -61,10 +82,10 @@ let ReportsService = class ReportsService {
         }
         return lines.join("\n");
     }
-    buildProfitLossText(data, filters) {
+    buildProfitLossText(data, range) {
         const lines = [];
         lines.push("PROFIT AND LOSS");
-        lines.push(`Period: ${this.formatDateRange(filters)}`);
+        lines.push(`Period: ${this.formatDateRange(range)}`);
         lines.push("");
         lines.push("Income");
         for (const row of data.income) {
@@ -81,10 +102,10 @@ let ReportsService = class ReportsService {
         lines.push(`Net Profit | ${this.formatAmount(data.netProfit)}`);
         return lines.join("\n");
     }
-    buildBalanceSheetText(data, filters) {
+    buildBalanceSheetText(data, range) {
         const lines = [];
         lines.push("BALANCE SHEET");
-        lines.push(`As of: ${this.formatDateRange(filters)}`);
+        lines.push(`As of: ${this.formatDateRange(range)}`);
         lines.push("");
         lines.push("Assets");
         for (const row of data.assets) {
@@ -179,7 +200,8 @@ let ReportsService = class ReportsService {
         return this.toCsv(rows);
     }
     async trialBalance(companyId, filters) {
-        const voucherDate = this.applyDateFilter(filters);
+        const range = await this.resolveReportRange(companyId, filters);
+        const voucherDate = this.applyDateFilter(range);
         const lines = await this.prisma.voucherLine.findMany({
             where: {
                 companyId,
@@ -214,7 +236,8 @@ let ReportsService = class ReportsService {
         return { rows, totalDebit: totals.debit, totalCredit: totals.credit, balanced };
     }
     async profitAndLoss(companyId, filters) {
-        const voucherDate = this.applyDateFilter(filters);
+        const range = await this.resolveReportRange(companyId, filters);
+        const voucherDate = this.applyDateFilter(range);
         const lines = await this.prisma.voucherLine.findMany({
             where: {
                 companyId,
@@ -252,7 +275,8 @@ let ReportsService = class ReportsService {
         return { income: incomeRows, expense: expenseRows, totalIncome, totalExpense, netProfit };
     }
     async balanceSheet(companyId, filters) {
-        const voucherDate = this.applyDateFilter(filters);
+        const range = await this.resolveReportRange(companyId, filters);
+        const voucherDate = this.applyDateFilter(range);
         const lines = await this.prisma.voucherLine.findMany({
             where: {
                 companyId,
@@ -315,8 +339,13 @@ let ReportsService = class ReportsService {
         };
     }
     async partyAging(companyId, filters) {
-        const asOf = filters.asOf || filters.to || new Date();
-        const voucherDate = this.applyDateFilter({ from: filters.from, to: asOf });
+        const asOf = filters.asOf
+            || (filters.asOfBs ? (0, nepali_date_1.resolveAdDate)(undefined, filters.asOfBs).date : undefined)
+            || filters.to
+            || (filters.toBs ? (0, nepali_date_1.resolveAdDate)(undefined, filters.toBs).date : undefined)
+            || new Date();
+        const range = await this.resolveReportRange(companyId, { from: filters.from, fromBs: filters.fromBs, to: asOf });
+        const voucherDate = this.applyDateFilter(range);
         const lines = await this.prisma.voucherLine.findMany({
             where: {
                 companyId,
@@ -367,8 +396,49 @@ let ReportsService = class ReportsService {
             rows
         };
     }
+    async partyLedger(companyId, filters) {
+        const range = await this.resolveReportRange(companyId, {
+            from: filters.from,
+            fromBs: filters.fromBs,
+            to: filters.to,
+            toBs: filters.toBs
+        });
+        const voucherDate = this.applyDateFilter(range);
+        const lines = await this.prisma.voucherLine.findMany({
+            where: {
+                companyId,
+                partyId: filters.partyId,
+                voucher: {
+                    status: "posted",
+                    ...(voucherDate ? { voucherDate } : {})
+                }
+            },
+            include: { voucher: true, account: true }
+        });
+        let running = new client_1.Prisma.Decimal(0);
+        const rows = lines
+            .sort((a, b) => a.voucher.voucherDate.getTime() - b.voucher.voucherDate.getTime())
+            .map((line) => {
+            const debit = line.debit;
+            const credit = line.credit;
+            running = running.add(debit).sub(credit);
+            return {
+                date: line.voucher.voucherDate,
+                dateBs: line.voucher.voucherDateBs || null,
+                voucherId: line.voucherId,
+                voucherNumber: line.voucher.voucherNumber,
+                accountCode: line.account.code,
+                accountName: line.account.name,
+                debit,
+                credit,
+                balance: running
+            };
+        });
+        return { partyId: filters.partyId, rows, balance: running };
+    }
     async exportPdf(companyId, input) {
         const filters = { from: input.from, to: input.to };
+        const range = await this.resolveReportRange(companyId, filters);
         let data;
         let contentText = "";
         let contentType = "application/pdf";
@@ -376,17 +446,17 @@ let ReportsService = class ReportsService {
         if (input.report === "trial-balance") {
             data = await this.trialBalance(companyId, filters);
             contentText =
-                format === "csv" ? this.buildTrialBalanceCsv(data) : this.buildTrialBalanceText(data, filters);
+                format === "csv" ? this.buildTrialBalanceCsv(data) : this.buildTrialBalanceText(data, range);
         }
         else if (input.report === "profit-loss") {
             data = await this.profitAndLoss(companyId, filters);
             contentText =
-                format === "csv" ? this.buildProfitLossCsv(data) : this.buildProfitLossText(data, filters);
+                format === "csv" ? this.buildProfitLossCsv(data) : this.buildProfitLossText(data, range);
         }
         else if (input.report === "balance-sheet") {
             data = await this.balanceSheet(companyId, filters);
             contentText =
-                format === "csv" ? this.buildBalanceSheetCsv(data) : this.buildBalanceSheetText(data, filters);
+                format === "csv" ? this.buildBalanceSheetCsv(data) : this.buildBalanceSheetText(data, range);
         }
         else {
             data = { message: "Unknown report" };

@@ -4,6 +4,7 @@ import type { AuthUser } from "../../common/auth/auth.types";
 type DraftInput = {
     voucherType?: VoucherType;
     voucherDate?: Date;
+    voucherDateBs?: string;
     partyId?: string;
     memo?: string;
     lines?: Array<{
@@ -55,6 +56,7 @@ export declare class VouchersService {
         voucherType: import("@prisma/client").$Enums.VoucherType;
         voucherNumber: string | null;
         voucherDate: Date;
+        voucherDateBs: string | null;
         partyId: string | null;
         memo: string | null;
         source: string;
@@ -91,6 +93,7 @@ export declare class VouchersService {
         voucherType: import("@prisma/client").$Enums.VoucherType;
         voucherNumber: string | null;
         voucherDate: Date;
+        voucherDateBs: string | null;
         partyId: string | null;
         memo: string | null;
         source: string;
@@ -134,6 +137,7 @@ export declare class VouchersService {
         voucherType: import("@prisma/client").$Enums.VoucherType;
         voucherNumber: string | null;
         voucherDate: Date;
+        voucherDateBs: string | null;
         partyId: string | null;
         memo: string | null;
         source: string;
@@ -174,6 +178,7 @@ export declare class VouchersService {
         voucherType: import("@prisma/client").$Enums.VoucherType;
         voucherNumber: string | null;
         voucherDate: Date;
+        voucherDateBs: string | null;
         partyId: string | null;
         memo: string | null;
         source: string;
@@ -210,6 +215,7 @@ export declare class VouchersService {
         voucherType: import("@prisma/client").$Enums.VoucherType;
         voucherNumber: string | null;
         voucherDate: Date;
+        voucherDateBs: string | null;
         partyId: string | null;
         memo: string | null;
         postedAt: Date | null;

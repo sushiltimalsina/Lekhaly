@@ -1,6 +1,6 @@
 import { z } from "zod";
 export declare const LoginSchema: z.ZodObject<{
-    companyId: z.ZodString;
+    companyCode: z.ZodString;
     email: z.ZodString;
     password: z.ZodString;
     totpCode: z.ZodOptional<z.ZodString>;
@@ -21,6 +21,7 @@ export declare const RefreshSchema: z.ZodObject<{
     refreshToken: z.ZodString;
 }, z.core.$strip>;
 export declare const RegisterSchema: z.ZodObject<{
+    companyCode: z.ZodString;
     companyName: z.ZodString;
     name: z.ZodString;
     email: z.ZodString;

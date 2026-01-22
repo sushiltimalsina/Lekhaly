@@ -56,6 +56,21 @@ export declare class ReportsController {
             total: import("@prisma/client/runtime/client").Decimal;
         }[];
     }>;
+    partyLedger(user: AuthUser, query: any): Promise<{
+        partyId: string;
+        rows: {
+            date: Date;
+            dateBs: string | null;
+            voucherId: string;
+            voucherNumber: string | null;
+            accountCode: string;
+            accountName: string;
+            debit: import("@prisma/client/runtime/client").Decimal;
+            credit: import("@prisma/client/runtime/client").Decimal;
+            balance: import("@prisma/client/runtime/client").Decimal;
+        }[];
+        balance: import("@prisma/client/runtime/client").Decimal;
+    }>;
     export(user: AuthUser, body: any): Promise<{
         report: string;
         generatedAt: Date;

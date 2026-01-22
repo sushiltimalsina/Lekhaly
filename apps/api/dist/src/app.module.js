@@ -20,10 +20,17 @@ const outbox_module_1 = require("./modules/outbox/outbox.module");
 const roles_module_1 = require("./modules/roles/roles.module");
 const devices_module_1 = require("./modules/devices/devices.module");
 const items_module_1 = require("./modules/items/items.module");
+const banking_module_1 = require("./modules/banking/banking.module");
 const parties_module_1 = require("./modules/parties/parties.module");
 const reports_module_1 = require("./modules/reports/reports.module");
 const sync_module_1 = require("./modules/sync/sync.module");
 const vouchers_module_1 = require("./modules/vouchers/vouchers.module");
+const users_module_1 = require("./modules/users/users.module");
+const invoices_module_1 = require("./modules/invoices/invoices.module");
+const inventory_module_1 = require("./modules/inventory/inventory.module");
+const expenses_module_1 = require("./modules/expenses/expenses.module");
+const taxes_module_1 = require("./modules/taxes/taxes.module");
+const pdf_module_1 = require("./modules/pdf/pdf.module");
 const health_module_1 = require("./moduls/health/health.module");
 let AppModule = class AppModule {
 };
@@ -41,6 +48,13 @@ exports.AppModule = AppModule = __decorate([
             outbox_module_1.OutboxModule,
             roles_module_1.RolesModule,
             devices_module_1.DevicesModule,
+            banking_module_1.BankingModule,
+            users_module_1.UsersModule,
+            invoices_module_1.InvoicesModule,
+            inventory_module_1.InventoryModule,
+            expenses_module_1.ExpensesModule,
+            taxes_module_1.TaxesModule,
+            pdf_module_1.PdfModule,
             parties_module_1.PartiesModule,
             items_module_1.ItemsModule,
             accounts_module_1.AccountsModule
