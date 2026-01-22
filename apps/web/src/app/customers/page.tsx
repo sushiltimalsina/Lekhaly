@@ -1,124 +1,81 @@
 "use client";
 
-import { motion } from "framer-motion";
-import Link from "next/link";
-import { Building2, Filter, Mail, Phone, Plus, Search } from "lucide-react";
+import * as React from "react";
+import PageHeader from "@/components/app/page-header";
+import FiltersBar from "@/components/app/filters-bar";
+import DataTable, { Column } from "@/components/app/data-table";
+import { MoneyText } from "@/components/app/money";
 
-const container = {
-    hidden: { opacity: 0 },
-    show: { opacity: 1, transition: { staggerChildren: 0.08 } },
+type CustomerRow = {
+  id: string;
+  name: string;
+  phone?: string;
+  email?: string;
+  balance?: number;
 };
-
-const item = {
-    hidden: { opacity: 0, y: 16 },
-    show: { opacity: 1, y: 0 },
-};
-
-const customers = [
-    { name: "Himalaya Trading", email: "accounts@himalaya.com", phone: "+977-1-5551234", status: "Active" },
-    { name: "Sundar Textile", email: "billing@sundar.com", phone: "+977-1-5559876", status: "Active" },
-    { name: "Kathmandu Supplies", email: "ops@kathmandusupplies.com", phone: "+977-1-5553321", status: "On hold" },
-];
 
 export default function CustomersPage() {
-    return (
-        <div className="min-h-screen relative overflow-hidden">
-            <div className="absolute inset-0 -z-10">
-                <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(251,250,247,0.96),rgba(244,242,236,0.96))] dark:bg-[linear-gradient(135deg,rgba(7,10,16,0.98),rgba(12,15,23,0.98))]" />
-                <div className="absolute -top-24 left-1/4 h-80 w-80 rounded-full bg-amber-200/40 blur-[120px] dark:bg-amber-500/20" />
-                <div className="absolute top-1/2 -right-16 h-96 w-96 rounded-full bg-emerald-200/40 blur-[140px] dark:bg-emerald-500/20" />
-                <div className="absolute bottom-[-140px] left-12 h-96 w-96 rounded-full bg-sky-200/40 blur-[140px] dark:bg-sky-500/20" />
-                <div className="absolute inset-0 opacity-[0.12] [background-image:radial-gradient(rgba(60,60,60,0.2)_1px,transparent_1px)] [background-size:24px_24px] dark:opacity-[0.08]" />
-            </div>
+  const [q, setQ] = React.useState("");
+  const [rows] = React.useState<CustomerRow[]>([
+    { id: "c1", name: "ABC Traders", phone: "98XXXXXXXX", balance: 12500 },
+    { id: "c2", name: "Himal Suppliers", phone: "98XXXXXXXX", balance: 0 },
+  ]);
 
-            <motion.div
-                variants={container}
-                initial="hidden"
-                animate="show"
-                className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10 lg:px-10"
-            >
-                <motion.header variants={item} className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="space-y-4">
-                        <span className="inline-flex w-fit items-center gap-2 rounded-full border border-white/40 bg-white/50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-foreground/70 dark:border-white/10 dark:bg-white/5">
-                            Customers
-                        </span>
-                        <div>
-                            <h1 className="text-3xl sm:text-4xl font-semibold">Manage your customers</h1>
-                            <p className="mt-2 text-muted-foreground">
-                                Centralize contacts, credit status, and engagement history in one view.
-                            </p>
-                        </div>
-                    </div>
-                    <div className="flex flex-col gap-3 sm:flex-row">
-                        <Link
-                            href="/coming-soon?feature=Customer%20filters"
-                            className="inline-flex items-center justify-center gap-2 rounded-full border border-white/40 bg-white/50 px-6 py-3 text-sm font-semibold text-foreground transition hover:bg-white/70 dark:border-white/10 dark:bg-white/5"
-                        >
-                            <Filter className="h-4 w-4" />
-                            Filters
-                        </Link>
-                        <Link
-                            href="/coming-soon?feature=Customer%20creation"
-                            className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-300 px-6 py-3 text-sm font-semibold text-amber-950 shadow-lg shadow-amber-500/30 transition hover:shadow-xl hover:shadow-amber-500/40"
-                        >
-                            <Plus className="h-4 w-4" />
-                            New customer
-                        </Link>
-                    </div>
-                </motion.header>
+  const filtered = rows.filter((r) => {
+    if (!q.trim()) return true;
+    return `${r.name} ${r.phone ?? ""} ${r.email ?? ""}`.toLowerCase().includes(q.toLowerCase());
+  });
 
-                <motion.section variants={item} className="mt-8 glass-panel rounded-3xl p-6 sm:p-8">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-                            <input
-                                type="text"
-                                placeholder="Search customers"
-                                className="w-full rounded-full border border-white/30 bg-white/60 py-3 pl-12 pr-4 text-sm text-foreground outline-none transition focus:border-amber-300/60 focus:ring-2 focus:ring-amber-300/40 dark:border-white/10 dark:bg-white/5"
-                            />
-                        </div>
-                        <Link
-                            href="/coming-soon?feature=Customer%20export"
-                            className="inline-flex items-center justify-center gap-2 rounded-full border border-white/40 bg-white/50 px-5 py-3 text-sm font-semibold text-foreground transition hover:bg-white/70 dark:border-white/10 dark:bg-white/5"
-                        >
-                            <Building2 className="h-4 w-4" />
-                            Export
-                        </Link>
-                    </div>
+  const columns: Column<CustomerRow>[] = [
+    { key: "name", header: "Customer", cell: (r) => <div className="font-medium">{r.name}</div> },
+    { key: "phone", header: "Phone", cell: (r) => <div className="mono-numbers">{r.phone ?? "—"}</div> },
+    { key: "email", header: "Email", cell: (r) => <div className="truncate">{r.email ?? "—"}</div> },
+    {
+      key: "balance",
+      header: <span className="w-full block text-right">Balance</span>,
+      align: "right",
+      cell: (r) => <MoneyText value={Number(r.balance ?? 0)} />,
+      width: 160,
+    },
+    {
+      key: "actions",
+      header: "",
+      align: "right",
+      width: 120,
+      cell: () => (
+        <button className="rounded-xl border bg-background px-3 py-1.5 text-xs hover:bg-muted">
+          View
+        </button>
+      ),
+    },
+  ];
 
-                    <div className="mt-6 space-y-4">
-                        {customers.map((customer) => (
-                            <div
-                                key={customer.name}
-                                className="flex flex-col gap-4 rounded-2xl border border-white/20 bg-white/40 p-4 text-sm text-muted-foreground dark:border-white/10 dark:bg-white/5 sm:flex-row sm:items-center sm:justify-between"
-                            >
-                                <div>
-                                    <p className="text-foreground font-semibold">{customer.name}</p>
-                                    <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
-                                        <span className="inline-flex items-center gap-2">
-                                            <Mail className="h-4 w-4" /> {customer.email}
-                                        </span>
-                                        <span className="inline-flex items-center gap-2">
-                                            <Phone className="h-4 w-4" /> {customer.phone}
-                                        </span>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                    <span className="rounded-full border border-white/30 bg-white/60 px-3 py-1 text-xs font-semibold text-foreground dark:border-white/10 dark:bg-white/5">
-                                        {customer.status}
-                                    </span>
-                                    <Link
-                                        href="/coming-soon?feature=Customer%20details"
-                                        className="text-xs font-semibold text-amber-600 hover:text-amber-500"
-                                    >
-                                        View details
-                                    </Link>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </motion.section>
-            </motion.div>
-        </div>
-    );
+  return (
+    <div>
+      <PageHeader
+        title="Customers"
+        description="Manage customers and view balances"
+        actions={
+          <button className="rounded-xl bg-primary px-3 py-2 text-sm text-white hover:bg-primary/90">
+            New Customer
+          </button>
+        }
+      />
+
+      <FiltersBar
+        left={
+          <div className="w-full sm:w-[320px]">
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search customers…"
+              className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+            />
+          </div>
+        }
+      />
+
+      <DataTable rows={filtered} columns={columns} />
+    </div>
+  );
 }

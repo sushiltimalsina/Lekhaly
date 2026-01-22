@@ -1,113 +1,179 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { FileText, Filter, Plus, Search } from "lucide-react";
-import Link from "next/link";
-import { formatCurrency } from "../lib/format";
+import * as React from "react";
+import PageHeader from "@/components/app/page-header";
+import FiltersBar from "@/components/app/filters-bar";
+import DataTable, { Column } from "@/components/app/data-table";
+import StatusBadge, { DocStatus } from "@/components/app/status-badge";
+import BsDateInput from "@/components/app/bs-date-input";
+import { MoneyText } from "@/components/app/money";
+import { listInvoices } from "@/lib/api/invoices";
 
-const container = {
-    hidden: { opacity: 0 },
-    show: { opacity: 1, transition: { staggerChildren: 0.08 } },
+type InvoiceRow = {
+  id: string;
+  invoiceNo?: string;
+  partyName?: string;
+  dateBs?: string;
+  date?: string;
+  dueDateBs?: string;
+  dueDate?: string;
+  total?: number;
+  status?: DocStatus;
 };
-
-const item = {
-    hidden: { opacity: 0, y: 16 },
-    show: { opacity: 1, y: 0 },
-};
-
-const invoices = [
-    { id: "INV-1001", customer: "Himalaya Trading", status: "Draft", amount: 0 },
-    { id: "INV-1002", customer: "Sundar Textile", status: "Sent", amount: 0 },
-    { id: "INV-1003", customer: "Kathmandu Supplies", status: "Paid", amount: 0 },
-];
 
 export default function InvoicesPage() {
-    return (
-        <div className="min-h-screen relative overflow-hidden">
-            <div className="absolute inset-0 -z-10">
-                <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(251,250,247,0.96),rgba(244,242,236,0.96))] dark:bg-[linear-gradient(135deg,rgba(7,10,16,0.98),rgba(12,15,23,0.98))]" />
-                <div className="absolute -top-24 left-1/4 h-80 w-80 rounded-full bg-amber-200/40 blur-[120px] dark:bg-amber-500/20" />
-                <div className="absolute top-1/2 -right-16 h-96 w-96 rounded-full bg-emerald-200/40 blur-[140px] dark:bg-emerald-500/20" />
-                <div className="absolute bottom-[-140px] left-12 h-96 w-96 rounded-full bg-sky-200/40 blur-[140px] dark:bg-sky-500/20" />
-                <div className="absolute inset-0 opacity-[0.12] [background-image:radial-gradient(rgba(60,60,60,0.2)_1px,transparent_1px)] [background-size:24px_24px] dark:opacity-[0.08]" />
+  const [rows, setRows] = React.useState<InvoiceRow[]>([]);
+  const [loading, setLoading] = React.useState(false);
+
+  // simple filters (server filter later)
+  const [from, setFrom] = React.useState<{ bs: string; ad: string }>({ bs: "", ad: "" });
+  const [to, setTo] = React.useState<{ bs: string; ad: string }>({ bs: "", ad: "" });
+  const [q, setQ] = React.useState("");
+
+  async function load() {
+    setLoading(true);
+    try {
+      const res: any = await listInvoices({ take: 50, skip: 0 });
+      // backend shape unknown; normalize safely
+      const data = Array.isArray(res) ? res : res?.data ?? res?.items ?? [];
+      setRows(data as InvoiceRow[]);
+    } catch (e) {
+      setRows([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  React.useEffect(() => {
+    load();
+  }, []);
+
+  const filtered = rows.filter((r) => {
+    if (!q.trim()) return true;
+    const text = `${r.invoiceNo ?? ""} ${r.partyName ?? ""}`.toLowerCase();
+    return text.includes(q.toLowerCase());
+  });
+
+  const columns: Column<InvoiceRow>[] = [
+    {
+      key: "invoiceNo",
+      header: "Invoice",
+      cell: (r) => (
+        <div className="font-medium">
+          {r.invoiceNo ?? r.id.slice(0, 8).toUpperCase()}
+        </div>
+      ),
+    },
+    {
+      key: "party",
+      header: "Party",
+      cell: (r) => <div className="truncate">{r.partyName ?? "—"}</div>,
+    },
+    {
+      key: "date",
+      header: "Date (BS)",
+      cell: (r) => (
+        <div>
+          <div className="mono-numbers">{r.dateBs ?? "—"}</div>
+          <div className="text-xs text-muted-foreground">
+            {r.date ? r.date.slice(0, 10) : ""}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "due",
+      header: "Due (BS)",
+      cell: (r) => (
+        <div>
+          <div className="mono-numbers">{r.dueDateBs ?? "—"}</div>
+          <div className="text-xs text-muted-foreground">
+            {r.dueDate ? r.dueDate.slice(0, 10) : ""}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "total",
+      header: <span className="w-full block text-right">Amount</span>,
+      align: "right",
+      cell: (r) => <MoneyText value={Number(r.total ?? 0)} />,
+    },
+    {
+      key: "status",
+      header: "Status",
+      cell: (r) => <StatusBadge status={(r.status ?? "draft") as DocStatus} />,
+      width: 110,
+    },
+    {
+      key: "actions",
+      header: "",
+      align: "right",
+      width: 120,
+      cell: () => (
+        <button className="rounded-xl border bg-background px-3 py-1.5 text-xs hover:bg-muted">
+          View
+        </button>
+      ),
+    },
+  ];
+
+  return (
+    <div>
+      <PageHeader
+        title="Invoices"
+        description="Create, preview and post sales invoices"
+        actions={
+          <button className="rounded-xl bg-primary px-3 py-2 text-sm text-white hover:bg-primary/90">
+            New Invoice
+          </button>
+        }
+      />
+
+      <FiltersBar
+        left={
+          <>
+            <div className="w-full sm:w-[260px]">
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search invoice or party…"
+                className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              />
             </div>
 
-            <motion.div
-                variants={container}
-                initial="hidden"
-                animate="show"
-                className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10 lg:px-10"
+            <div className="w-full sm:w-[220px]">
+              <BsDateInput
+                label="From (BS)"
+                valueBs={from.bs}
+                valueAd={from.ad}
+                onChange={(v) => setFrom(v)}
+              />
+            </div>
+
+            <div className="w-full sm:w-[220px]">
+              <BsDateInput
+                label="To (BS)"
+                valueBs={to.bs}
+                valueAd={to.ad}
+                onChange={(v) => setTo(v)}
+              />
+            </div>
+          </>
+        }
+        right={
+          <>
+            <button
+              onClick={load}
+              className="rounded-xl border bg-background px-3 py-2 text-sm hover:bg-muted"
             >
-                <motion.header variants={item} className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="space-y-4">
-                        <span className="inline-flex w-fit items-center gap-2 rounded-full border border-white/40 bg-white/50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-foreground/70 dark:border-white/10 dark:bg-white/5">
-                            Invoices
-                        </span>
-                        <div>
-                            <h1 className="text-3xl sm:text-4xl font-semibold">Manage your invoices</h1>
-                            <p className="mt-2 text-muted-foreground">
-                                Create, track, and collect invoices with a premium, audit-ready workflow.
-                            </p>
-                        </div>
-                    </div>
-                    <div className="flex flex-col gap-3 sm:flex-row">
-                        <Link
-                            href="/coming-soon?feature=Invoice%20filters"
-                            className="inline-flex items-center justify-center gap-2 rounded-full border border-white/40 bg-white/50 px-6 py-3 text-sm font-semibold text-foreground transition hover:bg-white/70 dark:border-white/10 dark:bg-white/5"
-                        >
-                            <Filter className="h-4 w-4" />
-                            Filters
-                        </Link>
-                        <Link
-                            href="/coming-soon?feature=Invoice%20creation"
-                            className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-300 px-6 py-3 text-sm font-semibold text-amber-950 shadow-lg shadow-amber-500/30 transition hover:shadow-xl hover:shadow-amber-500/40"
-                        >
-                            <Plus className="h-4 w-4" />
-                            New invoice
-                        </Link>
-                    </div>
-                </motion.header>
+              Refresh
+            </button>
+          </>
+        }
+      />
 
-                <motion.section variants={item} className="mt-8 glass-panel rounded-3xl p-6 sm:p-8">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-                            <input
-                                type="text"
-                                placeholder="Search invoices or customers"
-                                className="w-full rounded-full border border-white/30 bg-white/60 py-3 pl-12 pr-4 text-sm text-foreground outline-none transition focus:border-amber-300/60 focus:ring-2 focus:ring-amber-300/40 dark:border-white/10 dark:bg-white/5"
-                            />
-                        </div>
-                        <Link
-                            href="/coming-soon?feature=Invoice%20export"
-                            className="inline-flex items-center justify-center gap-2 rounded-full border border-white/40 bg-white/50 px-5 py-3 text-sm font-semibold text-foreground transition hover:bg-white/70 dark:border-white/10 dark:bg-white/5"
-                        >
-                            <FileText className="h-4 w-4" />
-                            Export
-                        </Link>
-                    </div>
-
-                    <div className="mt-6 space-y-4">
-                        {invoices.map((invoice) => (
-                            <div
-                                key={invoice.id}
-                                className="flex flex-col gap-4 rounded-2xl border border-white/20 bg-white/40 p-4 text-sm text-muted-foreground dark:border-white/10 dark:bg-white/5 sm:flex-row sm:items-center sm:justify-between"
-                            >
-                                <div>
-                                    <p className="text-foreground font-semibold">{invoice.id}</p>
-                                    <p className="text-xs text-muted-foreground">{invoice.customer}</p>
-                                </div>
-                                <div className="flex flex-wrap items-center gap-4">
-                                    <span className="rounded-full border border-white/30 bg-white/60 px-3 py-1 text-xs font-semibold text-foreground dark:border-white/10 dark:bg-white/5">
-                                        {invoice.status}
-                                    </span>
-                                    <span className="text-foreground font-semibold">{formatCurrency(invoice.amount)}</span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </motion.section>
-            </motion.div>
-        </div>
-    );
+      <DataTable rows={filtered} columns={columns} loading={loading} />
+    </div>
+  );
 }
