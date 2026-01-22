@@ -1,42 +1,65 @@
 "use client";
 
 import * as React from "react";
+import { useParams, useRouter } from "next/navigation";
 import PageHeader from "@/components/app/page-header";
-import FiltersBar from "@/components/app/filters-bar";
-import DataTable, { Column } from "@/components/app/data-table";
 import StatusBadge, { DocStatus } from "@/components/app/status-badge";
-import BsDateInput from "@/components/app/bs-date-input";
 import { MoneyText } from "@/components/app/money";
-import { listVouchers } from "@/lib/api/vouchers";
+import ConfirmDialog from "@/components/app/confirm-dialog";
+import {
+  getVoucher,
+  previewVoucher,
+  postVoucher,
+  voidVoucher,
+  listVoucherAttachments,
+  getVoucherAttachmentUrl,
+  deleteVoucherAttachment,
+} from "@/lib/api/vouchers";
+import { generateVoucherPdf, getPdfJobUrl } from "@/lib/api/pdf";
 
-type VoucherRow = {
-  id: string;
-  voucherNo?: string;
-  voucherType?: string;
-  partyName?: string;
-  voucherDateBs?: string;
-  voucherDate?: string;
-  totalDebit?: number;
-  totalCredit?: number;
-  status?: DocStatus;
-};
+export default function VoucherDetailPage() {
+  const params = useParams<{ id: string }>();
+  const router = useRouter();
+  const id = params?.id;
 
-export default function VouchersPage() {
-  const [rows, setRows] = React.useState<VoucherRow[]>([]);
-  const [loading, setLoading] = React.useState(false);
+  const [loading, setLoading] = React.useState(true);
+  const [actionLoading, setActionLoading] = React.useState(false);
+  const [voucher, setVoucher] = React.useState<any>(null);
+  const [preview, setPreview] = React.useState<any>(null);
+  const [attachments, setAttachments] = React.useState<any[]>([]);
+  const [error, setError] = React.useState<string | null>(null);
 
-  const [from, setFrom] = React.useState<{ bs: string; ad: string }>({ bs: "", ad: "" });
-  const [to, setTo] = React.useState<{ bs: string; ad: string }>({ bs: "", ad: "" });
-  const [q, setQ] = React.useState("");
+  const [confirmPost, setConfirmPost] = React.useState(false);
+  const [confirmVoid, setConfirmVoid] = React.useState(false);
 
   async function load() {
+    if (!id) return;
     setLoading(true);
+    setError(null);
     try {
-      const res: any = await listVouchers({ take: 50, skip: 0 });
-      const data = Array.isArray(res) ? res : res?.data ?? res?.items ?? [];
-      setRows(data as VoucherRow[]);
-    } catch {
-      setRows([]);
+      const v = await getVoucher(id);
+      setVoucher(v);
+
+      // preview is separate endpoint
+      try {
+        const p = await previewVoucher(id);
+        setPreview(p);
+      } catch {
+        setPreview(null);
+      }
+
+      try {
+        const a = await listVoucherAttachments(id);
+        const list = Array.isArray(a) ? a : a?.items ?? a?.data ?? [];
+        setAttachments(list);
+      } catch {
+        setAttachments([]);
+      }
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to load voucher");
+      setVoucher(null);
+      setPreview(null);
+      setAttachments([]);
     } finally {
       setLoading(false);
     }
@@ -44,131 +67,318 @@ export default function VouchersPage() {
 
   React.useEffect(() => {
     load();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
-  const filtered = rows.filter((r) => {
-    if (!q.trim()) return true;
-    const text = `${r.voucherNo ?? ""} ${r.voucherType ?? ""} ${r.partyName ?? ""}`.toLowerCase();
-    return text.includes(q.toLowerCase());
-  });
+  const status: DocStatus = (voucher?.status ?? "draft") as DocStatus;
 
-  const columns: Column<VoucherRow>[] = [
-    {
-      key: "voucher",
-      header: "Voucher",
-      cell: (r) => (
-        <div>
-          <div className="font-medium">
-            {r.voucherNo ?? r.id.slice(0, 8).toUpperCase()}
-          </div>
-          <div className="text-xs text-muted-foreground">{r.voucherType ?? "—"}</div>
-        </div>
-      ),
-    },
-    {
-      key: "party",
-      header: "Party",
-      cell: (r) => <div className="truncate">{r.partyName ?? "—"}</div>,
-    },
-    {
-      key: "date",
-      header: "Date (BS)",
-      cell: (r) => (
-        <div>
-          <div className="mono-numbers">{r.voucherDateBs ?? "—"}</div>
-          <div className="text-xs text-muted-foreground">
-            {r.voucherDate ? r.voucherDate.slice(0, 10) : ""}
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: "dr",
-      header: <span className="w-full block text-right">Debit</span>,
-      align: "right",
-      cell: (r) => <MoneyText value={Number(r.totalDebit ?? 0)} />,
-      width: 140,
-    },
-    {
-      key: "cr",
-      header: <span className="w-full block text-right">Credit</span>,
-      align: "right",
-      cell: (r) => <MoneyText value={Number(r.totalCredit ?? 0)} />,
-      width: 140,
-    },
-    {
-      key: "status",
-      header: "Status",
-      cell: (r) => <StatusBadge status={(r.status ?? "draft") as DocStatus} />,
-      width: 110,
-    },
-    {
-      key: "actions",
-      header: "",
-      align: "right",
-      width: 120,
-      cell: () => (
-        <button className="rounded-xl border bg-background px-3 py-1.5 text-xs hover:bg-muted">
-          View
-        </button>
-      ),
-    },
-  ];
+  const totals = React.useMemo(() => {
+    const lines: any[] = voucher?.lines ?? preview?.lines ?? [];
+    let dr = 0;
+    let cr = 0;
+    for (const l of lines) {
+      dr += Number(l.debit ?? 0);
+      cr += Number(l.credit ?? 0);
+    }
+    return { dr, cr };
+  }, [voucher, preview]);
+
+  async function onPost() {
+    if (!id) return;
+    setActionLoading(true);
+    try {
+      await postVoucher(id);
+      setConfirmPost(false);
+      await load();
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to post voucher");
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function onVoid() {
+    if (!id) return;
+    setActionLoading(true);
+    try {
+      await voidVoucher(id);
+      setConfirmVoid(false);
+      await load();
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to void voucher");
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function onPdf() {
+    if (!id) return;
+    setActionLoading(true);
+    setError(null);
+    try {
+      const job: any = await generateVoucherPdf(id);
+      const jobId = job?.id ?? job?.jobId ?? job?.pdfJobId;
+      if (!jobId) throw new Error("PDF job id not returned by server");
+
+      const urlRes: any = await getPdfJobUrl(jobId);
+      const url = urlRes?.url ?? urlRes?.signedUrl ?? urlRes;
+      if (!url) throw new Error("PDF URL not returned by server");
+
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to generate PDF");
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function openAttachment(attId: string) {
+    if (!id) return;
+    setActionLoading(true);
+    setError(null);
+    try {
+      const res: any = await getVoucherAttachmentUrl(id, attId);
+      const url = res?.url ?? res?.signedUrl ?? res;
+      if (!url) throw new Error("Attachment URL not returned by server");
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to open attachment");
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function removeAttachment(attId: string) {
+    if (!id) return;
+    setActionLoading(true);
+    setError(null);
+    try {
+      await deleteVoucherAttachment(id, attId);
+      await load();
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to delete attachment");
+    } finally {
+      setActionLoading(false);
+    }
+  }
 
   return (
     <div>
       <PageHeader
-        title="Vouchers"
-        description="Draft, preview and post accounting vouchers"
+        title={loading ? "Voucher" : `Voucher ${voucher?.voucherNo ?? id?.slice(0, 8).toUpperCase()}`}
+        description="Voucher details, preview, posting and attachments"
         actions={
-          <button className="rounded-xl bg-primary px-3 py-2 text-sm text-white hover:bg-primary/90">
-            New Voucher
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => router.back()}
+              className="rounded-xl border bg-background px-3 py-2 text-sm hover:bg-muted"
+            >
+              Back
+            </button>
+
+            <button
+              onClick={onPdf}
+              disabled={actionLoading || loading}
+              className="rounded-xl border bg-background px-3 py-2 text-sm hover:bg-muted disabled:opacity-60"
+            >
+              PDF
+            </button>
+
+            {status === "draft" ? (
+              <button
+                onClick={() => setConfirmPost(true)}
+                disabled={actionLoading || loading}
+                className="rounded-xl bg-primary px-3 py-2 text-sm text-white hover:bg-primary/90 disabled:opacity-60"
+              >
+                Post
+              </button>
+            ) : null}
+
+            {status !== "void" ? (
+              <button
+                onClick={() => setConfirmVoid(true)}
+                disabled={actionLoading || loading}
+                className="rounded-xl border border-red-600/30 bg-red-600/10 px-3 py-2 text-sm text-red-700 hover:bg-red-600/15 disabled:opacity-60"
+              >
+                Void
+              </button>
+            ) : null}
+          </div>
         }
       />
 
-      <FiltersBar
-        left={
-          <>
-            <div className="w-full sm:w-[260px]">
-              <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Search voucher, type, party…"
-                className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
-              />
+      {error ? (
+        <div className="mb-3 rounded-xl border border-red-600/30 bg-red-600/10 px-3 py-2 text-sm text-red-700">
+          {error}
+        </div>
+      ) : null}
+
+      {loading ? (
+        <div className="rounded-2xl border bg-card p-4 text-sm text-muted-foreground">Loading…</div>
+      ) : !voucher ? (
+        <div className="rounded-2xl border bg-card p-4 text-sm text-muted-foreground">Not found</div>
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-3">
+          {/* Summary */}
+          <div className="rounded-2xl border bg-card p-4 lg:col-span-1">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-xs text-muted-foreground">Status</div>
+                <div className="mt-1">
+                  <StatusBadge status={status} />
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-xs text-muted-foreground">Type</div>
+                <div className="mt-1 text-sm font-semibold">{voucher?.voucherType ?? "—"}</div>
+              </div>
             </div>
 
-            <div className="w-full sm:w-[220px]">
-              <BsDateInput
-                label="From (BS)"
-                valueBs={from.bs}
-                valueAd={from.ad}
-                onChange={(v) => setFrom(v)}
-              />
+            <div className="mt-4 grid gap-3 text-sm">
+              <Field label="Party" value={voucher?.partyName ?? voucher?.partyId ?? "—"} />
+              <Field label="Date (BS)" value={voucher?.voucherDateBs ?? "—"} sub={voucher?.voucherDate?.slice?.(0, 10)} />
+              <Field label="Memo" value={voucher?.memo ?? "—"} />
             </div>
 
-            <div className="w-full sm:w-[220px]">
-              <BsDateInput
-                label="To (BS)"
-                valueBs={to.bs}
-                valueAd={to.ad}
-                onChange={(v) => setTo(v)}
-              />
+            <div className="mt-4 rounded-xl border bg-background p-3">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Debit</span>
+                <span className="mono-numbers">
+                  <MoneyText value={totals.dr} />
+                </span>
+              </div>
+              <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                <span>Credit</span>
+                <span className="mono-numbers">
+                  <MoneyText value={totals.cr} />
+                </span>
+              </div>
+              <div className="mt-2 flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">Difference</span>
+                <span className={Math.abs(totals.dr - totals.cr) < 0.0001 ? "text-emerald-600" : "text-red-600"}>
+                  <MoneyText value={totals.dr - totals.cr} />
+                </span>
+              </div>
             </div>
-          </>
-        }
-        right={
-          <button
-            onClick={load}
-            className="rounded-xl border bg-background px-3 py-2 text-sm hover:bg-muted"
-          >
-            Refresh
-          </button>
-        }
+          </div>
+
+          {/* Lines */}
+          <div className="rounded-2xl border bg-card p-4 lg:col-span-2">
+            <div className="text-sm font-semibold">Lines</div>
+            <div className="mt-3 overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead className="border-b bg-muted/50">
+                  <tr>
+                    <th className="px-3 py-2 text-left text-xs text-muted-foreground">Account/Party</th>
+                    <th className="px-3 py-2 text-left text-xs text-muted-foreground">Description</th>
+                    <th className="px-3 py-2 text-right text-xs text-muted-foreground">Debit</th>
+                    <th className="px-3 py-2 text-right text-xs text-muted-foreground">Credit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {((voucher?.lines ?? preview?.lines) ?? []).length ? (
+                    ((voucher.lines ?? preview?.lines) as any[]).map((l, idx) => (
+                      <tr key={idx} className="border-b last:border-b-0">
+                        <td className="px-3 py-2">
+                          <div className="font-medium">{l.accountName ?? l.accountId ?? "—"}</div>
+                          <div className="text-xs text-muted-foreground">{l.partyName ?? l.partyId ?? ""}</div>
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="truncate">{l.description ?? "—"}</div>
+                        </td>
+                        <td className="px-3 py-2 text-right mono-numbers">
+                          <MoneyText value={Number(l.debit ?? 0)} />
+                        </td>
+                        <td className="px-3 py-2 text-right mono-numbers">
+                          <MoneyText value={Number(l.credit ?? 0)} />
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">
+                        No lines
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Attachments */}
+            <div className="mt-6">
+              <div className="text-sm font-semibold">Attachments</div>
+              <div className="mt-2 space-y-2">
+                {attachments.length ? (
+                  attachments.map((a) => {
+                    const attId = a.id ?? a.attachmentId;
+                    const name = a.name ?? a.filename ?? a.originalName ?? attId;
+                    return (
+                      <div key={attId} className="flex items-center justify-between rounded-xl border bg-background px-3 py-2">
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-medium">{name}</div>
+                          <div className="text-xs text-muted-foreground mono-numbers">{attId}</div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => openAttachment(attId)}
+                            disabled={actionLoading}
+                            className="rounded-xl border bg-card px-3 py-1.5 text-xs hover:bg-muted disabled:opacity-60"
+                          >
+                            Open
+                          </button>
+                          <button
+                            onClick={() => removeAttachment(attId)}
+                            disabled={actionLoading}
+                            className="rounded-xl border border-red-600/30 bg-red-600/10 px-3 py-1.5 text-xs text-red-700 hover:bg-red-600/15 disabled:opacity-60"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="rounded-xl border bg-background px-3 py-3 text-sm text-muted-foreground">
+                    No attachments
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={confirmPost}
+        title="Post voucher?"
+        description="Posting will finalize the voucher and update ledgers."
+        confirmText="Post"
+        onConfirm={onPost}
+        onCancel={() => setConfirmPost(false)}
+        loading={actionLoading}
       />
 
-      <DataTable rows={filtered} columns={columns} loading={loading} />
+      <ConfirmDialog
+        open={confirmVoid}
+        title="Void voucher?"
+        description="Voiding will mark this voucher as void."
+        confirmText="Void"
+        variant="danger"
+        onConfirm={onVoid}
+        onCancel={() => setConfirmVoid(false)}
+        loading={actionLoading}
+      />
+    </div>
+  );
+}
+
+function Field({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div>
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="mt-0.5">{value}</div>
+      {sub ? <div className="text-xs text-muted-foreground">{sub}</div> : null}
     </div>
   );
 }

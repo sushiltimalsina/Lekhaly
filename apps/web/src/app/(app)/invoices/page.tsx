@@ -1,44 +1,37 @@
 "use client";
 
 import * as React from "react";
+import { useParams, useRouter } from "next/navigation";
 import PageHeader from "@/components/app/page-header";
-import FiltersBar from "@/components/app/filters-bar";
-import DataTable, { Column } from "@/components/app/data-table";
 import StatusBadge, { DocStatus } from "@/components/app/status-badge";
-import BsDateInput from "@/components/app/bs-date-input";
 import { MoneyText } from "@/components/app/money";
-import { listInvoices } from "@/lib/api/invoices";
+import ConfirmDialog from "@/components/app/confirm-dialog";
+import { getInvoice, postInvoice, voidInvoice } from "@/lib/api/invoices";
+import { generateInvoicePdf, getPdfJobUrl } from "@/lib/api/pdf";
 
-type InvoiceRow = {
-  id: string;
-  invoiceNo?: string;
-  partyName?: string;
-  dateBs?: string;
-  date?: string;
-  dueDateBs?: string;
-  dueDate?: string;
-  total?: number;
-  status?: DocStatus;
-};
+export default function InvoiceDetailPage() {
+  const params = useParams<{ id: string }>();
+  const router = useRouter();
+  const id = params?.id;
 
-export default function InvoicesPage() {
-  const [rows, setRows] = React.useState<InvoiceRow[]>([]);
-  const [loading, setLoading] = React.useState(false);
+  const [loading, setLoading] = React.useState(true);
+  const [actionLoading, setActionLoading] = React.useState(false);
+  const [invoice, setInvoice] = React.useState<any>(null);
+  const [error, setError] = React.useState<string | null>(null);
 
-  // simple filters (server filter later)
-  const [from, setFrom] = React.useState<{ bs: string; ad: string }>({ bs: "", ad: "" });
-  const [to, setTo] = React.useState<{ bs: string; ad: string }>({ bs: "", ad: "" });
-  const [q, setQ] = React.useState("");
+  const [confirmPost, setConfirmPost] = React.useState(false);
+  const [confirmVoid, setConfirmVoid] = React.useState(false);
 
   async function load() {
+    if (!id) return;
     setLoading(true);
+    setError(null);
     try {
-      const res: any = await listInvoices({ take: 50, skip: 0 });
-      // backend shape unknown; normalize safely
-      const data = Array.isArray(res) ? res : res?.data ?? res?.items ?? [];
-      setRows(data as InvoiceRow[]);
-    } catch (e) {
-      setRows([]);
+      const res = await getInvoice(id);
+      setInvoice(res);
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to load invoice");
+      setInvoice(null);
     } finally {
       setLoading(false);
     }
@@ -46,134 +39,223 @@ export default function InvoicesPage() {
 
   React.useEffect(() => {
     load();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
-  const filtered = rows.filter((r) => {
-    if (!q.trim()) return true;
-    const text = `${r.invoiceNo ?? ""} ${r.partyName ?? ""}`.toLowerCase();
-    return text.includes(q.toLowerCase());
-  });
+  const status: DocStatus = (invoice?.status ?? "draft") as DocStatus;
 
-  const columns: Column<InvoiceRow>[] = [
-    {
-      key: "invoiceNo",
-      header: "Invoice",
-      cell: (r) => (
-        <div className="font-medium">
-          {r.invoiceNo ?? r.id.slice(0, 8).toUpperCase()}
-        </div>
-      ),
-    },
-    {
-      key: "party",
-      header: "Party",
-      cell: (r) => <div className="truncate">{r.partyName ?? "—"}</div>,
-    },
-    {
-      key: "date",
-      header: "Date (BS)",
-      cell: (r) => (
-        <div>
-          <div className="mono-numbers">{r.dateBs ?? "—"}</div>
-          <div className="text-xs text-muted-foreground">
-            {r.date ? r.date.slice(0, 10) : ""}
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: "due",
-      header: "Due (BS)",
-      cell: (r) => (
-        <div>
-          <div className="mono-numbers">{r.dueDateBs ?? "—"}</div>
-          <div className="text-xs text-muted-foreground">
-            {r.dueDate ? r.dueDate.slice(0, 10) : ""}
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: "total",
-      header: <span className="w-full block text-right">Amount</span>,
-      align: "right",
-      cell: (r) => <MoneyText value={Number(r.total ?? 0)} />,
-    },
-    {
-      key: "status",
-      header: "Status",
-      cell: (r) => <StatusBadge status={(r.status ?? "draft") as DocStatus} />,
-      width: 110,
-    },
-    {
-      key: "actions",
-      header: "",
-      align: "right",
-      width: 120,
-      cell: () => (
-        <button className="rounded-xl border bg-background px-3 py-1.5 text-xs hover:bg-muted">
-          View
-        </button>
-      ),
-    },
-  ];
+  async function onPost() {
+    if (!id) return;
+    setActionLoading(true);
+    try {
+      await postInvoice(id);
+      setConfirmPost(false);
+      await load();
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to post invoice");
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function onVoid() {
+    if (!id) return;
+    setActionLoading(true);
+    try {
+      await voidInvoice(id);
+      setConfirmVoid(false);
+      await load();
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to void invoice");
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function onPdf() {
+    if (!id) return;
+    setActionLoading(true);
+    setError(null);
+    try {
+      const job: any = await generateInvoicePdf(id);
+      const jobId = job?.id ?? job?.jobId ?? job?.pdfJobId;
+      if (!jobId) throw new Error("PDF job id not returned by server");
+
+      const urlRes: any = await getPdfJobUrl(jobId);
+      const url = urlRes?.url ?? urlRes?.signedUrl ?? urlRes;
+      if (!url) throw new Error("PDF URL not returned by server");
+
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to generate PDF");
+    } finally {
+      setActionLoading(false);
+    }
+  }
 
   return (
     <div>
       <PageHeader
-        title="Invoices"
-        description="Create, preview and post sales invoices"
+        title={loading ? "Invoice" : `Invoice ${invoice?.invoiceNo ?? id?.slice(0, 8).toUpperCase()}`}
+        description="Invoice details, posting and PDF"
         actions={
-          <button className="rounded-xl bg-primary px-3 py-2 text-sm text-white hover:bg-primary/90">
-            New Invoice
-          </button>
-        }
-      />
-
-      <FiltersBar
-        left={
-          <>
-            <div className="w-full sm:w-[260px]">
-              <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Search invoice or party…"
-                className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-
-            <div className="w-full sm:w-[220px]">
-              <BsDateInput
-                label="From (BS)"
-                valueBs={from.bs}
-                valueAd={from.ad}
-                onChange={(v) => setFrom(v)}
-              />
-            </div>
-
-            <div className="w-full sm:w-[220px]">
-              <BsDateInput
-                label="To (BS)"
-                valueBs={to.bs}
-                valueAd={to.ad}
-                onChange={(v) => setTo(v)}
-              />
-            </div>
-          </>
-        }
-        right={
-          <>
+          <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={load}
+              onClick={() => router.back()}
               className="rounded-xl border bg-background px-3 py-2 text-sm hover:bg-muted"
             >
-              Refresh
+              Back
             </button>
-          </>
+
+            <button
+              onClick={onPdf}
+              disabled={actionLoading || loading}
+              className="rounded-xl border bg-background px-3 py-2 text-sm hover:bg-muted disabled:opacity-60"
+            >
+              PDF
+            </button>
+
+            {status === "draft" ? (
+              <button
+                onClick={() => setConfirmPost(true)}
+                disabled={actionLoading || loading}
+                className="rounded-xl bg-primary px-3 py-2 text-sm text-white hover:bg-primary/90 disabled:opacity-60"
+              >
+                Post
+              </button>
+            ) : null}
+
+            {status !== "void" ? (
+              <button
+                onClick={() => setConfirmVoid(true)}
+                disabled={actionLoading || loading}
+                className="rounded-xl border border-red-600/30 bg-red-600/10 px-3 py-2 text-sm text-red-700 hover:bg-red-600/15 disabled:opacity-60"
+              >
+                Void
+              </button>
+            ) : null}
+          </div>
         }
       />
 
-      <DataTable rows={filtered} columns={columns} loading={loading} />
+      {error ? (
+        <div className="mb-3 rounded-xl border border-red-600/30 bg-red-600/10 px-3 py-2 text-sm text-red-700">
+          {error}
+        </div>
+      ) : null}
+
+      {loading ? (
+        <div className="rounded-2xl border bg-card p-4 text-sm text-muted-foreground">Loading…</div>
+      ) : !invoice ? (
+        <div className="rounded-2xl border bg-card p-4 text-sm text-muted-foreground">Not found</div>
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-3">
+          {/* Summary */}
+          <div className="rounded-2xl border bg-card p-4 lg:col-span-1">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-xs text-muted-foreground">Status</div>
+                <div className="mt-1">
+                  <StatusBadge status={status} />
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-xs text-muted-foreground">Total</div>
+                <div className="mt-1 text-lg font-semibold">
+                  <MoneyText value={Number(invoice?.total ?? invoice?.grandTotal ?? 0)} />
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-3 text-sm">
+              <Field label="Party" value={invoice?.partyName ?? invoice?.partyId ?? "—"} />
+              <Field label="Date (BS)" value={invoice?.dateBs ?? "—"} sub={invoice?.date?.slice?.(0, 10)} />
+              <Field label="Due (BS)" value={invoice?.dueDateBs ?? "—"} sub={invoice?.dueDate?.slice?.(0, 10)} />
+              <Field label="Type" value={invoice?.type ?? "—"} />
+            </div>
+          </div>
+
+          {/* Items */}
+          <div className="rounded-2xl border bg-card p-4 lg:col-span-2">
+            <div className="text-sm font-semibold">Items</div>
+            <div className="mt-3 overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead className="border-b bg-muted/50">
+                  <tr>
+                    <th className="px-3 py-2 text-left text-xs text-muted-foreground">Item</th>
+                    <th className="px-3 py-2 text-right text-xs text-muted-foreground">Qty</th>
+                    <th className="px-3 py-2 text-right text-xs text-muted-foreground">Rate</th>
+                    <th className="px-3 py-2 text-right text-xs text-muted-foreground">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(invoice?.items ?? []).length ? (
+                    (invoice.items as any[]).map((it, idx) => {
+                      const qty = Number(it.qty ?? 0);
+                      const rate = Number(it.rate ?? 0);
+                      const amt = Number(it.amount ?? qty * rate);
+                      return (
+                        <tr key={idx} className="border-b last:border-b-0">
+                          <td className="px-3 py-2">
+                            <div className="font-medium">{it.name ?? it.itemName ?? it.itemId ?? "—"}</div>
+                            {it.description ? (
+                              <div className="text-xs text-muted-foreground">{it.description}</div>
+                            ) : null}
+                          </td>
+                          <td className="px-3 py-2 text-right mono-numbers">{qty || "—"}</td>
+                          <td className="px-3 py-2 text-right mono-numbers">
+                            <MoneyText value={rate} />
+                          </td>
+                          <td className="px-3 py-2 text-right mono-numbers">
+                            <MoneyText value={amt} />
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">
+                        No items
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={confirmPost}
+        title="Post invoice?"
+        description="Posting will finalize this invoice and update accounts."
+        confirmText="Post"
+        onConfirm={onPost}
+        onCancel={() => setConfirmPost(false)}
+        loading={actionLoading}
+      />
+
+      <ConfirmDialog
+        open={confirmVoid}
+        title="Void invoice?"
+        description="Voiding will mark this invoice as void and it will not affect totals."
+        confirmText="Void"
+        variant="danger"
+        onConfirm={onVoid}
+        onCancel={() => setConfirmVoid(false)}
+        loading={actionLoading}
+      />
+    </div>
+  );
+}
+
+function Field({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div>
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="mt-0.5">{value}</div>
+      {sub ? <div className="text-xs text-muted-foreground">{sub}</div> : null}
     </div>
   );
 }
