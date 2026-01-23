@@ -7,6 +7,8 @@ import DataTable, { Column } from "@/components/app/data-table";
 import BsDateInput from "@/components/app/bs-date-input";
 import { MoneyText } from "@/components/app/money";
 import { getBalanceSheet } from "@/lib/api/reports";
+import { useDateFormat } from "@/lib/date-format";
+import { getDateLabel } from "@/lib/dates/display";
 
 type Row = {
   section?: string; // assets/liabilities/equity
@@ -15,6 +17,7 @@ type Row = {
 };
 
 export default function BalanceSheetPage() {
+  const { dateFormat } = useDateFormat();
   const [asOf, setAsOf] = React.useState<{ bs: string; ad: string }>({ bs: "", ad: "" });
   const [loading, setLoading] = React.useState(false);
   const [rows, setRows] = React.useState<Row[]>([]);
@@ -88,7 +91,7 @@ export default function BalanceSheetPage() {
       <FiltersBar
         left={
           <div className="w-full sm:w-[240px]">
-            <BsDateInput label="As of (BS)" valueBs={asOf.bs} valueAd={asOf.ad} onChange={setAsOf} />
+            <BsDateInput label={getDateLabel(dateFormat, "As of")} valueBs={asOf.bs} valueAd={asOf.ad} onChange={setAsOf} />
           </div>
         }
       />
@@ -97,3 +100,4 @@ export default function BalanceSheetPage() {
     </div>
   );
 }
+

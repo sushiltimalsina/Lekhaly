@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { toAd, toBs, isValidBs, isValidIso } from "@/lib/dates/bs";
+import { useDateFormat } from "@/lib/date-format";
 
 type BsDateInputProps = {
   valueBs?: string;
@@ -22,7 +23,12 @@ export default function BsDateInput({
 }: BsDateInputProps) {
   const [bs, setBs] = React.useState(valueBs ?? "");
   const [ad, setAd] = React.useState(valueAd ?? "");
-  const [mode, setMode] = React.useState<"bs" | "ad">("bs");
+  const { dateFormat } = useDateFormat();
+  const [mode, setMode] = React.useState<"bs" | "ad">(dateFormat);
+
+  React.useEffect(() => {
+    setMode(dateFormat);
+  }, [dateFormat]);
 
   React.useEffect(() => {
     if (valueBs !== undefined) setBs(valueBs);

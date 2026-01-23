@@ -16,11 +16,14 @@ import {
   deleteVoucherAttachment,
 } from "@/lib/api/vouchers";
 import { generateVoucherPdf, getPdfJobUrl } from "@/lib/api/pdf";
+import { useDateFormat } from "@/lib/date-format";
+import { getDateDisplay, getDateLabel } from "@/lib/dates/display";
 
 export default function VoucherDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const id = params?.id;
+  const { dateFormat } = useDateFormat();
 
   const [loading, setLoading] = React.useState(true);
   const [actionLoading, setActionLoading] = React.useState(false);
@@ -71,6 +74,7 @@ export default function VoucherDetailPage() {
   }, [id]);
 
   const status: DocStatus = (voucher?.status ?? "draft") as DocStatus;
+  const voucherDate = getDateDisplay({ ad: voucher?.voucherDate, bs: voucher?.voucherDateBs, format: dateFormat });
 
   const totals = React.useMemo(() => {
     const lines: any[] = voucher?.lines ?? preview?.lines ?? [];
@@ -236,7 +240,7 @@ export default function VoucherDetailPage() {
 
             <div className="mt-4 grid gap-3 text-sm">
               <Field label="Party" value={voucher?.partyName ?? voucher?.partyId ?? "—"} />
-              <Field label="Date (BS)" value={voucher?.voucherDateBs ?? "—"} sub={voucher?.voucherDate?.slice?.(0, 10)} />
+              <Field label={getDateLabel(dateFormat, "Date")} value={voucherDate.primary} sub={voucherDate.secondary} />
               <Field label="Memo" value={voucher?.memo ?? "—"} />
             </div>
 
@@ -382,3 +386,4 @@ function Field({ label, value, sub }: { label: string; value: string; sub?: stri
     </div>
   );
 }
+

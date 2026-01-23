@@ -1,6 +1,7 @@
 // apps/web/src/app/layout.tsx
 import type { Metadata } from "next";
 import { ThemeProvider } from "@/components/theme/theme-provider";
+import { DateFormatProvider } from "@/lib/date-format";
 import "@/app/globals.css";
 
 export const metadata: Metadata = {
@@ -15,14 +16,16 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="min-h-screen bg-background text-foreground antialiased">
+      <body className="min-h-screen bg-background text-foreground antialiased" suppressHydrationWarning>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <DateFormatProvider>
+            <div suppressHydrationWarning>{children}</div>
+          </DateFormatProvider>
         </ThemeProvider>
       </body>
     </html>

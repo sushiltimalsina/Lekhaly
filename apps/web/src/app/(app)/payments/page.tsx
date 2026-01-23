@@ -7,6 +7,9 @@ import DataTable, { Column } from "@/components/app/data-table";
 import StatusBadge, { DocStatus } from "@/components/app/status-badge";
 import BsDateInput from "@/components/app/bs-date-input";
 import { MoneyText } from "@/components/app/money";
+import DateDisplay from "@/components/app/date-display";
+import { useDateFormat } from "@/lib/date-format";
+import { getDateLabel } from "@/lib/dates/display";
 
 type PaymentRow = {
   id: string;
@@ -20,6 +23,7 @@ type PaymentRow = {
 };
 
 export default function PaymentsPage() {
+  const { dateFormat } = useDateFormat();
   const [q, setQ] = React.useState("");
   const [from, setFrom] = React.useState<{ bs: string; ad: string }>({ bs: "", ad: "" });
   const [to, setTo] = React.useState<{ bs: string; ad: string }>({ bs: "", ad: "" });
@@ -67,13 +71,8 @@ export default function PaymentsPage() {
     { key: "party", header: "Party", cell: (r) => <div className="truncate">{r.partyName ?? "—"}</div> },
     {
       key: "date",
-      header: "Date (BS)",
-      cell: (r) => (
-        <div>
-          <div className="mono-numbers">{r.dateBs ?? "—"}</div>
-          <div className="text-xs text-muted-foreground">{r.date ? r.date.slice(0, 10) : ""}</div>
-        </div>
-      ),
+      header: getDateLabel(dateFormat),
+      cell: (r) => <DateDisplay ad={r.date} bs={r.dateBs} />,
     },
     {
       key: "amount",
@@ -130,10 +129,10 @@ export default function PaymentsPage() {
               />
             </div>
             <div className="w-full sm:w-[220px]">
-              <BsDateInput label="From (BS)" valueBs={from.bs} valueAd={from.ad} onChange={setFrom} />
+              <BsDateInput label={getDateLabel(dateFormat, "From")} valueBs={from.bs} valueAd={from.ad} onChange={setFrom} />
             </div>
             <div className="w-full sm:w-[220px]">
-              <BsDateInput label="To (BS)" valueBs={to.bs} valueAd={to.ad} onChange={setTo} />
+              <BsDateInput label={getDateLabel(dateFormat, "To")} valueBs={to.bs} valueAd={to.ad} onChange={setTo} />
             </div>
           </>
         }
@@ -143,3 +142,4 @@ export default function PaymentsPage() {
     </div>
   );
 }
+

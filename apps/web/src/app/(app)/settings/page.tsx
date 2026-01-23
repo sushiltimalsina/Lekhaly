@@ -3,6 +3,7 @@
 import * as React from "react";
 import PageHeader from "@/components/app/page-header";
 import { getCompany, updateCompany } from "@/lib/api/auth";
+import { useDateFormat } from "@/lib/date-format";
 
 type CompanyForm = {
   companyName?: string;
@@ -17,6 +18,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [msg, setMsg] = React.useState<string | null>(null);
+  const { dateFormat, setDateFormat } = useDateFormat();
 
   const [form, setForm] = React.useState<CompanyForm>({
     companyName: "",
@@ -147,7 +149,31 @@ export default function SettingsPage() {
             <div className="rounded-xl border bg-background p-3">
               <div className="text-sm font-medium">Date format</div>
               <div className="mt-1 text-sm text-muted-foreground">
-                Bikram Sambat (BS) is primary across Lekhaly.
+                Show both BS and AD everywhere, and choose which one is the primary display.
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDateFormat("bs")}
+                  className={`rounded-xl border px-3 py-1.5 text-xs ${
+                    dateFormat === "bs"
+                      ? "border-primary/40 bg-primary/10 text-primary"
+                      : "bg-background hover:bg-muted"
+                  }`}
+                >
+                  BS (primary)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDateFormat("ad")}
+                  className={`rounded-xl border px-3 py-1.5 text-xs ${
+                    dateFormat === "ad"
+                      ? "border-primary/40 bg-primary/10 text-primary"
+                      : "bg-background hover:bg-muted"
+                  }`}
+                >
+                  AD (primary)
+                </button>
               </div>
             </div>
 

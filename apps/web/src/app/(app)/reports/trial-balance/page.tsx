@@ -7,6 +7,8 @@ import DataTable, { Column } from "@/components/app/data-table";
 import BsDateInput from "@/components/app/bs-date-input";
 import { MoneyText } from "@/components/app/money";
 import { getTrialBalance } from "@/lib/api/reports";
+import { useDateFormat } from "@/lib/date-format";
+import { getDateLabel } from "@/lib/dates/display";
 
 type Row = {
   accountCode?: string;
@@ -16,6 +18,7 @@ type Row = {
 };
 
 export default function TrialBalancePage() {
+  const { dateFormat } = useDateFormat();
   const [from, setFrom] = React.useState<{ bs: string; ad: string }>({ bs: "", ad: "" });
   const [to, setTo] = React.useState<{ bs: string; ad: string }>({ bs: "", ad: "" });
   const [loading, setLoading] = React.useState(false);
@@ -100,10 +103,10 @@ export default function TrialBalancePage() {
         left={
           <>
             <div className="w-full sm:w-[240px]">
-              <BsDateInput label="From (BS)" valueBs={from.bs} valueAd={from.ad} onChange={setFrom} />
+              <BsDateInput label={getDateLabel(dateFormat, "From")} valueBs={from.bs} valueAd={from.ad} onChange={setFrom} />
             </div>
             <div className="w-full sm:w-[240px]">
-              <BsDateInput label="To (BS)" valueBs={to.bs} valueAd={to.ad} onChange={setTo} />
+              <BsDateInput label={getDateLabel(dateFormat, "To")} valueBs={to.bs} valueAd={to.ad} onChange={setTo} />
             </div>
           </>
         }
@@ -113,3 +116,4 @@ export default function TrialBalancePage() {
     </div>
   );
 }
+

@@ -1,207 +1,108 @@
 "use client";
 
-import Link from "next/link";
+import * as React from "react";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import Link from "next/link";
+import {
+  LayoutDashboard,
+  FileText,
+  BookOpen,
+  Users,
+  Building2,
+  Package,
+  Receipt,
+  Settings,
+  Wallet,
+} from "lucide-react";
 
-type NavChild = {
-  title: string;
-  href: string;
-};
-
-type NavItem = {
-  id: string;
-  title: string;
-  href?: string;
-  children?: NavChild[];
-  basePaths?: string[];
-};
-
-type NavSection = {
-  title: string;
-  items: NavItem[];
-};
-
-const navSections: NavSection[] = [
-  {
-    title: "Core Modules",
-    items: [
-      { id: "dashboard", title: "Dashboard", href: "/dashboard", basePaths: ["/dashboard"] }
-    ]
-  },
-  {
-    title: "Transactions",
-    items: [
-      {
-        id: "sales",
-        title: "Sales",
-        basePaths: ["/vouchers"],
-        children: [
-          { title: "Create", href: "/vouchers?type=sales&mode=add" },
-          { title: "View", href: "/vouchers?type=sales&mode=view" },
-          { title: "List", href: "/vouchers?type=sales&mode=list" }
-        ]
-      },
-      {
-        id: "purchase",
-        title: "Purchase",
-        basePaths: ["/vouchers"],
-        children: [
-          { title: "Create", href: "/vouchers?type=purchase&mode=add" },
-          { title: "View", href: "/vouchers?type=purchase&mode=view" },
-          { title: "List", href: "/vouchers?type=purchase&mode=list" }
-        ]
-      },
-      {
-        id: "sales-return",
-        title: "Sales Return (Credit Note)",
-        basePaths: ["/vouchers"],
-        children: [
-          { title: "Create", href: "/vouchers?type=sales-return&mode=add" },
-          { title: "View", href: "/vouchers?type=sales-return&mode=view" },
-          { title: "List", href: "/vouchers?type=sales-return&mode=list" }
-        ]
-      },
-      {
-        id: "purchase-return",
-        title: "Purchase Return (Debit Note)",
-        basePaths: ["/vouchers"],
-        children: [
-          { title: "Create", href: "/vouchers?type=purchase-return&mode=add" },
-          { title: "View", href: "/vouchers?type=purchase-return&mode=view" },
-          { title: "List", href: "/vouchers?type=purchase-return&mode=list" }
-        ]
-      },
-      {
-        id: "payment",
-        title: "Payment",
-        basePaths: ["/payments"],
-        children: [
-          { title: "Create", href: "/payments?mode=add" },
-          { title: "View", href: "/payments?mode=view" },
-          { title: "List", href: "/payments?mode=list" }
-        ]
-      },
-      {
-        id: "receipt",
-        title: "Receipt",
-        basePaths: ["/payments"],
-        children: [
-          { title: "Create", href: "/payments?type=receipt&mode=add" },
-          { title: "View", href: "/payments?type=receipt&mode=view" },
-          { title: "List", href: "/payments?type=receipt&mode=list" }
-        ]
-      },
-      {
-        id: "journal",
-        title: "Journal",
-        basePaths: ["/vouchers"],
-        children: [
-          { title: "Create", href: "/vouchers?type=journal&mode=add" },
-          { title: "View", href: "/vouchers?type=journal&mode=view" },
-          { title: "List", href: "/vouchers?type=journal&mode=list" }
-        ]
-      }
-    ]
-  },
-  {
-    title: "Business Operations",
-    items: [
-      { id: "customers", title: "Customers", href: "/customers", basePaths: ["/customers"] },
-      { id: "vendors", title: "Vendors", href: "/vendors", basePaths: ["/vendors"] },
-      { id: "items", title: "Items", href: "/items", basePaths: ["/items"] },
-      { id: "users", title: "Users", href: "/users", basePaths: ["/users"] },
-      { id: "coa", title: "CoA", href: "/coa", basePaths: ["/coa"] }
-    ]
-  },
-  {
-    title: "Reports",
-    items: [
-      { id: "reports", title: "Profit & Loss", href: "/reports?tab=pl", basePaths: ["/reports"] },
-      { id: "balance-sheet", title: "Balance Sheet", href: "/reports?tab=bs", basePaths: ["/reports"] },
-      { id: "trial-balance", title: "Trial Balance", href: "/reports?tab=tb", basePaths: ["/reports"] }
-    ]
-  },
-  {
-    title: "Administration",
-    items: [
-      { id: "invoices", title: "Invoices", href: "/invoices", basePaths: ["/invoices"] },
-      { id: "settings", title: "Settings", href: "/settings", basePaths: ["/settings"] }
-    ]
-  }
+const nav = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/invoices", label: "Invoices", icon: FileText },
+  { href: "/vouchers", label: "Vouchers", icon: BookOpen },
+  { href: "/payments", label: "Payments", icon: Wallet },
+  { href: "/customers", label: "Customers", icon: Users },
+  { href: "/vendors", label: "Vendors", icon: Building2 },
+  { href: "/items", label: "Items", icon: Package },
+  { href: "/coa", label: "Chart of Accounts", icon: Receipt },
+  { href: "/reports", label: "Reports", icon: FileText },
+  { href: "/users", label: "Users", icon: Users },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
-type SidebarProps = {
-  onNavigate?: () => void;
-};
-
-export default function Sidebar({ onNavigate }: SidebarProps) {
+export default function Sidebar() {
   const pathname = usePathname();
-  const [openId, setOpenId] = useState<string | null>(null);
 
   return (
-    <div className="flex flex-col gap-6">
-      {navSections.map((section) => (
-        <div key={section.title}>
-          <div className="rounded-2xl border border-white/20 bg-white/60 p-4 text-xs uppercase tracking-[0.3em] text-muted-foreground dark:border-white/10 dark:bg-white/5">
-            {section.title}
+    <aside className="h-screen w-[280px] border-r bg-background">
+      <div className="flex h-full flex-col">
+        {/* Brand */}
+        <div className="px-5 py-4">
+          <div className="surface soft-border rounded-2xl px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-semibold">Lekhaly</div>
+                <div className="text-xs text-muted-foreground">Accounting</div>
+              </div>
+              <div className="rounded-xl bg-primary/10 px-2.5 py-1 text-xs text-primary">
+                BS
+              </div>
+            </div>
           </div>
-          <nav className="mt-3 grid gap-2 text-sm text-muted-foreground">
-            {section.items.map((item) => {
-              if (!item.children) {
-                return (
-                  <Link
-                    key={item.id}
-                    href={item.href ?? "#"}
-                    onClick={onNavigate}
-                    className="rounded-xl px-3 py-2 transition hover:bg-white/40 hover:text-foreground dark:hover:bg-white/5"
-                  >
-                    {item.title}
-                  </Link>
-                );
-              }
+        </div>
 
-              const isOpen = openId === item.id;
+        {/* Nav */}
+        <nav className="flex-1 px-3">
+          <div className="px-2 pb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            Workspace
+          </div>
+
+          <div className="space-y-1">
+            {nav.map((item) => {
+              const active =
+                pathname === item.href || pathname?.startsWith(item.href + "/");
+              const Icon = item.icon;
+
               return (
-                <div key={item.id} className="rounded-xl border border-white/10 bg-white/30 dark:border-white/5 dark:bg-white/5">
-                  <button
-                    type="button"
-                    onClick={() => setOpenId(isOpen ? null : item.id)}
-                    className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm font-medium text-foreground"
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={[
+                    "group flex items-center gap-3 rounded-2xl px-3 py-2 text-sm transition",
+                    active
+                      ? "bg-primary/10 text-foreground"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                  ].join(" ")}
+                >
+                  <span
+                    className={[
+                      "grid h-9 w-9 place-items-center rounded-xl border bg-background transition",
+                      active ? "border-primary/20" : "border-border/60 group-hover:border-border",
+                    ].join(" ")}
                   >
-                    <span>{item.title}</span>
-                    <span
-                      className={`text-xs transition-transform ${isOpen ? "rotate-90" : ""}`}
-                      aria-hidden="true"
-                    >
-                      ▶
-                    </span>
-                  </button>
-                  <div
-                    className={`grid gap-1 overflow-hidden px-3 pb-3 text-xs text-muted-foreground transition-all ${
-                      isOpen ? "max-h-64 opacity-100" : "max-h-0 opacity-0"
-                    }`}
-                  >
-                    {item.children.map((child) => (
-                      <Link
-                        key={child.title}
-                        href={child.href}
-                        onClick={() => {
-                          setOpenId(null);
-                          onNavigate?.();
-                        }}
-                        className="rounded-lg px-2 py-1 transition hover:bg-white/40 hover:text-foreground dark:hover:bg-white/5"
-                      >
-                        {child.title}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
+                    <Icon className={active ? "h-4 w-4 text-primary" : "h-4 w-4"} />
+                  </span>
+                  <span className="truncate">{item.label}</span>
+
+                  {active ? (
+                    <span className="ml-auto h-2 w-2 rounded-full bg-primary" />
+                  ) : null}
+                </Link>
               );
             })}
-          </nav>
+          </div>
+        </nav>
+
+        {/* Footer */}
+        <div className="p-4">
+          <div className="surface soft-border rounded-2xl p-3">
+            <div className="text-xs text-muted-foreground">Quick tip</div>
+            <div className="mt-1 text-sm">
+              Show both BS and AD. Set the primary format in Settings.
+            </div>
+          </div>
         </div>
-      ))}
-    </div>
+      </div>
+    </aside>
   );
 }
+

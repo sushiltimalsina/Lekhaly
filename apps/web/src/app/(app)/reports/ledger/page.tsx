@@ -6,7 +6,10 @@ import FiltersBar from "@/components/app/filters-bar";
 import DataTable, { Column } from "@/components/app/data-table";
 import BsDateInput from "@/components/app/bs-date-input";
 import { MoneyText } from "@/components/app/money";
+import DateDisplay from "@/components/app/date-display";
 import { getLedger } from "@/lib/api/reports";
+import { useDateFormat } from "@/lib/date-format";
+import { getDateLabel } from "@/lib/dates/display";
 
 type Row = {
   dateBs?: string;
@@ -19,6 +22,7 @@ type Row = {
 };
 
 export default function LedgerPage() {
+  const { dateFormat } = useDateFormat();
   const [from, setFrom] = React.useState<{ bs: string; ad: string }>({ bs: "", ad: "" });
   const [to, setTo] = React.useState<{ bs: string; ad: string }>({ bs: "", ad: "" });
   const [accountId, setAccountId] = React.useState("");
@@ -59,14 +63,9 @@ export default function LedgerPage() {
   const columns: Column<Row>[] = [
     {
       key: "date",
-      header: "Date (BS)",
+      header: getDateLabel(dateFormat),
       width: 150,
-      cell: (r) => (
-        <div>
-          <div className="mono-numbers">{r.dateBs ?? "—"}</div>
-          <div className="text-xs text-muted-foreground">{r.date ? r.date.slice(0, 10) : ""}</div>
-        </div>
-      ),
+      cell: (r) => <DateDisplay ad={r.date} bs={r.dateBs} />,
     },
     { key: "ref", header: "Ref", width: 140, cell: (r) => <div className="mono-numbers">{r.ref ?? "—"}</div> },
     { key: "memo", header: "Memo", cell: (r) => <div className="truncate">{r.memo ?? "—"}</div> },
@@ -97,10 +96,10 @@ export default function LedgerPage() {
         left={
           <>
             <div className="w-full sm:w-[240px]">
-              <BsDateInput label="From (BS)" valueBs={from.bs} valueAd={from.ad} onChange={setFrom} />
+              <BsDateInput label={getDateLabel(dateFormat, "From")} valueBs={from.bs} valueAd={from.ad} onChange={setFrom} />
             </div>
             <div className="w-full sm:w-[240px]">
-              <BsDateInput label="To (BS)" valueBs={to.bs} valueAd={to.ad} onChange={setTo} />
+              <BsDateInput label={getDateLabel(dateFormat, "To")} valueBs={to.bs} valueAd={to.ad} onChange={setTo} />
             </div>
 
             <div className="w-full sm:w-[220px]">
@@ -130,3 +129,5 @@ export default function LedgerPage() {
     </div>
   );
 }
+
+

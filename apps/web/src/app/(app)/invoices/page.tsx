@@ -8,11 +8,14 @@ import { MoneyText } from "@/components/app/money";
 import ConfirmDialog from "@/components/app/confirm-dialog";
 import { getInvoice, postInvoice, voidInvoice } from "@/lib/api/invoices";
 import { generateInvoicePdf, getPdfJobUrl } from "@/lib/api/pdf";
+import { useDateFormat } from "@/lib/date-format";
+import { getDateDisplay, getDateLabel } from "@/lib/dates/display";
 
 export default function InvoiceDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const id = params?.id;
+  const { dateFormat } = useDateFormat();
 
   const [loading, setLoading] = React.useState(true);
   const [actionLoading, setActionLoading] = React.useState(false);
@@ -43,6 +46,8 @@ export default function InvoiceDetailPage() {
   }, [id]);
 
   const status: DocStatus = (invoice?.status ?? "draft") as DocStatus;
+  const invoiceDate = getDateDisplay({ ad: invoice?.date, bs: invoice?.dateBs, format: dateFormat });
+  const dueDate = getDateDisplay({ ad: invoice?.dueDate, bs: invoice?.dueDateBs, format: dateFormat });
 
   async function onPost() {
     if (!id) return;
@@ -169,8 +174,8 @@ export default function InvoiceDetailPage() {
 
             <div className="mt-4 grid gap-3 text-sm">
               <Field label="Party" value={invoice?.partyName ?? invoice?.partyId ?? "—"} />
-              <Field label="Date (BS)" value={invoice?.dateBs ?? "—"} sub={invoice?.date?.slice?.(0, 10)} />
-              <Field label="Due (BS)" value={invoice?.dueDateBs ?? "—"} sub={invoice?.dueDate?.slice?.(0, 10)} />
+              <Field label={getDateLabel(dateFormat, "Date")} value={invoiceDate.primary} sub={invoiceDate.secondary} />
+              <Field label={getDateLabel(dateFormat, "Due")} value={dueDate.primary} sub={dueDate.secondary} />
               <Field label="Type" value={invoice?.type ?? "—"} />
             </div>
           </div>
@@ -259,3 +264,4 @@ function Field({ label, value, sub }: { label: string; value: string; sub?: stri
     </div>
   );
 }
+

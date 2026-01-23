@@ -15,7 +15,7 @@ export default function HomePage() {
   return (
     <div className="grid min-h-screen place-items-center bg-background">
       <div className="rounded-2xl border bg-card px-4 py-3 text-sm text-muted-foreground">
-        Loading…
+        Loading...
       </div>
     </div>
   );
