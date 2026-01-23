@@ -1,11 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { Search, Sun, Moon, UserCircle, Menu, X, Bell } from "lucide-react";
+import { Search, Menu, X, Bell, List, Sun, Moon, LayoutGrid } from "lucide-react";
 import Sidebar from "@/components/app/sidebar";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { getUiState, subscribeUi, toggleDensity } from "@/lib/store/ui";
 
 type TopbarProps = {
   title?: string;
@@ -15,10 +14,19 @@ type TopbarProps = {
 
 export default function Topbar({ title, subtitle, rightSlot }: TopbarProps) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
+  const [density, setDensityState] = React.useState(getUiState().density);
   const [theme, setThemeState] = React.useState<"light" | "dark">("light");
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    return subscribeUi((next) => {
+      setDensityState(next.density);
+    });
+  }, []);
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
+    setMounted(true);
     const root = document.documentElement;
     const stored = localStorage.getItem("lekhaly-theme");
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -43,15 +51,14 @@ export default function Topbar({ title, subtitle, rightSlot }: TopbarProps) {
         <div className="flex items-center justify-between gap-4 px-6 py-3">
           {/* Left */}
           <div className="flex min-w-0 items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden"
+            <button
+              type="button"
+              className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground hover:text-foreground md:hidden"
               onClick={() => setMobileOpen(true)}
               aria-label="Open menu"
             >
               <Menu className="h-5 w-5" />
-            </Button>
+            </button>
 
             <div className="flex flex-col">
               <h1 className="text-lg font-heading font-semibold tracking-tight leading-none text-foreground">
@@ -78,19 +85,45 @@ export default function Topbar({ title, subtitle, rightSlot }: TopbarProps) {
           <div className="flex items-center gap-2">
             {rightSlot}
 
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-full text-muted-foreground hover:text-foreground"
+            {mounted ? (
+              <button
+                type="button"
+                className="hidden sm:flex items-center gap-2 rounded-full border bg-background px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+                onClick={toggleDensity}
+              >
+                {density === "compact" ? (
+                  <List className="h-4 w-4" />
+                ) : (
+                  <LayoutGrid className="h-4 w-4" />
+                )}
+                {density === "compact" ? "Compact" : "Comfortable"}
+              </button>
+            ) : (
+              <div className="hidden sm:block h-7 w-[110px]" aria-hidden="true" />
+            )}
+
+            <button
+              type="button"
+              className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground hover:text-foreground"
+              onClick={toggleTheme}
+              aria-label="Toggle theme"
+              title="Toggle theme"
+            >
+              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
+
+            <button
+              type="button"
+              className="relative grid h-9 w-9 place-items-center rounded-full text-muted-foreground hover:text-foreground"
             >
               <Bell className="h-5 w-5" />
               {/* Notification dot example */}
               <span className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-red-500 border-2 border-background"></span>
-            </Button>
+            </button>
 
-            <Button variant="ghost" size="icon" className="rounded-full">
+            <button type="button" className="grid h-9 w-9 place-items-center rounded-full">
               <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 border-2 border-background ring-2 ring-border/20" />
-            </Button>
+            </button>
           </div>
         </div>
 
@@ -116,13 +149,13 @@ export default function Topbar({ title, subtitle, rightSlot }: TopbarProps) {
           <div className="absolute left-0 top-0 h-full w-[280px] animate-slide-in bg-card shadow-2xl">
             <div className="flex items-center justify-between border-b px-4 py-4">
               <span className="font-heading font-bold text-lg">Menu</span>
-              <Button
-                variant="ghost"
-                size="icon"
+              <button
+                type="button"
+                className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground hover:text-foreground"
                 onClick={() => setMobileOpen(false)}
               >
                 <X className="h-5 w-5" />
-              </Button>
+              </button>
             </div>
             <Sidebar onNavigate={() => setMobileOpen(false)} className="border-none w-full" />
           </div>

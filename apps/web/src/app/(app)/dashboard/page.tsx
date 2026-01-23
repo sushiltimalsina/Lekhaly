@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { RevenueChart, ExpenseDistribution } from "@/components/app/dashboard-charts";
 
 export default function DashboardPage() {
   return (
@@ -67,16 +68,13 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        {/* Main Chart Area (Placeholder) */}
         <Card className="col-span-4 glass-card">
           <CardHeader>
-            <CardTitle>Overview</CardTitle>
-            <CardDescription>Monthly revenue vs expenses.</CardDescription>
+            <CardTitle>Financial Overview</CardTitle>
+            <CardDescription>Visualizing your monthly cash flow (Revenue vs Expenses).</CardDescription>
           </CardHeader>
-          <CardContent className="pl-2">
-            <div className="h-[300px] flex items-center justify-center text-muted-foreground bg-muted/20 rounded-xl border border-dashed border-muted">
-              <p>Chart Component Visualization</p>
-            </div>
+          <CardContent>
+            <RevenueChart />
           </CardContent>
         </Card>
 
@@ -112,6 +110,68 @@ export default function DashboardPage() {
                 amount={50000}
                 icon={DollarSign}
               />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        <Card className="col-span-3 glass-card">
+          <CardHeader>
+            <CardTitle>Expense Distribution</CardTitle>
+            <CardDescription>Breakdown of where your money is going.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ExpenseDistribution />
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-blue-500" />
+                <span className="text-xs text-muted-foreground">Operating</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-emerald-500" />
+                <span className="text-xs text-muted-foreground">Marketing</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-indigo-500" />
+                <span className="text-xs text-muted-foreground">Payroll</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-amber-500" />
+                <span className="text-xs text-muted-foreground">Utilities</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="col-span-4 glass-card">
+          <CardHeader>
+            <CardTitle>Cash Flow Health</CardTitle>
+            <CardDescription>Your current liquidity and financial stability indicators.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="p-4 rounded-xl bg-primary/5 border border-primary/10 flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium">Quick Ratio</div>
+                  <div className="text-xs text-muted-foreground">Liquid assets vs current liabilities</div>
+                </div>
+                <div className="text-xl font-bold font-mono">1.8</div>
+              </div>
+              <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/10 flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium">Burn Rate</div>
+                  <div className="text-xs text-muted-foreground">Monthly cash outflow average</div>
+                </div>
+                <div className="text-xl font-bold font-mono text-emerald-600">$12,400</div>
+              </div>
+              <div className="p-4 rounded-xl bg-indigo-500/5 border border-indigo-500/10 flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium">Runway</div>
+                  <div className="text-xs text-muted-foreground">Estimated months of operation</div>
+                </div>
+                <div className="text-xl font-bold font-mono text-indigo-600">14 Months</div>
+              </div>
             </div>
           </CardContent>
         </Card>

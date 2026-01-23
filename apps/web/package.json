@@ -18,7 +18,8 @@
         "lucide-react": "^0.300.0",
         "clsx": "^2.1.0",
         "tailwindcss-animate": "^1.0.7",
-        "tailwind-merge": "^2.2.0"
+        "tailwind-merge": "^2.2.0",
+        "recharts": "^2.15.0"
     },
     "devDependencies": {
         "@types/node": "^20.0.0",

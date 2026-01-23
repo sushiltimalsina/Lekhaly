@@ -82,6 +82,11 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  body[data-density="compact"] table th,
+  body[data-density="compact"] table td {
+    @apply py-1.5;
+  }
 }
 
 /* Premium Animations & Utilities */

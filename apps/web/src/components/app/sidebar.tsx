@@ -206,6 +206,7 @@ function NavItemNode({ item, depth = 0, onNavigate }: { item: NavItem; depth?: n
   }, [hasActiveChild]);
 
   const isActive = item.href ? (pathname === item.href || pathname?.startsWith(item.href + "/")) : false;
+  const isChildActive = hasActiveChild && !isActive;
   const Icon = item.icon;
   const hasChildren = item.children && item.children.length > 0;
 
@@ -217,19 +218,27 @@ function NavItemNode({ item, depth = 0, onNavigate }: { item: NavItem; depth?: n
         className={cn(
           "group relative flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-200 ease-in-out",
           isActive
-            ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+            ? "bg-primary/10 text-foreground ring-1 ring-primary/20"
             : "text-muted-foreground hover:bg-muted hover:text-foreground",
           depth > 0 && "text-xs"
         )}
         style={{ paddingLeft: `${16 + depth * 12}px` }}
       >
-        {Icon && <Icon className={cn("h-4 w-4 shrink-0 transition-transform group-hover:scale-110", isActive ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground")} />}
-        <span className="flex-1 truncate">{item.label}</span>
-        {isActive && depth === 0 && (
-          <ChevronRight className="h-4 w-4 opacity-50" />
+        {isActive ? (
+          <span className="absolute left-1 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-primary" />
+        ) : null}
+        {Icon && (
+          <Icon
+            className={cn(
+              "h-4 w-4 shrink-0 transition-transform group-hover:scale-110",
+              isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+            )}
+          />
         )}
+        <span className="flex-1 truncate">{item.label}</span>
+        {isActive && depth === 0 ? <ChevronRight className="h-4 w-4 opacity-50" /> : null}
       </Link>
-    )
+    );
   }
 
   return (
@@ -237,12 +246,21 @@ function NavItemNode({ item, depth = 0, onNavigate }: { item: NavItem; depth?: n
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "w-full group flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-200 ease-in-out text-muted-foreground hover:bg-muted hover:text-foreground",
-          isActive && "text-foreground font-semibold"
+          "w-full group flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-200 ease-in-out",
+          isOpen || isActive || isChildActive
+            ? "bg-muted/50 text-foreground"
+            : "text-muted-foreground hover:bg-muted hover:text-foreground"
         )}
         style={{ paddingLeft: `${16 + depth * 12}px` }}
       >
-        {Icon && <Icon className={cn("h-4 w-4 shrink-0 transition-transform group-hover:scale-110", hasActiveChild ? "text-primary" : "text-muted-foreground")} />}
+        {Icon && (
+          <Icon
+            className={cn(
+              "h-4 w-4 shrink-0 transition-transform group-hover:scale-110",
+              isActive || isChildActive ? "text-primary" : "text-muted-foreground"
+            )}
+          />
+        )}
         <span className="flex-1 text-left truncate">{item.label}</span>
         <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", isOpen ? "rotate-180" : "")} />
       </button>
@@ -266,4 +284,3 @@ function NavItemNode({ item, depth = 0, onNavigate }: { item: NavItem; depth?: n
     </div>
   );
 }
-

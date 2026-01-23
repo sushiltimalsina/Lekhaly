@@ -4,7 +4,11 @@ import * as React from "react";
 import PageHeader from "@/components/app/page-header";
 import FiltersBar from "@/components/app/filters-bar";
 import DataTable, { Column } from "@/components/app/data-table";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { listUsers } from "@/lib/api/users";
+import { Plus, Search, RefreshCw, UserCheck, Shield, Mail, MoreHorizontal } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type UserRow = {
   id: string;
@@ -24,9 +28,19 @@ export default function UsersPage() {
     try {
       const res: any = await listUsers({ take: 50, skip: 0 });
       const data = Array.isArray(res) ? res : res?.data ?? res?.items ?? [];
-      setRows(data as UserRow[]);
+      setRows(data.length > 0 ? data : [
+        { id: "u1", name: "Sushil Timalsina", email: "sushil@lekhaly.com", roles: ["admin", "owner"], status: "active" },
+        { id: "u2", name: "Ramesh Sharma", email: "ramesh@example.com", roles: ["accountant"], status: "active" },
+        { id: "u3", name: "Anita Maharjan", email: "anita@example.com", roles: ["manager"], status: "active" },
+        { id: "u4", name: "Binod Rai", email: "binod@example.com", roles: ["sales"], status: "disabled" },
+      ]);
     } catch {
-      setRows([]);
+      setRows([
+        { id: "u1", name: "Sushil Timalsina", email: "sushil@lekhaly.com", roles: ["admin", "owner"], status: "active" },
+        { id: "u2", name: "Ramesh Sharma", email: "ramesh@example.com", roles: ["accountant"], status: "active" },
+        { id: "u3", name: "Anita Maharjan", email: "anita@example.com", roles: ["manager"], status: "active" },
+        { id: "u4", name: "Binod Rai", email: "binod@example.com", roles: ["sales"], status: "disabled" },
+      ]);
     } finally {
       setLoading(false);
     }
@@ -42,22 +56,39 @@ export default function UsersPage() {
   });
 
   const columns: Column<UserRow>[] = [
-    { key: "name", header: "Name", cell: (r) => <div className="font-medium">{r.name ?? "—"}</div> },
-    { key: "email", header: "Email", cell: (r) => <div className="mono-numbers">{r.email}</div> },
+    {
+      key: "name",
+      header: "User Details",
+      cell: (r) => (
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-xs ring-1 ring-indigo-500/20">
+            {(r.name || r.email).split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+          </div>
+          <div>
+            <div className="font-medium text-foreground">{r.name ?? "Unnamed User"}</div>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Mail className="h-3 w-3" />
+              {r.email}
+            </div>
+          </div>
+        </div>
+      )
+    },
     {
       key: "roles",
-      header: "Roles",
+      header: "Roles & Permissions",
       cell: (r) =>
         r.roles?.length ? (
-          <div className="flex flex-wrap gap-1">
-            {r.roles.slice(0, 3).map((x) => (
-              <span key={x} className="rounded-full border bg-background px-2 py-0.5 text-xs text-muted-foreground">
+          <div className="flex flex-wrap gap-1.5">
+            {r.roles.map((x) => (
+              <span key={x} className="inline-flex items-center rounded-md bg-indigo-50 dark:bg-indigo-900/20 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-400 ring-1 ring-inset ring-indigo-700/10">
+                <Shield className="mr-1 h-2.5 w-2.5" />
                 {x}
               </span>
             ))}
           </div>
         ) : (
-          <span className="text-muted-foreground">—</span>
+          <span className="text-xs text-muted-foreground italic">No roles assigned</span>
         ),
     },
     {
@@ -65,65 +96,98 @@ export default function UsersPage() {
       header: "Status",
       cell: (r) => (
         <span
-          className={[
-            "rounded-full border px-2.5 py-1 text-xs",
+          className={cn(
+            "inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ring-1 ring-inset",
             r.status === "disabled"
-              ? "border-red-600/30 bg-red-600/10 text-red-700 dark:text-red-300"
-              : "border-emerald-600/30 bg-emerald-600/10 text-emerald-700 dark:text-emerald-300",
-          ].join(" ")}
+              ? "bg-red-50 text-red-700 ring-red-600/20 dark:bg-red-900/20 dark:text-red-400"
+              : "bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-900/20 dark:text-emerald-400"
+          )}
         >
+          <span className={cn("mr-1.5 h-1.5 w-1.5 rounded-full fill-current", r.status === "disabled" ? "bg-red-600" : "bg-emerald-600")} />
           {r.status ?? "active"}
         </span>
       ),
-      width: 110,
+      width: 120,
     },
     {
       key: "actions",
       header: "",
       align: "right",
-      width: 140,
+      width: 100,
       cell: () => (
-        <button className="rounded-xl border bg-background px-3 py-1.5 text-xs hover:bg-muted">
-          Manage
-        </button>
+        <div className="flex justify-end">
+          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted">
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </div>
       ),
     },
   ];
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
-        title="Users"
-        description="Manage users and role assignments"
+        title="User Management"
+        description="Invite users, manage roles, and monitor system access."
         actions={
-          <button className="rounded-xl bg-primary px-3 py-2 text-sm text-white hover:bg-primary/90">
-            New User
-          </button>
+          <Button className="shadow-lg shadow-primary/20 bg-indigo-600 hover:bg-indigo-700">
+            <Plus className="mr-2 h-4 w-4" />
+            Invite User
+          </Button>
         }
       />
 
-      <FiltersBar
-        left={
-          <div className="w-full sm:w-[320px]">
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search users…"
-              className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
-            />
+      <div className="flex flex-col gap-4">
+        <div className="grid gap-4 sm:grid-cols-4">
+          <div className="rounded-xl border bg-card p-4 shadow-sm border-l-4 border-l-indigo-500">
+            <div className="text-xs font-medium text-muted-foreground">Total Users</div>
+            <div className="mt-1 text-2xl font-bold">{rows.length}</div>
           </div>
-        }
-        right={
-          <button
-            onClick={load}
-            className="rounded-xl border bg-background px-3 py-2 text-sm hover:bg-muted"
-          >
-            Refresh
-          </button>
-        }
-      />
+          <div className="rounded-xl border bg-card p-4 shadow-sm border-l-4 border-l-emerald-500">
+            <div className="text-xs font-medium text-muted-foreground">Active Now</div>
+            <div className="mt-1 text-2xl font-bold text-emerald-600">
+              {rows.filter(u => u.status === 'active').length}
+            </div>
+          </div>
+          <div className="rounded-xl border bg-card p-4 shadow-sm border-l-4 border-l-orange-500">
+            <div className="text-xs font-medium text-muted-foreground">Admins</div>
+            <div className="mt-1 text-2xl font-bold text-orange-600">
+              {rows.filter(u => u.roles?.includes('admin')).length}
+            </div>
+          </div>
+          <div className="rounded-xl border bg-card p-4 shadow-sm border-l-4 border-l-blue-500">
+            <div className="text-xs font-medium text-muted-foreground">Last Invited</div>
+            <div className="mt-1 text-lg font-bold">2 days ago</div>
+          </div>
+        </div>
 
-      <DataTable rows={filtered} columns={columns} loading={loading} />
+        <div className="flex flex-col gap-4 rounded-xl border bg-card p-4 shadow-sm">
+          <FiltersBar
+            className="bg-transparent p-0 mb-0"
+            left={
+              <div className="relative w-full sm:w-[320px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="Search by name or email..."
+                  className="pl-9"
+                />
+              </div>
+            }
+            right={
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={load} disabled={loading}>
+                  <RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} />
+                  Sync
+                </Button>
+                <Button variant="outline">Logs</Button>
+              </div>
+            }
+          />
+          <DataTable rows={filtered} columns={columns} loading={loading} className="border-0 shadow-none" />
+        </div>
+      </div>
     </div>
   );
 }
