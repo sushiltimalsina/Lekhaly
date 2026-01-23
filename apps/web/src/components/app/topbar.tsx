@@ -88,20 +88,6 @@ export default function Topbar({ title, subtitle, rightSlot }: TopbarProps) {
               <span className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-red-500 border-2 border-background"></span>
             </Button>
 
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleTheme}
-              className="rounded-full text-muted-foreground hover:text-foreground"
-              aria-label="Toggle theme"
-            >
-              {theme === "dark" ? (
-                <Sun className="h-5 w-5" />
-              ) : (
-                <Moon className="h-5 w-5" />
-              )}
-            </Button>
-
             <Button variant="ghost" size="icon" className="rounded-full">
               <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 border-2 border-background ring-2 ring-border/20" />
             </Button>

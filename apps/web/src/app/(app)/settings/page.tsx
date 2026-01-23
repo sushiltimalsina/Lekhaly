@@ -2,8 +2,13 @@
 
 import * as React from "react";
 import PageHeader from "@/components/app/page-header";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { getCompany, updateCompany } from "@/lib/api/auth";
 import { useDateFormat } from "@/lib/date-format";
+import { Sun, Moon, Monitor } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type CompanyForm = {
   companyName?: string;
@@ -19,6 +24,7 @@ export default function SettingsPage() {
   const [saving, setSaving] = React.useState(false);
   const [msg, setMsg] = React.useState<string | null>(null);
   const { dateFormat, setDateFormat } = useDateFormat();
+  const [theme, setThemeState] = React.useState<"light" | "dark" | "system">("system");
 
   const [form, setForm] = React.useState<CompanyForm>({
     companyName: "",
@@ -28,6 +34,33 @@ export default function SettingsPage() {
     email: "",
     panVat: "",
   });
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = localStorage.getItem("lekhaly-theme") as "light" | "dark" | "system" | null;
+    const savedTheme = stored || "system";
+    setThemeState(savedTheme);
+    applyTheme(savedTheme);
+  }, []);
+
+  const applyTheme = (newTheme: "light" | "dark" | "system") => {
+    if (typeof window === "undefined") return;
+    const root = document.documentElement;
+
+    if (newTheme === "system") {
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      root.classList.toggle("dark", prefersDark);
+    } else {
+      root.classList.toggle("dark", newTheme === "dark");
+    }
+  };
+
+  const setTheme = (newTheme: "light" | "dark" | "system") => {
+    setThemeState(newTheme);
+    localStorage.setItem("lekhaly-theme", newTheme);
+    applyTheme(newTheme);
+    window.dispatchEvent(new CustomEvent("lekhaly-theme-change", { detail: { theme: newTheme } }));
+  };
 
   async function load() {
     setLoading(true);
@@ -73,35 +106,36 @@ export default function SettingsPage() {
   }, []);
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
         title="Settings"
         description="Company and system preferences"
         actions={
-          <button
+          <Button
             onClick={onSave}
             disabled={saving || loading}
-            className="rounded-xl bg-primary px-3 py-2 text-sm text-white hover:bg-primary/90 disabled:opacity-60"
+            className="shadow-lg shadow-primary/20"
           >
             {saving ? "Saving…" : "Save changes"}
-          </button>
+          </Button>
         }
       />
 
-      {msg ? (
-        <div className="mb-4 rounded-xl border bg-card px-3 py-2 text-sm">
+      {msg && (
+        <div className="rounded-xl border bg-card px-4 py-3 text-sm animate-in fade-in slide-in-from-top-1">
           {msg}
         </div>
-      ) : null}
+      )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-2xl border bg-card p-4">
-          <div className="text-sm font-semibold">Company</div>
-          <div className="mt-1 text-sm text-muted-foreground">
-            Basic company profile used on invoices and reports.
-          </div>
-
-          <div className="mt-4 grid gap-3">
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card className="glass-card">
+          <CardHeader>
+            <CardTitle>Company Information</CardTitle>
+            <CardDescription>
+              Basic company profile used on invoices and reports.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
             <Field
               label="Company Name"
               value={form.companyName ?? ""}
@@ -119,7 +153,7 @@ export default function SettingsPage() {
               value={form.address ?? ""}
               onChange={(v) => setForm({ ...form, address: v })}
             />
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2">
               <Field
                 label="Phone"
                 value={form.phone ?? ""}
@@ -136,59 +170,110 @@ export default function SettingsPage() {
               value={form.panVat ?? ""}
               onChange={(v) => setForm({ ...form, panVat: v })}
             />
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div className="rounded-2xl border bg-card p-4">
-          <div className="text-sm font-semibold">Preferences</div>
-          <div className="mt-1 text-sm text-muted-foreground">
-            UI defaults (more options later).
-          </div>
-
-          <div className="mt-4 grid gap-3">
-            <div className="rounded-xl border bg-background p-3">
-              <div className="text-sm font-medium">Date format</div>
-              <div className="mt-1 text-sm text-muted-foreground">
-                Show both BS and AD everywhere, and choose which one is the primary display.
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
+        <div className="space-y-6">
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle>Date Format</CardTitle>
+              <CardDescription>
+                Choose your primary date display format
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-3">
                 <button
                   type="button"
                   onClick={() => setDateFormat("bs")}
-                  className={`rounded-xl border px-3 py-1.5 text-xs ${
+                  className={cn(
+                    "flex-1 rounded-xl border px-4 py-3 text-sm font-medium transition-all",
                     dateFormat === "bs"
-                      ? "border-primary/40 bg-primary/10 text-primary"
+                      ? "border-primary bg-primary text-primary-foreground shadow-md"
                       : "bg-background hover:bg-muted"
-                  }`}
+                  )}
                 >
-                  BS (primary)
+                  BS (Bikram Sambat)
                 </button>
                 <button
                   type="button"
                   onClick={() => setDateFormat("ad")}
-                  className={`rounded-xl border px-3 py-1.5 text-xs ${
+                  className={cn(
+                    "flex-1 rounded-xl border px-4 py-3 text-sm font-medium transition-all",
                     dateFormat === "ad"
-                      ? "border-primary/40 bg-primary/10 text-primary"
+                      ? "border-primary bg-primary text-primary-foreground shadow-md"
                       : "bg-background hover:bg-muted"
-                  }`}
+                  )}
                 >
-                  AD (primary)
+                  AD (Gregorian)
                 </button>
               </div>
-            </div>
+            </CardContent>
+          </Card>
 
-            <div className="rounded-xl border bg-background p-3">
-              <div className="text-sm font-medium">Currency</div>
-              <div className="mt-1 text-sm text-muted-foreground">NPR</div>
-            </div>
-
-            <div className="rounded-xl border bg-background p-3">
-              <div className="text-sm font-medium">Security</div>
-              <div className="mt-1 text-sm text-muted-foreground">
-                TOTP and devices management will appear here.
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle>Theme</CardTitle>
+              <CardDescription>
+                Choose your preferred color theme
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setTheme("light")}
+                  className={cn(
+                    "rounded-xl border px-4 py-3 text-sm font-medium transition-all flex flex-col items-center justify-center gap-2",
+                    theme === "light"
+                      ? "border-primary bg-primary text-primary-foreground shadow-md"
+                      : "bg-background hover:bg-muted"
+                  )}
+                >
+                  <Sun className="h-5 w-5" />
+                  <span>Light</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTheme("dark")}
+                  className={cn(
+                    "rounded-xl border px-4 py-3 text-sm font-medium transition-all flex flex-col items-center justify-center gap-2",
+                    theme === "dark"
+                      ? "border-primary bg-primary text-primary-foreground shadow-md"
+                      : "bg-background hover:bg-muted"
+                  )}
+                >
+                  <Moon className="h-5 w-5" />
+                  <span>Dark</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTheme("system")}
+                  className={cn(
+                    "rounded-xl border px-4 py-3 text-sm font-medium transition-all flex flex-col items-center justify-center gap-2",
+                    theme === "system"
+                      ? "border-primary bg-primary text-primary-foreground shadow-md"
+                      : "bg-background hover:bg-muted"
+                  )}
+                >
+                  <Monitor className="h-5 w-5" />
+                  <span>System</span>
+                </button>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle>Currency</CardTitle>
+              <CardDescription>
+                Default currency for transactions
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-sm text-muted-foreground">NPR (Nepalese Rupee)</div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
@@ -209,15 +294,15 @@ function Field({
   hint?: string;
 }) {
   return (
-    <div className="space-y-1">
-      <label className="text-xs text-muted-foreground">{label}</label>
-      <input
+    <div className="space-y-2">
+      <label className="text-sm font-medium text-foreground">{label}</label>
+      <Input
         disabled={disabled}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
+        className="bg-muted/30"
       />
-      {hint ? <div className="text-xs text-muted-foreground">{hint}</div> : null}
+      {hint && <div className="text-xs text-muted-foreground">{hint}</div>}
     </div>
   );
 }
