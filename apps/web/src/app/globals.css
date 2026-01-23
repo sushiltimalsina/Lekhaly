@@ -2,99 +2,99 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Premium accounting tokens (Enterprise Neutral + Emerald) */
 @layer base {
   :root {
-    /* Surfaces */
-    --background: 210 20% 98%; /* #F7F8FA */
-    --foreground: 222 47% 11%; /* #111827 */
+    /* Premium Light Mode - Crisp, Professional, Soft Shadows */
+    --background: 210 40% 98%;
+    /* Very light blue-grey */
+    --foreground: 222 47% 11%;
+    /* Deep navy */
 
-    --card: 0 0% 100%; /* #FFFFFF */
+    --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
 
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
-    /* Neutral borders */
-    --border: 220 13% 91%; /* #E5E7EB */
-    --input: 220 13% 91%;
-    --ring: 173 78% 26%; /* emerald-ish for focus */
+    --primary: 221 83% 53%;
+    /* Vivid Blue (Enterprise Trust) */
+    --primary-foreground: 210 40% 98%;
 
-    /* Brand */
-    --primary: 173 78% 26%; /* #0F766E */
-    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222 47% 11.2%;
 
-    --secondary: 210 20% 96%;
-    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
 
-    --muted: 210 20% 96%;
-    --muted-foreground: 215 16% 47%; /* #6B7280 */
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222 47% 11.2%;
 
-    --accent: 210 20% 96%;
-    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
 
-    /* Status */
-    --success: 142 76% 36%; /* #16A34A */
-    --warning: 32 90% 43%;  /* #D97706 */
-    --destructive: 0 72% 51%; /* #DC2626 */
-    --info: 221 83% 53%; /* #2563EB */
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221 83% 53%;
 
-    /* Radius */
-    --radius: 1rem;
+    --radius: 0.75rem;
   }
 
   .dark {
-    --background: 220 29% 7%; /* #0E1116 */
-    --foreground: 220 13% 91%; /* #E5E7EB */
+    /* Premium Dark Mode - Deep, Rich, Glassy */
+    --background: 222 47% 10%;
+    /* Rich dark navy background, not pure black */
+    --foreground: 210 40% 98%;
 
-    --card: 225 25% 11%; /* #161A22 */
-    --card-foreground: 220 13% 91%;
+    --card: 222 47% 13%;
+    /* Slightly lighter than bg */
+    --card-foreground: 210 40% 98%;
 
-    --popover: 225 25% 11%;
-    --popover-foreground: 220 13% 91%;
+    --popover: 222 47% 13%;
+    --popover-foreground: 210 40% 98%;
 
-    --border: 220 15% 20%; /* #2A2F3A */
-    --input: 220 15% 20%;
-    --ring: 173 78% 35%;
+    --primary: 217 91% 60%;
+    /* Bright blue accessible on dark */
+    --primary-foreground: 222 47.4% 11.2%;
 
-    --primary: 173 78% 32%; /* slightly brighter in dark */
-    --primary-foreground: 0 0% 100%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
 
-    --secondary: 225 22% 14%;
-    --secondary-foreground: 220 13% 91%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
 
-    --muted: 225 22% 14%;
-    --muted-foreground: 215 14% 65%; /* #9CA3AF-ish */
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
 
-    --accent: 225 22% 14%;
-    --accent-foreground: 220 13% 91%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
   }
+}
 
+@layer base {
   * {
     @apply border-border;
   }
 
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background text-foreground;
   }
 }
 
-/* Premium utilities */
+/* Premium Animations & Utilities */
 @layer utilities {
-  .container-page {
-    @apply mx-auto w-full max-w-7xl;
+  .glass {
+    @apply bg-white/70 dark:bg-black/30 backdrop-blur-md border border-white/20 dark:border-white/10 shadow-sm;
   }
 
-  .mono-numbers {
-    font-variant-numeric: tabular-nums;
+  .glass-card {
+    @apply bg-card/50 backdrop-blur-sm border border-border/50 shadow-sm hover:shadow-md transition-all duration-300;
   }
 
-  /* Subtle glass-like surface without being flashy */
-  .surface {
-    @apply bg-card/90 backdrop-blur supports-[backdrop-filter]:bg-card/75;
-  }
-
-  .soft-border {
-    @apply border border-border/70;
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-600 dark:from-blue-400 dark:to-purple-400;
   }
 }

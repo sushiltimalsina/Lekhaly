@@ -6,6 +6,10 @@ type ThemeMode = "light" | "dark" | "system";
 
 type ThemeProviderProps = {
   children: React.ReactNode;
+  attribute?: string;
+  defaultTheme?: ThemeMode;
+  enableSystem?: boolean;
+  disableTransitionOnChange?: boolean;
 };
 
 const STORAGE_KEY = "lekhaly-theme";
@@ -18,11 +22,14 @@ function applyTheme(mode: ThemeMode) {
   root.dataset.theme = mode;
 }
 
-export function ThemeProvider({ children }: ThemeProviderProps) {
+export function ThemeProvider({
+  children,
+  defaultTheme = "system",
+}: ThemeProviderProps) {
   React.useEffect(() => {
     const getStoredTheme = () => {
       const stored = localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
-      return stored ?? "system";
+      return stored ?? defaultTheme;
     };
 
     const handleSystemChange = () => {

@@ -1,8 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { Search, Sun, Moon, UserCircle, Building2, CalendarDays, Menu, X } from "lucide-react";
+import { Search, Sun, Moon, UserCircle, Menu, X, Bell } from "lucide-react";
 import Sidebar from "@/components/app/sidebar";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 type TopbarProps = {
   title?: string;
@@ -36,122 +39,106 @@ export default function Topbar({ title, subtitle, rightSlot }: TopbarProps) {
 
   return (
     <>
-      <header className="sticky top-0 z-20 border-b bg-card/80 backdrop-blur">
-      <div className="flex items-center justify-between gap-3 px-4 py-3">
-        {/* Left */}
-        <div className="min-w-0 flex items-center gap-2">
-          <button
-            type="button"
-            className="grid h-9 w-9 place-items-center rounded-lg border bg-background hover:bg-muted md:hidden"
-            onClick={() => setMobileOpen(true)}
-            aria-label="Open menu"
-          >
-            <Menu className="h-4 w-4 text-muted-foreground" />
-          </button>
-          {title ? (
-            <div className="truncate text-sm font-semibold">{title}</div>
-          ) : (
-            <div className="truncate text-sm font-semibold">Lekhaly</div>
-          )}
-          {subtitle ? (
-            <div className="truncate text-xs text-muted-foreground">{subtitle}</div>
-          ) : (
-            <div className="truncate text-xs text-muted-foreground">Enterprise accounting</div>
-          )}
-        </div>
+      <header className="sticky top-0 z-30 border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
+        <div className="flex items-center justify-between gap-4 px-6 py-3">
+          {/* Left */}
+          <div className="flex min-w-0 items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden"
+              onClick={() => setMobileOpen(true)}
+              aria-label="Open menu"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
 
-        {/* Center: Search */}
-        <div className="hidden w-[520px] max-w-[45vw] items-center sm:flex">
-          <div className="flex w-full items-center gap-2 rounded-xl border bg-background px-3 py-2">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <input
-              placeholder="Search vouchers, invoices, parties (Ctrl + K)"
-              className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-            />
+            <div className="flex flex-col">
+              <h1 className="text-lg font-heading font-semibold tracking-tight leading-none text-foreground">
+                {title || "Dashboard"}
+              </h1>
+              <p className="text-xs text-muted-foreground truncate max-w-[200px] mt-1">
+                {subtitle || "Manage your business finances"}
+              </p>
+            </div>
+          </div>
+
+          {/* Center: Search (Optional, aligned right mostly in dashboard) */}
+          <div className="hidden max-w-md flex-1 sm:flex justify-center">
+            <div className="relative w-full">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search anything... (Ctrl + K)"
+                className="w-full pl-9 bg-muted/50 border-transparent focus:bg-background transition-all rounded-xl"
+              />
+            </div>
+          </div>
+
+          {/* Right */}
+          <div className="flex items-center gap-2">
+            {rightSlot}
+
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full text-muted-foreground hover:text-foreground"
+            >
+              <Bell className="h-5 w-5" />
+              {/* Notification dot example */}
+              <span className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-red-500 border-2 border-background"></span>
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleTheme}
+              className="rounded-full text-muted-foreground hover:text-foreground"
+              aria-label="Toggle theme"
+            >
+              {theme === "dark" ? (
+                <Sun className="h-5 w-5" />
+              ) : (
+                <Moon className="h-5 w-5" />
+              )}
+            </Button>
+
+            <Button variant="ghost" size="icon" className="rounded-full">
+              <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 border-2 border-background ring-2 ring-border/20" />
+            </Button>
           </div>
         </div>
 
-        {/* Right */}
-        <div className="flex items-center gap-2">
-          {/* Fiscal year (placeholder UI, logic later) */}
-          <button
-            type="button"
-            className="hidden items-center gap-2 rounded-xl border bg-background px-3 py-2 text-sm sm:flex"
-            title="Fiscal Year"
-          >
-            <CalendarDays className="h-4 w-4 text-muted-foreground" />
-            <span className="mono-numbers">2081/82</span>
-          </button>
-
-          {/* Company (placeholder UI, logic later) */}
-          <button
-            type="button"
-            className="hidden items-center gap-2 rounded-xl border bg-background px-3 py-2 text-sm sm:flex"
-            title="Company"
-          >
-            <Building2 className="h-4 w-4 text-muted-foreground" />
-            <span className="truncate max-w-[140px]">Default Company</span>
-          </button>
-
-          {rightSlot}
-
-          {/* Theme */}
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="grid h-10 w-10 place-items-center rounded-xl border bg-background hover:bg-muted"
-            aria-label="Toggle theme"
-            title="Toggle theme"
-          >
-            {theme === "dark" ? (
-              <Sun className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <Moon className="h-4 w-4 text-muted-foreground" />
-            )}
-          </button>
-
-          {/* User */}
-          <button
-            type="button"
-            className="grid h-10 w-10 place-items-center rounded-xl border bg-background hover:bg-muted"
-            aria-label="User menu"
-            title="User"
-          >
-            <UserCircle className="h-5 w-5 text-muted-foreground" />
-          </button>
+        {/* Mobile Search - Only visible on small screens */}
+        <div className="px-4 pb-3 sm:hidden">
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search..."
+              className="w-full pl-9 bg-muted/50 border-transparent focus:bg-background transition-all rounded-xl"
+            />
+          </div>
         </div>
-      </div>
-
-      {/* Mobile search */}
-      <div className="px-4 pb-3 sm:hidden">
-        <div className="flex w-full items-center gap-2 rounded-xl border bg-background px-3 py-2">
-          <Search className="h-4 w-4 text-muted-foreground" />
-          <input
-            placeholder="Search (tap to type)"
-            className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-          />
-        </div>
-      </div>
       </header>
+
+      {/* Mobile Drawer */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-40 md:hidden">
+        <div className="fixed inset-0 z-50 md:hidden">
           <div
-            className="absolute inset-0 bg-black/40 backdrop-blur"
+            className="absolute inset-0 bg-background/80 backdrop-blur-sm"
             onClick={() => setMobileOpen(false)}
           />
-          <div className="absolute left-0 top-0 h-full w-80 max-w-[85vw] bg-card shadow-2xl">
-            <div className="flex items-center justify-between border-b px-4 py-3">
-              <div className="text-sm font-semibold">Menu</div>
-              <button
-                type="button"
-                className="grid h-9 w-9 place-items-center rounded-lg border bg-background hover:bg-muted"
+          <div className="absolute left-0 top-0 h-full w-[280px] animate-slide-in bg-card shadow-2xl">
+            <div className="flex items-center justify-between border-b px-4 py-4">
+              <span className="font-heading font-bold text-lg">Menu</span>
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => setMobileOpen(false)}
-                aria-label="Close menu"
               >
-                <X className="h-4 w-4 text-muted-foreground" />
-              </button>
+                <X className="h-5 w-5" />
+              </Button>
             </div>
-            <Sidebar onNavigate={() => setMobileOpen(false)} />
+            <Sidebar onNavigate={() => setMobileOpen(false)} className="border-none w-full" />
           </div>
         </div>
       )}

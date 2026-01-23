@@ -1,78 +1,163 @@
 "use client";
 
-import PageHeader from "@/components/app/page-header";
 import { MoneyText } from "@/components/app/money";
-import StatusBadge from "@/components/app/status-badge";
+import {
+  Activity,
+  ArrowUpRight,
+  CreditCard,
+  DollarSign,
+  Users,
+  ArrowDownRight,
+  FileText
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { cn } from "@/lib/utils";
 
 export default function DashboardPage() {
   return (
-    <div>
-      <PageHeader
-        title="Dashboard"
-        description="Overview of your business"
-      />
-
-      {/* Summary cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <SummaryCard title="Cash & Bank" value={125000} />
-        <SummaryCard title="Receivables" value={84500} />
-        <SummaryCard title="Payables" value={43200} />
-        <SummaryCard title="This Month Sales" value={210000} />
-      </div>
-
-      {/* Recent activity */}
-      <div className="mt-6 rounded-2xl border bg-card p-4">
-        <h2 className="mb-3 text-sm font-semibold">Recent activity</h2>
-
-        <div className="space-y-2 text-sm">
-          <ActivityRow
-            label="Sales Invoice #INV-1021"
-            amount={12500}
-            status="posted"
-          />
-          <ActivityRow
-            label="Receipt from ABC Traders"
-            amount={12500}
-            status="posted"
-          />
-          <ActivityRow
-            label="Journal Voucher"
-            amount={8000}
-            status="draft"
-          />
+    <div className="space-y-8">
+      {/* Header Section */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-heading font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+            Dashboard
+          </h2>
+          <p className="text-muted-foreground mt-1">
+            Overview of your business performance.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" className="hidden sm:flex">Download Report</Button>
+          <Button className="shadow-lg shadow-primary/25">New Transaction</Button>
         </div>
       </div>
-    </div>
-  );
-}
 
-function SummaryCard({ title, value }: { title: string; value: number }) {
-  return (
-    <div className="rounded-2xl border bg-card p-4">
-      <div className="text-xs text-muted-foreground">{title}</div>
-      <div className="mt-1 text-lg font-semibold">
-        <MoneyText value={value} />
+      {/* Hero Metrics */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <MetricCard
+          title="Total Revenue"
+          value={210000}
+          icon={DollarSign}
+          trend="+20.1% from last month"
+          trendUp={true}
+        />
+        <MetricCard
+          title="Receivables"
+          value={84500}
+          icon={Users}
+          trend="+180.1% from last month"
+          trendUp={true}
+        />
+        <MetricCard
+          title="Payables"
+          value={43200}
+          icon={CreditCard}
+          trend="-5.4% from last month"
+          trendUp={false} // Good for payables? Or means it went down? Let's assume down is good for payables contextually, but usually red means alarming. Let's stick to standard arrow logic.
+        />
+        <MetricCard
+          title="Cash at Hand"
+          value={125000}
+          icon={Activity}
+          trend="+12% since last hour"
+          trendUp={true}
+        />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        {/* Main Chart Area (Placeholder) */}
+        <Card className="col-span-4 glass-card">
+          <CardHeader>
+            <CardTitle>Overview</CardTitle>
+            <CardDescription>Monthly revenue vs expenses.</CardDescription>
+          </CardHeader>
+          <CardContent className="pl-2">
+            <div className="h-[300px] flex items-center justify-center text-muted-foreground bg-muted/20 rounded-xl border border-dashed border-muted">
+              <p>Chart Component Visualization</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Recent Activity */}
+        <Card className="col-span-3 glass-card">
+          <CardHeader>
+            <CardTitle>Recent Activity</CardTitle>
+            <CardDescription>Latest financial transactions.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              <ActivityItem
+                title="Sales Invoice #INV-1021"
+                subtitle="Sold to John Doe"
+                amount={12500}
+                icon={FileText}
+              />
+              <ActivityItem
+                title="Receipt from ABC Traders"
+                subtitle="Bank Deposit"
+                amount={12500}
+                icon={DollarSign}
+              />
+              <ActivityItem
+                title="Office Supplies"
+                subtitle="Stationery Purchase"
+                amount={-2500}
+                icon={CreditCard}
+              />
+              <ActivityItem
+                title="Consulting Receipt"
+                subtitle="Service Income"
+                amount={50000}
+                icon={DollarSign}
+              />
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
 }
 
-function ActivityRow({
-  label,
-  amount,
-  status,
-}: {
-  label: string;
-  amount: number;
-  status: "draft" | "posted" | "void";
-}) {
+function MetricCard({ title, value, icon: Icon, trend, trendUp }: any) {
   return (
-    <div className="flex items-center justify-between rounded-xl border px-3 py-2">
-      <div className="truncate">{label}</div>
-      <div className="flex items-center gap-3">
+    <Card className="overflow-hidden relative glass-card group hover:-translate-y-1 transition-transform duration-300">
+      <div className="absolute right-0 top-0 h-24 w-24 bg-gradient-to-br from-primary/10 to-transparent blur-2xl rounded-bl-full -z-10 group-hover:from-primary/20 transition-colors" />
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
+        <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+          <Icon className="h-4 w-4" />
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold font-mono tracking-tight">
+          <MoneyText value={value} />
+        </div>
+        <p className={cn("text-xs mt-1 flex items-center", trendUp ? "text-green-600" : "text-red-500")}>
+          {trendUp ? <ArrowUpRight className="mr-1 h-3 w-3" /> : <ArrowDownRight className="mr-1 h-3 w-3" />}
+          {trend}
+        </p>
+      </CardContent>
+    </Card>
+  )
+}
+
+function ActivityItem({ title, subtitle, amount, icon: Icon }: any) {
+  const isPositive = amount > 0;
+  return (
+    <div className="flex items-center">
+      <div className="h-9 w-9 rounded-full bg-muted/50 border flex items-center justify-center">
+        <Icon className="h-4 w-4 text-muted-foreground" />
+      </div>
+      <div className="ml-4 space-y-1">
+        <p className="text-sm font-medium leading-none">{title}</p>
+        <p className="text-xs text-muted-foreground">{subtitle}</p>
+      </div>
+      <div className={cn("ml-auto font-medium text-sm tabular-nums", isPositive ? "text-green-600" : "text-foreground")}>
+        {isPositive ? "+" : ""}
         <MoneyText value={amount} />
-        <StatusBadge status={status} />
       </div>
     </div>
-  );
+  )
 }

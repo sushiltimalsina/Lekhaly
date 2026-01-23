@@ -12,7 +12,7 @@ export function getDateDisplay({ ad, bs, format }: DateInput) {
   const adValue = ad && isValidIso(ad) ? ad.slice(0, 10) : "";
   const bsValue = bs && isValidBs(bs) ? bs : "";
 
-  const derivedBs = bsValue || (adValue ? toBs(ad) : "");
+  const derivedBs = bsValue || (adValue ? toBs(adValue) : "");
   const derivedAd = adValue || (bsValue ? toAd(bsValue) : "");
   const adDisplay = derivedAd ? derivedAd.slice(0, 10) : "";
   const bsDisplay = derivedBs || "";
@@ -31,4 +31,3 @@ export function getDateDisplay({ ad, bs, format }: DateInput) {
 export function getDateLabel(format: DateFormat, label = "Date") {
   return `${label} (${format.toUpperCase()})`;
 }
-

@@ -4,6 +4,12 @@ import * as React from "react";
 import { login } from "@/lib/api/auth";
 import { setToken } from "@/lib/store/auth";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Receipt, Loader2, ArrowRight } from "lucide-react";
+import Link from "next/link";
+import { cn } from "@/lib/utils";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -39,68 +45,111 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="grid min-h-screen place-items-center bg-background px-4">
-      <form
-        onSubmit={onSubmit}
-        className="w-full max-w-sm rounded-2xl border bg-card p-6"
-      >
-        <h1 className="text-lg font-semibold">Sign in to Lekhaly</h1>
-        <p className="mb-4 text-sm text-muted-foreground">
-          Use your company code and account
-        </p>
+    <div className="grid min-h-screen place-items-center bg-background p-4 overflow-hidden relative">
+      {/* Decorative Background Elements */}
+      <div className="absolute top-10 left-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl -z-10 animate-pulse" />
+      <div className="absolute bottom-10 right-10 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl -z-10" />
 
-        {error ? (
-          <div className="mb-3 rounded-lg border border-red-600/30 bg-red-600/10 px-3 py-2 text-sm text-red-700">
-            {error}
+      <Card className="w-full max-w-md border-border/50 shadow-2xl backdrop-blur-sm bg-card/80">
+        <CardHeader className="space-y-4 text-center pb-2">
+          <div className="flex justify-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-blue-600 text-white shadow-lg shadow-blue-500/20">
+              <Receipt className="h-7 w-7" />
+            </div>
           </div>
-        ) : null}
+          <div className="space-y-2">
+            <CardTitle className="text-2xl font-bold font-heading tracking-tight">Welcome back</CardTitle>
+            <CardDescription className="text-base">
+              Enter your credentials to access your workspace
+            </CardDescription>
+          </div>
+        </CardHeader>
 
-        <div className="space-y-3">
-          <input
-            required
-            placeholder="Company code"
-            value={form.companyCode}
-            onChange={(e) => setForm({ ...form, companyCode: e.target.value })}
-            className="w-full rounded-xl border px-3 py-2 text-sm"
-          />
-          <input
-            required
-            type="email"
-            placeholder="Email"
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-            className="w-full rounded-xl border px-3 py-2 text-sm"
-          />
-          <input
-            required
-            type="password"
-            placeholder="Password"
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-            className="w-full rounded-xl border px-3 py-2 text-sm"
-          />
-          <input
-            placeholder="TOTP code (if enabled)"
-            value={form.totpCode}
-            onChange={(e) => setForm({ ...form, totpCode: e.target.value })}
-            className="w-full rounded-xl border px-3 py-2 text-sm"
-          />
-        </div>
+        <CardContent>
+          <form onSubmit={onSubmit} className="space-y-4">
+            {error && (
+              <div className="p-3 rounded-lg border border-destructive/20 bg-destructive/10 text-destructive text-sm font-medium animate-in fade-in slide-in-from-top-1">
+                {error}
+              </div>
+            )}
 
-        <button
-          disabled={loading}
-          type="submit"
-          className="mt-4 w-full rounded-xl bg-primary px-3 py-2 text-sm text-white hover:bg-primary/90 disabled:opacity-60"
-        >
-          {loading ? "Signing in…" : "Sign in"}
-        </button>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Input
+                  required
+                  placeholder="Company Code"
+                  value={form.companyCode}
+                  onChange={(e) => setForm({ ...form, companyCode: e.target.value })}
+                  className="h-11 bg-muted/30"
+                />
+              </div>
 
-        <div className="mt-4 text-center text-sm">
-          <a href="/register" className="text-primary hover:underline">
-            Create a new company
-          </a>
-        </div>
-      </form>
+              <div className="space-y-2">
+                <Input
+                  required
+                  type="email"
+                  placeholder="Email Address"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  className="h-11 bg-muted/30"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Input
+                  required
+                  type="password"
+                  placeholder="Password"
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  className="h-11 bg-muted/30"
+                />
+              </div>
+
+              {/* Optional: Render TOTP field only if needed or keep hidden by default in future logic */}
+              <div className="space-y-2">
+                <Input
+                  placeholder="TOTP Code (Optional)"
+                  value={form.totpCode}
+                  onChange={(e) => setForm({ ...form, totpCode: e.target.value })}
+                  className="h-11 bg-muted/30"
+                />
+              </div>
+            </div>
+
+            <Button
+              disabled={loading}
+              type="submit"
+              className="w-full h-11 text-base shadow-lg shadow-primary/25 mt-2 group"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Authenticating...
+                </>
+              ) : (
+                <>
+                  Sign In
+                  <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </>
+              )}
+            </Button>
+          </form>
+        </CardContent>
+
+        <CardFooter className="flex flex-col space-y-4 pt-2 text-center text-sm">
+          <div className="text-muted-foreground">
+            Don&apos;t have an account?{" "}
+            <Link href="/register" className="font-medium text-primary hover:underline underline-offset-4">
+              Create new company
+            </Link>
+          </div>
+
+          <div className="text-xs text-muted-foreground/60 px-4">
+            By clicking details, you agree to our Terms of Service and Privacy Policy.
+          </div>
+        </CardFooter>
+      </Card>
     </div>
   );
 }

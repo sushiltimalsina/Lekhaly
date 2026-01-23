@@ -5,21 +5,22 @@ import Topbar from "@/components/app/topbar";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-background">
-      <div className="flex min-h-screen">
-        {/* Desktop sidebar */}
-        <div className="hidden md:block">
-          <Sidebar />
-        </div>
+    <div className="min-h-screen bg-background text-foreground flex overflow-hidden">
+      {/* Desktop sidebar */}
+      <div className="hidden md:block w-[280px] flex-shrink-0">
+        <Sidebar className="fixed inset-y-0 z-20" />
+      </div>
 
-        {/* Main */}
-        <div className="flex min-w-0 flex-1 flex-col">
-          <Topbar />
+      {/* Main Content Area */}
+      <div className="flex flex-1 flex-col min-w-0 overflow-hidden relative">
+        <Topbar />
 
-          <main className="min-w-0 flex-1 px-4 py-4 sm:px-6">
+        {/* Scrollable Content */}
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 scroll-smooth">
+          <div className="mx-auto max-w-7xl animate-fade-in">
             {children}
-          </main>
-        </div>
+          </div>
+        </main>
       </div>
     </div>
   );
