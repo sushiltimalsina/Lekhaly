@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Post, Query } from "@nestjs/common";
 import { CurrentUser, RequirePerm } from "../../common/auth/auth.decorator";
 import { ZodValidationPipe } from "../../common/zod/zod.pipe";
 import type { AuthUser } from "../../common/auth/auth.types";
@@ -20,5 +20,10 @@ export class UnitsController {
   list(@CurrentUser() user: AuthUser, @Query(new ZodValidationPipe(ListUnitQuerySchema)) query: any) {
     return this.units.list(user, query);
   }
-}
 
+  @Delete(":id")
+  @RequirePerm("masters.write")
+  remove(@CurrentUser() user: AuthUser, @Param("id") id: string) {
+    return this.units.remove(user, id);
+  }
+}

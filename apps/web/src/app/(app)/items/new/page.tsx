@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { createItem } from "@/lib/api/items";
 import { listTaxes } from "@/lib/api/taxes";
 import { createUnit, listUnits, type UnitRecord } from "@/lib/api/units";
-import { listAccounts, type AccountRecord } from "@/lib/api/accounts";
+import { listItemGroups, createItemGroup, type ItemGroupRecord } from "@/lib/api/item-groups";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, PackagePlus, Save } from "lucide-react";
@@ -23,7 +23,9 @@ export default function NewItemPage() {
   const [taxable, setTaxable] = React.useState(false);
   const [taxes, setTaxes] = React.useState<TaxCode[]>([]);
   const [units, setUnits] = React.useState<UnitRecord[]>([]);
-  const [groups, setGroups] = React.useState<AccountRecord[]>([]);
+  const [groups, setGroups] = React.useState<ItemGroupRecord[]>([]);
+  const [groupInput, setGroupInput] = React.useState("");
+  const [groupBusy, setGroupBusy] = React.useState(false);
   const [unitInput, setUnitInput] = React.useState("");
   const [unitBusy, setUnitBusy] = React.useState(false);
   const [form, setForm] = React.useState({
@@ -36,6 +38,7 @@ export default function NewItemPage() {
     purchasePrice: "",
     openingQty: "",
     openingPrice: "",
+    groupId: "",
     incomeAccountId: "",
     expenseAccountId: "",
     taxCodeIds: [] as string[],
@@ -89,20 +92,15 @@ export default function NewItemPage() {
 
   React.useEffect(() => {
     let alive = true;
-    listAccounts({ type: "income", take: 200 })
+    listItemGroups({ take: 200 })
       .then((res: any) => {
         if (!alive) return;
         const data = Array.isArray(res) ? res : res?.items ?? res?.data ?? [];
         setGroups(
           Array.isArray(data)
             ? data
-                .filter((a: any) => a && typeof a.id === "string")
-                .map((a: any) => ({
-                  id: a.id,
-                  name: String(a.name),
-                  code: a.code ?? undefined,
-                  type: a.type
-                }))
+                .filter((g: any) => g && typeof g.id === "string")
+                .map((g: any) => ({ id: g.id, name: String(g.name) }))
             : []
         );
       })
@@ -139,6 +137,26 @@ export default function NewItemPage() {
     }
   };
 
+  const addGroup = async () => {
+    const name = groupInput.trim();
+    if (!name) return;
+    setGroupBusy(true);
+    try {
+      const created = await createItemGroup({ name });
+      setGroups((prev) => {
+        const next = [...prev, created];
+        next.sort((a, b) => a.name.localeCompare(b.name));
+        return next;
+      });
+      update("groupId", created.id);
+      setGroupInput("");
+    } catch (err: any) {
+      setError(err?.message ?? "Failed to add group.");
+    } finally {
+      setGroupBusy(false);
+    }
+  };
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -161,6 +179,7 @@ export default function NewItemPage() {
         purchasePrice: form.purchasePrice ? Number(form.purchasePrice) : undefined,
         openingQty: form.openingQty ? Number(form.openingQty) : undefined,
         openingPrice: form.openingPrice ? Number(form.openingPrice) : undefined,
+        groupId: form.groupId || undefined,
         incomeAccountId: form.incomeAccountId.trim() || undefined,
         expenseAccountId: form.expenseAccountId.trim() || undefined,
         taxCodeIds: taxable ? form.taxCodeIds : undefined,
@@ -231,17 +250,37 @@ export default function NewItemPage() {
             <label className="space-y-1 text-sm">
               <span className="text-muted-foreground">Group</span>
               <select
-                value={form.incomeAccountId}
-                onChange={(e) => update("incomeAccountId", e.target.value)}
+                value={form.groupId}
+                onChange={(e) => update("groupId", e.target.value)}
                 className="w-full rounded-md border bg-background px-3 py-2 text-sm"
               >
                 <option value="">Select group</option>
                 {groups.map((g) => (
                   <option key={g.id} value={g.id}>
-                    {g.code ? `${g.code} - ${g.name}` : g.name}
+                    {g.name}
                   </option>
                 ))}
               </select>
+              <div className="flex items-center gap-2">
+                <Input
+                  value={groupInput}
+                  onChange={(e) => setGroupInput(e.target.value)}
+                  placeholder="Add new group"
+                />
+                <button
+                  type="button"
+                  onClick={addGroup}
+                  disabled={groupBusy || !groupInput.trim()}
+                  className={cn(
+                    "rounded-md border px-3 py-2 text-xs font-medium transition",
+                    groupBusy || !groupInput.trim()
+                      ? "opacity-60"
+                      : "hover:bg-muted"
+                  )}
+                >
+                  Add
+                </button>
+              </div>
             </label>
             <label className="space-y-1 text-sm">
               <span className="text-muted-foreground">Unit</span>

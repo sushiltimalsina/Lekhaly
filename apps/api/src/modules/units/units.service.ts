@@ -35,5 +35,16 @@ export class UnitsService {
       take: filters.take || 100
     });
   }
-}
 
+  async remove(user: AuthUser, id: string) {
+    const unit = await this.prisma.unit.findFirst({
+      where: { id, companyId: user.companyId }
+    });
+    if (!unit) throw new BadRequestException("Unit not found");
+
+    const usage = await this.prisma.item.count({ where: { companyId: user.companyId, unit: unit.name } });
+    if (usage > 0) throw new BadRequestException("Unit is used by items");
+
+    return this.prisma.unit.delete({ where: { id } });
+  }
+}

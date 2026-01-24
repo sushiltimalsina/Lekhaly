@@ -154,6 +154,11 @@ const navData: NavItem[] = [
     icon: Landmark
   },
   {
+    label: "Configuration",
+    href: "/configuration",
+    icon: Settings
+  },
+  {
     label: "Settings",
     href: "/settings",
     icon: Settings

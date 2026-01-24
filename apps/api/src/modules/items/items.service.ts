@@ -20,6 +20,12 @@ export class ItemsService {
       if (accounts.length !== ids.length) throw new BadRequestException("Invalid account");
     }
 
+    const groupId = (input as any).groupId as string | undefined;
+    if (groupId) {
+      const group = await this.prisma.itemGroup.findFirst({ where: { id: groupId, companyId } });
+      if (!group) throw new BadRequestException("Invalid group");
+    }
+
     const taxCodeId = (input as any).taxCodeId as string | undefined;
     const taxCodeIds = (input as any).taxCodeIds as string[] | undefined;
     const allTaxIds = [
@@ -53,6 +59,7 @@ export class ItemsService {
         name: input.name,
         sku: input.sku,
         hsCode: (input as any).hsCode,
+        groupId: (input as any).groupId,
         unit: input.unit,
         type: (input as any).type ?? "goods",
         salesPrice: input.salesPrice,

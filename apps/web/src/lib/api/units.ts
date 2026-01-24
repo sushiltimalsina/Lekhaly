@@ -23,3 +23,9 @@ export async function createUnit(input: { name: string }) {
   });
 }
 
+export async function deleteUnit(id: string) {
+  return apiRequest<void>({
+    method: "DELETE",
+    path: `/units/${id}`,
+  });
+}

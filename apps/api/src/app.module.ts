@@ -24,6 +24,7 @@ import { TaxesModule } from "./modules/taxes/taxes.module";
 import { PdfModule } from "./modules/pdf/pdf.module";
 import { HealthModule } from "./moduls/health/health.module";
 import { UnitsModule } from "./modules/units/units.module";
+import { ItemGroupsModule } from "./modules/item-groups/item-groups.module";
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { UnitsModule } from "./modules/units/units.module";
     PdfModule,
     PartiesModule,
     ItemsModule,
+    ItemGroupsModule,
     UnitsModule,
     AccountsModule
   ],

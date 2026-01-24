@@ -140,7 +140,8 @@ export class InventoryService {
       orderBy: { name: "asc" },
       include: {
         incomeAccount: { select: { name: true } },
-        expenseAccount: { select: { name: true } }
+        expenseAccount: { select: { name: true } },
+        group: { select: { name: true } }
       }
     });
 
@@ -209,7 +210,7 @@ export class InventoryService {
           hsCode: (item as any).hsCode ?? null,
           unit: item.unit,
           type: (item as any).type ?? "services",
-          parentGroup: item.incomeAccount?.name ?? item.expenseAccount?.name ?? "—",
+          parentGroup: item.group?.name ?? item.incomeAccount?.name ?? item.expenseAccount?.name ?? "—",
           openingQty: 0,
           openingAvgPrice: 0,
           openingAmt: 0,
@@ -248,7 +249,7 @@ export class InventoryService {
         hsCode: (item as any).hsCode ?? null,
         unit: item.unit,
         type: (item as any).type ?? "goods",
-        parentGroup: item.incomeAccount?.name ?? item.expenseAccount?.name ?? "—",
+        parentGroup: item.group?.name ?? item.incomeAccount?.name ?? item.expenseAccount?.name ?? "—",
         openingQty: Number(s.openQty.toString()),
         openingAvgPrice: Number(opAvg.toString()),
         openingAmt: Number(s.openAmt.toString()),
