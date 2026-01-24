@@ -15,6 +15,7 @@ type ItemRow = StockReportRow;
 
 export default function ItemsPage() {
   const [q, setQ] = React.useState("");
+  const [typeFilter, setTypeFilter] = React.useState<"all" | "goods" | "services">("all");
   const [rows, setRows] = React.useState<ItemRow[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -42,6 +43,7 @@ export default function ItemsPage() {
   }, []);
 
   const filtered = rows.filter((r) => {
+    if (typeFilter !== "all" && r.type !== typeFilter) return false;
     if (!q.trim()) return true;
     return `${r.name} ${r.sku ?? ""}`.toLowerCase().includes(q.toLowerCase());
   });
@@ -62,6 +64,7 @@ export default function ItemsPage() {
         </div>
       ),
     },
+    { key: "type", header: "Type", cell: (r) => <div className="text-muted-foreground capitalize">{r.type}</div>, width: 90 },
     { key: "parentGroup", header: "Parent Group", cell: (r) => <div className="text-muted-foreground">{r.parentGroup ?? "—"}</div>, width: 180 },
     { key: "unit", header: "Unit", cell: (r) => <div className="text-muted-foreground">{r.unit ?? "—"}</div>, width: 80 },
     {
@@ -159,6 +162,8 @@ export default function ItemsPage() {
     },
   ];
 
+  const goodsRows = rows.filter((r) => r.type === "goods");
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -179,15 +184,15 @@ export default function ItemsPage() {
             <div className="mt-1 text-2xl font-bold">{rows.length}</div>
           </div>
           <div className="rounded-xl border bg-card p-4 shadow-sm">
-            <div className="text-xs font-medium text-muted-foreground">Low Stock</div>
+            <div className="text-xs font-medium text-muted-foreground">Low Stock (Goods)</div>
             <div className="mt-1 text-2xl font-bold text-red-600">
-              {rows.filter((r) => (r.closingQty ?? 0) < 10).length}
+              {goodsRows.filter((r) => (r.closingQty ?? 0) < 10).length}
             </div>
           </div>
           <div className="rounded-xl border bg-card p-4 shadow-sm">
-            <div className="text-xs font-medium text-muted-foreground">Total Value</div>
+            <div className="text-xs font-medium text-muted-foreground">Total Value (Goods)</div>
             <div className="mt-1 text-2xl font-bold">
-              <MoneyText value={rows.reduce((sum, r) => sum + Number(r.closingAmt ?? 0), 0)} />
+              <MoneyText value={goodsRows.reduce((sum, r) => sum + Number(r.closingAmt ?? 0), 0)} />
             </div>
           </div>
         </div>
@@ -196,14 +201,33 @@ export default function ItemsPage() {
           <FiltersBar
             className="bg-transparent p-0 mb-0"
             left={
-              <div className="relative w-full sm:w-[320px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                  placeholder="Search by name, SKU..."
-                  className="pl-9"
-                />
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="relative w-full sm:w-[320px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                    placeholder="Search by name, SKU..."
+                    className="pl-9"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  {(["all", "goods", "services"] as const).map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setTypeFilter(t)}
+                      className={cn(
+                        "rounded-full border px-3 py-1.5 text-xs font-medium transition",
+                        typeFilter === t
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "bg-background hover:bg-muted"
+                      )}
+                    >
+                      {t === "all" ? "All" : t}
+                    </button>
+                  ))}
+                </div>
               </div>
             }
             right={

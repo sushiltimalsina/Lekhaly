@@ -217,6 +217,7 @@ export class InventoryService {
         name: item.name,
         sku: item.sku,
         unit: item.unit,
+        type: (item as any).type ?? "goods",
         parentGroup: item.incomeAccount?.name ?? item.expenseAccount?.name ?? "—",
         openingQty: Number(s.openQty.toString()),
         openingAvgPrice: Number(opAvg.toString()),

@@ -43,6 +43,11 @@ enum VoucherStatus {
   void
 }
 
+enum ItemType {
+  goods
+  services
+}
+
 enum AuditActorType {
   user
   system
@@ -380,6 +385,7 @@ model Item {
   name String
   sku  String?
   unit String?
+  type ItemType @default(goods)
 
   salesPrice    Decimal? @db.Decimal(14, 2)
   purchasePrice Decimal? @db.Decimal(14, 2)

@@ -7,6 +7,7 @@ export type StockReportRow = {
   name: string;
   sku?: string | null;
   unit?: string | null;
+  type: "goods" | "services";
   parentGroup: string;
   openingQty: number;
   openingAvgPrice: number;

@@ -42,6 +42,7 @@ export class ItemsService {
         name: input.name,
         sku: input.sku,
         unit: input.unit,
+        type: (input as any).type ?? "goods",
         salesPrice: input.salesPrice,
         purchasePrice: input.purchasePrice,
         incomeAccountId: (input as any).incomeAccountId,
@@ -82,6 +83,7 @@ export class ItemsService {
     const where: Prisma.ItemWhereInput = { companyId: user.companyId };
     if (filters.isActive !== undefined) where.isActive = filters.isActive;
     if (filters.q) where.name = { contains: filters.q, mode: "insensitive" };
+    if ((filters as any).type) where.type = (filters as any).type;
 
     return this.prisma.item.findMany({
       where,
