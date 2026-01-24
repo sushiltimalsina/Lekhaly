@@ -30,18 +30,76 @@ export default function DataTable<T>({
   className,
   onRowClick,
 }: DataTableProps<T>) {
+  const [colWidths, setColWidths] = React.useState<Record<string, number>>({});
+  const resizingRef = React.useRef<{
+    key: string;
+    startX: number;
+    startWidth: number;
+  } | null>(null);
+
+  React.useEffect(() => {
+    setColWidths((prev) => {
+      const next = { ...prev };
+      columns.forEach((c) => {
+        if (next[c.key] != null) return;
+        if (typeof c.width === "number") {
+          next[c.key] = c.width;
+          return;
+        }
+        if (typeof c.width === "string") {
+          const parsed = Number.parseInt(c.width, 10);
+          if (!Number.isNaN(parsed)) next[c.key] = parsed;
+        }
+      });
+      return next;
+    });
+  }, [columns]);
+
+  React.useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      const active = resizingRef.current;
+      if (!active) return;
+      const delta = e.clientX - active.startX;
+      const nextWidth = Math.max(80, active.startWidth + delta);
+      setColWidths((prev) => ({ ...prev, [active.key]: nextWidth }));
+    };
+    const onUp = () => {
+      if (!resizingRef.current) return;
+      resizingRef.current = null;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, []);
+
+  const getWidth = (c: Column<T>) => {
+    const w = colWidths[c.key];
+    if (typeof w === "number") return w;
+    if (typeof c.width === "number") return c.width;
+    if (typeof c.width === "string") {
+      const parsed = Number.parseInt(c.width, 10);
+      if (!Number.isNaN(parsed)) return parsed;
+    }
+    return undefined;
+  };
+
   return (
     <div className={cn("overflow-hidden rounded-xl border bg-card shadow-sm", className)}>
       <div className="overflow-x-auto">
-        <table className="min-w-full w-fullcaption-bottom text-sm">
+        <table className="min-w-full w-full caption-bottom text-sm table-fixed">
           <thead className="[&_tr]:border-b">
             <tr className="border-b bg-muted/30 hover:bg-muted/30 transition-colors">
               {columns.map((c) => (
                 <th
                   key={c.key}
-                  style={c.width ? { width: c.width } : undefined}
+                  style={getWidth(c) ? { width: getWidth(c), minWidth: getWidth(c) } : undefined}
                   className={cn(
-                    "h-10 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0",
+                    "relative h-10 px-4 text-left align-middle font-medium text-muted-foreground border-r last:border-r-0 [&:has([role=checkbox])]:pr-0",
                     c.align === "right"
                       ? "text-right"
                       : c.align === "center"
@@ -50,7 +108,24 @@ export default function DataTable<T>({
                     c.className
                   )}
                 >
-                  {c.header}
+                  <span className="block truncate">{c.header}</span>
+                  <span
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const th = (e.currentTarget as HTMLElement).parentElement as HTMLElement;
+                      const startWidth = th.offsetWidth;
+                      resizingRef.current = {
+                        key: c.key,
+                        startX: e.clientX,
+                        startWidth,
+                      };
+                      document.body.style.cursor = "col-resize";
+                      document.body.style.userSelect = "none";
+                    }}
+                    className="absolute right-0 top-0 h-full w-1 cursor-col-resize bg-transparent"
+                    aria-hidden
+                  />
                 </th>
               ))}
             </tr>
@@ -87,8 +162,9 @@ export default function DataTable<T>({
                   {columns.map((c) => (
                     <td
                       key={c.key}
+                      style={getWidth(c) ? { width: getWidth(c), minWidth: getWidth(c) } : undefined}
                       className={cn(
-                        "p-4 align-middle [&:has([role=checkbox])]:pr-0",
+                        "p-4 align-middle border-r last:border-r-0 [&:has([role=checkbox])]:pr-0",
                         c.align === "right"
                           ? "text-right mono-numbers"
                           : c.align === "center"
