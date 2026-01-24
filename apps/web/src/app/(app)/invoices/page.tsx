@@ -188,6 +188,7 @@ export default function InvoiceDetailPage() {
                 <thead className="border-b bg-muted/50">
                   <tr>
                     <th className="px-3 py-2 text-left text-xs text-muted-foreground">Item</th>
+                    <th className="px-3 py-2 text-left text-xs text-muted-foreground">HS Code</th>
                     <th className="px-3 py-2 text-right text-xs text-muted-foreground">Qty</th>
                     <th className="px-3 py-2 text-right text-xs text-muted-foreground">Rate</th>
                     <th className="px-3 py-2 text-right text-xs text-muted-foreground">Amount</th>
@@ -207,6 +208,7 @@ export default function InvoiceDetailPage() {
                               <div className="text-xs text-muted-foreground">{it.description}</div>
                             ) : null}
                           </td>
+                          <td className="px-3 py-2 text-muted-foreground">{it.hsCode ?? "—"}</td>
                           <td className="px-3 py-2 text-right mono-numbers">{qty || "—"}</td>
                           <td className="px-3 py-2 text-right mono-numbers">
                             <MoneyText value={rate} />
@@ -219,7 +221,7 @@ export default function InvoiceDetailPage() {
                     })
                   ) : (
                     <tr>
-                      <td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">
+                      <td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">
                         No items
                       </td>
                     </tr>

@@ -41,6 +41,7 @@ export class ItemsService {
         companyId: user.companyId,
         name: input.name,
         sku: input.sku,
+        hsCode: (input as any).hsCode,
         unit: input.unit,
         type: (input as any).type ?? "goods",
         salesPrice: input.salesPrice,

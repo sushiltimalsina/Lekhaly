@@ -414,9 +414,22 @@ export class InvoicesService {
   async getById(user: AuthUser, invoiceId: string) {
     const invoice = await this.prisma.invoice.findFirst({
       where: { id: invoiceId, companyId: user.companyId },
-      include: { items: true }
+      include: {
+        items: {
+          include: {
+            item: { select: { id: true, name: true, hsCode: true } }
+          }
+        }
+      }
     });
     if (!invoice) throw new NotFoundException("Invoice not found");
-    return invoice;
+    return {
+      ...invoice,
+      items: invoice.items.map((it) => ({
+        ...it,
+        itemName: it.item?.name ?? undefined,
+        hsCode: it.item?.hsCode ?? undefined
+      }))
+    };
   }
 }

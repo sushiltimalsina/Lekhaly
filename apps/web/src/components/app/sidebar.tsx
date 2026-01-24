@@ -131,7 +131,7 @@ const navData: NavItem[] = [
     icon: Building2
   },
   {
-    label: "Stock",
+    label: "Stock",href: "/items",
     icon: Package,
     children: [
       { label: "Add (Create)", href: "/items/new", icon: Plus },

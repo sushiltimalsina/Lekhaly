@@ -7,6 +7,7 @@ export type ItemType = "goods" | "services";
 export type CreateItemInput = {
   name: string;
   sku?: string;
+  hsCode?: string;
   unit?: string;
   type?: ItemType;
   salesPrice?: number;
@@ -20,6 +21,7 @@ export type ItemRecord = {
   id: string;
   name: string;
   sku?: string | null;
+  hsCode?: string | null;
   unit?: string | null;
   type?: ItemType;
   salesPrice?: number | null;
@@ -37,4 +39,3 @@ export async function createItem(input: CreateItemInput) {
     body: input,
   });
 }
-

@@ -6,6 +6,7 @@ export type StockReportRow = {
   id: string;
   name: string;
   sku?: string | null;
+  hsCode?: string | null;
   unit?: string | null;
   type: "goods" | "services";
   parentGroup: string;

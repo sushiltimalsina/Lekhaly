@@ -5,13 +5,14 @@ import PageHeader from "@/components/app/page-header";
 import { Input } from "@/components/ui/input";
 import { createItem } from "@/lib/api/items";
 import { listTaxes } from "@/lib/api/taxes";
-import { createUnit, listUnits } from "@/lib/api/units";
+import { createUnit, listUnits, type UnitRecord } from "@/lib/api/units";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, PackagePlus, Save } from "lucide-react";
 import Link from "next/link";
 
 type ItemType = "goods" | "services";
+type TaxCode = { id: string; name: string; rate: number };
 
 export default function NewItemPage() {
   const router = useRouter();
@@ -19,13 +20,14 @@ export default function NewItemPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<string | null>(null);
   const [taxable, setTaxable] = React.useState(false);
-  const [taxes, setTaxes] = React.useState<any[]>([]);
-  const [units, setUnits] = React.useState<Array<{ id: string; name: string }>>([]);
+  const [taxes, setTaxes] = React.useState<TaxCode[]>([]);
+  const [units, setUnits] = React.useState<UnitRecord[]>([]);
   const [unitInput, setUnitInput] = React.useState("");
   const [unitBusy, setUnitBusy] = React.useState(false);
   const [form, setForm] = React.useState({
     name: "",
     sku: "",
+    hsCode: "",
     unit: "",
     type: "goods" as ItemType,
     salesPrice: "",
@@ -38,10 +40,16 @@ export default function NewItemPage() {
   React.useEffect(() => {
     let alive = true;
     listTaxes({ take: 100 })
-      .then((res) => {
+      .then((res: any) => {
         if (!alive) return;
         const data = Array.isArray(res) ? res : res?.items ?? res?.data ?? [];
-        setTaxes(data);
+        setTaxes(
+          Array.isArray(data)
+            ? data
+                .filter((t: any) => t && typeof t.id === "string")
+                .map((t: any) => ({ id: t.id, name: String(t.name), rate: Number(t.rate ?? 0) }))
+            : []
+        );
       })
       .catch(() => {
         if (!alive) return;
@@ -55,10 +63,16 @@ export default function NewItemPage() {
   React.useEffect(() => {
     let alive = true;
     listUnits({ take: 200 })
-      .then((res) => {
+      .then((res: any) => {
         if (!alive) return;
         const data = Array.isArray(res) ? res : res?.items ?? res?.data ?? [];
-        setUnits(data);
+        setUnits(
+          Array.isArray(data)
+            ? data
+                .filter((u: any) => u && typeof u.id === "string")
+                .map((u: any) => ({ id: u.id, name: String(u.name) }))
+            : []
+        );
       })
       .catch(() => {
         if (!alive) return;
@@ -108,6 +122,7 @@ export default function NewItemPage() {
       await createItem({
         name: form.name.trim(),
         sku: form.sku.trim() || undefined,
+        hsCode: form.hsCode.trim() || undefined,
         unit: form.unit.trim() || undefined,
         type: form.type,
         salesPrice: form.salesPrice ? Number(form.salesPrice) : undefined,
@@ -169,6 +184,14 @@ export default function NewItemPage() {
                 value={form.sku}
                 onChange={(e) => update("sku", e.target.value)}
                 placeholder="e.g. LKH-001"
+              />
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="text-muted-foreground">HS Code</span>
+              <Input
+                value={form.hsCode}
+                onChange={(e) => update("hsCode", e.target.value)}
+                placeholder="e.g. 4820.10"
               />
             </label>
             <label className="space-y-1 text-sm">
@@ -257,7 +280,7 @@ export default function NewItemPage() {
             </label>
             {form.type === "services" ? (
               <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
-                Services don’t track stock. Purchase price is optional.
+                Services don't track stock. Purchase price is optional.
               </div>
             ) : null}
           </div>

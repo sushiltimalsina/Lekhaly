@@ -3,6 +3,7 @@ import { z } from "zod";
 export const CreateItemSchema = z.object({
   name: z.string().trim().min(2).max(120),
   sku: z.string().trim().max(64).optional(),
+  hsCode: z.string().trim().max(32).optional(),
   unit: z.string().trim().max(32).optional(),
   type: z.enum(["goods", "services"]).optional(),
   salesPrice: z.number().nonnegative().optional(),

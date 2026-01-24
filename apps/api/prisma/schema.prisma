@@ -92,29 +92,30 @@ model Company {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users        User[]
-  roles        Role[]
-  parties      Party[]
-  items        Item[]
-    taxCodes     TaxCode[]
-  invoices     Invoice[]
-  stockLedger  StockLedger[]
-  expenses     Expense[]
-  vatRegisterLines VatRegisterLine[]
-    bankAccounts BankAccount[]
-    bankStatements BankStatement[]
-    bankStatementLines BankStatementLine[]
-    accounts     ChartOfAccount[]
-    vouchers     Voucher[]
-    voucherLines VoucherLine[]
-    voucherAttachments VoucherAttachment[]
-  devices      Device[]
-  auditLogs    AuditLog[]
-  snapshots    AuditSnapshot[]
-    syncStates   SyncState[]
-    apiIdempotencies ApiIdempotency[]
-    outboxEvents OutboxEvent[]
-    pdfJobs PdfJob[]
+  users              User[]
+  roles              Role[]
+  parties            Party[]
+  items              Item[]
+  units              Unit[]
+  taxCodes           TaxCode[]
+  invoices           Invoice[]
+  stockLedger        StockLedger[]
+  expenses           Expense[]
+  vatRegisterLines   VatRegisterLine[]
+  bankAccounts       BankAccount[]
+  bankStatements     BankStatement[]
+  bankStatementLines BankStatementLine[]
+  accounts           ChartOfAccount[]
+  vouchers           Voucher[]
+  voucherLines       VoucherLine[]
+  voucherAttachments VoucherAttachment[]
+  devices            Device[]
+  auditLogs          AuditLog[]
+  snapshots          AuditSnapshot[]
+  syncStates         SyncState[]
+  apiIdempotencies   ApiIdempotency[]
+  outboxEvents       OutboxEvent[]
+  pdfJobs            PdfJob[]
 
   changeLog ChangeLog[]
 }
@@ -384,6 +385,7 @@ model Item {
 
   name String
   sku  String?
+  hsCode String?
   unit String?
   type ItemType @default(goods)
 

@@ -60,10 +60,18 @@ export default function ItemsPage() {
           </div>
           <div>
             <div className="font-medium text-foreground">{r.name}</div>
-            <div className="text-xs text-muted-foreground">{r.sku ?? "—"}</div>
+            <div className="text-xs text-muted-foreground">
+              {r.sku ?? "—"} {r.hsCode ? `• HS ${r.hsCode}` : ""}
+            </div>
           </div>
         </div>
       ),
+    },
+    {
+      key: "hsCode",
+      header: "HS Code",
+      cell: (r) => <div className="text-muted-foreground">{r.hsCode ?? "—"}</div>,
+      width: 110,
     },
     { key: "type", header: "Type", cell: (r) => <div className="text-muted-foreground capitalize">{r.type}</div>, width: 90 },
     { key: "parentGroup", header: "Parent Group", cell: (r) => <div className="text-muted-foreground">{r.parentGroup ?? "—"}</div>, width: 180 },
