@@ -402,6 +402,8 @@ model Item {
     stockLedger StockLedger[]
   }
 
+  @@unique([companyId, name])
+
 model Voucher {
   id        String  @id @default(uuid())
   companyId String

@@ -1,9 +1,9 @@
-import { Body, Controller, Post } from "@nestjs/common";
+import { Body, Controller, Get, Post, Query } from "@nestjs/common";
 import { Audit } from "../../common/audit/audit.decorator";
 import { CurrentUser, RequirePerm, RequireStep } from "../../common/auth/auth.decorator";
 import { ZodValidationPipe } from "../../common/zod/zod.pipe";
 import type { AuthUser } from "../../common/auth/auth.types";
-import { StockAdjustmentSchema } from "./dto/inventory.schemas";
+import { StockAdjustmentSchema, StockQuerySchema } from "./dto/inventory.schemas";
 import { InventoryService } from "./inventory.service";
 
 @Controller("inventory")
@@ -19,5 +19,14 @@ export class InventoryController {
     @Body(new ZodValidationPipe(StockAdjustmentSchema)) body: any
   ) {
     return this.inventory.adjustStock(user, body);
+  }
+
+  @Get("report")
+  @RequirePerm("masters.read")
+  report(
+    @CurrentUser() user: AuthUser,
+    @Query(new ZodValidationPipe(StockQuerySchema)) query: any
+  ) {
+    return this.inventory.getStockReport(user, query);
   }
 }
