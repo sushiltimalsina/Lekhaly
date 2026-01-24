@@ -28,6 +28,13 @@ export class ItemsService {
   }
 
   async create(user: AuthUser, input: Prisma.ItemCreateInput) {
+    const existing = await this.prisma.item.findFirst({
+      where: {
+        companyId: user.companyId,
+        name: { equals: input.name, mode: "insensitive" }
+      }
+    });
+    if (existing) throw new BadRequestException("Item name already exists");
     await this.validateRefs(user.companyId, input);
     return this.prisma.item.create({
       data: {
@@ -47,6 +54,16 @@ export class ItemsService {
   async update(user: AuthUser, id: string, input: Prisma.ItemUpdateInput) {
     const item = await this.prisma.item.findFirst({ where: { id, companyId: user.companyId } });
     if (!item) throw new NotFoundException("Item not found");
+    if (input.name) {
+      const existing = await this.prisma.item.findFirst({
+        where: {
+          companyId: user.companyId,
+          name: { equals: String(input.name), mode: "insensitive" },
+          NOT: { id }
+        }
+      });
+      if (existing) throw new BadRequestException("Item name already exists");
+    }
     await this.validateRefs(user.companyId, input);
 
     return this.prisma.item.update({
