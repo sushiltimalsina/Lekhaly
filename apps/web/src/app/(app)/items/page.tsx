@@ -17,6 +17,20 @@ type ItemRow = StockReportRow;
 export default function ItemsPage() {
   const [q, setQ] = React.useState("");
   const [typeFilter, setTypeFilter] = React.useState<"all" | "goods" | "services">("all");
+  const [sortBy, setSortBy] = React.useState<
+    | "alpha_asc"
+    | "alpha_desc"
+    | "closing_qty_asc"
+    | "closing_qty_desc"
+    | "closing_price_asc"
+    | "closing_price_desc"
+    | "closing_amt_asc"
+    | "closing_amt_desc"
+    | "opening_price_asc"
+    | "opening_price_desc"
+    | "opening_amt_asc"
+    | "opening_amt_desc"
+  >("alpha_asc");
   const [rows, setRows] = React.useState<ItemRow[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -48,24 +62,51 @@ export default function ItemsPage() {
     if (!q.trim()) return true;
     return `${r.name} ${r.sku ?? ""}`.toLowerCase().includes(q.toLowerCase());
   });
+  const sorted = [...filtered].sort((a, b) => {
+    switch (sortBy) {
+      case "alpha_desc":
+        return b.name.localeCompare(a.name);
+      case "closing_qty_asc":
+        return Number(a.closingQty ?? 0) - Number(b.closingQty ?? 0);
+      case "closing_qty_desc":
+        return Number(b.closingQty ?? 0) - Number(a.closingQty ?? 0);
+      case "closing_price_asc":
+        return Number(a.closingPrice ?? 0) - Number(b.closingPrice ?? 0);
+      case "closing_price_desc":
+        return Number(b.closingPrice ?? 0) - Number(a.closingPrice ?? 0);
+      case "closing_amt_asc":
+        return Number(a.closingAmt ?? 0) - Number(b.closingAmt ?? 0);
+      case "closing_amt_desc":
+        return Number(b.closingAmt ?? 0) - Number(a.closingAmt ?? 0);
+      case "opening_price_asc":
+        return Number(a.openingAvgPrice ?? 0) - Number(b.openingAvgPrice ?? 0);
+      case "opening_price_desc":
+        return Number(b.openingAvgPrice ?? 0) - Number(a.openingAvgPrice ?? 0);
+      case "opening_amt_asc":
+        return Number(a.openingAmt ?? 0) - Number(b.openingAmt ?? 0);
+      case "opening_amt_desc":
+        return Number(b.openingAmt ?? 0) - Number(a.openingAmt ?? 0);
+      case "alpha_asc":
+      default:
+        return a.name.localeCompare(b.name);
+    }
+  });
 
   const columns: Column<ItemRow>[] = [
     {
-      key: "name",
-      header: "Item Details",
-      cell: (r) => (
-        <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-            <Package className="h-4 w-4" />
-          </div>
-          <div>
-            <div className="font-medium text-foreground">{r.name}</div>
-            <div className="text-xs text-muted-foreground">
-              {r.sku ?? "—"} {r.hsCode ? `• HS ${r.hsCode}` : ""}
-            </div>
-          </div>
-        </div>
+      key: "sno",
+      header: "S.No.",
+      align: "center",
+      cell: (_r, idx) => (
+        <span className="mono-numbers text-muted-foreground">{idx + 1}</span>
       ),
+      width: 70,
+    },
+    {
+      key: "name",
+      header: "Item Name",
+      cell: (r) => <div className="font-medium text-foreground">{r.name}</div>,
+      width: 200,
     },
     
     {
@@ -236,7 +277,7 @@ export default function ItemsPage() {
                           : "bg-background hover:bg-muted"
                       )}
                     >
-                      {t === "all" ? "All" : t}
+                      {t === "all" ? "All" : t === "goods" ? "Goods" : "Services"}
                     </button>
                   ))}
                 </div>
@@ -244,6 +285,23 @@ export default function ItemsPage() {
             }
             right={
               <div className="flex items-center gap-2">
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                  className="rounded-md border bg-background px-3 py-2 text-xs"
+                >
+                  <option value="alpha_asc">Alphabetical (A–Z)</option>
+                  <option value="closing_qty_asc">Closing Qty: Low → High</option>
+                  <option value="closing_qty_desc">Closing Qty: High → Low</option>
+                  <option value="closing_price_asc">Closing Price: Low → High</option>
+                  <option value="closing_price_desc">Closing Price: High → Low</option>
+                  <option value="closing_amt_asc">Closing Amount: Low → High</option>
+                  <option value="closing_amt_desc">Closing Amount: High → Low</option>
+                  <option value="opening_price_asc">Opening Price: Low → High</option>
+                  <option value="opening_price_desc">Opening Price: High → Low</option>
+                  <option value="opening_amt_asc">Opening Amount: Low → High</option>
+                  <option value="opening_amt_desc">Opening Amount: High → Low</option>
+                </select>
                 <Button variant="outline">Import</Button>
                 <Button variant="outline">Export</Button>
               </div>
@@ -254,7 +312,7 @@ export default function ItemsPage() {
               {error}
             </div>
           ) : null}
-          <DataTable rows={filtered} columns={columns} loading={loading} className="border-0 shadow-none" />
+          <DataTable rows={sorted} columns={columns} loading={loading} className="border-0 shadow-none" />
         </div>
       </div>
     </div>

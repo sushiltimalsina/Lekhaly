@@ -7,7 +7,7 @@ import { Loader2 } from "lucide-react";
 export type Column<T> = {
   key: string;
   header: React.ReactNode;
-  cell: (row: T) => React.ReactNode;
+  cell: (row: T, index: number) => React.ReactNode;
   align?: "left" | "right" | "center";
   width?: string | number;
   className?: string;
@@ -173,7 +173,7 @@ export default function DataTable<T>({
                         c.className
                       )}
                     >
-                      {c.cell(row)}
+                      {c.cell(row, i)}
                     </td>
                   ))}
                 </tr>
