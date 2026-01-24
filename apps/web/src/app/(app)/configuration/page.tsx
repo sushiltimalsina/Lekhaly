@@ -7,8 +7,14 @@ import { Button } from "@/components/ui/button";
 import { createUnit, deleteUnit, listUnits, type UnitRecord } from "@/lib/api/units";
 import { createItemGroup, deleteItemGroup, listItemGroups, type ItemGroupRecord } from "@/lib/api/item-groups";
 import { Trash2 } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 export default function ConfigurationPage() {
+  const searchParams = useSearchParams();
+  const focus = searchParams.get("focus");
+  const unitsRef = React.useRef<HTMLDivElement | null>(null);
+  const groupsRef = React.useRef<HTMLDivElement | null>(null);
   const [units, setUnits] = React.useState<UnitRecord[]>([]);
   const [groups, setGroups] = React.useState<ItemGroupRecord[]>([]);
   const [unitInput, setUnitInput] = React.useState("");
@@ -34,6 +40,15 @@ export default function ConfigurationPage() {
       alive = false;
     };
   }, []);
+
+  React.useEffect(() => {
+    if (focus === "units") {
+      unitsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    if (focus === "groups") {
+      groupsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [focus]);
 
   const addUnit = async () => {
     const name = unitInput.trim();
@@ -107,7 +122,13 @@ export default function ConfigurationPage() {
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="rounded-xl border bg-card p-6 shadow-sm space-y-4">
+        <section
+          ref={unitsRef}
+          className={cn(
+            "rounded-xl border bg-card p-6 shadow-sm space-y-4",
+            focus === "units" && "ring-2 ring-primary/40"
+          )}
+        >
           <div className="text-sm font-semibold">Units</div>
           <div className="flex items-center gap-2">
             <Input value={unitInput} onChange={(e) => setUnitInput(e.target.value)} placeholder="Add new unit" />
@@ -136,7 +157,13 @@ export default function ConfigurationPage() {
           </div>
         </section>
 
-        <section className="rounded-xl border bg-card p-6 shadow-sm space-y-4">
+        <section
+          ref={groupsRef}
+          className={cn(
+            "rounded-xl border bg-card p-6 shadow-sm space-y-4",
+            focus === "groups" && "ring-2 ring-primary/40"
+          )}
+        >
           <div className="text-sm font-semibold">Groups</div>
           <div className="flex items-center gap-2">
             <Input value={groupInput} onChange={(e) => setGroupInput(e.target.value)} placeholder="Add new group" />

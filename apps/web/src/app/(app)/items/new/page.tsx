@@ -5,11 +5,11 @@ import PageHeader from "@/components/app/page-header";
 import { Input } from "@/components/ui/input";
 import { createItem } from "@/lib/api/items";
 import { listTaxes } from "@/lib/api/taxes";
-import { createUnit, listUnits, type UnitRecord } from "@/lib/api/units";
-import { listItemGroups, createItemGroup, type ItemGroupRecord } from "@/lib/api/item-groups";
+import { listUnits, type UnitRecord } from "@/lib/api/units";
+import { listItemGroups, type ItemGroupRecord } from "@/lib/api/item-groups";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, PackagePlus, Save } from "lucide-react";
+import { ArrowLeft, PackagePlus, Plus, Save } from "lucide-react";
 import Link from "next/link";
 
 type ItemType = "goods" | "services";
@@ -24,10 +24,6 @@ export default function NewItemPage() {
   const [taxes, setTaxes] = React.useState<TaxCode[]>([]);
   const [units, setUnits] = React.useState<UnitRecord[]>([]);
   const [groups, setGroups] = React.useState<ItemGroupRecord[]>([]);
-  const [groupInput, setGroupInput] = React.useState("");
-  const [groupBusy, setGroupBusy] = React.useState(false);
-  const [unitInput, setUnitInput] = React.useState("");
-  const [unitBusy, setUnitBusy] = React.useState(false);
   const [form, setForm] = React.useState({
     name: "",
     sku: "",
@@ -117,44 +113,8 @@ export default function NewItemPage() {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
-  const addUnit = async () => {
-    const name = unitInput.trim();
-    if (!name) return;
-    setUnitBusy(true);
-    try {
-      const created = await createUnit({ name });
-      setUnits((prev) => {
-        const next = [...prev, created];
-        next.sort((a, b) => a.name.localeCompare(b.name));
-        return next;
-      });
-      update("unit", created.name);
-      setUnitInput("");
-    } catch (err: any) {
-      setError(err?.message ?? "Failed to add unit.");
-    } finally {
-      setUnitBusy(false);
-    }
-  };
-
-  const addGroup = async () => {
-    const name = groupInput.trim();
-    if (!name) return;
-    setGroupBusy(true);
-    try {
-      const created = await createItemGroup({ name });
-      setGroups((prev) => {
-        const next = [...prev, created];
-        next.sort((a, b) => a.name.localeCompare(b.name));
-        return next;
-      });
-      update("groupId", created.id);
-      setGroupInput("");
-    } catch (err: any) {
-      setError(err?.message ?? "Failed to add group.");
-    } finally {
-      setGroupBusy(false);
-    }
+  const goToConfig = (focus: "units" | "groups") => {
+    router.push(`/configuration?focus=${focus}`);
   };
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -248,7 +208,19 @@ export default function NewItemPage() {
               />
             </label>
             <label className="space-y-1 text-sm">
-              <span className="text-muted-foreground">Group</span>
+              <span className="flex items-center justify-between text-muted-foreground">
+                Group
+                {form.type === "goods" ? (
+                  <button
+                    type="button"
+                    onClick={() => goToConfig("groups")}
+                    className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-3 py-1 text-[10px] font-medium text-white hover:bg-blue-500"
+                  >
+                    <span aria-hidden>+</span>
+                    Add
+                  </button>
+                ) : null}
+              </span>
               <select
                 value={form.groupId}
                 onChange={(e) => update("groupId", e.target.value)}
@@ -261,29 +233,21 @@ export default function NewItemPage() {
                   </option>
                 ))}
               </select>
-              <div className="flex items-center gap-2">
-                <Input
-                  value={groupInput}
-                  onChange={(e) => setGroupInput(e.target.value)}
-                  placeholder="Add new group"
-                />
-                <button
-                  type="button"
-                  onClick={addGroup}
-                  disabled={groupBusy || !groupInput.trim()}
-                  className={cn(
-                    "rounded-md border px-3 py-2 text-xs font-medium transition",
-                    groupBusy || !groupInput.trim()
-                      ? "opacity-60"
-                      : "hover:bg-muted"
-                  )}
-                >
-                  Add
-                </button>
-              </div>
             </label>
             <label className="space-y-1 text-sm">
-              <span className="text-muted-foreground">Unit</span>
+              <span className="flex items-center justify-between text-muted-foreground">
+                Unit
+                {form.type === "goods" ? (
+                  <button
+                    type="button"
+                    onClick={() => goToConfig("units")}
+                    className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-2 py-1 text-[10px] font-medium text-white hover:bg-blue-500"
+                  >
+                    <span aria-hidden>+</span>
+                    Add
+                  </button>
+                ) : null}
+              </span>
               <select
                 value={form.unit}
                 onChange={(e) => update("unit", e.target.value)}
@@ -296,26 +260,6 @@ export default function NewItemPage() {
                   </option>
                 ))}
               </select>
-              <div className="flex items-center gap-2">
-                <Input
-                  value={unitInput}
-                  onChange={(e) => setUnitInput(e.target.value)}
-                  placeholder="Add new unit"
-                />
-                <button
-                  type="button"
-                  onClick={addUnit}
-                  disabled={unitBusy || !unitInput.trim()}
-                  className={cn(
-                    "rounded-md border px-3 py-2 text-xs font-medium transition",
-                    unitBusy || !unitInput.trim()
-                      ? "opacity-60"
-                      : "hover:bg-muted"
-                  )}
-                >
-                  Add
-                </button>
-              </div>
             </label>
             <label className="space-y-1 text-sm">
               <span className="text-muted-foreground">Type</span>
