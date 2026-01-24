@@ -9,6 +9,8 @@ import { getCompany, updateCompany } from "@/lib/api/auth";
 import { useDateFormat } from "@/lib/date-format";
 import { Sun, Moon, Monitor } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getCurrencySettings, setCurrencySymbol, setNumberFormat, subscribeUi } from "@/lib/store/ui";
+import { MoneyText } from "@/components/app/money";
 
 type CompanyForm = {
   companyName?: string;
@@ -25,6 +27,8 @@ export default function SettingsPage() {
   const [msg, setMsg] = React.useState<string | null>(null);
   const { dateFormat, setDateFormat } = useDateFormat();
   const [theme, setThemeState] = React.useState<"light" | "dark" | "system">("system");
+  const [currencySymbol, setCurrencySymbolState] = React.useState(getCurrencySettings().currencySymbol);
+  const [numberFormat, setNumberFormatState] = React.useState(getCurrencySettings().numberFormat);
 
   const [form, setForm] = React.useState<CompanyForm>({
     companyName: "",
@@ -41,6 +45,13 @@ export default function SettingsPage() {
     const savedTheme = stored || "system";
     setThemeState(savedTheme);
     applyTheme(savedTheme);
+  }, []);
+
+  React.useEffect(() => {
+    return subscribeUi((next) => {
+      setCurrencySymbolState(next.currencySymbol);
+      setNumberFormatState(next.numberFormat);
+    });
   }, []);
 
   const applyTheme = (newTheme: "light" | "dark" | "system") => {
@@ -267,11 +278,64 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle>Currency</CardTitle>
               <CardDescription>
-                Default currency for transactions
+                Configure currency symbol and comma grouping
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-sm text-muted-foreground">NPR (Nepalese Rupee)</div>
+              <div className="space-y-4">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Symbol
+                  </div>
+                  <div className="mt-2 grid grid-cols-3 gap-3">
+                    {(["रु.", "NPR", "Rs."] as const).map((symbol) => (
+                      <button
+                        key={symbol}
+                        type="button"
+                        onClick={() => setCurrencySymbol(symbol)}
+                        className={cn(
+                          "rounded-xl border px-4 py-3 text-sm font-medium transition-all",
+                          currencySymbol === symbol
+                            ? "border-primary bg-primary text-primary-foreground shadow-md"
+                            : "bg-background hover:bg-muted"
+                        )}
+                      >
+                        {symbol}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Number format
+                  </div>
+                  <div className="mt-2 grid grid-cols-2 gap-3">
+                    {(["en-IN", "en-US"] as const).map((format) => (
+                      <button
+                        key={format}
+                        type="button"
+                        onClick={() => setNumberFormat(format)}
+                        className={cn(
+                          "rounded-xl border px-4 py-3 text-sm font-medium transition-all",
+                          numberFormat === format
+                            ? "border-primary bg-primary text-primary-foreground shadow-md"
+                            : "bg-background hover:bg-muted"
+                        )}
+                      >
+                        {format === "en-IN" ? "1,23,45,678" : "123,456,789"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-xl border bg-background px-4 py-3 text-sm">
+                  <div className="text-xs text-muted-foreground">Preview</div>
+                  <div className="mt-1 text-lg font-semibold">
+                    <MoneyText value={1234567.89} />
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>

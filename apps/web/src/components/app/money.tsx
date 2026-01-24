@@ -1,21 +1,27 @@
 ﻿"use client";
 
 import * as React from "react";
+import { getCurrencySettings, subscribeUi } from "@/lib/store/ui";
 
-export function formatMoney(value: number, opts?: { currency?: string; decimals?: number }) {
+export function formatMoney(
+  value: number,
+  opts?: { currency?: string; decimals?: number; symbol?: string; format?: string }
+) {
   const currency = opts?.currency ?? "NPR";
   const decimals = opts?.decimals ?? 2;
+  const symbol = opts?.symbol ?? "रु.";
+  const format = opts?.format ?? "en-IN";
 
   if (!Number.isFinite(value)) return "—";
 
   // Nepal typically uses comma grouping similar to Indian system,
   // but JS Intl "en-IN" gives a good default for NPR formatting.
-  const formatted = new Intl.NumberFormat("en-IN", {
+  const formatted = new Intl.NumberFormat(format, {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   }).format(value);
 
-  return currency ? "रु. " + formatted : formatted;
+  return currency ? `${symbol} ${formatted}` : formatted;
 }
 
 export function MoneyText({
@@ -29,9 +35,26 @@ export function MoneyText({
   currency?: string;
   decimals?: number;
 }) {
+  const [settings, setSettings] = React.useState(getCurrencySettings());
+
+  React.useEffect(() => {
+    return subscribeUi((next) => {
+      setSettings({
+        currencyCode: next.currencyCode,
+        currencySymbol: next.currencySymbol,
+        numberFormat: next.numberFormat,
+      });
+    });
+  }, []);
+
   return (
     <span className={["mono-numbers tabular-nums", className ?? ""].join(" ")}>
-      {formatMoney(value, { currency, decimals })}
+      {formatMoney(value, {
+        currency,
+        decimals,
+        symbol: settings.currencySymbol,
+        format: settings.numberFormat,
+      })}
     </span>
   );
 }
