@@ -7,6 +7,7 @@ export type InvoiceItemInput = {
   qty: number;
   rate: number;
   taxCodeId?: string;
+  taxCodeIds?: string[];
 };
 
 export type InvoiceDraftInput = {

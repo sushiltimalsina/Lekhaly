@@ -15,6 +15,7 @@ export type CreateItemInput = {
   incomeAccountId?: string;
   expenseAccountId?: string;
   taxCodeId?: string;
+  taxCodeIds?: string[];
 };
 
 export type ItemRecord = {

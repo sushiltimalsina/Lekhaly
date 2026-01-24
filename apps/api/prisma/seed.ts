@@ -118,6 +118,44 @@ async function main() {
     }
   });
 
+  await prisma.taxCode.createMany({
+    data: [
+      {
+        companyId: company.id,
+        name: "Digital Service Tax (DST) 2%",
+        rate: 2.0,
+        isInclusive: false,
+        inputTaxAccountId: vatReceivable.id,
+        outputTaxAccountId: vatPayable.id
+      },
+      {
+        companyId: company.id,
+        name: "Excise Duty",
+        rate: 0.0,
+        isInclusive: false,
+        inputTaxAccountId: vatReceivable.id,
+        outputTaxAccountId: vatPayable.id
+      },
+      {
+        companyId: company.id,
+        name: "Customs Duty (Import/Export Duties)",
+        rate: 0.0,
+        isInclusive: false,
+        inputTaxAccountId: vatReceivable.id,
+        outputTaxAccountId: vatPayable.id
+      },
+      {
+        companyId: company.id,
+        name: "Other Indirect Taxes/Fees",
+        rate: 0.0,
+        isInclusive: false,
+        inputTaxAccountId: vatReceivable.id,
+        outputTaxAccountId: vatPayable.id
+      }
+    ],
+    skipDuplicates: true
+  });
+
   await prisma.party.create({
     data: { companyId: company.id, type: PartyType.customer, name: "Walk-in Customer" }
   });

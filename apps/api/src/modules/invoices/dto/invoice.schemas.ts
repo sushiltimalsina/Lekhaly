@@ -5,7 +5,8 @@ export const InvoiceItemSchema = z.object({
   description: z.string().trim().max(255).optional(),
   qty: z.number().positive(),
   rate: z.number().nonnegative(),
-  taxCodeId: z.string().uuid().optional()
+  taxCodeId: z.string().uuid().optional(),
+  taxCodeIds: z.array(z.string().uuid()).optional()
 });
 
 export const CreateInvoiceDraftSchema = z.object({

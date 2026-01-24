@@ -34,7 +34,7 @@ export default function NewItemPage() {
     purchasePrice: "",
     incomeAccountId: "",
     expenseAccountId: "",
-    taxCodeId: "",
+    taxCodeIds: [] as string[],
   });
 
   React.useEffect(() => {
@@ -129,7 +129,7 @@ export default function NewItemPage() {
         purchasePrice: form.purchasePrice ? Number(form.purchasePrice) : undefined,
         incomeAccountId: form.incomeAccountId.trim() || undefined,
         expenseAccountId: form.expenseAccountId.trim() || undefined,
-        taxCodeId: taxable ? form.taxCodeId.trim() || undefined : undefined,
+        taxCodeIds: taxable ? form.taxCodeIds : undefined,
       });
       setSuccess("Item created successfully.");
       setTimeout(() => router.push("/items"), 600);
@@ -244,7 +244,7 @@ export default function NewItemPage() {
                         : "bg-background hover:bg-muted"
                     )}
                   >
-                    {t}
+                    {t === "goods" ? "Goods" : "Services"}
                   </button>
                 ))}
               </div>
@@ -316,7 +316,9 @@ export default function NewItemPage() {
                     onClick={() => {
                       const next = t === "taxable";
                       setTaxable(next);
-                      if (!next) update("taxCodeId", "");
+                      if (!next) {
+                        setForm((prev) => ({ ...prev, taxCodeIds: [] }));
+                      }
                     }}
                     className={cn(
                       "rounded-full border px-3 py-1.5 text-xs font-medium transition",
@@ -330,18 +332,34 @@ export default function NewItemPage() {
                 ))}
               </div>
               {taxable ? (
-                <select
-                  value={form.taxCodeId}
-                  onChange={(e) => update("taxCodeId", e.target.value)}
-                  className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                >
-                  <option value="">Select tax code</option>
-                  {taxes.map((tax) => (
-                    <option key={tax.id} value={tax.id}>
-                      {tax.name} ({tax.rate}%)
-                    </option>
-                  ))}
-                </select>
+                <div className="grid gap-2 rounded-lg border bg-background p-3 text-sm">
+                  {taxes.length ? (
+                    taxes.map((tax) => {
+                      const checked = form.taxCodeIds.includes(tax.id);
+                      return (
+                        <label key={tax.id} className="flex items-center justify-between gap-2">
+                          <span className="text-sm">
+                            {tax.name} ({tax.rate}%)
+                          </span>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => {
+                              setForm((prev) => {
+                                const next = new Set(prev.taxCodeIds);
+                                if (next.has(tax.id)) next.delete(tax.id);
+                                else next.add(tax.id);
+                                return { ...prev, taxCodeIds: Array.from(next) };
+                              });
+                            }}
+                          />
+                        </label>
+                      );
+                    })
+                  ) : (
+                    <div className="text-xs text-muted-foreground">No tax codes found.</div>
+                  )}
+                </div>
               ) : (
                 <div className="text-xs text-muted-foreground">No tax will be applied.</div>
               )}

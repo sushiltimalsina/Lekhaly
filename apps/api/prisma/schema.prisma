@@ -301,10 +301,12 @@ model TaxCode {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  voucherLines VoucherLine[]
-  items        Item[]
-  invoiceItems InvoiceItem[]
-  expenses     Expense[]
+  voucherLines     VoucherLine[]
+  items            Item[]
+  itemTaxCodes     ItemTaxCode[]
+  invoiceItems     InvoiceItem[]
+  invoiceItemTaxes InvoiceItemTax[]
+  expenses         Expense[]
   vatRegisterLines VatRegisterLine[]
 
   @@index([companyId, isActive])
@@ -400,6 +402,7 @@ model Item {
 
   taxCodeId    String?
   taxCode      TaxCode? @relation(fields: [taxCodeId], references: [id])
+  itemTaxCodes ItemTaxCode[]
   voucherLines VoucherLine[]
   invoiceItems InvoiceItem[]
 
@@ -421,6 +424,16 @@ model Unit {
   updatedAt DateTime @updatedAt
 
   @@unique([companyId, name])
+}
+
+model ItemTaxCode {
+  id        String  @id @default(uuid())
+  itemId    String
+  item      Item    @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  taxCodeId String
+  taxCode   TaxCode @relation(fields: [taxCodeId], references: [id])
+
+  @@unique([itemId, taxCodeId])
 }
 
 model Voucher {
@@ -528,8 +541,20 @@ model InvoiceItem {
   taxCodeId String?
   taxCode   TaxCode? @relation(fields: [taxCodeId], references: [id])
   taxAmount Decimal @db.Decimal(14, 2)
+  taxes     InvoiceItemTax[]
 
   createdAt DateTime @default(now())
+}
+
+model InvoiceItemTax {
+  id            String  @id @default(uuid())
+  invoiceItemId String
+  invoiceItem   InvoiceItem @relation(fields: [invoiceItemId], references: [id], onDelete: Cascade)
+  taxCodeId     String
+  taxCode       TaxCode @relation(fields: [taxCodeId], references: [id])
+  taxAmount     Decimal @db.Decimal(14, 2)
+
+  @@unique([invoiceItemId, taxCodeId])
 }
 
 model StockLedger {

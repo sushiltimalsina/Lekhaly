@@ -21,9 +21,16 @@ export class ItemsService {
     }
 
     const taxCodeId = (input as any).taxCodeId as string | undefined;
-    if (taxCodeId) {
-      const tax = await this.prisma.taxCode.findFirst({ where: { id: taxCodeId, companyId } });
-      if (!tax) throw new BadRequestException("Invalid tax code");
+    const taxCodeIds = (input as any).taxCodeIds as string[] | undefined;
+    const allTaxIds = [
+      ...(taxCodeId ? [taxCodeId] : []),
+      ...(Array.isArray(taxCodeIds) ? taxCodeIds : [])
+    ];
+    if (allTaxIds.length) {
+      const tax = await this.prisma.taxCode.findMany({
+        where: { id: { in: allTaxIds }, companyId }
+      });
+      if (tax.length !== new Set(allTaxIds).size) throw new BadRequestException("Invalid tax code");
     }
   }
 
@@ -36,6 +43,7 @@ export class ItemsService {
     });
     if (existing) throw new BadRequestException("Item name already exists");
     await this.validateRefs(user.companyId, input);
+    const taxCodeIds = (input as any).taxCodeIds as string[] | undefined;
     return this.prisma.item.create({
       data: {
         companyId: user.companyId,
@@ -48,7 +56,12 @@ export class ItemsService {
         purchasePrice: input.purchasePrice,
         incomeAccountId: (input as any).incomeAccountId,
         expenseAccountId: (input as any).expenseAccountId,
-        taxCodeId: (input as any).taxCodeId
+        taxCodeId: (input as any).taxCodeId,
+        itemTaxCodes: Array.isArray(taxCodeIds) && taxCodeIds.length
+          ? {
+              create: taxCodeIds.map((id) => ({ taxCodeId: id }))
+            }
+          : undefined
       }
     });
   }
@@ -67,6 +80,23 @@ export class ItemsService {
       if (existing) throw new BadRequestException("Item name already exists");
     }
     await this.validateRefs(user.companyId, input);
+
+    const taxCodeIds = (input as any).taxCodeIds as string[] | undefined;
+    if (Array.isArray(taxCodeIds)) {
+      return this.prisma.$transaction(async (tx) => {
+        const updated = await tx.item.update({
+          where: { id },
+          data: input
+        });
+        await tx.itemTaxCode.deleteMany({ where: { itemId: id } });
+        if (taxCodeIds.length) {
+          await tx.itemTaxCode.createMany({
+            data: taxCodeIds.map((taxCodeId) => ({ itemId: id, taxCodeId }))
+          });
+        }
+        return updated;
+      });
+    }
 
     return this.prisma.item.update({
       where: { id },

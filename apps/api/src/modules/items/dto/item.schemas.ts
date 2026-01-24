@@ -10,7 +10,8 @@ export const CreateItemSchema = z.object({
   purchasePrice: z.number().nonnegative().optional(),
   incomeAccountId: z.string().uuid().optional(),
   expenseAccountId: z.string().uuid().optional(),
-  taxCodeId: z.string().uuid().optional()
+  taxCodeId: z.string().uuid().optional(),
+  taxCodeIds: z.array(z.string().uuid()).optional()
 });
 
 export const UpdateItemSchema = CreateItemSchema.partial().extend({

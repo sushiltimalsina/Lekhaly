@@ -14,9 +14,19 @@ export class InvoicesService {
     return company;
   }
 
-  private async validateItems(companyId: string, items: Array<{ itemId?: string; taxCodeId?: string }>) {
+  private async validateItems(
+    companyId: string,
+    items: Array<{ itemId?: string; taxCodeId?: string; taxCodeIds?: string[] }>
+  ) {
     const itemIds = Array.from(new Set(items.map((i) => i.itemId).filter(Boolean))) as string[];
-    const taxCodeIds = Array.from(new Set(items.map((i) => i.taxCodeId).filter(Boolean))) as string[];
+    const taxCodeIds = Array.from(
+      new Set(
+        items.flatMap((i) => [
+          ...(i.taxCodeId ? [i.taxCodeId] : []),
+          ...(Array.isArray(i.taxCodeIds) ? i.taxCodeIds : [])
+        ])
+      )
+    ) as string[];
 
     if (itemIds.length) {
       const dbItems = await this.prisma.item.findMany({ where: { id: { in: itemIds }, companyId } });
@@ -90,7 +100,7 @@ export class InvoicesService {
       dueDate?: Date;
       dueDateBs?: string;
       receivableAccountId: string;
-      items: Array<{ itemId?: string; description?: string; qty: number; rate: number; taxCodeId?: string }>;
+      items: Array<{ itemId?: string; description?: string; qty: number; rate: number; taxCodeId?: string; taxCodeIds?: string[] }>;
     }
   ) {
     await this.validateItems(user.companyId, input.items);
@@ -108,22 +118,74 @@ export class InvoicesService {
     const resolvedDate = resolveAdDate(input.date, input.dateBs);
     const resolvedDue = input.dueDate || input.dueDateBs ? resolveAdDate(input.dueDate, input.dueDateBs) : null;
 
-    const itemsWithTax = await Promise.all(
-      input.items.map(async (item) => {
-        let taxAmount = new Prisma.Decimal(0);
-        if (item.taxCodeId) {
-          const tax = await this.prisma.taxCode.findUnique({ where: { id: item.taxCodeId } });
-          if (!tax) throw new BadRequestException("Invalid tax code");
-          const amount = new Prisma.Decimal(item.qty).mul(item.rate);
-          taxAmount = amount.mul(tax.rate).div(100);
-        }
-        return {
-          ...item,
-          amount: new Prisma.Decimal(item.qty).mul(item.rate),
-          taxAmount
-        };
-      })
-    );
+    const itemIds = Array.from(new Set(input.items.map((i) => i.itemId).filter(Boolean))) as string[];
+    const itemDefaults = itemIds.length
+      ? await this.prisma.item.findMany({
+          where: { id: { in: itemIds }, companyId: user.companyId },
+          select: { id: true, taxCodeId: true }
+        })
+      : [];
+
+    const explicitTaxIds = Array.from(
+      new Set(
+        input.items.flatMap((i) => [
+          ...(i.taxCodeId ? [i.taxCodeId] : []),
+          ...(Array.isArray(i.taxCodeIds) ? i.taxCodeIds : [])
+        ]).concat(itemDefaults.map((i) => i.taxCodeId).filter(Boolean) as string[])
+      )
+    ) as string[];
+
+    const [explicitTaxCodes, itemTaxLinks] = await Promise.all([
+      explicitTaxIds.length
+        ? this.prisma.taxCode.findMany({ where: { id: { in: explicitTaxIds }, companyId: user.companyId } })
+        : Promise.resolve([]),
+      itemIds.length
+        ? this.prisma.itemTaxCode.findMany({
+            where: { itemId: { in: itemIds } },
+            include: { taxCode: true }
+          })
+        : Promise.resolve([])
+    ]);
+
+    const explicitTaxMap = new Map(explicitTaxCodes.map((t) => [t.id, t]));
+    const itemTaxMap = new Map<string, typeof explicitTaxCodes>();
+    for (const link of itemTaxLinks) {
+      const list = itemTaxMap.get(link.itemId) || [];
+      list.push(link.taxCode);
+      itemTaxMap.set(link.itemId, list);
+    }
+    for (const item of itemDefaults) {
+      if (!item.taxCodeId) continue;
+      if (itemTaxMap.has(item.id)) continue;
+      const tax = explicitTaxMap.get(item.taxCodeId);
+      if (tax) itemTaxMap.set(item.id, [tax]);
+    }
+
+    const itemsWithTax = input.items.map((item) => {
+      const amount = new Prisma.Decimal(item.qty).mul(item.rate);
+      const chosenTaxCodes = Array.isArray(item.taxCodeIds) && item.taxCodeIds.length
+        ? item.taxCodeIds.map((id) => explicitTaxMap.get(id)).filter(Boolean)
+        : item.taxCodeId
+          ? [explicitTaxMap.get(item.taxCodeId)].filter(Boolean)
+          : item.itemId
+            ? (itemTaxMap.get(item.itemId) ?? [])
+            : [];
+
+      const taxBreakdown = chosenTaxCodes.map((tax) => ({
+        taxCodeId: tax.id,
+        taxAmount: amount.mul(tax.rate).div(100)
+      }));
+      const taxAmount = taxBreakdown.reduce((sum, t) => sum.add(t.taxAmount), new Prisma.Decimal(0));
+      const singleTaxId = taxBreakdown.length === 1 ? taxBreakdown[0].taxCodeId : undefined;
+
+      return {
+        ...item,
+        amount,
+        taxAmount,
+        taxCodeId: singleTaxId,
+        taxBreakdown
+      };
+    });
 
     const totals = this.computeTotals(itemsWithTax);
 
@@ -179,12 +241,15 @@ export class InvoicesService {
     }
 
     const taxGroups = new Map<string, Prisma.Decimal>();
-    for (const item of itemsWithTax) {
-      if (!item.taxCodeId || item.taxAmount.lte(0)) continue;
-      taxGroups.set(
-        item.taxCodeId,
-        (taxGroups.get(item.taxCodeId) || new Prisma.Decimal(0)).add(item.taxAmount)
-      );
+    for (const item of itemsWithTax as Array<{ taxBreakdown?: Array<{ taxCodeId: string; taxAmount: Prisma.Decimal }> }>) {
+      const breakdown = item.taxBreakdown ?? [];
+      for (const t of breakdown) {
+        if (t.taxAmount.lte(0)) continue;
+        taxGroups.set(
+          t.taxCodeId,
+          (taxGroups.get(t.taxCodeId) || new Prisma.Decimal(0)).add(t.taxAmount)
+        );
+      }
     }
 
     if (taxGroups.size) {
@@ -255,7 +320,7 @@ export class InvoicesService {
       dueDate?: Date;
       dueDateBs?: string;
       receivableAccountId: string;
-      items: Array<{ itemId?: string; description?: string; qty: number; rate: number; taxCodeId?: string }>;
+      items: Array<{ itemId?: string; description?: string; qty: number; rate: number; taxCodeId?: string; taxCodeIds?: string[] }>;
     }
   ) {
     const preview = await this.preview(user, input);
@@ -276,14 +341,22 @@ export class InvoicesService {
         total: totals.total,
         status: "draft",
         items: {
-          create: preview.items.map((item) => ({
+          create: preview.items.map((item: any) => ({
             itemId: item.itemId,
             description: item.description,
             qty: new Prisma.Decimal(item.qty),
             rate: new Prisma.Decimal(item.rate),
             amount: item.amount,
             taxCodeId: item.taxCodeId,
-            taxAmount: item.taxAmount
+            taxAmount: item.taxAmount,
+            taxes: item.taxBreakdown?.length
+              ? {
+                  create: item.taxBreakdown.map((t: any) => ({
+                    taxCodeId: t.taxCodeId,
+                    taxAmount: t.taxAmount
+                  }))
+                }
+              : undefined
           }))
         }
       },
@@ -417,7 +490,8 @@ export class InvoicesService {
       include: {
         items: {
           include: {
-            item: { select: { id: true, name: true, hsCode: true } }
+            item: { select: { id: true, name: true, hsCode: true } },
+            taxes: { include: { taxCode: true } }
           }
         }
       }
@@ -428,7 +502,13 @@ export class InvoicesService {
       items: invoice.items.map((it) => ({
         ...it,
         itemName: it.item?.name ?? undefined,
-        hsCode: it.item?.hsCode ?? undefined
+        hsCode: it.item?.hsCode ?? undefined,
+        taxBreakdown: (it as any).taxes?.map((t: any) => ({
+          taxCodeId: t.taxCodeId,
+          name: t.taxCode?.name,
+          rate: t.taxCode?.rate,
+          taxAmount: t.taxAmount
+        }))
       }))
     };
   }
