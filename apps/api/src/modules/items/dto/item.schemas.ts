@@ -8,6 +8,8 @@ export const CreateItemSchema = z.object({
   type: z.enum(["goods", "services"]).optional(),
   salesPrice: z.number().nonnegative().optional(),
   purchasePrice: z.number().nonnegative().optional(),
+  openingQty: z.number().optional(),
+  openingPrice: z.number().nonnegative().optional(),
   incomeAccountId: z.string().uuid().optional(),
   expenseAccountId: z.string().uuid().optional(),
   taxCodeId: z.string().uuid().optional(),

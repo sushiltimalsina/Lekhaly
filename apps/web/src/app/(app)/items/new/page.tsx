@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { createItem } from "@/lib/api/items";
 import { listTaxes } from "@/lib/api/taxes";
 import { createUnit, listUnits, type UnitRecord } from "@/lib/api/units";
+import { listAccounts, type AccountRecord } from "@/lib/api/accounts";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, PackagePlus, Save } from "lucide-react";
@@ -22,6 +23,7 @@ export default function NewItemPage() {
   const [taxable, setTaxable] = React.useState(false);
   const [taxes, setTaxes] = React.useState<TaxCode[]>([]);
   const [units, setUnits] = React.useState<UnitRecord[]>([]);
+  const [groups, setGroups] = React.useState<AccountRecord[]>([]);
   const [unitInput, setUnitInput] = React.useState("");
   const [unitBusy, setUnitBusy] = React.useState(false);
   const [form, setForm] = React.useState({
@@ -32,6 +34,8 @@ export default function NewItemPage() {
     type: "goods" as ItemType,
     salesPrice: "",
     purchasePrice: "",
+    openingQty: "",
+    openingPrice: "",
     incomeAccountId: "",
     expenseAccountId: "",
     taxCodeIds: [] as string[],
@@ -83,6 +87,34 @@ export default function NewItemPage() {
     };
   }, []);
 
+  React.useEffect(() => {
+    let alive = true;
+    listAccounts({ type: "income", take: 200 })
+      .then((res: any) => {
+        if (!alive) return;
+        const data = Array.isArray(res) ? res : res?.items ?? res?.data ?? [];
+        setGroups(
+          Array.isArray(data)
+            ? data
+                .filter((a: any) => a && typeof a.id === "string")
+                .map((a: any) => ({
+                  id: a.id,
+                  name: String(a.name),
+                  code: a.code ?? undefined,
+                  type: a.type
+                }))
+            : []
+        );
+      })
+      .catch(() => {
+        if (!alive) return;
+        setGroups([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   const update = (key: keyof typeof form, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
@@ -127,6 +159,8 @@ export default function NewItemPage() {
         type: form.type,
         salesPrice: form.salesPrice ? Number(form.salesPrice) : undefined,
         purchasePrice: form.purchasePrice ? Number(form.purchasePrice) : undefined,
+        openingQty: form.openingQty ? Number(form.openingQty) : undefined,
+        openingPrice: form.openingPrice ? Number(form.openingPrice) : undefined,
         incomeAccountId: form.incomeAccountId.trim() || undefined,
         expenseAccountId: form.expenseAccountId.trim() || undefined,
         taxCodeIds: taxable ? form.taxCodeIds : undefined,
@@ -193,6 +227,21 @@ export default function NewItemPage() {
                 onChange={(e) => update("hsCode", e.target.value)}
                 placeholder="e.g. 4820.10"
               />
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="text-muted-foreground">Group</span>
+              <select
+                value={form.incomeAccountId}
+                onChange={(e) => update("incomeAccountId", e.target.value)}
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+              >
+                <option value="">Select group</option>
+                {groups.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.code ? `${g.code} - ${g.name}` : g.name}
+                  </option>
+                ))}
+              </select>
             </label>
             <label className="space-y-1 text-sm">
               <span className="text-muted-foreground">Unit</span>
@@ -283,6 +332,42 @@ export default function NewItemPage() {
                 Services don't track stock. Purchase price is optional.
               </div>
             ) : null}
+          </div>
+        </section>
+
+        <section className="rounded-xl border bg-card p-6 shadow-sm space-y-5">
+          <div className="text-sm font-semibold">Opening Balance</div>
+          <div className="grid gap-4">
+            <label className="space-y-1 text-sm">
+              <span className="text-muted-foreground">Opening Quantity</span>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.openingQty}
+                onChange={(e) => update("openingQty", e.target.value)}
+                placeholder="0"
+                disabled={form.type === "services"}
+              />
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="text-muted-foreground">Opening Price</span>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.openingPrice}
+                onChange={(e) => update("openingPrice", e.target.value)}
+                placeholder="0.00"
+                disabled={form.type === "services"}
+              />
+            </label>
+            <div className="rounded-lg border bg-background px-3 py-2 text-sm text-muted-foreground">
+              Opening Amount:{" "}
+              <span className="font-semibold text-foreground">
+                {(Number(form.openingQty || 0) * Number(form.openingPrice || 0)).toFixed(2)}
+              </span>
+            </div>
           </div>
         </section>
 

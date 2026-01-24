@@ -44,7 +44,10 @@ export class ItemsService {
     if (existing) throw new BadRequestException("Item name already exists");
     await this.validateRefs(user.companyId, input);
     const taxCodeIds = (input as any).taxCodeIds as string[] | undefined;
-    return this.prisma.item.create({
+    const openingQty = (input as any).openingQty as number | undefined;
+    const openingPrice = (input as any).openingPrice as number | undefined;
+
+    const created = await this.prisma.item.create({
       data: {
         companyId: user.companyId,
         name: input.name,
@@ -64,6 +67,27 @@ export class ItemsService {
           : undefined
       }
     });
+
+    if (openingQty && openingQty !== 0 && (created as any).type !== "services") {
+      const qty = new Prisma.Decimal(openingQty);
+      const rate = new Prisma.Decimal(openingPrice ?? 0);
+      const amount = qty.abs().mul(rate);
+      await this.prisma.stockLedger.create({
+        data: {
+          companyId: user.companyId,
+          itemId: created.id,
+          date: new Date(),
+          dateBs: null,
+          voucherId: null,
+          qtyIn: qty.gt(0) ? qty : new Prisma.Decimal(0),
+          qtyOut: qty.lt(0) ? qty.abs() : new Prisma.Decimal(0),
+          rate,
+          amount
+        }
+      });
+    }
+
+    return created;
   }
 
   async update(user: AuthUser, id: string, input: Prisma.ItemUpdateInput) {

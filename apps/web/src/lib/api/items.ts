@@ -12,6 +12,8 @@ export type CreateItemInput = {
   type?: ItemType;
   salesPrice?: number;
   purchasePrice?: number;
+  openingQty?: number;
+  openingPrice?: number;
   incomeAccountId?: string;
   expenseAccountId?: string;
   taxCodeId?: string;
