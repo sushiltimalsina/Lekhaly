@@ -4,6 +4,8 @@ import * as React from "react";
 import PageHeader from "@/components/app/page-header";
 import { Input } from "@/components/ui/input";
 import { createItem } from "@/lib/api/items";
+import { listTaxes } from "@/lib/api/taxes";
+import { createUnit, listUnits } from "@/lib/api/units";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, PackagePlus, Save } from "lucide-react";
@@ -16,6 +18,11 @@ export default function NewItemPage() {
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<string | null>(null);
+  const [taxable, setTaxable] = React.useState(false);
+  const [taxes, setTaxes] = React.useState<any[]>([]);
+  const [units, setUnits] = React.useState<Array<{ id: string; name: string }>>([]);
+  const [unitInput, setUnitInput] = React.useState("");
+  const [unitBusy, setUnitBusy] = React.useState(false);
   const [form, setForm] = React.useState({
     name: "",
     sku: "",
@@ -28,8 +35,62 @@ export default function NewItemPage() {
     taxCodeId: "",
   });
 
+  React.useEffect(() => {
+    let alive = true;
+    listTaxes({ take: 100 })
+      .then((res) => {
+        if (!alive) return;
+        const data = Array.isArray(res) ? res : res?.items ?? res?.data ?? [];
+        setTaxes(data);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setTaxes([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  React.useEffect(() => {
+    let alive = true;
+    listUnits({ take: 200 })
+      .then((res) => {
+        if (!alive) return;
+        const data = Array.isArray(res) ? res : res?.items ?? res?.data ?? [];
+        setUnits(data);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setUnits([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   const update = (key: keyof typeof form, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const addUnit = async () => {
+    const name = unitInput.trim();
+    if (!name) return;
+    setUnitBusy(true);
+    try {
+      const created = await createUnit({ name });
+      setUnits((prev) => {
+        const next = [...prev, created];
+        next.sort((a, b) => a.name.localeCompare(b.name));
+        return next;
+      });
+      update("unit", created.name);
+      setUnitInput("");
+    } catch (err: any) {
+      setError(err?.message ?? "Failed to add unit.");
+    } finally {
+      setUnitBusy(false);
+    }
   };
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -53,7 +114,7 @@ export default function NewItemPage() {
         purchasePrice: form.purchasePrice ? Number(form.purchasePrice) : undefined,
         incomeAccountId: form.incomeAccountId.trim() || undefined,
         expenseAccountId: form.expenseAccountId.trim() || undefined,
-        taxCodeId: form.taxCodeId.trim() || undefined,
+        taxCodeId: taxable ? form.taxCodeId.trim() || undefined : undefined,
       });
       setSuccess("Item created successfully.");
       setTimeout(() => router.push("/items"), 600);
@@ -112,11 +173,38 @@ export default function NewItemPage() {
             </label>
             <label className="space-y-1 text-sm">
               <span className="text-muted-foreground">Unit</span>
-              <Input
+              <select
                 value={form.unit}
                 onChange={(e) => update("unit", e.target.value)}
-                placeholder="e.g. pcs, kg, hour"
-              />
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+              >
+                <option value="">Select unit</option>
+                {units.map((u) => (
+                  <option key={u.id} value={u.name}>
+                    {u.name}
+                  </option>
+                ))}
+              </select>
+              <div className="flex items-center gap-2">
+                <Input
+                  value={unitInput}
+                  onChange={(e) => setUnitInput(e.target.value)}
+                  placeholder="Add new unit"
+                />
+                <button
+                  type="button"
+                  onClick={addUnit}
+                  disabled={unitBusy || !unitInput.trim()}
+                  className={cn(
+                    "rounded-md border px-3 py-2 text-xs font-medium transition",
+                    unitBusy || !unitInput.trim()
+                      ? "opacity-60"
+                      : "hover:bg-muted"
+                  )}
+                >
+                  Add
+                </button>
+              </div>
             </label>
             <label className="space-y-1 text-sm">
               <span className="text-muted-foreground">Type</span>
@@ -195,14 +283,46 @@ export default function NewItemPage() {
                 disabled={form.type === "services"}
               />
             </label>
-            <label className="space-y-1 text-sm">
-              <span className="text-muted-foreground">Tax Code ID</span>
-              <Input
-                value={form.taxCodeId}
-                onChange={(e) => update("taxCodeId", e.target.value)}
-                placeholder="Optional"
-              />
-            </label>
+            <div className="space-y-2 text-sm">
+              <span className="text-muted-foreground">Tax</span>
+              <div className="flex items-center gap-2">
+                {(["non-taxable", "taxable"] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => {
+                      const next = t === "taxable";
+                      setTaxable(next);
+                      if (!next) update("taxCodeId", "");
+                    }}
+                    className={cn(
+                      "rounded-full border px-3 py-1.5 text-xs font-medium transition",
+                      taxable === (t === "taxable")
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "bg-background hover:bg-muted"
+                    )}
+                  >
+                    {t === "taxable" ? "Taxable" : "Non-taxable"}
+                  </button>
+                ))}
+              </div>
+              {taxable ? (
+                <select
+                  value={form.taxCodeId}
+                  onChange={(e) => update("taxCodeId", e.target.value)}
+                  className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">Select tax code</option>
+                  {taxes.map((tax) => (
+                    <option key={tax.id} value={tax.id}>
+                      {tax.name} ({tax.rate}%)
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="text-xs text-muted-foreground">No tax will be applied.</div>
+              )}
+            </div>
           </div>
         </section>
 
@@ -236,4 +356,3 @@ export default function NewItemPage() {
     </div>
   );
 }
-

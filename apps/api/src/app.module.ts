@@ -23,6 +23,7 @@ import { ExpensesModule } from "./modules/expenses/expenses.module";
 import { TaxesModule } from "./modules/taxes/taxes.module";
 import { PdfModule } from "./modules/pdf/pdf.module";
 import { HealthModule } from "./moduls/health/health.module";
+import { UnitsModule } from "./modules/units/units.module";
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { HealthModule } from "./moduls/health/health.module";
     PdfModule,
     PartiesModule,
     ItemsModule,
+    UnitsModule,
     AccountsModule
   ],
   controllers: [AppController],

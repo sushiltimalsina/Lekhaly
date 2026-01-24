@@ -397,18 +397,29 @@ model Item {
   expenseAccount   ChartOfAccount? @relation("ExpenseAccount", fields: [expenseAccountId], references: [id])
 
   taxCodeId    String?
-  taxCode      TaxCode?      @relation(fields: [taxCodeId], references: [id])
+  taxCode      TaxCode? @relation(fields: [taxCodeId], references: [id])
   voucherLines VoucherLine[]
   invoiceItems InvoiceItem[]
 
-    isActive  Boolean  @default(true)
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-    stockLedger StockLedger[]
-  }
+  stockLedger StockLedger[]
 
   @@unique([companyId, name])
+}
+
+model Unit {
+  id        String   @id @default(uuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([companyId, name])
+}
 
 model Voucher {
   id        String  @id @default(uuid())
