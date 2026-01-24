@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 
@@ -15,7 +15,7 @@ export function formatMoney(value: number, opts?: { currency?: string; decimals?
     maximumFractionDigits: decimals,
   }).format(value);
 
-  return currency ? `${formatted}` : formatted;
+  return currency ? "रु. " + formatted : formatted;
 }
 
 export function MoneyText({

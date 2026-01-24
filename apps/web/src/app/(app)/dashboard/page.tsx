@@ -163,7 +163,7 @@ export default function DashboardPage() {
                   <div className="text-sm font-medium">Burn Rate</div>
                   <div className="text-xs text-muted-foreground">Monthly cash outflow average</div>
                 </div>
-                <div className="text-xl font-bold font-mono text-emerald-600">$12,400</div>
+                <div className="text-xl font-bold font-mono text-emerald-600"><MoneyText value={12400} /></div>
               </div>
               <div className="p-4 rounded-xl bg-indigo-500/5 border border-indigo-500/10 flex items-center justify-between">
                 <div>
