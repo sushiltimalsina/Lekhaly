@@ -135,8 +135,7 @@ const navData: NavItem[] = [
     icon: Package,
     children: [
       { label: "Add (Create)", href: "/items/new", icon: Plus },
-      { label: "List", href: "/items", icon: List },
-      
+      { label: "List", href: "/items", icon: List }
     ]
   },
   {
