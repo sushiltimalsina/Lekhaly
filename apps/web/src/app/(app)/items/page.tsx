@@ -8,6 +8,7 @@ import { MoneyText } from "@/components/app/money";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, Package } from "lucide-react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { getStockReport, StockReportRow } from "@/lib/api/inventory";
 
@@ -170,9 +171,11 @@ export default function ItemsPage() {
         title="Items Inventory"
         description="Manage your product catalog, prices, and stock levels."
         actions={
-          <Button className="shadow-lg shadow-primary/20">
-            <Plus className="mr-2 h-4 w-4" />
-            New Item
+          <Button asChild className="shadow-lg shadow-primary/20">
+            <Link href="/items/new">
+              <Plus className="mr-2 h-4 w-4" />
+              New Item
+            </Link>
           </Button>
         }
       />

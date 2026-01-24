@@ -13,6 +13,9 @@ export class InventoryService {
       where: { id: itemId, companyId: user.companyId }
     });
     if (!item) throw new BadRequestException("Item not found");
+    if ((item as any).type === "services") {
+      return { itemId, qty: new Prisma.Decimal(0), entries: [] };
+    }
 
     const where: Prisma.StockLedgerWhereInput = { companyId: user.companyId, itemId };
     if (filters.from || filters.to) {
@@ -42,6 +45,9 @@ export class InventoryService {
       where: { id: input.itemId, companyId: user.companyId }
     });
     if (!item) throw new BadRequestException("Item not found");
+    if ((item as any).type === "services") {
+      throw new BadRequestException("Service items do not track stock");
+    }
 
     const account = await this.prisma.chartOfAccount.findFirst({
       where: { id: input.accountId, companyId: user.companyId }
@@ -195,6 +201,28 @@ export class InventoryService {
     }
 
     return items.map((item) => {
+      if ((item as any).type === "services") {
+        return {
+          id: item.id,
+          name: item.name,
+          sku: item.sku,
+          unit: item.unit,
+          type: (item as any).type ?? "services",
+          parentGroup: item.incomeAccount?.name ?? item.expenseAccount?.name ?? "—",
+          openingQty: 0,
+          openingAvgPrice: 0,
+          openingAmt: 0,
+          purchaseQty: 0,
+          purchaseAvgPrice: 0,
+          purchaseAmt: 0,
+          saleQty: 0,
+          saleAvgPrice: 0,
+          saleAmt: 0,
+          closingQty: 0,
+          closingPrice: 0,
+          closingAmt: 0
+        };
+      }
       const s = stats.get(item.id) ?? {
         openQty: zero,
         openAmt: zero,

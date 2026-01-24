@@ -132,8 +132,12 @@ const navData: NavItem[] = [
   },
   {
     label: "Stock",
-    href: "/items",
-    icon: Package
+    icon: Package,
+    children: [
+      { label: "Add (Create)", href: "/items/new", icon: Plus },
+      { label: "List", href: "/items", icon: List },
+      
+    ]
   },
   {
     label: "Chart of Accounts",

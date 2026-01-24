@@ -42,6 +42,44 @@ export class InvoicesService {
     return { subtotal, vatAmount, total };
   }
 
+  private async enforceStockForSales(
+    user: AuthUser,
+    items: Array<{ itemId?: string; qty: number }>
+  ) {
+    const itemIds = Array.from(new Set(items.map((i) => i.itemId).filter(Boolean))) as string[];
+    if (!itemIds.length) return;
+
+    const dbItems = await this.prisma.item.findMany({
+      where: { id: { in: itemIds }, companyId: user.companyId },
+      select: { id: true, name: true, type: true }
+    });
+
+    const goodsIds = dbItems.filter((i) => (i as any).type !== "services").map((i) => i.id);
+    if (!goodsIds.length) return;
+
+    const ledger = await this.prisma.stockLedger.findMany({
+      where: { companyId: user.companyId, itemId: { in: goodsIds } },
+      select: { itemId: true, qtyIn: true, qtyOut: true }
+    });
+
+    const stockMap = new Map<string, Prisma.Decimal>();
+    for (const entry of ledger) {
+      const current = stockMap.get(entry.itemId) || new Prisma.Decimal(0);
+      stockMap.set(entry.itemId, current.add(entry.qtyIn).sub(entry.qtyOut));
+    }
+
+    for (const line of items) {
+      if (!line.itemId) continue;
+      const item = dbItems.find((i) => i.id === line.itemId);
+      if (!item || (item as any).type === "services") continue;
+      const available = stockMap.get(line.itemId) || new Prisma.Decimal(0);
+      const required = new Prisma.Decimal(line.qty);
+      if (available.sub(required).lt(0)) {
+        throw new BadRequestException(`Insufficient stock for ${item.name}`);
+      }
+    }
+  }
+
   async preview(
     user: AuthUser,
     input: {
@@ -56,6 +94,12 @@ export class InvoicesService {
     }
   ) {
     await this.validateItems(user.companyId, input.items);
+    if (input.type === "sales") {
+      await this.enforceStockForSales(user, input.items.map((item) => ({
+        itemId: item.itemId,
+        qty: item.qty
+      })));
+    }
     const party = await this.prisma.party.findFirst({
       where: { id: input.partyId, companyId: user.companyId }
     });
@@ -274,6 +318,13 @@ export class InvoicesService {
         taxCodeId: i.taxCodeId || undefined
       }))
     });
+
+    if (invoice.type === "sales") {
+      await this.enforceStockForSales(user, invoice.items.map((i) => ({
+        itemId: i.itemId || undefined,
+        qty: i.qty.toNumber()
+      })));
+    }
 
     const voucherType = invoice.type === "sales" ? VoucherType.sales_invoice : VoucherType.sales_return;
     const sequence = company.nextInvoiceNumber;
