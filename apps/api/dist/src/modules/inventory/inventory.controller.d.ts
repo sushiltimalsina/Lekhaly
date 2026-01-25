@@ -7,4 +7,25 @@ export declare class InventoryController {
         ok: boolean;
         voucherId: string;
     }>;
+    report(user: AuthUser, query: any): Promise<{
+        id: string;
+        name: string;
+        sku: string | null;
+        hsCode: any;
+        unit: string | null;
+        type: any;
+        parentGroup: string;
+        openingQty: number;
+        openingAvgPrice: number;
+        openingAmt: number;
+        purchaseQty: number;
+        purchaseAvgPrice: number;
+        purchaseAmt: number;
+        saleQty: number;
+        saleAvgPrice: number;
+        saleAmt: number;
+        closingQty: number;
+        closingPrice: number;
+        closingAmt: number;
+    }[]>;
 }

@@ -7,7 +7,8 @@ exports.InvoiceItemSchema = zod_1.z.object({
     description: zod_1.z.string().trim().max(255).optional(),
     qty: zod_1.z.number().positive(),
     rate: zod_1.z.number().nonnegative(),
-    taxCodeId: zod_1.z.string().uuid().optional()
+    taxCodeId: zod_1.z.string().uuid().optional(),
+    taxCodeIds: zod_1.z.array(zod_1.z.string().uuid()).optional()
 });
 exports.CreateInvoiceDraftSchema = zod_1.z.object({
     type: zod_1.z.enum(["sales", "sales_return"]),

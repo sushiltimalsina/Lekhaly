@@ -32,6 +32,8 @@ const expenses_module_1 = require("./modules/expenses/expenses.module");
 const taxes_module_1 = require("./modules/taxes/taxes.module");
 const pdf_module_1 = require("./modules/pdf/pdf.module");
 const health_module_1 = require("./moduls/health/health.module");
+const units_module_1 = require("./modules/units/units.module");
+const item_groups_module_1 = require("./modules/item-groups/item-groups.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -57,6 +59,8 @@ exports.AppModule = AppModule = __decorate([
             pdf_module_1.PdfModule,
             parties_module_1.PartiesModule,
             items_module_1.ItemsModule,
+            item_groups_module_1.ItemGroupsModule,
+            units_module_1.UnitsModule,
             accounts_module_1.AccountsModule
         ],
         controllers: [app_controller_1.AppController],

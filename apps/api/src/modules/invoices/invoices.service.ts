@@ -171,7 +171,7 @@ export class InvoicesService {
             ? (itemTaxMap.get(item.itemId) ?? [])
             : [];
 
-      const taxBreakdown = chosenTaxCodes.map((tax) => ({
+      const taxBreakdown = (chosenTaxCodes as Array<NonNullable<typeof chosenTaxCodes[number]>>).map((tax) => ({
         taxCodeId: tax.id,
         taxAmount: amount.mul(tax.rate).div(100)
       }));

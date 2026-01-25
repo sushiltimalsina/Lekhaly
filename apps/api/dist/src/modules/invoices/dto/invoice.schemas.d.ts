@@ -5,6 +5,7 @@ export declare const InvoiceItemSchema: z.ZodObject<{
     qty: z.ZodNumber;
     rate: z.ZodNumber;
     taxCodeId: z.ZodOptional<z.ZodString>;
+    taxCodeIds: z.ZodOptional<z.ZodArray<z.ZodString>>;
 }, z.core.$strip>;
 export declare const CreateInvoiceDraftSchema: z.ZodObject<{
     type: z.ZodEnum<{
@@ -23,6 +24,7 @@ export declare const CreateInvoiceDraftSchema: z.ZodObject<{
         qty: z.ZodNumber;
         rate: z.ZodNumber;
         taxCodeId: z.ZodOptional<z.ZodString>;
+        taxCodeIds: z.ZodOptional<z.ZodArray<z.ZodString>>;
     }, z.core.$strip>>;
 }, z.core.$strip>;
 export declare const InvoiceListQuerySchema: z.ZodObject<{

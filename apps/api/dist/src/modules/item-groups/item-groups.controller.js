@@ -12,48 +12,57 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.InventoryController = void 0;
+exports.ItemGroupsController = void 0;
 const common_1 = require("@nestjs/common");
-const audit_decorator_1 = require("../../common/audit/audit.decorator");
 const auth_decorator_1 = require("../../common/auth/auth.decorator");
 const zod_pipe_1 = require("../../common/zod/zod.pipe");
-const inventory_schemas_1 = require("./dto/inventory.schemas");
-const inventory_service_1 = require("./inventory.service");
-let InventoryController = class InventoryController {
-    inventory;
-    constructor(inventory) {
-        this.inventory = inventory;
+const item_group_schemas_1 = require("./dto/item-group.schemas");
+const item_groups_service_1 = require("./item-groups.service");
+let ItemGroupsController = class ItemGroupsController {
+    groups;
+    constructor(groups) {
+        this.groups = groups;
     }
-    adjust(user, body) {
-        return this.inventory.adjustStock(user, body);
+    create(user, body) {
+        return this.groups.create(user, body);
     }
-    report(user, query) {
-        return this.inventory.getStockReport(user, query);
+    list(user, query) {
+        return this.groups.list(user, query);
+    }
+    remove(user, id) {
+        return this.groups.remove(user, id);
     }
 };
-exports.InventoryController = InventoryController;
+exports.ItemGroupsController = ItemGroupsController;
 __decorate([
-    (0, common_1.Post)("adjustment"),
+    (0, common_1.Post)(),
     (0, auth_decorator_1.RequirePerm)("masters.write"),
-    (0, auth_decorator_1.RequireStep)("sensitive"),
     __param(0, (0, auth_decorator_1.CurrentUser)()),
-    __param(1, (0, common_1.Body)(new zod_pipe_1.ZodValidationPipe(inventory_schemas_1.StockAdjustmentSchema))),
+    __param(1, (0, common_1.Body)(new zod_pipe_1.ZodValidationPipe(item_group_schemas_1.CreateItemGroupSchema))),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", void 0)
-], InventoryController.prototype, "adjust", null);
+], ItemGroupsController.prototype, "create", null);
 __decorate([
-    (0, common_1.Get)("report"),
+    (0, common_1.Get)(),
     (0, auth_decorator_1.RequirePerm)("masters.read"),
     __param(0, (0, auth_decorator_1.CurrentUser)()),
-    __param(1, (0, common_1.Query)(new zod_pipe_1.ZodValidationPipe(inventory_schemas_1.StockQuerySchema))),
+    __param(1, (0, common_1.Query)(new zod_pipe_1.ZodValidationPipe(item_group_schemas_1.ListItemGroupQuerySchema))),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", void 0)
-], InventoryController.prototype, "report", null);
-exports.InventoryController = InventoryController = __decorate([
-    (0, common_1.Controller)("inventory"),
-    (0, audit_decorator_1.Audit)({ entityType: "inventory", idParam: "id" }),
-    __metadata("design:paramtypes", [inventory_service_1.InventoryService])
-], InventoryController);
-//# sourceMappingURL=inventory.controller.js.map
+], ItemGroupsController.prototype, "list", null);
+__decorate([
+    (0, common_1.Delete)(":id"),
+    (0, auth_decorator_1.RequirePerm)("masters.write"),
+    __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)("id")),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", void 0)
+], ItemGroupsController.prototype, "remove", null);
+exports.ItemGroupsController = ItemGroupsController = __decorate([
+    (0, common_1.Controller)("item-groups"),
+    __metadata("design:paramtypes", [item_groups_service_1.ItemGroupsService])
+], ItemGroupsController);
+//# sourceMappingURL=item-groups.controller.js.map
