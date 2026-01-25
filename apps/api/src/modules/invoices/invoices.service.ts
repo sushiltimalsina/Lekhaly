@@ -209,10 +209,23 @@ export class InvoicesService {
     const itemMap = new Map<string, string>();
     if (itemsWithTax.some((i) => i.itemId)) {
       const itemIds = itemsWithTax.map((i) => i.itemId).filter(Boolean) as string[];
-      const dbItems = await this.prisma.item.findMany({ where: { id: { in: itemIds }, companyId: user.companyId } });
+      const [dbItems, fallbackIncome] = await Promise.all([
+        this.prisma.item.findMany({ where: { id: { in: itemIds }, companyId: user.companyId } }),
+        this.prisma.chartOfAccount.findFirst({
+          where: { companyId: user.companyId, type: "income", code: "4000" }
+        })
+      ]);
+      const incomeFallback =
+        fallbackIncome ??
+        (await this.prisma.chartOfAccount.findFirst({
+          where: { companyId: user.companyId, type: "income" }
+        }));
       for (const dbItem of dbItems) {
-        if (!dbItem.incomeAccountId) throw new BadRequestException("Item missing income account");
-        itemMap.set(dbItem.id, dbItem.incomeAccountId);
+        const incomeId = dbItem.incomeAccountId || incomeFallback?.id;
+        if (!incomeId) {
+          throw new BadRequestException("Item missing income account");
+        }
+        itemMap.set(dbItem.id, incomeId);
       }
     }
 

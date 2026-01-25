@@ -24,11 +24,16 @@ export default function ConfigurationPage() {
 
   React.useEffect(() => {
     let alive = true;
+    const normalizeList = <T,>(input: unknown): T[] => {
+      if (Array.isArray(input)) return input as T[];
+      const obj = input as { items?: T[]; data?: T[] } | null;
+      return obj?.items ?? obj?.data ?? [];
+    };
     Promise.all([listUnits({ take: 200 }), listItemGroups({ take: 200 })])
       .then(([uRes, gRes]) => {
         if (!alive) return;
-        const uData = Array.isArray(uRes) ? uRes : uRes?.items ?? uRes?.data ?? [];
-        const gData = Array.isArray(gRes) ? gRes : gRes?.items ?? gRes?.data ?? [];
+        const uData = normalizeList<UnitRecord>(uRes);
+        const gData = normalizeList<ItemGroupRecord>(gRes);
         setUnits(uData);
         setGroups(gData);
       })

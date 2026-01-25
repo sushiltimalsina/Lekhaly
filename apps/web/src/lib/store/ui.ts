@@ -102,6 +102,8 @@ export function toggleSidebar() {
 
 export function subscribeUi(listener: Listener) {
   listeners.add(listener);
-  return () => listeners.delete(listener);
+  return () => {
+    listeners.delete(listener);
+  };
 }
 

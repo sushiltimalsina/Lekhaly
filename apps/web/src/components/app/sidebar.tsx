@@ -193,6 +193,11 @@ export default function Sidebar({ className, onNavigate }: SidebarProps) {
     onNavigate?.();
   };
 
+  const handleChildNavigate = () => {
+    setIsOpen(false);
+    onNavigate?.();
+  };
+
   return (
     <aside
       className={cn(
@@ -357,7 +362,7 @@ function NavItemNode({
                   key={i}
                   item={child}
                   depth={depth + 1}
-                  onNavigate={onNavigate}
+                  onNavigate={handleChildNavigate}
                   collapsed={collapsed}
                   onExpand={onExpand}
                 />

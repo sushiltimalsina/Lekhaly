@@ -43,3 +43,10 @@ export async function createItem(input: CreateItemInput) {
     body: input,
   });
 }
+export async function listItems(params?: { q?: string; skip?: number; take?: number }) {
+  return apiRequest<ItemRecord[]>({
+    path: "/items",
+    method: "GET",
+    query: params,
+  });
+}

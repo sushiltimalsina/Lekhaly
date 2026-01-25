@@ -57,6 +57,11 @@ export default function SalesCreatePage() {
 
   React.useEffect(() => {
     let alive = true;
+    const normalizeList = <T,>(input: unknown): T[] => {
+      if (Array.isArray(input)) return input as T[];
+      const obj = input as { items?: T[]; data?: T[] } | null;
+      return obj?.items ?? obj?.data ?? [];
+    };
     Promise.all([
       listParties({ type: "customer", take: 100 }),
       listAccounts({ type: "asset", take: 200 }),
@@ -64,9 +69,9 @@ export default function SalesCreatePage() {
     ])
       .then(([p, a, i]) => {
         if (!alive) return;
-        const pData = Array.isArray(p) ? p : p?.items ?? p?.data ?? [];
-        const aData = Array.isArray(a) ? a : a?.items ?? a?.data ?? [];
-        const iData = Array.isArray(i) ? i : i?.items ?? i?.data ?? [];
+        const pData = normalizeList<PartyRecord>(p);
+        const aData = normalizeList<AccountRecord>(a);
+        const iData = normalizeList<StockReportRow>(i);
         setParties(pData);
         setAccounts(aData);
         setItems(iData);
@@ -376,7 +381,7 @@ export default function SalesCreatePage() {
                               className={cn(
                                 "inline-flex items-center justify-center rounded-md border px-2 py-2 text-xs text-red-600 hover:bg-red-50",
                                 lines.length === 1 &&
-                                  "pointer-events-none opacity-50"
+                                "pointer-events-none opacity-50"
                               )}
                               title="Remove line"
                             >
