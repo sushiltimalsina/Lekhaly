@@ -170,32 +170,93 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export default function Sidebar({ className, onNavigate }: SidebarProps) {
+  const [collapsed, setCollapsed] = React.useState(true);
+
+  React.useEffect(() => {
+    const stored = typeof window !== "undefined" ? localStorage.getItem("lekhaly.sidebar.collapsed") : null;
+    if (stored !== null) setCollapsed(stored === "true");
+  }, []);
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("lekhaly.sidebar.collapsed", String(collapsed));
+      document.documentElement.style.setProperty(
+        "--sidebar-width",
+        collapsed ? "84px" : "280px"
+      );
+    }
+  }, [collapsed]);
+
+  const toggleCollapsed = () => setCollapsed((prev) => !prev);
+  const handleNavigate = () => {
+    setCollapsed(true);
+    onNavigate?.();
+  };
+
   return (
-    <aside className={cn("h-screen w-[280px] border-r bg-card/50 backdrop-blur-xl supports-[backdrop-filter]:bg-card/20 flex flex-col", className)}>
+    <aside
+      className={cn(
+        "h-screen border-r bg-card/50 backdrop-blur-xl supports-[backdrop-filter]:bg-card/20 flex flex-col transition-[width] duration-200",
+        collapsed ? "w-[84px]" : "w-[280px]",
+        className
+      )}
+    >
       {/* Brand */}
-      <div className="px-6 py-6 flex-shrink-0">
-        <div className="flex items-center gap-3 px-2">
+      <div className={cn("px-6 py-6 flex-shrink-0", collapsed && "px-4")}>
+        <div className={cn("flex items-center gap-3 px-2", collapsed && "px-0 justify-center")}>
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-blue-600 text-white shadow-lg shadow-blue-500/20">
             <Receipt className="h-6 w-6" />
           </div>
-          <div>
-            <div className="font-heading text-lg font-bold tracking-tight text-foreground">Lekhaly</div>
-            <div className="text-xs font-medium text-muted-foreground">Accounting</div>
-          </div>
+          {!collapsed && (
+            <div>
+              <div className="font-heading text-lg font-bold tracking-tight text-foreground">Lekhaly</div>
+              <div className="text-xs font-medium text-muted-foreground">Accounting</div>
+            </div>
+          )}
         </div>
+        <button
+          type="button"
+          onClick={toggleCollapsed}
+          className={cn(
+            "mt-4 flex items-center justify-center rounded-lg border px-2 py-1 text-xs text-muted-foreground hover:bg-muted",
+            collapsed ? "mx-auto w-10" : "w-full"
+          )}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4 -rotate-90" />}
+          {!collapsed && <span className="ml-2">Collapse</span>}
+        </button>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto px-4 py-2 space-y-1 custom-scrollbar">
+      <nav className={cn("flex-1 overflow-y-auto py-2 space-y-1 custom-scrollbar", collapsed ? "px-2" : "px-4")}>
         {navData.map((item, i) => (
-          <NavItemNode key={i} item={item} onNavigate={onNavigate} />
+          <NavItemNode
+            key={i}
+            item={item}
+            onNavigate={handleNavigate}
+            collapsed={collapsed}
+            onExpand={() => setCollapsed(false)}
+          />
         ))}
       </nav>
     </aside>
   );
 }
 
-function NavItemNode({ item, depth = 0, onNavigate }: { item: NavItem; depth?: number; onNavigate?: () => void }) {
+function NavItemNode({
+  item,
+  depth = 0,
+  onNavigate,
+  collapsed,
+  onExpand
+}: {
+  item: NavItem;
+  depth?: number;
+  onNavigate?: () => void;
+  collapsed?: boolean;
+  onExpand?: () => void;
+}) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = React.useState(false);
 
@@ -228,9 +289,11 @@ function NavItemNode({ item, depth = 0, onNavigate }: { item: NavItem; depth?: n
           isActive
             ? "bg-primary/10 text-foreground ring-1 ring-primary/20"
             : "text-muted-foreground hover:bg-muted hover:text-foreground",
-          depth > 0 && "text-xs"
+          depth > 0 && "text-xs",
+          collapsed && "justify-center px-2"
         )}
-        style={{ paddingLeft: `${16 + depth * 12}px` }}
+        style={collapsed ? undefined : { paddingLeft: `${16 + depth * 12}px` }}
+        title={collapsed ? item.label : undefined}
       >
         {isActive ? (
           <span className="absolute left-1 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-primary" />
@@ -243,8 +306,8 @@ function NavItemNode({ item, depth = 0, onNavigate }: { item: NavItem; depth?: n
             )}
           />
         )}
-        <span className="flex-1 truncate">{item.label}</span>
-        {isActive && depth === 0 ? <ChevronRight className="h-4 w-4 opacity-50" /> : null}
+        {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
+        {!collapsed && isActive && depth === 0 ? <ChevronRight className="h-4 w-4 opacity-50" /> : null}
       </Link>
     );
   }
@@ -252,14 +315,19 @@ function NavItemNode({ item, depth = 0, onNavigate }: { item: NavItem; depth?: n
   return (
     <div className="space-y-1">
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          if (collapsed) onExpand?.();
+          setIsOpen((prev) => (collapsed ? true : !prev));
+        }}
         className={cn(
           "w-full group flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-200 ease-in-out",
           isOpen || isActive || isChildActive
             ? "bg-muted/50 text-foreground"
-            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            : "text-muted-foreground hover:bg-muted hover:text-foreground",
+          collapsed && "justify-center px-2"
         )}
-        style={{ paddingLeft: `${16 + depth * 12}px` }}
+        style={collapsed ? undefined : { paddingLeft: `${16 + depth * 12}px` }}
+        title={collapsed ? item.label : undefined}
       >
         {Icon && (
           <Icon
@@ -269,11 +337,13 @@ function NavItemNode({ item, depth = 0, onNavigate }: { item: NavItem; depth?: n
             )}
           />
         )}
-        <span className="flex-1 text-left truncate">{item.label}</span>
-        <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", isOpen ? "rotate-180" : "")} />
+        {!collapsed && <span className="flex-1 text-left truncate">{item.label}</span>}
+        {!collapsed && (
+          <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", isOpen ? "rotate-180" : "")} />
+        )}
       </button>
       <AnimatePresence initial={false}>
-        {isOpen && (
+        {isOpen && !collapsed && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
@@ -283,7 +353,14 @@ function NavItemNode({ item, depth = 0, onNavigate }: { item: NavItem; depth?: n
           >
             <div className="flex flex-col space-y-1">
               {item.children?.map((child, i) => (
-                <NavItemNode key={i} item={child} depth={depth + 1} onNavigate={onNavigate} />
+                <NavItemNode
+                  key={i}
+                  item={child}
+                  depth={depth + 1}
+                  onNavigate={onNavigate}
+                  collapsed={collapsed}
+                  onExpand={onExpand}
+                />
               ))}
             </div>
           </motion.div>

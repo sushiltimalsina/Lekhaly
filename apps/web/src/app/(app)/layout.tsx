@@ -9,7 +9,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background text-foreground flex overflow-hidden">
       {/* Desktop sidebar */}
-      <div className="hidden md:block w-[280px] flex-shrink-0">
+      <div
+        className="hidden md:block flex-shrink-0"
+        style={{ width: "var(--sidebar-width, 84px)" }}
+      >
         <Sidebar className="fixed inset-y-0 z-20" />
       </div>
 

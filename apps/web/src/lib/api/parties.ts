@@ -12,10 +12,10 @@ export type PartyRecord = {
 };
 
 export async function listParties(params?: { type?: string; q?: string; skip?: number; take?: number }) {
+  const safeParams = params?.take && params.take > 100 ? { ...params, take: 100 } : params;
   return apiRequest<PartyRecord[]>({
     method: "GET",
     path: "/parties",
-    query: params,
+    query: safeParams,
   });
 }
-

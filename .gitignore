@@ -4,3 +4,10 @@ node_modules/
 **/.pnpm-store/
 .next/
 **/.next/
+dist/
+tmp_pg_query.js
+tmp_prisma_companies.js
+tmp_prisma_items.js
+apps/api/tmp_pg_query.js
+apps/api/tmp_prisma_companies.js
+apps/api/tmp_prisma_items.js

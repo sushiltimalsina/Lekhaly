@@ -47,6 +47,7 @@ async function main() {
   // Company (create once; if rerun, create another demo companyfine for now)
   const company = await prisma.company.create({
     data: {
+      code: "LEKHALY",
       name: "Lekhaly Demo Company",
       baseCurrency: "NPR",
       timezone: "Asia/Kathmandu",
@@ -162,6 +163,7 @@ async function main() {
 
   console.log("Seed completed:");
   console.log("CompanyId:", company.id);
+  console.log("CompanyCode:", company.code);
   console.log("Admin login:", "admin@lekhaly.local / Admin@12345");
   console.log("Cash account:", cash.code, cash.name);
   console.log("Sales account:", sales.code, sales.name);

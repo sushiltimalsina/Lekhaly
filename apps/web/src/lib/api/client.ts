@@ -30,10 +30,14 @@ type RequestOptions = {
 };
 
 const DEFAULT_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || "http://localhost:3000";
+  process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || "http://localhost:4000/v1";
 
 function buildUrl(path: string, query?: RequestOptions["query"]) {
-  const url = new URL(path, DEFAULT_BASE_URL);
+  let base = DEFAULT_BASE_URL.endsWith("/") ? DEFAULT_BASE_URL.slice(0, -1) : DEFAULT_BASE_URL;
+  if (base.endsWith("/v1")) base = base.slice(0, -3);
+  if (base.endsWith("/v1/")) base = base.slice(0, -4);
+  const normalizedPath = path.startsWith("/v1") ? path : `/v1${path}`;
+  const url = new URL(normalizedPath, base);
   if (query) {
     Object.entries(query).forEach(([k, v]) => {
       if (v === undefined || v === null) return;

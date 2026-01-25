@@ -11,7 +11,7 @@ import { listParties, type PartyRecord } from "@/lib/api/parties";
 import { listAccounts, type AccountRecord } from "@/lib/api/accounts";
 import { getStockReport, type StockReportRow } from "@/lib/api/inventory";
 import { cn } from "@/lib/utils";
-import { Plus, Trash2, Eye, Check, Save, Search } from "lucide-react";
+import { Plus, Trash2, Save, Send, Search } from "lucide-react";
 import { toBs } from "@/lib/dates/bs";
 
 type Line = {
@@ -22,10 +22,12 @@ type Line = {
 };
 
 export default function SalesCreatePage() {
+  const [mounted, setMounted] = React.useState(false);
   const [parties, setParties] = React.useState<PartyRecord[]>([]);
   const [accounts, setAccounts] = React.useState<AccountRecord[]>([]);
   const [items, setItems] = React.useState<StockReportRow[]>([]);
   const [loading, setLoading] = React.useState(false);
+  const [sending, setSending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<string | null>(null);
 
@@ -33,28 +35,30 @@ export default function SalesCreatePage() {
     partyId: "",
     receivableAccountId: "",
     date: { bs: "", ad: "" },
-    dueDate: { bs: "", ad: "" },
+    referenceNo: "",
     memo: "",
+    notes: "",
   });
+
   const [lines, setLines] = React.useState<Line[]>([
     { itemId: "", qty: "1", rate: "" },
   ]);
 
   React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  React.useEffect(() => {
     const now = new Date();
     const ad = now.toISOString().slice(0, 10);
     const bs = toBs(ad);
-    setForm((f) => ({
-      ...f,
-      date: { bs, ad },
-      dueDate: f.dueDate.ad || f.dueDate.bs ? f.dueDate : { bs, ad }
-    }));
+    setForm((f) => ({ ...f, date: { bs, ad } }));
   }, []);
 
   React.useEffect(() => {
     let alive = true;
     Promise.all([
-      listParties({ type: "customer", take: 200 }),
+      listParties({ type: "customer", take: 100 }),
       listAccounts({ type: "asset", take: 200 }),
       getStockReport(),
     ])
@@ -77,25 +81,20 @@ export default function SalesCreatePage() {
   }, []);
 
   const updateLine = (idx: number, patch: Partial<Line>) => {
-    setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
+    setLines((prev) =>
+      prev.map((l, i) => (i === idx ? { ...l, ...patch } : l))
+    );
   };
 
-  const addLine = () => {
-    setLines((prev) => [...prev, { itemId: "", qty: "1", rate: "" }]);
-  };
+  const addLine = () => setLines((prev) => [...prev, { itemId: "", qty: "1", rate: "" }]);
 
   const removeLine = (idx: number) => {
     setLines((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setSuccess(null);
-
+  const buildPayload = () => {
     if (!form.partyId || !form.receivableAccountId) {
-      setError("Party and receivable account are required.");
-      return;
+      throw new Error("Customer and receivable account are required.");
     }
 
     const payload = lines
@@ -107,29 +106,50 @@ export default function SalesCreatePage() {
         description: l.description || undefined,
       }));
 
-    if (!payload.length) {
-      setError("Add at least one item line.");
-      return;
-    }
+    if (!payload.length) throw new Error("Add at least one item line.");
 
+    return {
+      type: "sales" as const,
+      partyId: form.partyId,
+      date: form.date.ad || undefined,
+      dateBs: form.date.bs || undefined,
+      receivableAccountId: form.receivableAccountId,
+      items: payload,
+      // backend schema does not have memo/reference/notes currently for InvoiceDraftInput
+      // keep these in UI for now; wire later if API adds fields.
+    };
+  };
+
+  const onSave = async () => {
+    setError(null);
+    setSuccess(null);
     setLoading(true);
     try {
-      const res: any = await createInvoiceDraft({
-        type: "sales",
-        partyId: form.partyId,
-        date: form.date.ad || undefined,
-        dateBs: form.date.bs || undefined,
-        dueDate: form.dueDate.ad || undefined,
-        dueDateBs: form.dueDate.bs || undefined,
-        receivableAccountId: form.receivableAccountId,
-        items: payload,
-      });
+      const payload = buildPayload();
+      const res: any = await createInvoiceDraft(payload);
       const id = res?.id ?? res?.invoiceId ?? res?.data?.id;
-      setSuccess(id ? `Draft created: ${id}` : "Draft created.");
+      setSuccess(id ? `Saved draft: ${id}` : "Saved draft.");
     } catch (e: any) {
-      setError(e?.message ?? "Failed to create sales invoice.");
+      setError(e?.message ?? "Failed to save invoice.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const onSend = async () => {
+    setError(null);
+    setSuccess(null);
+    setSending(true);
+    try {
+      const payload = buildPayload();
+      const res: any = await createInvoiceDraft(payload);
+      const id = res?.id ?? res?.invoiceId ?? res?.data?.id;
+      setSuccess(id ? `Draft ready to send: ${id}` : "Draft ready to send.");
+      // NOTE: actual "send" action (email/whatsapp) should be implemented via your outbox/send APIs later.
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to send invoice.");
+    } finally {
+      setSending(false);
     }
   };
 
@@ -137,248 +157,331 @@ export default function SalesCreatePage() {
     qty: Number(l.qty || 0),
     rate: Number(l.rate || 0),
   }));
+
   const subtotal = lineTotals.reduce((sum, l) => sum + l.qty * l.rate, 0);
+  const discount = 0;
   const taxTotal = 0;
-  const total = subtotal + taxTotal;
+  const total = subtotal - discount + taxTotal;
+
+  if (!mounted) {
+    return <div className="min-h-screen" />;
+  }
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border bg-card/80 p-6 shadow-xl shadow-primary/5">
+      <div className="rounded-[28px] border bg-gradient-to-br from-slate-50 via-white to-slate-50 p-6 shadow-xl shadow-slate-200/40 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 dark:shadow-black/20">
         <PageHeader
           title="New Sales Invoice"
           description="Draft invoice for sales and collections."
           actions={
-            <div className="flex items-center gap-2">
-              <Button variant="outline" type="button" className="rounded-full px-4">
-                <Save className="mr-2 h-4 w-4" />
-                Save
-              </Button>
-              <Button variant="outline" type="button" className="rounded-full px-4">
-                <Eye className="mr-2 h-4 w-4" />
-                Preview
-              </Button>
-              <Button type="submit" form="sales-invoice-form" disabled={loading} className="rounded-full px-5">
-                <Check className="mr-2 h-4 w-4" />
-                Post
-              </Button>
+            <div className="text-xs text-muted-foreground">
+              Actions are at the bottom
             </div>
           }
         />
 
-      <form id="sales-invoice-form" onSubmit={submit} className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-        {error ? (
-          <div className="rounded-xl border border-red-600/30 bg-red-600/10 px-3 py-2 text-sm text-red-700">
-            {error}
-          </div>
-        ) : null}
-        {success ? (
-          <div className="rounded-xl border border-emerald-600/30 bg-emerald-600/10 px-3 py-2 text-sm text-emerald-700">
-            {success}
-          </div>
-        ) : null}
+        {/* alerts */}
+        <div className="mb-4 grid gap-3">
+          {error ? (
+            <div className="rounded-xl border border-red-600/30 bg-red-600/10 px-3 py-2 text-sm text-red-700">
+              {error}
+            </div>
+          ) : null}
 
-        <div className="rounded-2xl border bg-card p-6 shadow-sm space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="text-sm font-semibold">Customer</div>
-            <Button variant="outline" type="button" className="rounded-full px-4">
-              New Customer
-            </Button>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="space-y-1 text-sm sm:col-span-2">
-              <span className="text-muted-foreground">Select customer</span>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <select
-                  value={form.partyId}
-                  onChange={(e) => setForm((f) => ({ ...f, partyId: e.target.value }))}
-                  className="w-full rounded-md border bg-background pl-9 pr-3 py-2 text-sm"
+          {success ? (
+            <div className="rounded-xl border border-emerald-600/30 bg-emerald-600/10 px-3 py-2 text-sm text-emerald-700">
+              {success}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+          {/* Left column */}
+          <div className="space-y-6">
+            {/* Customer + Dates */}
+            <div className="rounded-3xl border bg-white/90 p-6 shadow-sm dark:bg-slate-900/80">
+              <div className="mb-4 flex items-center justify-between">
+                <div className="text-sm font-semibold">Customer</div>
+                <Button
+                  variant="outline"
+                  type="button"
+                  className="rounded-full border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 >
-                  <option value="">Select customer</option>
-                  {parties.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
+                  New Customer
+                </Button>
               </div>
-            </label>
-            <label className="space-y-1 text-sm">
-              <BsDateInput
-                label="Invoice Date"
-                valueBs={form.date.bs}
-                valueAd={form.date.ad}
-                onChange={(next) => setForm((f) => ({ ...f, date: next }))}
-              />
-            </label>
-            <label className="space-y-1 text-sm">
-              <BsDateInput
-                label="Due Date"
-                valueBs={form.dueDate.bs}
-                valueAd={form.dueDate.ad}
-                onChange={(next) => setForm((f) => ({ ...f, dueDate: next }))}
-              />
-            </label>
-            <label className="space-y-1 text-sm sm:col-span-2">
-              <span className="text-muted-foreground">Reference No.</span>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="space-y-1 text-sm sm:col-span-2">
+                  <span className="text-muted-foreground">Select customer</span>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <select
+                      value={form.partyId}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, partyId: e.target.value }))
+                      }
+                      className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 py-2.5 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900"
+                    >
+                      <option value="">Select customer</option>
+                      {parties.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </label>
+
+                <label className="space-y-1 text-sm sm:col-span-2">
+                  <BsDateInput
+                    label="Invoice Date"
+                    valueBs={form.date.bs}
+                    valueAd={form.date.ad}
+                    onChange={(next) => setForm((f) => ({ ...f, date: next }))}
+                  />
+                </label>
+
+                <label className="space-y-1 text-sm sm:col-span-2">
+                  <span className="text-muted-foreground">Reference No.</span>
+                  <Input
+                    value={form.referenceNo}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, referenceNo: e.target.value }))
+                    }
+                    placeholder="Enter reference (optional)"
+                  />
+                </label>
+
+                <label className="space-y-1 text-sm sm:col-span-2">
+                  <span className="text-muted-foreground">Receivable Account</span>
+                  <select
+                    value={form.receivableAccountId}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        receivableAccountId: e.target.value,
+                      }))
+                    }
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900"
+                  >
+                    <option value="">Select account</option>
+                    {accounts.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.code ? `${a.code} - ${a.name}` : a.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            {/* Items */}
+            <div className="rounded-3xl border bg-white/90 p-6 shadow-sm dark:bg-slate-900/80">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="text-sm font-semibold">Items</div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={addLine}
+                  className="rounded-full px-4 bg-white/70"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add item
+                </Button>
+              </div>
+
+              <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-slate-50/70 dark:border-slate-700 dark:bg-slate-900/40">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-slate-100/80 dark:bg-slate-800/60">
+                    <tr>
+                      <th className="px-3 py-2 text-left text-xs text-muted-foreground">
+                        Item
+                      </th>
+                      <th className="px-3 py-2 text-right text-xs text-muted-foreground">
+                        Qty
+                      </th>
+                      <th className="px-3 py-2 text-right text-xs text-muted-foreground">
+                        Rate
+                      </th>
+                      <th className="px-3 py-2 text-right text-xs text-muted-foreground">
+                        Amount
+                      </th>
+                      <th className="px-3 py-2 text-right text-xs text-muted-foreground" />
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {lines.map((line, idx) => {
+                      const qty = Number(line.qty || 0);
+                      const rate = Number(line.rate || 0);
+                      const amt = qty * rate;
+
+                      return (
+                        <tr
+                          key={idx}
+                          className="border-t border-slate-200/70 dark:border-slate-700/70"
+                        >
+                          <td className="px-3 py-2">
+                            <select
+                              value={line.itemId}
+                              onChange={(e) =>
+                                updateLine(idx, { itemId: e.target.value })
+                              }
+                              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"
+                            >
+                              <option value="">Select item</option>
+                              {items.map((it) => (
+                                <option key={it.id} value={it.id}>
+                                  {it.name} {it.hsCode ? `(${it.hsCode})` : ""}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+
+                          <td className="px-3 py-2 text-right">
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={line.qty}
+                              onChange={(e) =>
+                                updateLine(idx, { qty: e.target.value })
+                              }
+                              placeholder="Qty"
+                            />
+                          </td>
+
+                          <td className="px-3 py-2 text-right">
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={line.rate}
+                              onChange={(e) =>
+                                updateLine(idx, { rate: e.target.value })
+                              }
+                              placeholder="Rate"
+                            />
+                          </td>
+
+                          <td className="px-3 py-2 text-right">
+                            <MoneyText value={amt} />
+                          </td>
+
+                          <td className="px-3 py-2 text-right">
+                            <button
+                              type="button"
+                              onClick={() => removeLine(idx)}
+                              className={cn(
+                                "inline-flex items-center justify-center rounded-md border px-2 py-2 text-xs text-red-600 hover:bg-red-50",
+                                lines.length === 1 &&
+                                  "pointer-events-none opacity-50"
+                              )}
+                              title="Remove line"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+
+                    <tr className="border-t bg-slate-100/60 dark:bg-slate-800/40">
+                      <td className="px-3 py-2 text-right font-medium" colSpan={3}>
+                        Total
+                      </td>
+                      <td className="px-3 py-2 text-right font-semibold">
+                        <MoneyText value={subtotal} />
+                      </td>
+                      <td />
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Memo */}
+            <div className="rounded-3xl border bg-white/90 p-6 shadow-sm space-y-5 dark:bg-slate-900/80">
+              <div className="text-sm font-semibold">Memo</div>
               <Input
                 value={form.memo}
                 onChange={(e) => setForm((f) => ({ ...f, memo: e.target.value }))}
-                placeholder="Enter reference (optional)"
+                placeholder="Goods and services provided"
               />
-            </label>
-            <label className="space-y-1 text-sm sm:col-span-2">
-              <span className="text-muted-foreground">Receivable Account</span>
-              <select
-                value={form.receivableAccountId}
-                onChange={(e) => setForm((f) => ({ ...f, receivableAccountId: e.target.value }))}
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-              >
-                <option value="">Select account</option>
-                {accounts.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.code ? `${a.code} - ${a.name}` : a.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            </div>
           </div>
+
+          {/* Right column */}
+          <aside className="rounded-3xl border bg-white/90 p-6 shadow-sm space-y-5 dark:bg-slate-900/80">
+            <div className="text-sm font-semibold">Summary</div>
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-700 dark:bg-slate-900/40">
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <MoneyText value={subtotal} />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Discount</span>
+                  <MoneyText value={discount} />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Tax</span>
+                  <MoneyText value={taxTotal} />
+                </div>
+              </div>
+
+              <div className="mt-3 flex items-center justify-between rounded-xl bg-gradient-to-r from-slate-200/70 to-slate-100/40 px-3 py-2 font-semibold dark:from-slate-800/60 dark:to-slate-700/30">
+                <span>Total</span>
+                <MoneyText value={total} />
+              </div>
+            </div>
+
+            <div className="space-y-2 text-sm">
+              <div className="text-xs text-muted-foreground">Invoice Date</div>
+              <div className="flex items-baseline justify-between rounded-xl border border-slate-200 bg-white/80 px-3 py-2 dark:border-slate-700 dark:bg-slate-900">
+                <div className="text-sm font-semibold">{form.date.bs || "—"}</div>
+                <div className="text-xs text-muted-foreground">
+                  ({form.date.ad || "—"})
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2 text-sm">
+              <div className="text-xs text-muted-foreground">Additional notes</div>
+              <Input
+                value={form.notes}
+                onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                placeholder="Additional notes..."
+              />
+            </div>
+          </aside>
         </div>
 
-        <div className="rounded-2xl border bg-card p-6 shadow-sm">
-          <div className="mb-3 flex items-center justify-between">
-            <div className="text-sm font-semibold">Items</div>
-            <Button type="button" variant="outline" onClick={addLine} className="rounded-full px-4">
-              <Plus className="mr-2 h-4 w-4" />
-              Add item
-            </Button>
-          </div>
+        {/* Bottom actions (Save + Send only) */}
+        <div className="mt-6 flex items-center justify-end gap-3 border-t pt-4">
+          <Button
+            variant="outline"
+            type="button"
+            onClick={onSave}
+            disabled={loading || sending}
+            className="rounded-full px-6 bg-white/70"
+          >
+            <Save className="mr-2 h-4 w-4" />
+            {loading ? "Saving..." : "Save"}
+          </Button>
 
-          <div className="overflow-x-auto rounded-xl border">
-            <table className="min-w-full text-sm">
-              <thead className="bg-muted/40">
-                <tr>
-                  <th className="px-3 py-2 text-left text-xs text-muted-foreground">Item</th>
-                  <th className="px-3 py-2 text-right text-xs text-muted-foreground">Qty</th>
-                  <th className="px-3 py-2 text-right text-xs text-muted-foreground">Rate</th>
-                  <th className="px-3 py-2 text-right text-xs text-muted-foreground">Amount</th>
-                  <th className="px-3 py-2 text-right text-xs text-muted-foreground"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {lines.map((line, idx) => {
-                  const qty = Number(line.qty || 0);
-                  const rate = Number(line.rate || 0);
-                  const amt = qty * rate;
-                  return (
-                    <tr key={idx} className="border-t">
-                      <td className="px-3 py-2">
-                        <select
-                          value={line.itemId}
-                          onChange={(e) => updateLine(idx, { itemId: e.target.value })}
-                          className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                        >
-                          <option value="">Select item</option>
-                          {items.map((it) => (
-                            <option key={it.id} value={it.id}>
-                              {it.name} {it.hsCode ? `(${it.hsCode})` : ""}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={line.qty}
-                          onChange={(e) => updateLine(idx, { qty: e.target.value })}
-                          placeholder="Qty"
-                        />
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={line.rate}
-                          onChange={(e) => updateLine(idx, { rate: e.target.value })}
-                          placeholder="Rate"
-                        />
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        <MoneyText value={amt} />
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        <button
-                          type="button"
-                          onClick={() => removeLine(idx)}
-                          className={cn(
-                            "inline-flex items-center justify-center rounded-md border px-2 py-2 text-xs text-red-600 hover:bg-red-50",
-                            lines.length === 1 && "opacity-50 pointer-events-none"
-                          )}
-                          title="Remove line"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-                <tr className="border-t bg-muted/30">
-                  <td className="px-3 py-2 text-right font-medium" colSpan={3}>
-                    Total
-                  </td>
-                  <td className="px-3 py-2 text-right font-semibold">
-                    <MoneyText value={subtotal} />
-                  </td>
-                  <td />
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <Button
+            type="button"
+            onClick={onSend}
+            disabled={loading || sending}
+            className="rounded-full px-6 bg-slate-800 text-white hover:bg-slate-900"
+          >
+            <Send className="mr-2 h-4 w-4" />
+            {sending ? "Sending..." : "Send"}
+          </Button>
         </div>
-
-        <div className="rounded-2xl border bg-card p-6 shadow-sm space-y-5">
-          <div className="text-sm font-semibold">Memo</div>
-          <Input
-            value={form.memo}
-            onChange={(e) => setForm((f) => ({ ...f, memo: e.target.value }))}
-            placeholder="Goods and services provided"
-          />
-        </div>
-
-        <aside className="rounded-2xl border bg-card p-6 shadow-sm space-y-5">
-          <div className="text-sm font-semibold">Summary</div>
-          <div className="space-y-2 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Subtotal</span>
-              <MoneyText value={subtotal} />
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Discount</span>
-              <MoneyText value={0} />
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Tax</span>
-              <MoneyText value={taxTotal} />
-            </div>
-            <div className="mt-2 flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2 font-semibold">
-              <span>Total</span>
-              <MoneyText value={total} />
-            </div>
-          </div>
-
-          <div className="space-y-2 text-sm">
-            <div className="text-xs text-muted-foreground">Additional notes</div>
-            <Input
-              value={form.memo}
-              onChange={(e) => setForm((f) => ({ ...f, memo: e.target.value }))}
-              placeholder="Additional notes..."
-            />
-          </div>
-        </aside>
-      </form>
       </div>
     </div>
   );
