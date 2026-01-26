@@ -12,7 +12,18 @@ import { listParties, type PartyRecord } from "@/lib/api/parties";
 import { listAccounts, type AccountRecord } from "@/lib/api/accounts";
 import { getStockReport, type StockReportRow } from "@/lib/api/inventory";
 import { cn } from "@/lib/utils";
-import { Plus, Trash2, Save, Send, Search, ChevronDown, Check } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  Save,
+  Send,
+  Search,
+  ChevronDown,
+  Check,
+  Eye,
+  Printer,
+  ChevronRight,
+} from "lucide-react";
 import { toBs } from "@/lib/dates/bs";
 
 type Line = {
@@ -20,6 +31,13 @@ type Line = {
   qty: string;
   rate: string;
   description?: string;
+};
+
+type BillSundryRow = {
+  id: string;
+  name: string; // e.g. VAT, Discount
+  type: "add" | "less";
+  ratePct: string; // percent
 };
 
 function useOutsideClick<T extends HTMLElement>(
@@ -57,6 +75,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
   buttonClassName?: string;
   emptyText?: string;
   buttonRef?: React.Ref<HTMLButtonElement>;
+  onEnterNext?: () => void;
 }) {
   const {
     label,
@@ -69,6 +88,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
     className,
     buttonClassName,
     emptyText = "No results",
+    onEnterNext,
   } = props;
 
   const [open, setOpen] = React.useState(false);
@@ -86,24 +106,19 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
       (props.buttonRef as React.MutableRefObject<HTMLButtonElement | null>).current = node;
     }
   };
+
   const outsideRefs = React.useMemo(() => [menuRef], []);
   const wrapRef = useOutsideClick<HTMLDivElement>(() => setOpen(false), outsideRefs);
   const [menuStyle, setMenuStyle] = React.useState<React.CSSProperties>({});
-  const focusNext = (from?: HTMLElement | null) => {
-    if (!from) return;
-    const doc = from.ownerDocument || document;
-    const focusables = Array.from(
-      doc.querySelectorAll<HTMLElement>(
-        'button, input, select, textarea, [tabindex]:not([tabindex="-1"])'
-      )
-    ).filter((el) => !el.hasAttribute("disabled") && !el.getAttribute("aria-hidden"));
-    const idx = focusables.indexOf(from);
-    if (idx >= 0 && idx + 1 < focusables.length) {
-      focusables[idx + 1].focus();
-    }
+
+  const focusNext = () => {
+    if (onEnterNext) onEnterNext();
   };
 
-  const selected = React.useMemo(() => options.find((o) => o.id === valueId), [options, valueId]);
+  const selected = React.useMemo(
+    () => options.find((o) => o.id === valueId),
+    [options, valueId]
+  );
 
   const selectedLabel = selected
     ? (getLabel ? getLabel(selected) : selected.name ?? selected.id)
@@ -135,9 +150,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
     scrollRef.current = { x: window.scrollX, y: window.scrollY };
     requestAnimationFrame(() => {
       inputRef.current?.focus({ preventScroll: true });
-      if (scrollRef.current) {
-        window.scrollTo(scrollRef.current.x, scrollRef.current.y);
-      }
+      if (scrollRef.current) window.scrollTo(scrollRef.current.x, scrollRef.current.y);
     });
     window.addEventListener("resize", updatePosition);
     window.addEventListener("scroll", updatePosition, true);
@@ -155,9 +168,10 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
         type="button"
         onClick={() => setOpen((v) => !v)}
         onKeyDown={(e) => {
-          if (e.key === "Enter" && !open) {
+          if (e.key === "Enter") {
             e.preventDefault();
-            focusNext(buttonRef.current);
+            // If closed, treat Enter as "next"
+            if (!open) focusNext();
           }
         }}
         ref={setButtonRef}
@@ -188,15 +202,20 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onKeyDown={(e) => {
+                      if (e.key === "Escape") {
+                        e.preventDefault();
+                        setOpen(false);
+                        setQuery("");
+                        buttonRef.current?.focus();
+                        return;
+                      }
                       if (e.key === "Enter") {
                         e.preventDefault();
                         const first = filtered[0];
-                        if (first) {
-                          onChange(first.id);
-                        }
+                        if (first) onChange(first.id);
                         setOpen(false);
                         setQuery("");
-                        focusNext(buttonRef.current);
+                        focusNext();
                       }
                     }}
                     placeholder="Type to search…"
@@ -219,7 +238,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                           onChange(o.id);
                           setOpen(false);
                           setQuery("");
-                          focusNext(buttonRef.current);
+                          focusNext();
                         }}
                         className={cn(
                           "flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800/40",
@@ -243,6 +262,13 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
   );
 }
 
+function isoAddDays(iso: string, days: number) {
+  // iso: yyyy-mm-dd
+  const d = new Date(iso + "T00:00:00");
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 export default function SalesCreatePage() {
   const [mounted, setMounted] = React.useState(false);
   const [parties, setParties] = React.useState<PartyRecord[]>([]);
@@ -253,37 +279,41 @@ export default function SalesCreatePage() {
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<string | null>(null);
 
+  // Invoice header-like values (for UI)
+  const [invoiceNo] = React.useState("1234/56789");
+
   const [form, setForm] = React.useState({
     partyId: "",
     receivableAccountId: "",
-    date: { bs: "", ad: "" },
+    invoiceDate: { bs: "", ad: "" },
+    dueDate: { bs: "", ad: "" },
+
     referenceNo: "",
-    memo: "",
+    paymentMethod: "bank_transfer" as
+      | "cash"
+      | "bank_transfer"
+      | "cheque"
+      | "online"
+      | "credit",
+
+    // Bank to show on invoice (display only)
+    paymentDisplayAccountId: "",
+
     notes: "",
+    termsOverrideEnabled: false,
+    termsText: "",
   });
 
   const [lines, setLines] = React.useState<Line[]>([{ itemId: "", qty: "1", rate: "" }]);
-  const firstItemSelectRef = React.useRef<HTMLButtonElement | null>(null);
 
-  const focusNextElement = React.useCallback((from?: HTMLElement | null) => {
-    const doc = (from?.ownerDocument || document) as Document;
-    const focusables = Array.from(
-      doc.querySelectorAll<HTMLElement>(
-        'input, select, textarea, [tabindex]:not([tabindex="-1"])'
-      )
-    ).filter(
-      (el) =>
-        !el.hasAttribute("disabled") &&
-        !el.getAttribute("aria-hidden") &&
-        el.getAttribute("data-skip-enter") !== "true"
-    );
-    const current = from ?? (doc.activeElement as HTMLElement | null);
-    if (!current) return;
-    const idx = focusables.indexOf(current);
-    if (idx >= 0 && idx + 1 < focusables.length) {
-      focusables[idx + 1].focus();
-    }
-  }, []);
+  const [billSundries, setBillSundries] = React.useState<BillSundryRow[]>([
+    { id: "vat", name: "VAT", type: "add", ratePct: "13" },
+  ]);
+
+  const [showTerms, setShowTerms] = React.useState(false);
+
+  const customerSelectNextRef = React.useRef<HTMLInputElement | null>(null);
+  const firstItemSelectRef = React.useRef<HTMLButtonElement | null>(null);
 
   const formatError = (e: any) => {
     const issues = e?.details?.issues;
@@ -304,7 +334,15 @@ export default function SalesCreatePage() {
     const now = new Date();
     const ad = now.toISOString().slice(0, 10);
     const bs = toBs(ad);
-    setForm((f) => ({ ...f, date: { bs, ad } }));
+
+    const dueAd = isoAddDays(ad, 14); // default 14 days (adjust if you prefer Net 30)
+    const dueBs = toBs(dueAd);
+
+    setForm((f) => ({
+      ...f,
+      invoiceDate: { bs, ad },
+      dueDate: { bs: dueBs, ad: dueAd },
+    }));
   }, []);
 
   React.useEffect(() => {
@@ -352,16 +390,45 @@ export default function SalesCreatePage() {
     }, 0);
   }, [lines]);
 
-  const discount = 0;
-  const taxTotal = 0;
-  const total = subtotal - discount + taxTotal;
+  const billSundryComputed = React.useMemo(() => {
+    const rows = billSundries.map((r) => {
+      const pct = Number(r.ratePct || 0);
+      const amount = (subtotal * pct) / 100;
+      return { ...r, pct, amount };
+    });
+    const addTotal = rows.filter((r) => r.type === "add").reduce((s, r) => s + r.amount, 0);
+    const lessTotal = rows.filter((r) => r.type === "less").reduce((s, r) => s + r.amount, 0);
+    return { rows, addTotal, lessTotal, net: addTotal - lessTotal };
+  }, [billSundries, subtotal]);
+
+  const total = subtotal + billSundryComputed.net;
+
+  const addSundry = () => {
+    setBillSundries((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        name: "Sundry",
+        type: "add",
+        ratePct: "0",
+      },
+    ]);
+  };
+
+  const updateSundry = (id: string, patch: Partial<BillSundryRow>) => {
+    setBillSundries((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  };
+
+  const removeSundry = (id: string) => {
+    setBillSundries((prev) => prev.filter((r) => r.id !== id));
+  };
 
   const buildPayload = () => {
     if (!form.partyId || !form.receivableAccountId) {
       throw new Error("Customer and receivable account are required.");
     }
 
-    const payload = lines
+    const payloadItems = lines
       .filter((l) => l.itemId && Number(l.qty) > 0)
       .map((l) => ({
         itemId: l.itemId,
@@ -370,15 +437,23 @@ export default function SalesCreatePage() {
         description: l.description || undefined,
       }));
 
-    if (!payload.length) throw new Error("Add at least one item line.");
+    if (!payloadItems.length) throw new Error("Add at least one item line.");
 
     return {
       type: "sales" as const,
       partyId: form.partyId,
-      date: form.date.ad || undefined,
-      dateBs: form.date.bs || undefined,
+
+      // invoice date
+      date: form.invoiceDate.ad || undefined,
+      dateBs: form.invoiceDate.bs || undefined,
+
+      // NOTE: your InvoiceDraftInput supports dueDate/dueDateBs in the OpenAPI you shared earlier.
+      // If your actual backend currently rejects it, remove these two lines.
+      dueDate: form.dueDate.ad || undefined,
+      dueDateBs: form.dueDate.bs || undefined,
+
       receivableAccountId: form.receivableAccountId,
-      items: payload,
+      items: payloadItems,
     };
   };
 
@@ -412,15 +487,26 @@ export default function SalesCreatePage() {
     }
   };
 
+  const onPreview = () => {
+    setSuccess("Preview: wire to /invoices/preview or PDF preview endpoint.");
+  };
+
+  const onPrint = () => {
+    setSuccess("Print: wire to PDF generation then open printable view.");
+  };
+
   if (!mounted) return <div className="min-h-screen" />;
+
+  // Bank accounts to show on invoice: filter assets that look like bank/cash (adjust later)
+  const bankDisplayAccounts = accounts.filter((a) => {
+    const n = (a.name ?? "").toLowerCase();
+    return n.includes("bank") || n.includes("cash");
+  });
 
   return (
     <div className="space-y-6">
       <div className="rounded-[28px] border bg-gradient-to-br from-slate-50 via-white to-slate-50 p-6 shadow-xl shadow-slate-200/40 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 dark:shadow-black/20">
-        <PageHeader
-          title="New Sales Invoice"
-          description="Invoice details fill the page. Summary and actions are at the bottom."
-        />
+        <PageHeader title="New Sales Invoice" description="Draft invoice for sales and collections." />
 
         {/* Alerts */}
         <div className="mb-4 grid gap-3">
@@ -436,291 +522,504 @@ export default function SalesCreatePage() {
           ) : null}
         </div>
 
-        {/* FULL-WIDTH CONTENT */}
-        <div className="grid gap-6 lg:grid-cols-12">
-          {/* Invoice details */}
-          <div className="lg:col-span-12 space-y-6">
-            {/* Customer + Invoice Details */}
-            <section className="rounded-3xl border bg-white/90 p-6 shadow-sm dark:bg-slate-900/80">
-              <div className="mb-4 flex items-center justify-between">
-                <div className="text-sm font-semibold">Invoice Details</div>
+        {/* Top invoice strip (matches your image) */}
+        <div className="mb-5 flex flex-col gap-4 rounded-3xl border bg-white/90 p-6 shadow-sm dark:bg-slate-900/80 lg:flex-row lg:items-start lg:justify-between">
+          <div className="space-y-1">
+            <div className="text-xs tracking-[0.22em] text-muted-foreground">INVOICE NO:</div>
+            <div className="text-2xl font-semibold tracking-tight">{invoiceNo}</div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:flex lg:gap-10">
+            <div className="space-y-2">
+              <div className="text-xs tracking-[0.22em] text-muted-foreground text-right lg:text-left">
+                INVOICE DATE:
+              </div>
+              <div className="text-sm font-semibold text-right lg:text-left">
+                {form.invoiceDate.ad || "—"}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="text-xs tracking-[0.22em] text-muted-foreground text-right lg:text-left">
+                DUE DATE:
+              </div>
+              <div className="text-sm font-semibold text-right lg:text-left">
+                {form.dueDate.ad || "—"}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Main details (full-width like your image) */}
+        <section className="rounded-3xl border bg-white/90 p-6 shadow-sm dark:bg-slate-900/80">
+          <div className="grid gap-4 lg:grid-cols-12">
+            {/* Reference */}
+            <label className="space-y-1 text-sm lg:col-span-4">
+              <span className="text-xs text-muted-foreground">Reference No.</span>
+              <Input
+                ref={customerSelectNextRef}
+                value={form.referenceNo}
+                onChange={(e) => setForm((f) => ({ ...f, referenceNo: e.target.value }))}
+                placeholder="Enter reference (optional)"
+              />
+            </label>
+
+            {/* Payment method just below reference (as you asked, but in same row on desktop) */}
+            <label className="space-y-1 text-sm lg:col-span-4">
+              <span className="text-xs text-muted-foreground">Payment method</span>
+              <select
+                value={form.paymentMethod}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, paymentMethod: e.target.value as any }))
+                }
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900"
+              >
+                <option value="bank_transfer">Bank Transfer</option>
+                <option value="online">Online Wallet / Gateway</option>
+                <option value="cheque">Cheque</option>
+                <option value="cash">Cash</option>
+                <option value="credit">Credit (Pay later)</option>
+              </select>
+            </label>
+
+            {/* Dates */}
+            <div className="lg:col-span-4 grid gap-4 sm:grid-cols-2">
+              <DualDateInput
+                label="Invoice Date"
+                value={form.invoiceDate}
+                onChange={(next) => setForm((f) => ({ ...f, invoiceDate: next }))}
+              />
+              <DualDateInput
+                label="Due Date"
+                value={form.dueDate}
+                onChange={(next) => setForm((f) => ({ ...f, dueDate: next }))}
+              />
+            </div>
+
+            {/* Customer */}
+            <div className="lg:col-span-8">
+              <div className="mb-2 flex items-center justify-between">
+                <div className="text-sm font-semibold">Customer Name</div>
                 <Button
-                  variant="outline"
                   type="button"
+                  variant="outline"
                   className="rounded-full border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 >
+                  <Plus className="mr-2 h-4 w-4" />
                   New Customer
                 </Button>
               </div>
 
-              <div className="grid gap-4 lg:grid-cols-3">
-                <SearchableSelect<PartyRecord>
-                  label="Customer"
-                  placeholder="Search customer…"
-                  valueId={form.partyId}
-                  onChange={(id) => setForm((f) => ({ ...f, partyId: id }))}
-                  options={parties}
-                  getLabel={(p) => p.name}
-                  leftIcon={<Search className="h-4 w-4" />}
-                  className="lg:col-span-2"
-                />
+              <SearchableSelect<PartyRecord>
+                placeholder="Search customer…"
+                valueId={form.partyId}
+                onChange={(id) => setForm((f) => ({ ...f, partyId: id }))}
+                options={parties}
+                getLabel={(p) => p.name}
+                leftIcon={<Search className="h-4 w-4" />}
+              />
+            </div>
 
-                <div className="lg:col-span-1">
-                  <DualDateInput
-                    label="Invoice Date"
-                    value={form.date}
-                    onChange={(next) => setForm((f) => ({ ...f, date: next }))}
-                    onEnterNext={() => focusNextElement()}
-                  />
-                </div>
+            {/* Receivable account (keep but can be moved to Advanced later) */}
+            <label className="space-y-1 text-sm lg:col-span-4">
+              <span className="text-xs text-muted-foreground">Receivable Account</span>
+              <select
+                value={form.receivableAccountId}
+                onChange={(e) => setForm((f) => ({ ...f, receivableAccountId: e.target.value }))}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900"
+              >
+                <option value="">Select account</option>
+                {accounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.code ? `${a.code} - ${a.name}` : a.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </section>
 
-                <label className="space-y-1 text-sm lg:col-span-1">
-                  <span className="text-xs text-muted-foreground">Reference No.</span>
-                  <Input
-                    value={form.referenceNo}
-                    onChange={(e) => setForm((f) => ({ ...f, referenceNo: e.target.value }))}
-                    placeholder="Enter reference (optional)"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        focusNextElement(e.currentTarget);
-                      }
-                    }}
-                  />
-                </label>
+        {/* Items Details */}
+        <section className="mt-6 rounded-3xl border bg-white/90 p-6 shadow-sm dark:bg-slate-900/80">
+          <div className="mb-3 flex items-center justify-between">
+            <div className="text-sm font-semibold">Items Details</div>
+            <Button type="button" variant="outline" onClick={addLine} className="rounded-full px-4">
+              <Plus className="mr-2 h-4 w-4" />
+              Add item
+            </Button>
+          </div>
 
-                <label className="space-y-1 text-sm lg:col-span-2">
-                  <span className="text-xs text-muted-foreground">Receivable Account</span>
-                  <select
-                    value={form.receivableAccountId}
-                    onChange={(e) => setForm((f) => ({ ...f, receivableAccountId: e.target.value }))}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        firstItemSelectRef.current?.focus();
-                      }
-                    }}
-                  >
-                    <option value="">Select account</option>
-                    {accounts.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.code ? `${a.code} - ${a.name}` : a.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-            </section>
+          <div className="overflow-x-auto overflow-y-visible rounded-2xl border border-slate-200 bg-slate-50/70 dark:border-slate-700 dark:bg-slate-900/40">
+            <table className="min-w-full text-sm">
+              <thead className="bg-slate-100/80 dark:bg-slate-800/60">
+                <tr>
+                  {/* Resize the item column here (matches your request) */}
+                  <th className="w-[560px] min-w-[520px] px-3 py-2 text-center text-xs text-muted-foreground">
+                    Particulars
+                  </th>
+                  <th className="w-[120px] px-3 py-2 text-left text-xs text-muted-foreground">Qty</th>
+                  <th className="w-[140px] px-3 py-2 text-left text-xs text-muted-foreground">Rate</th>
+                  <th className="w-[160px] px-3 py-2 text-right text-xs text-muted-foreground">
+                    Amount
+                  </th>
+                  <th className="w-[60px] px-3 py-2 text-right text-xs text-muted-foreground" />
+                </tr>
+              </thead>
 
-            {/* Items */}
-            <section className="rounded-3xl border bg-white/90 p-6 shadow-sm dark:bg-slate-900/80">
-              <div className="mb-3 flex items-center justify-between">
-                <div className="text-sm font-semibold">Items Details</div>
-                <Button type="button" variant="outline" onClick={addLine} className="rounded-full px-4 bg-white/70">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add item
-                </Button>
-              </div>
+              <tbody>
+                {lines.map((line, idx) => {
+                  const qty = Number(line.qty || 0);
+                  const rate = Number(line.rate || 0);
+                  const amt = qty * rate;
 
-              <div className="overflow-x-auto overflow-y-visible rounded-2xl border border-slate-200 bg-slate-50/70 dark:border-slate-700 dark:bg-slate-900/40">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-slate-100/80 dark:bg-slate-800/60">
-                    <tr>
-                      {/* Resize Item column width here */}
-                      <th className="w-[540px] min-w-[460px] px-3 py-2 text-center text-xm text-muted-foreground">
-                        Particulars
-                      </th>
-                      <th className="w-[120px] px-3 py-2 text-left text-xm text-muted-foreground">Qty</th>
-                      <th className="w-[140px] px-3 py-2 text-left text-xm text-muted-foreground">Rate</th>
-                      <th className="w-[160px] px-3 py-2 text-right text-xm text-muted-foreground">Amount</th>
-                      <th className="w-[60px] px-3 py-2 text-right text-xm text-muted-foreground" />
+                  return (
+                    <tr key={idx} className="border-t border-slate-200/70 dark:border-slate-700/70">
+                      <td className="w-[560px] min-w-[520px] px-3 py-2">
+                        <SearchableSelect<StockReportRow>
+                          placeholder="Search item…"
+                          valueId={line.itemId}
+                          onChange={(id) => updateLine(idx, { itemId: id })}
+                          options={items}
+                          getLabel={(it) => {
+                            const code = (it as any).hsCode ? ` (${(it as any).hsCode})` : "";
+                            return `${(it as any).name ?? "Item"}${code}`;
+                          }}
+                          leftIcon={<Search className="h-4 w-4" />}
+                          buttonClassName="py-2"
+                          emptyText="No items found"
+                          buttonRef={idx === 0 ? firstItemSelectRef : undefined}
+                        />
+                      </td>
+
+                      <td className="px-3 py-2 text-right">
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={line.qty}
+                          onChange={(e) => updateLine(idx, { qty: e.target.value })}
+                          placeholder="Qty"
+                        />
+                      </td>
+
+                      <td className="px-3 py-2 text-right">
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={line.rate}
+                          onChange={(e) => updateLine(idx, { rate: e.target.value })}
+                          placeholder="Rate"
+                        />
+                      </td>
+
+                      <td className="px-3 py-2 text-right">
+                        <MoneyText value={amt} />
+                      </td>
+
+                      <td className="px-3 py-2 text-right">
+                        <button
+                          type="button"
+                          onClick={() => removeLine(idx)}
+                          className={cn(
+                            "inline-flex items-center justify-center rounded-md border px-2 py-2 text-xs text-red-600 hover:bg-red-50",
+                            lines.length === 1 && "pointer-events-none opacity-50"
+                          )}
+                          title="Remove line"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </td>
                     </tr>
-                  </thead>
+                  );
+                })}
 
-                  <tbody>
-                    {lines.map((line, idx) => {
-                      const qty = Number(line.qty || 0);
-                      const rate = Number(line.rate || 0);
-                      const amt = qty * rate;
+                <tr className="border-t bg-slate-100/60 dark:bg-slate-800/40">
+                  <td className="px-3 py-2 text-right font-medium" colSpan={3}>
+                    Total
+                  </td>
+                  <td className="px-3 py-2 text-right font-semibold">
+                    <MoneyText value={subtotal} />
+                  </td>
+                  <td />
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-                      return (
-                        <tr key={idx} className="border-t border-slate-200/70 dark:border-slate-700/70">
-                          {/* Resize Item column width here */}
-                          <td className="w-[540px] min-w-[460px] px-3 py-2">
-                            <SearchableSelect<StockReportRow>
-                              placeholder="Search item…"
-                              valueId={line.itemId}
-                              onChange={(id) => updateLine(idx, { itemId: id })}
-                              options={items}
-                              getLabel={(it) => {
-                                const code = it.hsCode ? ` (${it.hsCode})` : "";
-                                return `${it.name}${code}`;
-                              }}
-                              leftIcon={<Search className="h-4 w-4" />}
-                              buttonClassName="py-2"
-                              emptyText="No items found"
-                              buttonRef={idx === 0 ? firstItemSelectRef : undefined}
-                            />
-                          </td>
+          {/* Bill Sundry (like your image) */}
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-white/70 p-4 dark:border-slate-700 dark:bg-slate-900/40">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="text-sm font-semibold tracking-[0.18em] text-slate-700 dark:text-slate-200">
+                BILL SUNDRY
+              </div>
+              <Button type="button" variant="outline" onClick={addSundry} className="rounded-full">
+                <Plus className="mr-2 h-4 w-4" />
+                Add
+              </Button>
+            </div>
 
-                          <td className="px-3 py-2 text-right">
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={line.qty}
-                              onChange={(e) => updateLine(idx, { qty: e.target.value })}
-                              placeholder="Qty"
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  e.preventDefault();
-                                  focusNextElement(e.currentTarget);
-                                }
-                              }}
-                            />
-                          </td>
-
-                          <td className="px-3 py-2 text-right">
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={line.rate}
-                              onChange={(e) => updateLine(idx, { rate: e.target.value })}
-                              placeholder="Rate"
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  e.preventDefault();
-                                  focusNextElement(e.currentTarget);
-                                }
-                              }}
-                            />
-                          </td>
-
-                          <td className="px-3 py-2 text-right">
-                            <MoneyText value={amt} />
-                          </td>
-
-                          <td className="px-3 py-2 text-right">
-                            <button
-                              type="button"
-                              onClick={() => removeLine(idx)}
-                              className={cn(
-                                "inline-flex items-center justify-center rounded-md border px-2 py-2 text-xs text-red-600 hover:bg-red-50",
-                                lines.length === 1 && "pointer-events-none opacity-50"
-                              )}
-                              title="Remove line"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-
-                    <tr className="border-t bg-slate-100/60 dark:bg-slate-800/40">
-                      <td className="px-3 py-2 text-right font-medium" colSpan={3}>
-                        Total
+            <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+              <table className="min-w-full text-sm">
+                <thead className="bg-slate-100/70 dark:bg-slate-800/50">
+                  <tr>
+                    <th className="w-[70px] px-3 py-2 text-left text-xs text-muted-foreground">
+                      S.N.
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs text-muted-foreground">Bill Sundry</th>
+                    <th className="w-[140px] px-3 py-2 text-right text-xs text-muted-foreground">@</th>
+                    <th className="w-[190px] px-3 py-2 text-right text-xs text-muted-foreground">
+                      Amount (Rs.)
+                    </th>
+                    <th className="w-[60px] px-3 py-2 text-right text-xs text-muted-foreground" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {billSundryComputed.rows.map((r, idx) => (
+                    <tr key={r.id} className="border-t border-slate-200/70 dark:border-slate-700/70">
+                      <td className="px-3 py-2 text-sm text-muted-foreground">{idx + 1}</td>
+                      <td className="px-3 py-2">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                          <Input
+                            value={r.name}
+                            onChange={(e) => updateSundry(r.id, { name: e.target.value })}
+                            className="sm:max-w-[260px]"
+                          />
+                          <select
+                            value={r.type}
+                            onChange={(e) => updateSundry(r.id, { type: e.target.value as any })}
+                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:max-w-[160px]"
+                          >
+                            <option value="add">Add</option>
+                            <option value="less">Less</option>
+                          </select>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Input
+                            value={r.ratePct}
+                            onChange={(e) => updateSundry(r.id, { ratePct: e.target.value })}
+                            className="w-[90px] text-right"
+                            inputMode="decimal"
+                          />
+                          <span className="text-muted-foreground">%</span>
+                        </div>
                       </td>
                       <td className="px-3 py-2 text-right font-semibold">
-                        <MoneyText value={subtotal} />
+                        <MoneyText value={r.amount} />
                       </td>
-                      <td />
+                      <td className="px-3 py-2 text-right">
+                        <button
+                          type="button"
+                          onClick={() => removeSundry(r.id)}
+                          className={cn(
+                            "inline-flex items-center justify-center rounded-md border px-2 py-2 text-xs text-red-600 hover:bg-red-50",
+                            billSundries.length === 1 && "pointer-events-none opacity-50"
+                          )}
+                          title="Remove"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </td>
                     </tr>
-                  </tbody>
-                </table>
-              </div>
-            </section>
+                  ))}
 
-            {/* Memo */}
-            <section className="rounded-3xl border bg-white/90 p-6 shadow-sm space-y-5 dark:bg-slate-900/80">
-              <div className="text-sm font-semibold">Memo</div>
-              <Input
-                value={form.memo}
-                onChange={(e) => setForm((f) => ({ ...f, memo: e.target.value }))}
-                placeholder="Goods and services provided"
-              />
-            </section>
-
-            {/* ✅ BOTTOM SUMMARY (NEW) */}
-            <section className="rounded-3xl border bg-white/90 p-6 shadow-sm dark:bg-slate-900/80">
-              <div className="mb-4 flex items-center justify-between">
-                <div className="text-sm font-semibold">Summary</div>
-                <div className="text-xs text-muted-foreground">
-                  BS: <span className="font-medium text-foreground">{form.date.bs || "—"}</span>{" "}
-                  <span className="text-muted-foreground">({form.date.ad || "—"})</span>
-                </div>
-              </div>
-
-              <div className="grid gap-5 lg:grid-cols-12">
-                {/* totals */}
-                <div className="lg:col-span-7 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-700 dark:bg-slate-900/40">
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Subtotal</span>
-                      <MoneyText value={subtotal} />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Discount</span>
-                      <MoneyText value={discount} />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Tax</span>
-                      <MoneyText value={taxTotal} />
-                    </div>
-                  </div>
-
-                  <div className="mt-3 flex items-center justify-between rounded-xl bg-gradient-to-r from-slate-200/70 to-slate-100/40 px-3 py-2 font-semibold dark:from-slate-800/60 dark:to-slate-700/30">
-                    <span>Total</span>
-                    <MoneyText value={total} />
-                  </div>
-                </div>
-
-                {/* notes + actions */}
-                <div className="lg:col-span-5 space-y-3">
-                  <div className="space-y-2 text-sm">
-                    <div className="text-xs text-muted-foreground">Additional notes</div>
-                    <Input
-                      value={form.notes}
-                      onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                      placeholder="Additional notes..."
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-end gap-3 pt-2">
-                    <Button
-                      variant="outline"
-                      type="button"
-                      onClick={onSave}
-                      disabled={loading || sending}
-                      className="rounded-full px-6 bg-white/70"
-                    >
-                      <Save className="mr-2 h-4 w-4" />
-                      {loading ? "Saving..." : "Save"}
-                    </Button>
-
-                    <Button
-                      type="button"
-                      onClick={onSend}
-                      disabled={loading || sending}
-                      className="rounded-full px-6 bg-slate-800 text-white hover:bg-slate-900"
-                    >
-                      <Send className="mr-2 h-4 w-4" />
-                      {sending ? "Sending..." : "Send"}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* bottom space for scroll comfort */}
-            <div className="h-2" />
+                  <tr className="border-t bg-slate-100/60 dark:bg-slate-800/40">
+                    <td className="px-3 py-2" colSpan={3}>
+                      <div className="text-right font-medium">Net Sundry</div>
+                    </td>
+                    <td className="px-3 py-2 text-right font-semibold">
+                      <MoneyText value={billSundryComputed.net} />
+                    </td>
+                    <td />
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
+
+          {/* Payment Details (bank to show on invoice) */}
+          <div className="mt-5 rounded-2xl border border-slate-200 bg-white/70 p-4 dark:border-slate-700 dark:bg-slate-900/40">
+            <div className="mb-2 flex items-center justify-between">
+              <div className="text-sm font-semibold">
+                Payment Details <span className="text-xs text-muted-foreground">(shown on invoice)</span>
+              </div>
+              <div className="text-xs text-muted-foreground">Optional</div>
+            </div>
+
+            <div className="grid gap-3 lg:grid-cols-2">
+              <label className="space-y-1 text-sm">
+                <span className="text-xs text-muted-foreground">Select bank account</span>
+                <select
+                  value={form.paymentDisplayAccountId}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, paymentDisplayAccountId: e.target.value }))
+                  }
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900"
+                >
+                  <option value="">Using company default</option>
+                  {bankDisplayAccounts.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.code ? `${a.code} - ${a.name}` : a.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <div className="rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                <div className="text-xs text-muted-foreground">Shown on PDF</div>
+                <div className="mt-1 font-medium">
+                  {form.paymentDisplayAccountId
+                    ? bankDisplayAccounts.find((x) => x.id === form.paymentDisplayAccountId)?.name ??
+                      "—"
+                    : "Company default bank details"}
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">A/C Name, Number, Branch (from settings)</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Terms & Conditions + Summary + Actions (bottom like your image) */}
+        <div className="mt-6 grid gap-6 lg:grid-cols-12">
+          {/* Terms */}
+          <section className="lg:col-span-12 rounded-3xl border bg-white/90 p-6 shadow-sm dark:bg-slate-900/80">
+            <button
+              type="button"
+              onClick={() => setShowTerms((v) => !v)}
+              className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-3 text-left dark:border-slate-700 dark:bg-slate-900/40"
+            >
+              <div className="flex items-center gap-3">
+                <ChevronRight
+                  className={cn(
+                    "h-4 w-4 text-muted-foreground transition-transform",
+                    showTerms && "rotate-90"
+                  )}
+                />
+                <div>
+                  <div className="text-sm font-semibold">Terms &amp; Conditions</div>
+                  <div className="text-xs text-muted-foreground">Using company default</div>
+                </div>
+              </div>
+              <div className="text-xs text-muted-foreground">Optional</div>
+            </button>
+
+            {showTerms ? (
+              <div className="mt-4 grid gap-3">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={form.termsOverrideEnabled}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, termsOverrideEnabled: e.target.checked }))
+                    }
+                  />
+                  <span>Override for this invoice</span>
+                </label>
+
+                <textarea
+                  value={form.termsText}
+                  onChange={(e) => setForm((f) => ({ ...f, termsText: e.target.value }))}
+                  placeholder={
+                    form.termsOverrideEnabled
+                      ? "Enter terms & conditions to print on this invoice…"
+                      : "Company default will be used in PDF…"
+                  }
+                  disabled={!form.termsOverrideEnabled}
+                  className={cn(
+                    "min-h-[120px] w-full rounded-2xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-950",
+                    !form.termsOverrideEnabled && "opacity-70"
+                  )}
+                />
+              </div>
+            ) : null}
+          </section>
+
+          {/* Summary block (bottom-left) */}
+          <section className="lg:col-span-5 rounded-3xl border bg-white/90 p-6 shadow-sm dark:bg-slate-900/80">
+            <div className="mb-3 text-sm font-semibold">Summary</div>
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-700 dark:bg-slate-900/40">
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <MoneyText value={subtotal} />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Bill Sundry</span>
+                  <MoneyText value={billSundryComputed.net} />
+                </div>
+              </div>
+
+              <div className="mt-3 flex items-center justify-between rounded-xl bg-gradient-to-r from-slate-200/70 to-slate-100/40 px-3 py-2 font-semibold dark:from-slate-800/60 dark:to-slate-700/30">
+                <span>Total</span>
+                <MoneyText value={total} />
+              </div>
+            </div>
+          </section>
+
+          {/* Notes + actions (bottom-right) */}
+          <section className="lg:col-span-7 rounded-3xl border bg-white/90 p-6 shadow-sm dark:bg-slate-900/80">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="text-sm font-semibold">Additional notes</div>
+              <div className="text-xs text-muted-foreground">
+                BS: <span className="font-medium text-foreground">{form.invoiceDate.bs || "—"}</span>{" "}
+                <span className="text-muted-foreground">({form.invoiceDate.ad || "—"})</span>
+              </div>
+            </div>
+
+            <Input
+              value={form.notes}
+              onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+              placeholder="Additional notes..."
+            />
+
+            <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onPreview}
+                className="rounded-full px-5 bg-white/70"
+              >
+                <Eye className="mr-2 h-4 w-4" />
+                Preview
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onPrint}
+                className="rounded-full px-5 bg-white/70"
+              >
+                <Printer className="mr-2 h-4 w-4" />
+                Print
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onSave}
+                disabled={loading || sending}
+                className="rounded-full px-5 bg-white/70"
+              >
+                <Save className="mr-2 h-4 w-4" />
+                {loading ? "Saving..." : "Save"}
+              </Button>
+
+              <Button
+                type="button"
+                onClick={onSend}
+                disabled={loading || sending}
+                className="rounded-full px-6 bg-slate-800 text-white hover:bg-slate-900"
+              >
+                <Send className="mr-2 h-4 w-4" />
+                {sending ? "Sending..." : "Send"}
+              </Button>
+            </div>
+          </section>
         </div>
       </div>
     </div>
   );
 }
-
-

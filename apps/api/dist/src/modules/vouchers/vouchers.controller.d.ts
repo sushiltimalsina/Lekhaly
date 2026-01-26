@@ -9,8 +9,8 @@ export declare class VouchersController {
             companyId: string;
             createdAt: Date;
             description: string | null;
-            partyId: string | null;
             taxCodeId: string | null;
+            partyId: string | null;
             voucherId: string;
             lineNo: number;
             accountId: string;
@@ -46,8 +46,8 @@ export declare class VouchersController {
             companyId: string;
             createdAt: Date;
             description: string | null;
-            partyId: string | null;
             taxCodeId: string | null;
+            partyId: string | null;
             voucherId: string;
             lineNo: number;
             accountId: string;
@@ -83,8 +83,8 @@ export declare class VouchersController {
             companyId: string;
             createdAt: Date;
             description: string | null;
-            partyId: string | null;
             taxCodeId: string | null;
+            partyId: string | null;
             voucherId: string;
             lineNo: number;
             accountId: string;
@@ -182,8 +182,8 @@ export declare class VouchersController {
             companyId: string;
             createdAt: Date;
             description: string | null;
-            partyId: string | null;
             taxCodeId: string | null;
+            partyId: string | null;
             voucherId: string;
             lineNo: number;
             accountId: string;
