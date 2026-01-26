@@ -82,7 +82,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
   }, [options, query, getLabel]);
 
   return (
-    <div className={cn("space-y-1", className)} ref={wrapRef}>
+    <div className={cn("relative z-20 space-y-1", className)} ref={wrapRef}>
       {label ? <div className="text-xs text-muted-foreground">{label}</div> : null}
 
       <button
@@ -101,50 +101,48 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
       </button>
 
       {open ? (
-        <div className="relative">
-          <div className="absolute z-30 mt-2 w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/40 dark:border-slate-700 dark:bg-slate-900 dark:shadow-black/20">
-            <div className="border-b border-slate-200 px-3 py-2 dark:border-slate-700">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Type to search…"
-                  className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-8 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-950"
-                  autoFocus
-                />
-              </div>
+        <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/40 dark:border-slate-700 dark:bg-slate-900 dark:shadow-black/20">
+          <div className="border-b border-slate-200 px-3 py-2 dark:border-slate-700">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Type to search…"
+                className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-8 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-950"
+                autoFocus
+              />
             </div>
+          </div>
 
-            <div className="max-h-64 overflow-auto p-1">
-              {filtered.length ? (
-                filtered.map((o) => {
-                  const labelText = getLabel ? getLabel(o) : o.name ?? o.id;
-                  const active = o.id === valueId;
+          <div className="max-h-64 overflow-auto p-1">
+            {filtered.length ? (
+              filtered.map((o) => {
+                const labelText = getLabel ? getLabel(o) : o.name ?? o.id;
+                const active = o.id === valueId;
 
-                  return (
-                    <button
-                      key={o.id}
-                      type="button"
-                      onClick={() => {
-                        onChange(o.id);
-                        setOpen(false);
-                        setQuery("");
-                      }}
-                      className={cn(
-                        "flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800/40",
-                        active && "bg-primary/10"
-                      )}
-                    >
-                      <span className="min-w-0 flex-1 truncate">{labelText}</span>
-                      {active ? <Check className="h-4 w-4 text-primary" /> : null}
-                    </button>
-                  );
-                })
-              ) : (
-                <div className="px-3 py-3 text-sm text-muted-foreground">{emptyText}</div>
-              )}
-            </div>
+                return (
+                  <button
+                    key={o.id}
+                    type="button"
+                    onClick={() => {
+                      onChange(o.id);
+                      setOpen(false);
+                      setQuery("");
+                    }}
+                    className={cn(
+                      "flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800/40",
+                      active && "bg-primary/10"
+                    )}
+                  >
+                    <span className="min-w-0 flex-1 truncate">{labelText}</span>
+                    {active ? <Check className="h-4 w-4 text-primary" /> : null}
+                  </button>
+                );
+              })
+            ) : (
+              <div className="px-3 py-3 text-sm text-muted-foreground">{emptyText}</div>
+            )}
           </div>
         </div>
       ) : null}
@@ -399,7 +397,7 @@ export default function SalesCreatePage() {
                 </Button>
               </div>
 
-              <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-slate-50/70 dark:border-slate-700 dark:bg-slate-900/40">
+              <div className="overflow-x-auto overflow-y-visible rounded-2xl border border-slate-200 bg-slate-50/70 dark:border-slate-700 dark:bg-slate-900/40">
                 <table className="min-w-full text-sm">
                   <thead className="bg-slate-100/80 dark:bg-slate-800/60">
                     <tr>
@@ -585,3 +583,4 @@ export default function SalesCreatePage() {
     </div>
   );
 }
+
