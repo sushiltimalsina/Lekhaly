@@ -11,6 +11,7 @@ import { Sun, Moon, Monitor } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getCurrencySettings, setCurrencySymbol, setNumberFormat, subscribeUi } from "@/lib/store/ui";
 import { MoneyText } from "@/components/app/money";
+import { getSettings, setCalendarPreference, subscribeSettings } from "@/lib/store/settings";
 
 type CompanyForm = {
   companyName?: string;
@@ -29,6 +30,7 @@ export default function SettingsPage() {
   const [theme, setThemeState] = React.useState<"light" | "dark" | "system">("system");
   const [currencySymbol, setCurrencySymbolState] = React.useState(getCurrencySettings().currencySymbol);
   const [numberFormat, setNumberFormatState] = React.useState(getCurrencySettings().numberFormat);
+  const [calendarPreference, setCalendarPreferenceState] = React.useState<"BS" | "AD">("BS");
 
   const [form, setForm] = React.useState<CompanyForm>({
     companyName: "",
@@ -51,6 +53,13 @@ export default function SettingsPage() {
     return subscribeUi((next) => {
       setCurrencySymbolState(next.currencySymbol);
       setNumberFormatState(next.numberFormat);
+    });
+  }, []);
+
+  React.useEffect(() => {
+    setCalendarPreferenceState(getSettings().calendarPreference);
+    return subscribeSettings((next) => {
+      setCalendarPreferenceState(next.calendarPreference);
     });
   }, []);
 
@@ -185,6 +194,43 @@ export default function SettingsPage() {
         </Card>
 
         <div className="space-y-6">
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle>Calendar Preference</CardTitle>
+              <CardDescription>
+                Choose the primary calendar for date inputs
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setCalendarPreference("BS")}
+                  className={cn(
+                    "flex-1 rounded-xl border px-4 py-3 text-sm font-medium transition-all",
+                    calendarPreference === "BS"
+                      ? "border-primary bg-primary text-primary-foreground shadow-md"
+                      : "bg-background hover:bg-muted"
+                  )}
+                >
+                  BS (Bikram Sambat)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCalendarPreference("AD")}
+                  className={cn(
+                    "flex-1 rounded-xl border px-4 py-3 text-sm font-medium transition-all",
+                    calendarPreference === "AD"
+                      ? "border-primary bg-primary text-primary-foreground shadow-md"
+                      : "bg-background hover:bg-muted"
+                  )}
+                >
+                  AD (Gregorian)
+                </button>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card className="glass-card">
             <CardHeader>
               <CardTitle>Date Format</CardTitle>

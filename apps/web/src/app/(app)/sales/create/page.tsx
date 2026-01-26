@@ -1,11 +1,12 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import PageHeader from "@/components/app/page-header";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/app/money";
-import BsDateInput from "@/components/app/bs-date-input";
+import DualDateInput from "@/components/app/dual-date-input";
 import { createInvoiceDraft } from "@/lib/api/invoices";
 import { listParties, type PartyRecord } from "@/lib/api/parties";
 import { listAccounts, type AccountRecord } from "@/lib/api/accounts";
@@ -21,18 +22,25 @@ type Line = {
   description?: string;
 };
 
-function useOutsideClick<T extends HTMLElement>(onOutside: () => void) {
+function useOutsideClick<T extends HTMLElement>(
+  onOutside: () => void,
+  extraRefs: Array<React.RefObject<HTMLElement | null>> = []
+) {
   const ref = React.useRef<T | null>(null);
 
   React.useEffect(() => {
     function onDown(e: MouseEvent) {
       const el = ref.current;
       if (!el) return;
-      if (e.target instanceof Node && !el.contains(e.target)) onOutside();
+      const target = e.target as Node | null;
+      if (!target) return;
+      const isInsideMain = el.contains(target);
+      const isInsideExtra = extraRefs.some((r) => r.current?.contains(target));
+      if (!isInsideMain && !isInsideExtra) onOutside();
     }
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
-  }, [onOutside]);
+  }, [onOutside, extraRefs]);
 
   return ref;
 }
@@ -48,6 +56,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
   className?: string;
   buttonClassName?: string;
   emptyText?: string;
+  buttonRef?: React.Ref<HTMLButtonElement>;
 }) {
   const {
     label,
@@ -64,7 +73,35 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
 
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
-  const wrapRef = useOutsideClick<HTMLDivElement>(() => setOpen(false));
+  const menuRef = React.useRef<HTMLDivElement>(null);
+  const buttonRef = React.useRef<HTMLButtonElement>(null);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const scrollRef = React.useRef<{ x: number; y: number } | null>(null);
+  const setButtonRef = (node: HTMLButtonElement | null) => {
+    buttonRef.current = node;
+    if (!props.buttonRef) return;
+    if (typeof props.buttonRef === "function") {
+      props.buttonRef(node);
+    } else {
+      (props.buttonRef as React.MutableRefObject<HTMLButtonElement | null>).current = node;
+    }
+  };
+  const outsideRefs = React.useMemo(() => [menuRef], []);
+  const wrapRef = useOutsideClick<HTMLDivElement>(() => setOpen(false), outsideRefs);
+  const [menuStyle, setMenuStyle] = React.useState<React.CSSProperties>({});
+  const focusNext = (from?: HTMLElement | null) => {
+    if (!from) return;
+    const doc = from.ownerDocument || document;
+    const focusables = Array.from(
+      doc.querySelectorAll<HTMLElement>(
+        'button, input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      )
+    ).filter((el) => !el.hasAttribute("disabled") && !el.getAttribute("aria-hidden"));
+    const idx = focusables.indexOf(from);
+    if (idx >= 0 && idx + 1 < focusables.length) {
+      focusables[idx + 1].focus();
+    }
+  };
 
   const selected = React.useMemo(() => options.find((o) => o.id === valueId), [options, valueId]);
 
@@ -81,6 +118,35 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
     });
   }, [options, query, getLabel]);
 
+  React.useEffect(() => {
+    if (!open) return;
+    const updatePosition = () => {
+      const rect = buttonRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setMenuStyle({
+        position: "fixed",
+        top: rect.bottom + 8,
+        left: rect.left,
+        width: rect.width,
+        zIndex: 1000,
+      });
+    };
+    updatePosition();
+    scrollRef.current = { x: window.scrollX, y: window.scrollY };
+    requestAnimationFrame(() => {
+      inputRef.current?.focus({ preventScroll: true });
+      if (scrollRef.current) {
+        window.scrollTo(scrollRef.current.x, scrollRef.current.y);
+      }
+    });
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [open]);
+
   return (
     <div className={cn("relative z-20 space-y-1", className)} ref={wrapRef}>
       {label ? <div className="text-xs text-muted-foreground">{label}</div> : null}
@@ -88,6 +154,13 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !open) {
+            e.preventDefault();
+            focusNext(buttonRef.current);
+          }
+        }}
+        ref={setButtonRef}
         className={cn(
           "flex w-full items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-left text-sm shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800/40",
           buttonClassName
@@ -100,52 +173,72 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
         <ChevronDown className="h-4 w-4 text-muted-foreground" />
       </button>
 
-      {open ? (
-        <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/40 dark:border-slate-700 dark:bg-slate-900 dark:shadow-black/20">
-          <div className="border-b border-slate-200 px-3 py-2 dark:border-slate-700">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Type to search…"
-                className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-8 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-950"
-                autoFocus
-              />
-            </div>
-          </div>
-
-          <div className="max-h-64 overflow-auto p-1">
-            {filtered.length ? (
-              filtered.map((o) => {
-                const labelText = getLabel ? getLabel(o) : o.name ?? o.id;
-                const active = o.id === valueId;
-
-                return (
-                  <button
-                    key={o.id}
-                    type="button"
-                    onClick={() => {
-                      onChange(o.id);
-                      setOpen(false);
-                      setQuery("");
+      {open
+        ? createPortal(
+            <div
+              ref={menuRef}
+              style={menuStyle}
+              className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/40 dark:border-slate-700 dark:bg-slate-900 dark:shadow-black/20"
+            >
+              <div className="border-b border-slate-200 px-3 py-2 dark:border-slate-700">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    ref={inputRef}
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const first = filtered[0];
+                        if (first) {
+                          onChange(first.id);
+                        }
+                        setOpen(false);
+                        setQuery("");
+                        focusNext(buttonRef.current);
+                      }
                     }}
-                    className={cn(
-                      "flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800/40",
-                      active && "bg-primary/10"
-                    )}
-                  >
-                    <span className="min-w-0 flex-1 truncate">{labelText}</span>
-                    {active ? <Check className="h-4 w-4 text-primary" /> : null}
-                  </button>
-                );
-              })
-            ) : (
-              <div className="px-3 py-3 text-sm text-muted-foreground">{emptyText}</div>
-            )}
-          </div>
-        </div>
-      ) : null}
+                    placeholder="Type to search…"
+                    className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-8 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-950"
+                  />
+                </div>
+              </div>
+
+              <div className="max-h-64 overflow-auto p-1">
+                {filtered.length ? (
+                  filtered.map((o) => {
+                    const labelText = getLabel ? getLabel(o) : o.name ?? o.id;
+                    const active = o.id === valueId;
+
+                    return (
+                      <button
+                        key={o.id}
+                        type="button"
+                        onClick={() => {
+                          onChange(o.id);
+                          setOpen(false);
+                          setQuery("");
+                          focusNext(buttonRef.current);
+                        }}
+                        className={cn(
+                          "flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800/40",
+                          active && "bg-primary/10"
+                        )}
+                      >
+                        <span className="min-w-0 flex-1 truncate">{labelText}</span>
+                        {active ? <Check className="h-4 w-4 text-primary" /> : null}
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="px-3 py-3 text-sm text-muted-foreground">{emptyText}</div>
+                )}
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
     </div>
   );
 }
@@ -170,6 +263,27 @@ export default function SalesCreatePage() {
   });
 
   const [lines, setLines] = React.useState<Line[]>([{ itemId: "", qty: "1", rate: "" }]);
+  const firstItemSelectRef = React.useRef<HTMLButtonElement | null>(null);
+
+  const focusNextElement = React.useCallback((from?: HTMLElement | null) => {
+    const doc = (from?.ownerDocument || document) as Document;
+    const focusables = Array.from(
+      doc.querySelectorAll<HTMLElement>(
+        'input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      )
+    ).filter(
+      (el) =>
+        !el.hasAttribute("disabled") &&
+        !el.getAttribute("aria-hidden") &&
+        el.getAttribute("data-skip-enter") !== "true"
+    );
+    const current = from ?? (doc.activeElement as HTMLElement | null);
+    if (!current) return;
+    const idx = focusables.indexOf(current);
+    if (idx >= 0 && idx + 1 < focusables.length) {
+      focusables[idx + 1].focus();
+    }
+  }, []);
 
   const formatError = (e: any) => {
     const issues = e?.details?.issues;
@@ -352,11 +466,11 @@ export default function SalesCreatePage() {
                 />
 
                 <div className="lg:col-span-1">
-                  <BsDateInput
+                  <DualDateInput
                     label="Invoice Date"
-                    valueBs={form.date.bs}
-                    valueAd={form.date.ad}
+                    value={form.date}
                     onChange={(next) => setForm((f) => ({ ...f, date: next }))}
+                    onEnterNext={() => focusNextElement()}
                   />
                 </div>
 
@@ -366,6 +480,12 @@ export default function SalesCreatePage() {
                     value={form.referenceNo}
                     onChange={(e) => setForm((f) => ({ ...f, referenceNo: e.target.value }))}
                     placeholder="Enter reference (optional)"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        focusNextElement(e.currentTarget);
+                      }
+                    }}
                   />
                 </label>
 
@@ -375,6 +495,12 @@ export default function SalesCreatePage() {
                     value={form.receivableAccountId}
                     onChange={(e) => setForm((f) => ({ ...f, receivableAccountId: e.target.value }))}
                     className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        firstItemSelectRef.current?.focus();
+                      }
+                    }}
                   >
                     <option value="">Select account</option>
                     {accounts.map((a) => (
@@ -390,7 +516,7 @@ export default function SalesCreatePage() {
             {/* Items */}
             <section className="rounded-3xl border bg-white/90 p-6 shadow-sm dark:bg-slate-900/80">
               <div className="mb-3 flex items-center justify-between">
-                <div className="text-sm font-semibold">Items</div>
+                <div className="text-sm font-semibold">Items Details</div>
                 <Button type="button" variant="outline" onClick={addLine} className="rounded-full px-4 bg-white/70">
                   <Plus className="mr-2 h-4 w-4" />
                   Add item
@@ -402,13 +528,13 @@ export default function SalesCreatePage() {
                   <thead className="bg-slate-100/80 dark:bg-slate-800/60">
                     <tr>
                       {/* Resize Item column width here */}
-                      <th className="w-[540px] min-w-[460px] px-3 py-2 text-left text-xs text-muted-foreground">
-                        Item
+                      <th className="w-[540px] min-w-[460px] px-3 py-2 text-center text-xm text-muted-foreground">
+                        Particulars
                       </th>
-                      <th className="w-[120px] px-3 py-2 text-right text-xs text-muted-foreground">Qty</th>
-                      <th className="w-[140px] px-3 py-2 text-right text-xs text-muted-foreground">Rate</th>
-                      <th className="w-[160px] px-3 py-2 text-right text-xs text-muted-foreground">Amount</th>
-                      <th className="w-[60px] px-3 py-2 text-right text-xs text-muted-foreground" />
+                      <th className="w-[120px] px-3 py-2 text-left text-xm text-muted-foreground">Qty</th>
+                      <th className="w-[140px] px-3 py-2 text-left text-xm text-muted-foreground">Rate</th>
+                      <th className="w-[160px] px-3 py-2 text-right text-xm text-muted-foreground">Amount</th>
+                      <th className="w-[60px] px-3 py-2 text-right text-xm text-muted-foreground" />
                     </tr>
                   </thead>
 
@@ -434,6 +560,7 @@ export default function SalesCreatePage() {
                               leftIcon={<Search className="h-4 w-4" />}
                               buttonClassName="py-2"
                               emptyText="No items found"
+                              buttonRef={idx === 0 ? firstItemSelectRef : undefined}
                             />
                           </td>
 
@@ -445,6 +572,12 @@ export default function SalesCreatePage() {
                               value={line.qty}
                               onChange={(e) => updateLine(idx, { qty: e.target.value })}
                               placeholder="Qty"
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  focusNextElement(e.currentTarget);
+                                }
+                              }}
                             />
                           </td>
 
@@ -456,6 +589,12 @@ export default function SalesCreatePage() {
                               value={line.rate}
                               onChange={(e) => updateLine(idx, { rate: e.target.value })}
                               placeholder="Rate"
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  focusNextElement(e.currentTarget);
+                                }
+                              }}
                             />
                           </td>
 
@@ -583,4 +722,5 @@ export default function SalesCreatePage() {
     </div>
   );
 }
+
 
