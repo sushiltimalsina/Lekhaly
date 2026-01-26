@@ -44,9 +44,10 @@ export async function createItem(input: CreateItemInput) {
   });
 }
 export async function listItems(params?: { q?: string; skip?: number; take?: number }) {
+  const safeParams = params?.take && params.take > 100 ? { ...params, take: 100 } : params;
   return apiRequest<ItemRecord[]>({
     path: "/items",
     method: "GET",
-    query: params,
+    query: safeParams,
   });
 }
