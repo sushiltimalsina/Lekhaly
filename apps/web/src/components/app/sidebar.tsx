@@ -171,6 +171,7 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export default function Sidebar({ className, onNavigate }: SidebarProps) {
   const [collapsed, setCollapsed] = React.useState(true);
+  const [resetSignal, setResetSignal] = React.useState(0);
 
   React.useEffect(() => {
     const stored = typeof window !== "undefined" ? localStorage.getItem("lekhaly.sidebar.collapsed") : null;
@@ -190,11 +191,7 @@ export default function Sidebar({ className, onNavigate }: SidebarProps) {
   const toggleCollapsed = () => setCollapsed((prev) => !prev);
   const handleNavigate = () => {
     setCollapsed(true);
-    onNavigate?.();
-  };
-
-  const handleChildNavigate = () => {
-    setIsOpen(false);
+    setResetSignal((prev) => prev + 1);
     onNavigate?.();
   };
 
@@ -242,6 +239,7 @@ export default function Sidebar({ className, onNavigate }: SidebarProps) {
             onNavigate={handleNavigate}
             collapsed={collapsed}
             onExpand={() => setCollapsed(false)}
+            resetSignal={resetSignal}
           />
         ))}
       </nav>
@@ -254,13 +252,17 @@ function NavItemNode({
   depth = 0,
   onNavigate,
   collapsed,
-  onExpand
+  onExpand,
+  onChildNavigate,
+  resetSignal
 }: {
   item: NavItem;
   depth?: number;
   onNavigate?: () => void;
   collapsed?: boolean;
   onExpand?: () => void;
+  onChildNavigate?: () => void;
+  resetSignal?: number;
 }) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = React.useState(false);
@@ -276,19 +278,25 @@ function NavItemNode({
   }, [pathname, item]);
 
   React.useEffect(() => {
-    if (hasActiveChild) setIsOpen(true);
-  }, [hasActiveChild]);
+    if (!resetSignal) return;
+    setIsOpen(false);
+  }, [resetSignal]);
 
   const isActive = item.href ? (pathname === item.href || pathname?.startsWith(item.href + "/")) : false;
   const isChildActive = hasActiveChild && !isActive;
   const Icon = item.icon;
   const hasChildren = item.children && item.children.length > 0;
 
+  const handleNavigate = () => {
+    onChildNavigate?.();
+    onNavigate?.();
+  };
+
   if (!hasChildren && item.href) {
     return (
       <Link
         href={item.href}
-        onClick={onNavigate}
+        onClick={handleNavigate}
         className={cn(
           "group relative flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-200 ease-in-out",
           isActive
@@ -321,8 +329,12 @@ function NavItemNode({
     <div className="space-y-1">
       <button
         onClick={() => {
-          if (collapsed) onExpand?.();
-          setIsOpen((prev) => (collapsed ? true : !prev));
+          if (collapsed) {
+            onExpand?.();
+            setIsOpen(true);
+            return;
+          }
+          setIsOpen((prev) => !prev);
         }}
         className={cn(
           "w-full group flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-200 ease-in-out",
@@ -362,9 +374,11 @@ function NavItemNode({
                   key={i}
                   item={child}
                   depth={depth + 1}
-                  onNavigate={handleChildNavigate}
+                  onNavigate={onNavigate}
                   collapsed={collapsed}
                   onExpand={onExpand}
+                  onChildNavigate={() => setIsOpen(false)}
+                  resetSignal={resetSignal}
                 />
               ))}
             </div>
