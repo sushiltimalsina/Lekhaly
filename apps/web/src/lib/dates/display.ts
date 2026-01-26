@@ -1,6 +1,5 @@
 // apps/web/src/lib/dates/display.ts
 import { isValidBs, isValidIso, toAd, toBs } from "./bs";
-import { adToBs, bsToAd } from "./convert";
 import type { DateFormat } from "@/lib/date-format";
 
 type DateInput = {
@@ -31,39 +30,4 @@ export function getDateDisplay({ ad, bs, format }: DateInput) {
 
 export function getDateLabel(format: DateFormat, label = "Date") {
   return `${label} (${format.toUpperCase()})`;
-}
-
-export function formatDisplayDate(
-  value: { ad: string; bs: string },
-  preference: "BS" | "AD"
-): { primary: string; secondary: string } {
-  const adRaw = value.ad?.slice(0, 10) ?? "";
-  const bsRaw = value.bs ?? "";
-
-  let adValue = adRaw;
-  let bsValue = bsRaw;
-
-  if (adValue && !bsValue) {
-    try {
-      bsValue = adToBs(adValue);
-    } catch {
-      // ignore
-    }
-  }
-
-  if (bsValue && !adValue) {
-    try {
-      adValue = bsToAd(bsValue);
-    } catch {
-      // ignore
-    }
-  }
-
-  const primary = preference === "AD" ? adValue : bsValue;
-  const secondaryRaw = preference === "AD" ? bsValue : adValue;
-
-  return {
-    primary: primary || "--",
-    secondary: secondaryRaw ? `(${secondaryRaw})` : ""
-  };
 }

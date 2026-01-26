@@ -148,9 +148,6 @@ importers:
       lucide-react:
         specifier: ^0.300.0
         version: 0.300.0(react@19.2.3)
-      nepali-date-converter:
-        specifier: ^3.4.0
-        version: 3.4.0
       next:
         specifier: 15.1.0
         version: 15.1.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
