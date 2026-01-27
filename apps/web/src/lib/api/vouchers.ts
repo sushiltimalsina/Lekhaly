@@ -29,6 +29,9 @@ export type VoucherDraftInput = {
   voucherDateBs?: string; // BS
   partyId?: string;
   memo?: string;
+  referenceNo?: string;
+  vendorInvoiceNo?: string;
+  vendorInvoiceDate?: string; // ISO
   lines: VoucherLineInput[];
 };
 

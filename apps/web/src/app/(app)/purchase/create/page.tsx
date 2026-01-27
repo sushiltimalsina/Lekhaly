@@ -286,6 +286,7 @@ export default function PurchaseCreatePage() {
     const purchaseDateRef = React.useRef<HTMLInputElement>(null);
     const vendorInvoiceDateRef = React.useRef<HTMLInputElement>(null);
     const invoiceNoRef = React.useRef<HTMLInputElement>(null);
+    const vendorInvoiceNoRef = React.useRef<HTMLInputElement>(null);
     const payableAccountRef = React.useRef<HTMLSelectElement>(null);
     const referenceNoRef = React.useRef<HTMLInputElement>(null);
     const vendorSelectRef = React.useRef<HTMLButtonElement>(null);
@@ -330,13 +331,11 @@ export default function PurchaseCreatePage() {
         purchaseDate: { bs: "", ad: "" },
         vendorInvoiceDate: { bs: "", ad: "" },
         referenceNo: "",
+        vendorInvoiceNo: "",
         memo: "",
         notes: "",
-        termsOverrideEnabled: false,
-        termsText: "",
     });
 
-    const [showTerms, setShowTerms] = React.useState(false);
     const [lines, setLines] = React.useState<Line[]>([{ itemId: "", qty: "", rate: "" }]);
 
     // Clean up refs when lines change
@@ -530,6 +529,9 @@ export default function PurchaseCreatePage() {
             voucherDateBs: form.purchaseDate.bs || undefined,
             partyId: form.partyId,
             memo: form.memo || "Purchase from vendor",
+            referenceNo: form.referenceNo || undefined,
+            vendorInvoiceNo: form.vendorInvoiceNo || undefined,
+            vendorInvoiceDate: form.vendorInvoiceDate.ad || undefined,
             lines: payloadLines as any,
         };
     };
@@ -618,10 +620,27 @@ export default function PurchaseCreatePage() {
                                     onKeyDown={(e) => {
                                         if (e.key === "Enter") {
                                             e.preventDefault();
+                                            safeFocus(vendorInvoiceNoRef.current);
+                                        }
+                                    }}
+                                    placeholder="Reference No."
+                                    className="h-11 rounded-2xl bg-slate-50/60 dark:bg-slate-900/60"
+                                />
+                            </label>
+
+                            <label className="space-y-1 text-sm">
+                                <span className="text-xs text-muted-foreground">Vendor Invoice No.</span>
+                                <Input
+                                    ref={vendorInvoiceNoRef}
+                                    value={form.vendorInvoiceNo}
+                                    onChange={(e) => setForm((f) => ({ ...f, vendorInvoiceNo: e.target.value }))}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                            e.preventDefault();
                                             safeFocus(payableAccountRef.current);
                                         }
                                     }}
-                                    placeholder="Reference/Invoice No."
+                                    placeholder="Enter physical invoice number"
                                     className="h-11 rounded-2xl bg-slate-50/60 dark:bg-slate-900/60"
                                 />
                             </label>
@@ -1024,46 +1043,7 @@ export default function PurchaseCreatePage() {
                     </div>
                 </section>
 
-                {/* TERMS */}
-                <section className="mb-6 rounded-3xl border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                    <button type="button" onClick={() => setShowTerms((v) => !v)} className="flex w-full items-center gap-3">
-                        <ChevronRight className={cn("h-4 w-4 text-muted-foreground transition-transform", showTerms && "rotate-90")} />
-                        <div className="text-sm font-semibold">Terms &amp; Conditions</div>
-                    </button>
 
-                    <div className="mt-2 text-sm text-muted-foreground">Using default purchase terms</div>
-
-                    <button
-                        type="button"
-                        onClick={() => setShowTerms(true)}
-                        className="mt-3 text-sm font-medium text-slate-700 hover:underline dark:text-slate-200"
-                    >
-                        + Add terms &amp; conditions
-                    </button>
-
-                    {showTerms ? (
-                        <div className="mt-4 grid gap-3">
-                            <label className="flex items-center gap-2 text-sm">
-                                <input
-                                    type="checkbox"
-                                    checked={form.termsOverrideEnabled}
-                                    onChange={(e) => setForm((f) => ({ ...f, termsOverrideEnabled: e.target.checked }))}
-                                />
-                                <span>Override for this purchase</span>
-                            </label>
-
-                            <textarea
-                                value={form.termsText}
-                                onChange={(e) => setForm((f) => ({ ...f, termsText: e.target.value }))}
-                                disabled={!form.termsOverrideEnabled}
-                                className={cn(
-                                    "min-h-[110px] w-full rounded-2xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-950",
-                                    !form.termsOverrideEnabled && "opacity-70"
-                                )}
-                            />
-                        </div>
-                    ) : null}
-                </section>
 
                 {/* BOTTOM SUMMARY ACTIONS */}
                 <section className="grid gap-6 lg:grid-cols-12">
