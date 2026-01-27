@@ -19,3 +19,17 @@ export async function listParties(params?: { type?: string; q?: string; skip?: n
     query: safeParams,
   });
 }
+export async function createParty(input: {
+  name: string;
+  type: "customer" | "supplier" | "both";
+  email?: string;
+  phone?: string;
+  address?: string;
+  panNo?: string;
+}) {
+  return apiRequest<PartyRecord>({
+    method: "POST",
+    path: "/parties",
+    body: input,
+  });
+}

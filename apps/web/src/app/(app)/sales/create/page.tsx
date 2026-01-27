@@ -14,6 +14,7 @@ import { listParties, type PartyRecord } from "@/lib/api/parties";
 import { listAccounts, type AccountRecord } from "@/lib/api/accounts";
 import { listItems, type ItemRecord } from "@/lib/api/items";
 import AddItemDialog from "@/components/app/add-item-dialog";
+import AddCustomerDialog from "@/components/app/add-customer-dialog";
 
 import {
   Plus,
@@ -307,6 +308,7 @@ export default function SalesCreatePage() {
   const [lineErrors, setLineErrors] = React.useState<Record<number, { qty?: string; rate?: string }>>({});
   const [addItemOpen, setAddItemOpen] = React.useState(false);
   const [activeLineIdx, setActiveLineIdx] = React.useState<number | null>(null);
+  const [addCustomerOpen, setAddCustomerOpen] = React.useState(false);
 
   // For item table navigation
   const rowRefs = React.useRef<{
@@ -726,7 +728,12 @@ export default function SalesCreatePage() {
               buttonClassName="h-12 rounded-2xl bg-white dark:bg-slate-900 pr-[140px]"
             />
 
-            <Button type="button" variant="outline" className="absolute right-2 top-1/2 -translate-y-1/2 h-9 rounded-full px-4 text-xs">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setAddCustomerOpen(true)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-9 rounded-full px-4 text-xs"
+            >
               <Plus className="mr-2 h-3.5 w-3.5" />
               New Customer
             </Button>
@@ -1196,6 +1203,15 @@ export default function SalesCreatePage() {
             });
             setTimeout(() => safeFocus(rowRefs.current.qty[activeLineIdx]), 50);
           }
+        }}
+      />
+      <AddCustomerDialog
+        open={addCustomerOpen}
+        onClose={() => setAddCustomerOpen(false)}
+        onSuccess={(newCustomer) => {
+          setParties(prev => [...prev, newCustomer]);
+          setForm(f => ({ ...f, partyId: newCustomer.id }));
+          setTimeout(() => safeFocus(rowRefs.current.select[0]), 50);
         }}
       />
     </div>
