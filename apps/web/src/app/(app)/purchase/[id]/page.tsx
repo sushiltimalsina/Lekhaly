@@ -195,22 +195,44 @@ export default function PurchaseDetailPage() {
                                     <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
                                         {voucher?.lines?.map((l: any, idx: number) => {
                                             if (Number(l.credit) > 0) return null; // Skip liability line
+                                            const qty = Number(l.qty || 0);
+                                            const debit = Number(l.debit || 0);
+                                            const rate = qty > 0 ? debit / qty : debit;
                                             return (
                                                 <tr key={idx} className="group transition-colors">
                                                     <td className="py-5">
                                                         <div className="font-bold text-foreground">{l.accountName || "Inventory Item"}</div>
                                                         <div className="text-xs text-muted-foreground mt-1">{l.description || "Purchase recorded"}</div>
                                                     </td>
-                                                    <td className="py-5 text-right font-medium text-foreground">1</td>
+                                                    <td className="py-5 text-right font-medium text-foreground">{qty || 1}</td>
                                                     <td className="py-5 text-right font-medium text-foreground">
-                                                        <MoneyText value={Number(l.debit || 0)} />
+                                                        <MoneyText value={rate} />
                                                     </td>
                                                     <td className="py-5 text-right font-bold text-foreground">
-                                                        <MoneyText value={Number(l.debit || 0)} />
+                                                        <MoneyText value={debit} />
                                                     </td>
                                                 </tr>
                                             )
                                         })}
+                                        {/* Total Row */}
+                                        {voucher?.lines?.filter((l: any) => Number(l.debit) > 0).length > 0 && (
+                                            <tr className="border-t-2 border-slate-100 dark:border-slate-800/80 font-bold bg-slate-50/30 dark:bg-slate-800/10">
+                                                <td className="py-4 text-left uppercase text-[10px] tracking-wider text-muted-foreground">Total</td>
+                                                <td className="py-4 text-right">
+                                                    {voucher.lines.filter((l: any) => Number(l.debit) > 0).reduce((s: number, i: any) => s + Number(i.qty || 1), 0)}
+                                                </td>
+                                                <td className="py-4 text-right">
+                                                    <MoneyText value={voucher.lines.filter((l: any) => Number(l.debit) > 0).reduce((s: number, i: any) => {
+                                                        const q = Number(i.qty || 1);
+                                                        const d = Number(i.debit || 0);
+                                                        return s + (d / q);
+                                                    }, 0)} />
+                                                </td>
+                                                <td className="py-4 text-right">
+                                                    <MoneyText value={voucher.lines.filter((l: any) => Number(l.debit) > 0).reduce((s: number, i: any) => s + Number(i.debit || 0), 0)} />
+                                                </td>
+                                            </tr>
+                                        )}
                                     </tbody>
                                 </table>
                             </div>

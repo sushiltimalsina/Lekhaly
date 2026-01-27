@@ -1,17 +1,19 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import { createPortal } from "react-dom";
 import PageHeader from "@/components/app/page-header";
+import DualDateInput from "@/components/app/dual-date-input";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/app/money";
-import DualDateInput from "@/components/app/dual-date-input";
+import { cn } from "@/lib/utils";
+
 import { createInvoiceDraft } from "@/lib/api/invoices";
 import { listParties, type PartyRecord } from "@/lib/api/parties";
 import { listAccounts, type AccountRecord } from "@/lib/api/accounts";
-import { getStockReport, type StockReportRow } from "@/lib/api/inventory";
-import { cn } from "@/lib/utils";
+import { listItems, type ItemRecord } from "@/lib/api/items";
+
 import {
   Plus,
   Trash2,
@@ -26,19 +28,8 @@ import {
 } from "lucide-react";
 import { toBs } from "@/lib/dates/bs";
 
-type Line = {
-  itemId: string;
-  qty: string;
-  rate: string;
-  description?: string;
-};
-
-type BillSundryRow = {
-  id: string;
-  name: string; // e.g. VAT, Discount
-  type: "add" | "less";
-  ratePct: string; // percent
-};
+type Line = { itemId: string; qty: string; rate: string; description?: string };
+type BillSundryRow = { id: string; name: string; type: "add" | "less"; ratePct: string };
 
 function useOutsideClick<T extends HTMLElement>(
   onOutside: () => void,
@@ -87,8 +78,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
     leftIcon,
     className,
     buttonClassName,
-    emptyText = "No results",
-    onEnterNext,
+    emptyText = "No items found",
   } = props;
 
   const [open, setOpen] = React.useState(false);
@@ -96,33 +86,25 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
   const menuRef = React.useRef<HTMLDivElement>(null);
   const buttonRef = React.useRef<HTMLButtonElement>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
-  const scrollRef = React.useRef<{ x: number; y: number } | null>(null);
+
   const setButtonRef = (node: HTMLButtonElement | null) => {
     buttonRef.current = node;
     if (!props.buttonRef) return;
-    if (typeof props.buttonRef === "function") {
-      props.buttonRef(node);
-    } else {
-      (props.buttonRef as React.MutableRefObject<HTMLButtonElement | null>).current = node;
-    }
+    if (typeof props.buttonRef === "function") props.buttonRef(node);
+    else (props.buttonRef as React.MutableRefObject<HTMLButtonElement | null>).current = node;
   };
 
-  const outsideRefs = React.useMemo(() => [menuRef], []);
-  const wrapRef = useOutsideClick<HTMLDivElement>(() => setOpen(false), outsideRefs);
-  const [menuStyle, setMenuStyle] = React.useState<React.CSSProperties>({});
+  const wrapRef = useOutsideClick<HTMLDivElement>(() => setOpen(false), [menuRef]);
+  const [menuStyle, setMenuStyle] = React.useState<React.CSSProperties>({
+    position: "fixed",
+    top: -9999,
+    left: -9999,
+    opacity: 0,
+    pointerEvents: "none",
+  });
 
-  const focusNext = () => {
-    if (onEnterNext) onEnterNext();
-  };
-
-  const selected = React.useMemo(
-    () => options.find((o) => o.id === valueId),
-    [options, valueId]
-  );
-
-  const selectedLabel = selected
-    ? (getLabel ? getLabel(selected) : selected.name ?? selected.id)
-    : "";
+  const selected = React.useMemo(() => options.find((o) => o.id === valueId), [options, valueId]);
+  const selectedLabel = selected ? (getLabel ? getLabel(selected) : selected.name ?? selected.id) : "";
 
   const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -133,9 +115,15 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
     });
   }, [options, query, getLabel]);
 
+  const [activeIndex, setActiveIndex] = React.useState(0);
+
+  React.useEffect(() => {
+    setActiveIndex(0);
+  }, [query, open]);
+
   React.useEffect(() => {
     if (!open) return;
-    const updatePosition = () => {
+    const update = () => {
       const rect = buttonRef.current?.getBoundingClientRect();
       if (!rect) return;
       setMenuStyle({
@@ -144,39 +132,53 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
         left: rect.left,
         width: rect.width,
         zIndex: 1000,
+        opacity: 1,
+        pointerEvents: "auto",
       });
     };
-    updatePosition();
-    scrollRef.current = { x: window.scrollX, y: window.scrollY };
-    requestAnimationFrame(() => {
+    update();
+    const timer = setTimeout(() => {
       inputRef.current?.focus({ preventScroll: true });
-      if (scrollRef.current) window.scrollTo(scrollRef.current.x, scrollRef.current.y);
-    });
-    window.addEventListener("resize", updatePosition);
-    window.addEventListener("scroll", updatePosition, true);
+    }, 40);
+
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
     return () => {
-      window.removeEventListener("resize", updatePosition);
-      window.removeEventListener("scroll", updatePosition, true);
+      clearTimeout(timer);
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
     };
   }, [open]);
 
+  const listRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    if (open && listRef.current) {
+      const container = listRef.current;
+      const activeEl = container.children[activeIndex] as HTMLElement;
+      if (activeEl) {
+        // Use local scroll adjustment to avoid page jumping
+        const containerRect = container.getBoundingClientRect();
+        const elRect = activeEl.getBoundingClientRect();
+        if (elRect.top < containerRect.top) {
+          container.scrollTop -= (containerRect.top - elRect.top);
+        } else if (elRect.bottom > containerRect.bottom) {
+          container.scrollTop += (elRect.bottom - containerRect.bottom);
+        }
+      }
+    }
+  }, [activeIndex, open]);
+
   return (
-    <div className={cn("relative z-20 space-y-1", className)} ref={wrapRef}>
+    <div className={cn("relative space-y-1", className)} ref={wrapRef}>
       {label ? <div className="text-xs text-muted-foreground">{label}</div> : null}
 
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            // If closed, treat Enter as "next"
-            if (!open) focusNext();
-          }
-        }}
         ref={setButtonRef}
         className={cn(
-          "flex w-full items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-left text-sm shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800/40",
+          "flex w-full items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-left text-sm shadow-sm hover:bg-slate-50",
+          "dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800/40",
           buttonClassName
         )}
       >
@@ -189,81 +191,98 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
 
       {open
         ? createPortal(
-            <div
-              ref={menuRef}
-              style={menuStyle}
-              className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/40 dark:border-slate-700 dark:bg-slate-900 dark:shadow-black/20"
-            >
-              <div className="border-b border-slate-200 px-3 py-2 dark:border-slate-700">
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <input
-                    ref={inputRef}
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Escape") {
-                        e.preventDefault();
+          <div
+            ref={menuRef}
+            style={menuStyle}
+            className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/40 dark:border-slate-700 dark:bg-slate-900 dark:shadow-black/20"
+          >
+            <div className="border-b border-slate-200 px-3 py-2 dark:border-slate-700">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  ref={inputRef}
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") {
+                      e.preventDefault();
+                      setOpen(false);
+                      setQuery("");
+                      buttonRef.current?.focus();
+                      return;
+                    }
+                    if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      setActiveIndex((prev) => (prev + 1) % Math.max(1, filtered.length));
+                    }
+                    if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      setActiveIndex((prev) => (prev - 1 + filtered.length) % Math.max(1, filtered.length));
+                    }
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      const item = filtered[activeIndex];
+                      if (item) {
+                        onChange(item.id);
                         setOpen(false);
                         setQuery("");
-                        buttonRef.current?.focus();
-                        return;
+                        setTimeout(() => {
+                          if (props.onEnterNext) props.onEnterNext();
+                          else buttonRef.current?.focus({ preventScroll: true });
+                        }, 10);
                       }
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        const first = filtered[0];
-                        if (first) onChange(first.id);
+                    }
+                  }}
+                  placeholder="Type to search…"
+                  className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-8 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-950"
+                />
+              </div>
+            </div>
+
+            <div ref={listRef} className="max-h-64 overflow-auto p-1">
+              {filtered.length ? (
+                filtered.map((o, idx) => {
+                  const labelText = getLabel ? getLabel(o) : o.name ?? o.id;
+                  const isSelected = o.id === valueId;
+                  const isActive = idx === activeIndex;
+                  return (
+                    <button
+                      key={o.id}
+                      type="button"
+                      onMouseMove={() => setActiveIndex(idx)}
+                      onClick={() => {
+                        onChange(o.id);
                         setOpen(false);
                         setQuery("");
-                        focusNext();
-                      }
-                    }}
-                    placeholder="Type to search…"
-                    className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-8 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-950"
-                  />
-                </div>
-              </div>
-
-              <div className="max-h-64 overflow-auto p-1">
-                {filtered.length ? (
-                  filtered.map((o) => {
-                    const labelText = getLabel ? getLabel(o) : o.name ?? o.id;
-                    const active = o.id === valueId;
-
-                    return (
-                      <button
-                        key={o.id}
-                        type="button"
-                        onClick={() => {
-                          onChange(o.id);
-                          setOpen(false);
-                          setQuery("");
-                          focusNext();
-                        }}
-                        className={cn(
-                          "flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800/40",
-                          active && "bg-primary/10"
-                        )}
-                      >
-                        <span className="min-w-0 flex-1 truncate">{labelText}</span>
-                        {active ? <Check className="h-4 w-4 text-primary" /> : null}
-                      </button>
-                    );
-                  })
-                ) : (
-                  <div className="px-3 py-3 text-sm text-muted-foreground">{emptyText}</div>
-                )}
-              </div>
-            </div>,
-            document.body
-          )
+                        setTimeout(() => {
+                          if (props.onEnterNext) props.onEnterNext();
+                          else buttonRef.current?.focus({ preventScroll: true });
+                        }, 10);
+                      }}
+                      className={cn(
+                        "flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition",
+                        isActive ? "bg-slate-100 dark:bg-slate-800" : "hover:bg-slate-50 dark:hover:bg-slate-800/40",
+                        isSelected && "text-primary font-medium"
+                      )}
+                    >
+                      <span className="min-w-0 flex-1 truncate">{labelText}</span>
+                      {isSelected ? <Check className="h-4 w-4 text-primary" /> : null}
+                    </button>
+                  );
+                })
+              ) : (
+                <div className="px-3 py-3 text-sm text-muted-foreground">{emptyText}</div>
+              )}
+            </div>
+          </div>,
+          document.body
+        )
         : null}
     </div>
   );
 }
 
 function isoAddDays(iso: string, days: number) {
-  // iso: yyyy-mm-dd
   const d = new Date(iso + "T00:00:00");
   d.setDate(d.getDate() + days);
   return d.toISOString().slice(0, 10);
@@ -271,16 +290,41 @@ function isoAddDays(iso: string, days: number) {
 
 export default function SalesCreatePage() {
   const [mounted, setMounted] = React.useState(false);
+
+  const invoiceDateRef = React.useRef<HTMLInputElement>(null);
+  const dueDateRef = React.useRef<HTMLInputElement>(null);
+  const invoiceNoRef = React.useRef<HTMLInputElement>(null);
+  const paymentMethodRef = React.useRef<HTMLSelectElement>(null);
+  const referenceNoRef = React.useRef<HTMLInputElement>(null);
+  const customerSelectRef = React.useRef<HTMLButtonElement>(null);
+  const addLineButtonRef = React.useRef<HTMLButtonElement>(null);
+
+  // For item table navigation
+  const rowRefs = React.useRef<{
+    select: (HTMLButtonElement | null)[];
+    qty: (HTMLInputElement | null)[];
+    rate: (HTMLInputElement | null)[];
+  }>({ select: [], qty: [], rate: [] });
+
   const [parties, setParties] = React.useState<PartyRecord[]>([]);
   const [accounts, setAccounts] = React.useState<AccountRecord[]>([]);
-  const [items, setItems] = React.useState<StockReportRow[]>([]);
+  const [items, setItems] = React.useState<ItemRecord[]>([]);
+
+  const safeFocus = (el: HTMLElement | null) => {
+    if (!el) return;
+    el.focus({ preventScroll: true });
+  };
+
+  React.useEffect(() => {
+    if (mounted) {
+      setTimeout(() => safeFocus(invoiceDateRef.current), 100);
+    }
+  }, [mounted]);
+
   const [loading, setLoading] = React.useState(false);
   const [sending, setSending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<string | null>(null);
-
-  // Invoice header-like values (for UI)
-  const [invoiceNo] = React.useState("1234/56789");
 
   const [form, setForm] = React.useState({
     partyId: "",
@@ -288,45 +332,33 @@ export default function SalesCreatePage() {
     invoiceDate: { bs: "", ad: "" },
     dueDate: { bs: "", ad: "" },
 
+    invoiceNoDisplay: "System generated",
     referenceNo: "",
-    paymentMethod: "bank_transfer" as
-      | "cash"
-      | "bank_transfer"
-      | "cheque"
-      | "online"
-      | "credit",
 
-    // Bank to show on invoice (display only)
-    paymentDisplayAccountId: "",
+    paymentMethod: "" as any,
 
     notes: "",
     termsOverrideEnabled: false,
     termsText: "",
   });
 
-  const [lines, setLines] = React.useState<Line[]>([{ itemId: "", qty: "1", rate: "" }]);
+  const [lines, setLines] = React.useState<Line[]>([{ itemId: "", qty: "", rate: "" }]);
+
+  // Clean up refs when lines change
+  React.useEffect(() => {
+    rowRefs.current.select = rowRefs.current.select.slice(0, lines.length);
+    rowRefs.current.qty = rowRefs.current.qty.slice(0, lines.length);
+    rowRefs.current.rate = rowRefs.current.rate.slice(0, lines.length);
+  }, [lines.length]);
 
   const [billSundries, setBillSundries] = React.useState<BillSundryRow[]>([
+    { id: "discount", name: "Discount", type: "less", ratePct: "0" },
     { id: "vat", name: "VAT", type: "add", ratePct: "13" },
   ]);
 
   const [showTerms, setShowTerms] = React.useState(false);
 
-  const customerSelectNextRef = React.useRef<HTMLInputElement | null>(null);
-  const firstItemSelectRef = React.useRef<HTMLButtonElement | null>(null);
-
-  const formatError = (e: any) => {
-    const issues = e?.details?.issues;
-    if (Array.isArray(issues) && issues.length) {
-      return issues
-        .map((issue) => {
-          const path = Array.isArray(issue?.path) ? issue.path.join(".") : "";
-          return path ? `${path}: ${issue.message}` : issue.message;
-        })
-        .join("\n");
-    }
-    return e?.message ?? "Something went wrong.";
-  };
+  const defaultReceivable = React.useMemo(() => accounts[0]?.id ?? "", [accounts]);
 
   React.useEffect(() => setMounted(true), []);
 
@@ -334,8 +366,7 @@ export default function SalesCreatePage() {
     const now = new Date();
     const ad = now.toISOString().slice(0, 10);
     const bs = toBs(ad);
-
-    const dueAd = isoAddDays(ad, 14); // default 14 days (adjust if you prefer Net 30)
+    const dueAd = isoAddDays(ad, 14);
     const dueBs = toBs(dueAd);
 
     setForm((f) => ({
@@ -344,6 +375,13 @@ export default function SalesCreatePage() {
       dueDate: { bs: dueBs, ad: dueAd },
     }));
   }, []);
+
+  React.useEffect(() => {
+    if (!form.receivableAccountId && defaultReceivable) {
+      setForm((f) => ({ ...f, receivableAccountId: defaultReceivable }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultReceivable]);
 
   React.useEffect(() => {
     let alive = true;
@@ -357,17 +395,17 @@ export default function SalesCreatePage() {
     Promise.all([
       listParties({ type: "customer", take: 200 }),
       listAccounts({ type: "asset", take: 200 }),
-      getStockReport(),
+      listItems({ take: 500 }),
     ])
       .then(([p, a, i]) => {
         if (!alive) return;
         setParties(normalizeList<PartyRecord>(p));
         setAccounts(normalizeList<AccountRecord>(a));
-        setItems(normalizeList<StockReportRow>(i));
+        setItems(normalizeList<ItemRecord>(i));
       })
       .catch((e: any) => {
         if (!alive) return;
-        setError(formatError(e));
+        setError(e?.message ?? "Something went wrong.");
       });
 
     return () => {
@@ -375,83 +413,127 @@ export default function SalesCreatePage() {
     };
   }, []);
 
-  const updateLine = (idx: number, patch: Partial<Line>) => {
-    setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
-  };
-
-  const addLine = () => setLines((prev) => [...prev, { itemId: "", qty: "1", rate: "" }]);
-  const removeLine = (idx: number) => setLines((prev) => prev.filter((_, i) => i !== idx));
-
-  const subtotal = React.useMemo(() => {
-    return lines.reduce((sum, l) => {
-      const qty = Number(l.qty || 0);
-      const rate = Number(l.rate || 0);
-      return sum + qty * rate;
-    }, 0);
+  const itemsSubtotal = React.useMemo(() => {
+    return lines.reduce((sum, l) => sum + Number(l.qty || 0) * Number(l.rate || 0), 0);
   }, [lines]);
 
   const billSundryComputed = React.useMemo(() => {
     const rows = billSundries.map((r) => {
       const pct = Number(r.ratePct || 0);
-      const amount = (subtotal * pct) / 100;
-      return { ...r, pct, amount };
+      const amount = (itemsSubtotal * pct) / 100;
+      return { ...r, amount };
     });
-    const addTotal = rows.filter((r) => r.type === "add").reduce((s, r) => s + r.amount, 0);
-    const lessTotal = rows.filter((r) => r.type === "less").reduce((s, r) => s + r.amount, 0);
-    return { rows, addTotal, lessTotal, net: addTotal - lessTotal };
-  }, [billSundries, subtotal]);
+    const add = rows.filter((r) => r.type === "add").reduce((s, r) => s + r.amount, 0);
+    const less = rows.filter((r) => r.type === "less").reduce((s, r) => s + r.amount, 0);
+    return { rows, net: add - less };
+  }, [billSundries, itemsSubtotal]);
 
-  const total = subtotal + billSundryComputed.net;
+  const totalQty = React.useMemo(() => {
+    return lines.reduce((sum, l) => sum + Number(l.qty || 0), 0);
+  }, [lines]);
 
-  const addSundry = () => {
+  const totalRate = React.useMemo(() => {
+    return lines.reduce((sum, l) => sum + Number(l.rate || 0), 0);
+  }, [lines]);
+
+  const taxableAmount = React.useMemo(() => {
+    return lines.reduce((sum, l) => {
+      const item = items.find((it) => it.id === l.itemId);
+      const isTaxable = !!item?.taxCodeId;
+      return isTaxable ? sum + Number(l.qty || 0) * Number(l.rate || 0) : sum;
+    }, 0);
+  }, [lines, items]);
+
+  const nonTaxableAmount = React.useMemo(() => {
+    return lines.reduce((sum, l) => {
+      const item = items.find((it) => it.id === l.itemId);
+      const isTaxable = !!item?.taxCodeId;
+      return !isTaxable ? sum + Number(l.qty || 0) * Number(l.rate || 0) : sum;
+    }, 0);
+  }, [lines, items]);
+
+  const otherSundryTotal = React.useMemo(() => {
+    return billSundryComputed.rows
+      .filter((r) => r.id !== "vat" && r.id !== "discount")
+      .reduce((sum, r) => sum + (r.type === "add" ? r.amount : -r.amount), 0);
+  }, [billSundryComputed]);
+
+  const total = itemsSubtotal + billSundryComputed.net;
+
+  const updateLine = (idx: number, patch: Partial<Line>) =>
+    setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
+
+  const [pendingFocusIndex, setPendingFocusIndex] = React.useState<number | null>(null);
+
+  const addLine = () => {
+    setLines((prev) => {
+      setPendingFocusIndex(prev.length);
+      return [...prev, { itemId: "", qty: "", rate: "" }];
+    });
+  };
+
+  React.useEffect(() => {
+    if (pendingFocusIndex !== null && lines[pendingFocusIndex]) {
+      // Small timeout to ensure the DOM element is rendered and associated with the ref
+      const timer = setTimeout(() => {
+        safeFocus(rowRefs.current.select[pendingFocusIndex]);
+        setPendingFocusIndex(null);
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [lines, pendingFocusIndex]);
+
+  const removeLine = (idx: number) => setLines((prev) => prev.filter((_, i) => i !== idx));
+
+  const updateSundry = (id: string, patch: Partial<BillSundryRow>) =>
+    setBillSundries((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+
+  const addSundry = () =>
     setBillSundries((prev) => [
       ...prev,
-      {
-        id: crypto.randomUUID(),
-        name: "Sundry",
-        type: "add",
-        ratePct: "0",
-      },
+      { id: crypto.randomUUID(), name: "Sundry", type: "add", ratePct: "0" },
     ]);
-  };
 
-  const updateSundry = (id: string, patch: Partial<BillSundryRow>) => {
-    setBillSundries((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
-  };
-
-  const removeSundry = (id: string) => {
-    setBillSundries((prev) => prev.filter((r) => r.id !== id));
-  };
+  const removeSundry = (id: string) => setBillSundries((prev) => prev.filter((r) => r.id !== id));
 
   const buildPayload = () => {
     if (!form.partyId || !form.receivableAccountId) {
       throw new Error("Customer and receivable account are required.");
     }
+    if (!form.paymentMethod) {
+      throw new Error("Please select a payment method.");
+    }
 
     const payloadItems = lines
-      .filter((l) => l.itemId && Number(l.qty) > 0)
-      .map((l) => ({
-        itemId: l.itemId,
-        qty: Number(l.qty),
-        rate: Number(l.rate || 0),
-        description: l.description || undefined,
-      }));
+      .filter((l) => l.itemId)
+      .map((l, idx) => {
+        const qty = Number(l.qty);
+        const rate = Number(l.rate);
+
+        if (isNaN(qty) || qty <= 0) {
+          throw new Error(`Line ${idx + 1}: Quantity must be greater than zero.`);
+        }
+        if (isNaN(rate) || rate <= 0) {
+          throw new Error(`Line ${idx + 1}: Rate is required and must be greater than zero.`);
+        }
+
+        return {
+          itemId: l.itemId,
+          qty,
+          rate,
+          description: l.description || undefined,
+        };
+      });
 
     if (!payloadItems.length) throw new Error("Add at least one item line.");
 
     return {
       type: "sales" as const,
       partyId: form.partyId,
-
-      // invoice date
       date: form.invoiceDate.ad || undefined,
       dateBs: form.invoiceDate.bs || undefined,
-
-      // NOTE: your InvoiceDraftInput supports dueDate/dueDateBs in the OpenAPI you shared earlier.
-      // If your actual backend currently rejects it, remove these two lines.
       dueDate: form.dueDate.ad || undefined,
       dueDateBs: form.dueDate.bs || undefined,
-
       receivableAccountId: form.receivableAccountId,
       items: payloadItems,
     };
@@ -466,7 +548,7 @@ export default function SalesCreatePage() {
       const id = res?.id ?? res?.invoiceId ?? res?.data?.id;
       setSuccess(id ? `Saved draft: ${id}` : "Saved draft.");
     } catch (e: any) {
-      setError(formatError(e));
+      setError(e?.message ?? "Something went wrong.");
     } finally {
       setLoading(false);
     }
@@ -481,32 +563,22 @@ export default function SalesCreatePage() {
       const id = res?.id ?? res?.invoiceId ?? res?.data?.id;
       setSuccess(id ? `Draft ready to send: ${id}` : "Draft ready to send.");
     } catch (e: any) {
-      setError(formatError(e));
+      setError(e?.message ?? "Something went wrong.");
     } finally {
       setSending(false);
     }
   };
 
-  const onPreview = () => {
-    setSuccess("Preview: wire to /invoices/preview or PDF preview endpoint.");
-  };
+  const onPreview = () => setSuccess("Preview: connect to your invoice preview route/API.");
+  const onPrint = () => setSuccess("Print: connect to your PDF + print flow.");
 
-  const onPrint = () => {
-    setSuccess("Print: wire to PDF generation then open printable view.");
-  };
-
+  // ✅ Early return AFTER all hooks are declared
   if (!mounted) return <div className="min-h-screen" />;
-
-  // Bank accounts to show on invoice: filter assets that look like bank/cash (adjust later)
-  const bankDisplayAccounts = accounts.filter((a) => {
-    const n = (a.name ?? "").toLowerCase();
-    return n.includes("bank") || n.includes("cash");
-  });
 
   return (
     <div className="space-y-6">
-      <div className="rounded-[28px] border bg-gradient-to-br from-slate-50 via-white to-slate-50 p-6 shadow-xl shadow-slate-200/40 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 dark:shadow-black/20">
-        <PageHeader title="New Sales Invoice" description="Draft invoice for sales and collections." />
+      <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+        <PageHeader title="Create New Sales Invoice" description="Fill in the details below to create a new sales invoice." />
 
         {/* Alerts */}
         <div className="mb-4 grid gap-3">
@@ -522,68 +594,90 @@ export default function SalesCreatePage() {
           ) : null}
         </div>
 
-        {/* Top invoice strip (matches your image) */}
-        <div className="mb-5 flex flex-col gap-4 rounded-3xl border bg-white/90 p-6 shadow-sm dark:bg-slate-900/80 lg:flex-row lg:items-start lg:justify-between">
-          <div className="space-y-1">
-            <div className="text-xs tracking-[0.22em] text-muted-foreground">INVOICE NO:</div>
-            <div className="text-2xl font-semibold tracking-tight">{invoiceNo}</div>
+
+        {/* Top area */}
+        <section className="relative mb-6">
+          <div className="absolute right-0 top-0 hidden w-[260px] flex-col gap-3 lg:flex">
+            <DualDateInput
+              ref={invoiceDateRef}
+              label="Invoice Date"
+              value={form.invoiceDate}
+              onChange={(next) => setForm((f) => ({ ...f, invoiceDate: next }))}
+              onEnterNext={() => safeFocus(dueDateRef.current)}
+            />
+            <DualDateInput
+              ref={dueDateRef}
+              label="Due Date"
+              value={form.dueDate}
+              onChange={(next) => setForm((f) => ({ ...f, dueDate: next }))}
+              onEnterNext={() => safeFocus(invoiceNoRef.current)}
+            />
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:flex lg:gap-10">
-            <div className="space-y-2">
-              <div className="text-xs tracking-[0.22em] text-muted-foreground text-right lg:text-left">
-                INVOICE DATE:
-              </div>
-              <div className="text-sm font-semibold text-right lg:text-left">
-                {form.invoiceDate.ad || "—"}
+          <div className="grid gap-6 lg:grid-cols-12 lg:pr-[300px]">
+            <div className="lg:col-span-4 space-y-3">
+              <label className="space-y-1 text-sm">
+                <span className="text-xs text-muted-foreground">Invoice No.</span>
+                <Input
+                  ref={invoiceNoRef}
+                  value={form.invoiceNoDisplay}
+                  onChange={(e) => setForm((f) => ({ ...f, invoiceNoDisplay: e.target.value }))}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      safeFocus(paymentMethodRef.current);
+                    }
+                  }}
+                  placeholder="System generated"
+                  className="h-11 rounded-2xl bg-slate-50/60 dark:bg-slate-900/60"
+                />
+              </label>
+
+              <label className="space-y-1 text-sm">
+                <span className="text-xs text-muted-foreground">Reference No.</span>
+                <Input
+                  ref={referenceNoRef}
+                  value={form.referenceNo}
+                  onChange={(e) => setForm((f) => ({ ...f, referenceNo: e.target.value }))}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      customerSelectRef.current?.focus();
+                    }
+                  }}
+                  placeholder="Enter reference (optional)"
+                  className="h-11 rounded-2xl bg-slate-50/60 dark:bg-slate-900/60"
+                />
+              </label>
+            </div>
+
+            <div className="lg:col-span-8 flex items-start lg:justify-center">
+              <div className="w-full max-w-[520px]">
+                <div className="text-xs text-muted-foreground">Payment method <span className="text-red-500">*</span></div>
+                <select
+                  ref={paymentMethodRef}
+                  value={form.paymentMethod}
+                  onChange={(e) => setForm((f) => ({ ...f, paymentMethod: e.target.value as any }))}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      if (!form.paymentMethod) return;
+                      e.preventDefault();
+                      safeFocus(referenceNoRef.current);
+                    }
+                  }}
+                  className="mt-2 h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900"
+                >
+                  <option value="">Select payment method…</option>
+                  <option value="bank_transfer">Bank Transfer</option>
+                  <option value="online">Online Wallet / Gateway</option>
+                  <option value="cheque">Cheque</option>
+                  <option value="cash">Cash</option>
+                  <option value="credit">Credit (Pay later)</option>
+                </select>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <div className="text-xs tracking-[0.22em] text-muted-foreground text-right lg:text-left">
-                DUE DATE:
-              </div>
-              <div className="text-sm font-semibold text-right lg:text-left">
-                {form.dueDate.ad || "—"}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Main details (full-width like your image) */}
-        <section className="rounded-3xl border bg-white/90 p-6 shadow-sm dark:bg-slate-900/80">
-          <div className="grid gap-4 lg:grid-cols-12">
-            {/* Reference */}
-            <label className="space-y-1 text-sm lg:col-span-4">
-              <span className="text-xs text-muted-foreground">Reference No.</span>
-              <Input
-                ref={customerSelectNextRef}
-                value={form.referenceNo}
-                onChange={(e) => setForm((f) => ({ ...f, referenceNo: e.target.value }))}
-                placeholder="Enter reference (optional)"
-              />
-            </label>
-
-            {/* Payment method just below reference (as you asked, but in same row on desktop) */}
-            <label className="space-y-1 text-sm lg:col-span-4">
-              <span className="text-xs text-muted-foreground">Payment method</span>
-              <select
-                value={form.paymentMethod}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, paymentMethod: e.target.value as any }))
-                }
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900"
-              >
-                <option value="bank_transfer">Bank Transfer</option>
-                <option value="online">Online Wallet / Gateway</option>
-                <option value="cheque">Cheque</option>
-                <option value="cash">Cash</option>
-                <option value="credit">Credit (Pay later)</option>
-              </select>
-            </label>
-
-            {/* Dates */}
-            <div className="lg:col-span-4 grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-3 lg:hidden sm:grid-cols-2">
               <DualDateInput
                 label="Invoice Date"
                 value={form.invoiceDate}
@@ -595,213 +689,252 @@ export default function SalesCreatePage() {
                 onChange={(next) => setForm((f) => ({ ...f, dueDate: next }))}
               />
             </div>
-
-            {/* Customer */}
-            <div className="lg:col-span-8">
-              <div className="mb-2 flex items-center justify-between">
-                <div className="text-sm font-semibold">Customer Name</div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="rounded-full border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  New Customer
-                </Button>
-              </div>
-
-              <SearchableSelect<PartyRecord>
-                placeholder="Search customer…"
-                valueId={form.partyId}
-                onChange={(id) => setForm((f) => ({ ...f, partyId: id }))}
-                options={parties}
-                getLabel={(p) => p.name}
-                leftIcon={<Search className="h-4 w-4" />}
-              />
-            </div>
-
-            {/* Receivable account (keep but can be moved to Advanced later) */}
-            <label className="space-y-1 text-sm lg:col-span-4">
-              <span className="text-xs text-muted-foreground">Receivable Account</span>
-              <select
-                value={form.receivableAccountId}
-                onChange={(e) => setForm((f) => ({ ...f, receivableAccountId: e.target.value }))}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900"
-              >
-                <option value="">Select account</option>
-                {accounts.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.code ? `${a.code} - ${a.name}` : a.name}
-                  </option>
-                ))}
-              </select>
-            </label>
           </div>
         </section>
 
-        {/* Items Details */}
-        <section className="mt-6 rounded-3xl border bg-white/90 p-6 shadow-sm dark:bg-slate-900/80">
-          <div className="mb-3 flex items-center justify-between">
-            <div className="text-sm font-semibold">Items Details</div>
-            <Button type="button" variant="outline" onClick={addLine} className="rounded-full px-4">
-              <Plus className="mr-2 h-4 w-4" />
-              Add item
+        {/* Customer */}
+        <section className="mb-6">
+          <div className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-200">Customer</div>
+
+          <div className="relative max-w-[980px]">
+            <SearchableSelect<PartyRecord>
+              buttonRef={customerSelectRef}
+              placeholder="Search customer…"
+              valueId={form.partyId}
+              onChange={(id) => setForm((f) => ({ ...f, partyId: id }))}
+              options={parties}
+              getLabel={(p) => p.name}
+              leftIcon={<Search className="h-4 w-4" />}
+              onEnterNext={() => safeFocus(rowRefs.current.select[0])}
+              buttonClassName="h-12 rounded-2xl bg-white dark:bg-slate-900 pr-[140px]"
+            />
+
+            <Button type="button" variant="outline" className="absolute right-2 top-1/2 -translate-y-1/2 h-9 rounded-full px-4 text-xs">
+              <Plus className="mr-2 h-3.5 w-3.5" />
+              New Customer
             </Button>
           </div>
+        </section>
 
-          <div className="overflow-x-auto overflow-y-visible rounded-2xl border border-slate-200 bg-slate-50/70 dark:border-slate-700 dark:bg-slate-900/40">
-            <table className="min-w-full text-sm">
-              <thead className="bg-slate-100/80 dark:bg-slate-800/60">
-                <tr>
-                  {/* Resize the item column here (matches your request) */}
-                  <th className="w-[560px] min-w-[520px] px-3 py-2 text-center text-xs text-muted-foreground">
-                    Particulars
-                  </th>
-                  <th className="w-[120px] px-3 py-2 text-left text-xs text-muted-foreground">Qty</th>
-                  <th className="w-[140px] px-3 py-2 text-left text-xs text-muted-foreground">Rate</th>
-                  <th className="w-[160px] px-3 py-2 text-right text-xs text-muted-foreground">
-                    Amount
-                  </th>
-                  <th className="w-[60px] px-3 py-2 text-right text-xs text-muted-foreground" />
-                </tr>
-              </thead>
+        {/* Add Column */}
+        <div className="mb-3 flex items-center justify-end">
+          <Button
+            ref={addLineButtonRef}
+            type="button"
+            onClick={addLine}
+            className="rounded-full bg-indigo-600 text-white hover:bg-indigo-700"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add Column
+          </Button>
+        </div>
 
-              <tbody>
-                {lines.map((line, idx) => {
-                  const qty = Number(line.qty || 0);
-                  const rate = Number(line.rate || 0);
-                  const amt = qty * rate;
+        {/* Items Details */}
+        <section className="mb-8 rounded-3xl border bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+          <div className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-100">Items Details</div>
 
-                  return (
-                    <tr key={idx} className="border-t border-slate-200/70 dark:border-slate-700/70">
-                      <td className="w-[560px] min-w-[520px] px-3 py-2">
-                        <SearchableSelect<StockReportRow>
-                          placeholder="Search item…"
-                          valueId={line.itemId}
-                          onChange={(id) => updateLine(idx, { itemId: id })}
-                          options={items}
-                          getLabel={(it) => {
-                            const code = (it as any).hsCode ? ` (${(it as any).hsCode})` : "";
-                            return `${(it as any).name ?? "Item"}${code}`;
-                          }}
-                          leftIcon={<Search className="h-4 w-4" />}
-                          buttonClassName="py-2"
-                          emptyText="No items found"
-                          buttonRef={idx === 0 ? firstItemSelectRef : undefined}
-                        />
-                      </td>
-
-                      <td className="px-3 py-2 text-right">
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={line.qty}
-                          onChange={(e) => updateLine(idx, { qty: e.target.value })}
-                          placeholder="Qty"
-                        />
-                      </td>
-
-                      <td className="px-3 py-2 text-right">
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={line.rate}
-                          onChange={(e) => updateLine(idx, { rate: e.target.value })}
-                          placeholder="Rate"
-                        />
-                      </td>
-
-                      <td className="px-3 py-2 text-right">
-                        <MoneyText value={amt} />
-                      </td>
-
-                      <td className="px-3 py-2 text-right">
-                        <button
-                          type="button"
-                          onClick={() => removeLine(idx)}
-                          className={cn(
-                            "inline-flex items-center justify-center rounded-md border px-2 py-2 text-xs text-red-600 hover:bg-red-50",
-                            lines.length === 1 && "pointer-events-none opacity-50"
-                          )}
-                          title="Remove line"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-
-                <tr className="border-t bg-slate-100/60 dark:bg-slate-800/40">
-                  <td className="px-3 py-2 text-right font-medium" colSpan={3}>
-                    Total
-                  </td>
-                  <td className="px-3 py-2 text-right font-semibold">
-                    <MoneyText value={subtotal} />
-                  </td>
-                  <td />
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          {/* Bill Sundry (like your image) */}
-          <div className="mt-6 rounded-2xl border border-slate-200 bg-white/70 p-4 dark:border-slate-700 dark:bg-slate-900/40">
-            <div className="mb-3 flex items-center justify-between">
-              <div className="text-sm font-semibold tracking-[0.18em] text-slate-700 dark:text-slate-200">
-                BILL SUNDRY
-              </div>
-              <Button type="button" variant="outline" onClick={addSundry} className="rounded-full">
-                <Plus className="mr-2 h-4 w-4" />
-                Add
-              </Button>
-            </div>
-
-            <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/30">
+            <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
-                <thead className="bg-slate-100/70 dark:bg-slate-800/50">
+                <thead className="bg-slate-100/70 dark:bg-slate-900/40">
                   <tr>
-                    <th className="w-[70px] px-3 py-2 text-left text-xs text-muted-foreground">
-                      S.N.
+                    <th className="w-[60px] px-4 py-3 text-left text-xs text-muted-foreground">S.No.</th>
+                    <th className="w-[520px] min-w-[420px] px-4 py-3 text-left text-xs text-muted-foreground">Particulars</th>
+                    <th className="w-[140px] px-4 py-3 text-left text-xs text-muted-foreground">
+                      Qty <span className="text-red-500">*</span>
                     </th>
+                    <th className="w-[180px] px-4 py-3 text-left text-xs text-muted-foreground">
+                      Rate <span className="text-red-500">*</span>
+                    </th>
+                    <th className="w-[180px] px-4 py-3 text-right text-xs text-muted-foreground">Amount</th>
+                    <th className="w-[70px] px-4 py-3 text-right text-xs text-muted-foreground" />
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {lines.map((line, idx) => {
+                    const qty = Number(line.qty || 0);
+                    const rate = Number(line.rate || 0);
+                    const amt = qty * rate;
+
+                    return (
+                      <tr key={idx} className="border-t border-slate-200/70 dark:border-slate-800/60">
+                        <td className="px-4 py-3 text-muted-foreground font-medium">{idx + 1}</td>
+                        <td className="px-4 py-3">
+                          <SearchableSelect<ItemRecord>
+                            buttonRef={(el) => { rowRefs.current.select[idx] = el; }}
+                            placeholder="Search item…"
+                            valueId={line.itemId}
+                            onChange={(id) => updateLine(idx, { itemId: id })}
+                            options={items}
+                            getLabel={(it) => {
+                              const code = it.hsCode ? ` (${it.hsCode})` : "";
+                              return `${it.name ?? "Item"}${code}`;
+                            }}
+                            onEnterNext={() => safeFocus(rowRefs.current.qty[idx])}
+                            leftIcon={<Search className="h-4 w-4" />}
+                            buttonClassName="h-11 rounded-2xl bg-white dark:bg-slate-900"
+                            emptyText="No items found"
+                          />
+                        </td>
+
+                        <td className="px-4 py-3">
+                          <Input
+                            ref={(el) => { rowRefs.current.qty[idx] = el; }}
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={line.qty}
+                            onChange={(e) => updateLine(idx, { qty: e.target.value })}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                if (!line.qty || Number(line.qty) <= 0) {
+                                  setError("Please enter a valid quantity.");
+                                  return;
+                                }
+                                setError(null);
+                                e.preventDefault();
+                                safeFocus(rowRefs.current.rate[idx]);
+                              }
+                            }}
+                            onBlur={() => {
+                              if (line.itemId && (!line.qty || Number(line.qty) <= 0)) {
+                                setError(`Line ${idx + 1}: Quantity is required.`);
+                              }
+                            }}
+                            className={cn(
+                              "h-11 rounded-2xl bg-white text-center dark:bg-slate-900 transition-colors",
+                              line.itemId && (!line.qty || Number(line.qty) <= 0) && "border-red-500 focus:ring-red-200"
+                            )}
+                          />
+                        </td>
+
+                        <td className="px-4 py-3">
+                          <Input
+                            ref={(el) => { rowRefs.current.rate[idx] = el; }}
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={line.rate}
+                            onChange={(e) => updateLine(idx, { rate: e.target.value })}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                if (!line.rate || Number(line.rate) <= 0) {
+                                  setError("Please enter a valid rate.");
+                                  return;
+                                }
+                                setError(null);
+                                e.preventDefault();
+                                if (rowRefs.current.select[idx + 1]) {
+                                  safeFocus(rowRefs.current.select[idx + 1]);
+                                } else {
+                                  safeFocus(addLineButtonRef.current);
+                                }
+                              }
+                            }}
+                            onBlur={() => {
+                              if (line.itemId && (!line.rate || Number(line.rate) <= 0)) {
+                                setError(`Line ${idx + 1}: Rate is required.`);
+                              }
+                            }}
+                            className={cn(
+                              "h-11 rounded-2xl bg-white text-center dark:bg-slate-900 transition-colors",
+                              line.itemId && (!line.rate || Number(line.rate) <= 0) && "border-red-500 focus:ring-red-200"
+                            )}
+                            placeholder="Rate"
+                          />
+                        </td>
+
+                        <td className="px-4 py-3 text-right font-semibold">
+                          <MoneyText value={amt} />
+                        </td>
+
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => removeLine(idx)}
+                            className={cn(
+                              "inline-flex h-10 w-10 items-center justify-center rounded-xl border text-red-600 hover:bg-red-50",
+                              lines.length === 1 && "pointer-events-none opacity-50"
+                            )}
+                            title="Remove line"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+
+                  <tr className="border-t bg-slate-100/60 font-semibold dark:bg-slate-900/40">
+                    <td />
+                    <td className="px-4 py-3 text-right">
+                      Total
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      {totalQty % 1 === 0 ? totalQty : totalQty.toFixed(2)}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <MoneyText value={totalRate} />
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <MoneyText value={itemsSubtotal} />
+                    </td>
+                    <td />
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+        <div className="mb-3 flex items-right justify-end">
+
+          <Button type="button" variant="outline" onClick={addSundry} className="rounded-full bg-indigo-600 text-white hover:bg-indigo-700">
+            <Plus className="mr-2 h-4 w-4" />
+            Add Sundry Column
+          </Button>
+
+        </div>
+
+        {/* BILL SUNDRY */}
+        <section className="mb-6">
+          {/* <div className="mb-3 text-center text-sm font-semibold tracking-[0.32em] text-slate-800 dark:text-slate-100">
+            BILL SUNDRY
+          </div> */}
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+
+
+            <div className="mr-4 text-sm font-semibold text-slate-700 dark:text-slate-200">Bill Sundry Details</div>
+            <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+              <table className="min-w-full text-sm">
+                <thead className="bg-slate-100/70 dark:bg-slate-900/40">
+                  <tr>
+                    <th className="w-[70px] px-3 py-2 text-left text-xs text-muted-foreground">S.N.</th>
                     <th className="px-3 py-2 text-left text-xs text-muted-foreground">Bill Sundry</th>
                     <th className="w-[140px] px-3 py-2 text-right text-xs text-muted-foreground">@</th>
-                    <th className="w-[190px] px-3 py-2 text-right text-xs text-muted-foreground">
-                      Amount (Rs.)
-                    </th>
+                    <th className="w-[200px] px-3 py-2 text-right text-xs text-muted-foreground">Amount (Rs.)</th>
                     <th className="w-[60px] px-3 py-2 text-right text-xs text-muted-foreground" />
                   </tr>
                 </thead>
+
                 <tbody>
-                  {billSundryComputed.rows.map((r, idx) => (
-                    <tr key={r.id} className="border-t border-slate-200/70 dark:border-slate-700/70">
-                      <td className="px-3 py-2 text-sm text-muted-foreground">{idx + 1}</td>
+                  {billSundryComputed.rows.map((r, i) => (
+                    <tr key={r.id} className="border-t border-slate-200/70 dark:border-slate-800/60">
+                      <td className="px-3 py-2 text-muted-foreground">{i + 1}</td>
                       <td className="px-3 py-2">
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                          <Input
-                            value={r.name}
-                            onChange={(e) => updateSundry(r.id, { name: e.target.value })}
-                            className="sm:max-w-[260px]"
-                          />
-                          <select
-                            value={r.type}
-                            onChange={(e) => updateSundry(r.id, { type: e.target.value as any })}
-                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:max-w-[160px]"
-                          >
-                            <option value="add">Add</option>
-                            <option value="less">Less</option>
-                          </select>
-                        </div>
+                        <Input
+                          value={r.name}
+                          onChange={(e) => updateSundry(r.id, { name: e.target.value })}
+                          className="h-10 rounded-xl bg-white dark:bg-slate-900"
+                        />
                       </td>
                       <td className="px-3 py-2 text-right">
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="inline-flex items-center gap-2">
                           <Input
                             value={r.ratePct}
                             onChange={(e) => updateSundry(r.id, { ratePct: e.target.value })}
-                            className="w-[90px] text-right"
-                            inputMode="decimal"
+                            className="h-10 w-[110px] rounded-xl bg-white text-right dark:bg-slate-900"
                           />
                           <span className="text-muted-foreground">%</span>
                         </div>
@@ -814,8 +947,8 @@ export default function SalesCreatePage() {
                           type="button"
                           onClick={() => removeSundry(r.id)}
                           className={cn(
-                            "inline-flex items-center justify-center rounded-md border px-2 py-2 text-xs text-red-600 hover:bg-red-50",
-                            billSundries.length === 1 && "pointer-events-none opacity-50"
+                            "inline-flex h-9 w-9 items-center justify-center rounded-xl border text-red-600 hover:bg-red-50",
+                            billSundries.length <= 1 && "pointer-events-none opacity-50"
                           )}
                           title="Remove"
                         >
@@ -824,145 +957,117 @@ export default function SalesCreatePage() {
                       </td>
                     </tr>
                   ))}
-
-                  <tr className="border-t bg-slate-100/60 dark:bg-slate-800/40">
-                    <td className="px-3 py-2" colSpan={3}>
-                      <div className="text-right font-medium">Net Sundry</div>
-                    </td>
-                    <td className="px-3 py-2 text-right font-semibold">
-                      <MoneyText value={billSundryComputed.net} />
-                    </td>
-                    <td />
-                  </tr>
                 </tbody>
               </table>
             </div>
           </div>
+        </section>
 
-          {/* Payment Details (bank to show on invoice) */}
-          <div className="mt-5 rounded-2xl border border-slate-200 bg-white/70 p-4 dark:border-slate-700 dark:bg-slate-900/40">
-            <div className="mb-2 flex items-center justify-between">
-              <div className="text-sm font-semibold">
-                Payment Details <span className="text-xs text-muted-foreground">(shown on invoice)</span>
-              </div>
-              <div className="text-xs text-muted-foreground">Optional</div>
-            </div>
+        {/* TERMS */}
+        <section className="mb-6 rounded-3xl border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+          <button type="button" onClick={() => setShowTerms((v) => !v)} className="flex w-full items-center gap-3">
+            <ChevronRight className={cn("h-4 w-4 text-muted-foreground transition-transform", showTerms && "rotate-90")} />
+            <div className="text-sm font-semibold">Terms &amp; Conditions</div>
+          </button>
 
-            <div className="grid gap-3 lg:grid-cols-2">
-              <label className="space-y-1 text-sm">
-                <span className="text-xs text-muted-foreground">Select bank account</span>
-                <select
-                  value={form.paymentDisplayAccountId}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, paymentDisplayAccountId: e.target.value }))
-                  }
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900"
-                >
-                  <option value="">Using company default</option>
-                  {bankDisplayAccounts.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.code ? `${a.code} - ${a.name}` : a.name}
-                    </option>
-                  ))}
-                </select>
+          <div className="mt-2 text-sm text-muted-foreground">Using company default</div>
+
+          <button
+            type="button"
+            onClick={() => setShowTerms(true)}
+            className="mt-3 text-sm font-medium text-slate-700 hover:underline dark:text-slate-200"
+          >
+            + Add terms &amp; conditions
+          </button>
+
+          {showTerms ? (
+            <div className="mt-4 grid gap-3">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.termsOverrideEnabled}
+                  onChange={(e) => setForm((f) => ({ ...f, termsOverrideEnabled: e.target.checked }))}
+                />
+                <span>Override for this invoice</span>
               </label>
 
-              <div className="rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
-                <div className="text-xs text-muted-foreground">Shown on PDF</div>
-                <div className="mt-1 font-medium">
-                  {form.paymentDisplayAccountId
-                    ? bankDisplayAccounts.find((x) => x.id === form.paymentDisplayAccountId)?.name ??
-                      "—"
-                    : "Company default bank details"}
+              <textarea
+                value={form.termsText}
+                onChange={(e) => setForm((f) => ({ ...f, termsText: e.target.value }))}
+                disabled={!form.termsOverrideEnabled}
+                className={cn(
+                  "min-h-[110px] w-full rounded-2xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-950",
+                  !form.termsOverrideEnabled && "opacity-70"
+                )}
+              />
+            </div>
+          ) : null}
+        </section>
+
+        {/* Bottom */}
+        <section className="grid gap-6 lg:grid-cols-12">
+          <div className="lg:col-span-6 rounded-3xl border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+            <div className="mb-3 text-sm font-semibold">Summary</div>
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-5 dark:border-slate-800 dark:bg-slate-900/30">
+              <div className="space-y-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Taxable Total</span>
+                  <div className="font-medium">
+                    <MoneyText value={taxableAmount} />
+                  </div>
                 </div>
-                <div className="mt-1 text-xs text-muted-foreground">A/C Name, Number, Branch (from settings)</div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Non-Taxable Total</span>
+                  <div className="font-medium">
+                    <MoneyText value={nonTaxableAmount} />
+                  </div>
+                </div>
+
+                <div className="h-px bg-slate-200 dark:bg-slate-800 my-1 op-40" />
+
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <div className="font-medium">
+                    <MoneyText value={itemsSubtotal} />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Discount</span>
+                  <div className="font-medium">
+                    <MoneyText value={billSundryComputed.rows.find((r) => r.id === "discount")?.amount ?? 0} />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">VAT</span>
+                  <div className="font-medium">
+                    <MoneyText value={billSundryComputed.rows.find((r) => r.id === "vat")?.amount ?? 0} />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Other Sundry</span>
+                  <div className="font-medium">
+                    <MoneyText value={otherSundryTotal} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-5 flex items-center justify-between rounded-2xl bg-white px-4 py-3 shadow-sm dark:bg-slate-950">
+                <div className="text-sm font-semibold">Total</div>
+                <div className="text-sm font-semibold">
+                  <MoneyText value={total} />
+                </div>
               </div>
             </div>
           </div>
-        </section>
 
-        {/* Terms & Conditions + Summary + Actions (bottom like your image) */}
-        <div className="mt-6 grid gap-6 lg:grid-cols-12">
-          {/* Terms */}
-          <section className="lg:col-span-12 rounded-3xl border bg-white/90 p-6 shadow-sm dark:bg-slate-900/80">
-            <button
-              type="button"
-              onClick={() => setShowTerms((v) => !v)}
-              className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-3 text-left dark:border-slate-700 dark:bg-slate-900/40"
-            >
-              <div className="flex items-center gap-3">
-                <ChevronRight
-                  className={cn(
-                    "h-4 w-4 text-muted-foreground transition-transform",
-                    showTerms && "rotate-90"
-                  )}
-                />
-                <div>
-                  <div className="text-sm font-semibold">Terms &amp; Conditions</div>
-                  <div className="text-xs text-muted-foreground">Using company default</div>
-                </div>
-              </div>
-              <div className="text-xs text-muted-foreground">Optional</div>
-            </button>
-
-            {showTerms ? (
-              <div className="mt-4 grid gap-3">
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={form.termsOverrideEnabled}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, termsOverrideEnabled: e.target.checked }))
-                    }
-                  />
-                  <span>Override for this invoice</span>
-                </label>
-
-                <textarea
-                  value={form.termsText}
-                  onChange={(e) => setForm((f) => ({ ...f, termsText: e.target.value }))}
-                  placeholder={
-                    form.termsOverrideEnabled
-                      ? "Enter terms & conditions to print on this invoice…"
-                      : "Company default will be used in PDF…"
-                  }
-                  disabled={!form.termsOverrideEnabled}
-                  className={cn(
-                    "min-h-[120px] w-full rounded-2xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-950",
-                    !form.termsOverrideEnabled && "opacity-70"
-                  )}
-                />
-              </div>
-            ) : null}
-          </section>
-
-          {/* Summary block (bottom-left) */}
-          <section className="lg:col-span-5 rounded-3xl border bg-white/90 p-6 shadow-sm dark:bg-slate-900/80">
-            <div className="mb-3 text-sm font-semibold">Summary</div>
-
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-700 dark:bg-slate-900/40">
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Subtotal</span>
-                  <MoneyText value={subtotal} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Bill Sundry</span>
-                  <MoneyText value={billSundryComputed.net} />
-                </div>
-              </div>
-
-              <div className="mt-3 flex items-center justify-between rounded-xl bg-gradient-to-r from-slate-200/70 to-slate-100/40 px-3 py-2 font-semibold dark:from-slate-800/60 dark:to-slate-700/30">
-                <span>Total</span>
-                <MoneyText value={total} />
-              </div>
-            </div>
-          </section>
-
-          {/* Notes + actions (bottom-right) */}
-          <section className="lg:col-span-7 rounded-3xl border bg-white/90 p-6 shadow-sm dark:bg-slate-900/80">
-            <div className="mb-3 flex items-center justify-between">
-              <div className="text-sm font-semibold">Additional notes</div>
+          <div className="lg:col-span-6 rounded-3xl border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+            <div className="mb-2 flex items-center justify-between">
+              <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">Additional notes</div>
               <div className="text-xs text-muted-foreground">
                 BS: <span className="font-medium text-foreground">{form.invoiceDate.bs || "—"}</span>{" "}
                 <span className="text-muted-foreground">({form.invoiceDate.ad || "—"})</span>
@@ -973,25 +1078,16 @@ export default function SalesCreatePage() {
               value={form.notes}
               onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
               placeholder="Additional notes..."
+              className="h-11 rounded-2xl bg-slate-50/60"
             />
 
-            <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onPreview}
-                className="rounded-full px-5 bg-white/70"
-              >
+            <div className="mt-5 flex flex-wrap items-center justify-end gap-2">
+              <Button type="button" variant="outline" onClick={onPreview} className="rounded-full px-5">
                 <Eye className="mr-2 h-4 w-4" />
                 Preview
               </Button>
 
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onPrint}
-                className="rounded-full px-5 bg-white/70"
-              >
+              <Button type="button" variant="outline" onClick={onPrint} className="rounded-full px-5">
                 <Printer className="mr-2 h-4 w-4" />
                 Print
               </Button>
@@ -1001,7 +1097,7 @@ export default function SalesCreatePage() {
                 variant="outline"
                 onClick={onSave}
                 disabled={loading || sending}
-                className="rounded-full px-5 bg-white/70"
+                className="rounded-full px-6"
               >
                 <Save className="mr-2 h-4 w-4" />
                 {loading ? "Saving..." : "Save"}
@@ -1011,14 +1107,14 @@ export default function SalesCreatePage() {
                 type="button"
                 onClick={onSend}
                 disabled={loading || sending}
-                className="rounded-full px-6 bg-slate-800 text-white hover:bg-slate-900"
+                className="rounded-full bg-indigo-600 px-7 text-white hover:bg-indigo-700"
               >
                 <Send className="mr-2 h-4 w-4" />
                 {sending ? "Sending..." : "Send"}
               </Button>
             </div>
-          </section>
-        </div>
+          </div>
+        </section>
       </div>
     </div>
   );

@@ -214,6 +214,21 @@ export default function SalesDetailPage() {
                                                 </tr>
                                             )
                                         })}
+                                        {/* Total Row */}
+                                        {invoice?.items?.length > 0 && (
+                                            <tr className="border-t-2 border-slate-100 dark:border-slate-800/80 font-bold bg-slate-50/30 dark:bg-slate-800/10">
+                                                <td className="py-4 text-left uppercase text-[10px] tracking-wider text-muted-foreground">Total</td>
+                                                <td className="py-4 text-right">
+                                                    {invoice.items.reduce((s: number, i: any) => s + Number(i.qty || 0), 0)}
+                                                </td>
+                                                <td className="py-4 text-right">
+                                                    <MoneyText value={invoice.items.reduce((s: number, i: any) => s + Number(i.rate || 0), 0)} />
+                                                </td>
+                                                <td className="py-4 text-right">
+                                                    <MoneyText value={invoice.items.reduce((s: number, i: any) => s + Number(i.amount ?? (Number(i.qty || 0) * Number(i.rate || 0))), 0)} />
+                                                </td>
+                                            </tr>
+                                        )}
                                     </tbody>
                                 </table>
                             </div>

@@ -261,7 +261,7 @@ export default function PurchaseCreatePage() {
         notes: "",
     });
 
-    const [lines, setLines] = React.useState<Line[]>([{ itemId: "", qty: "1", rate: "" }]);
+    const [lines, setLines] = React.useState<Line[]>([{ itemId: "", qty: "", rate: "" }]);
     const firstItemSelectRef = React.useRef<HTMLButtonElement | null>(null);
 
     const focusNextElement = React.useCallback((from?: HTMLElement | null) => {
@@ -353,7 +353,7 @@ export default function PurchaseCreatePage() {
         );
     };
 
-    const addLine = () => setLines((prev) => [...prev, { itemId: "", qty: "1", rate: "" }]);
+    const addLine = () => setLines((prev) => [...prev, { itemId: "", qty: "", rate: "" }]);
     const removeLine = (idx: number) => setLines((prev) => prev.filter((_, i) => i !== idx));
 
     const subtotal = React.useMemo(() => {
@@ -363,6 +363,30 @@ export default function PurchaseCreatePage() {
             return sum + qty * rate;
         }, 0);
     }, [lines]);
+
+    const totalQty = React.useMemo(() => {
+        return lines.reduce((sum, l) => sum + Number(l.qty || 0), 0);
+    }, [lines]);
+
+    const totalRate = React.useMemo(() => {
+        return lines.reduce((sum, l) => sum + Number(l.rate || 0), 0);
+    }, [lines]);
+
+    const taxableAmount = React.useMemo(() => {
+        return lines.reduce((sum, l) => {
+            const item = items.find((it) => it.id === l.itemId);
+            const isTaxable = !!item?.taxCodeId;
+            return isTaxable ? sum + Number(l.qty || 0) * Number(l.rate || 0) : sum;
+        }, 0);
+    }, [lines, items]);
+
+    const nonTaxableAmount = React.useMemo(() => {
+        return lines.reduce((sum, l) => {
+            const item = items.find((it) => it.id === l.itemId);
+            const isTaxable = !!item?.taxCodeId;
+            return !isTaxable ? sum + Number(l.qty || 0) * Number(l.rate || 0) : sum;
+        }, 0);
+    }, [lines, items]);
 
     const discount = 0;
     const taxTotal = 0;
@@ -531,6 +555,7 @@ export default function PurchaseCreatePage() {
                                 <table className="min-w-full text-sm">
                                     <thead className="bg-slate-100/80 dark:bg-slate-800/60">
                                         <tr>
+                                            <th className="w-[60px] px-3 py-2 text-left text-xm text-muted-foreground">S.No.</th>
                                             <th className="w-[540px] min-w-[460px] px-3 py-2 text-center text-xm text-muted-foreground">
                                                 Particulars
                                             </th>
@@ -549,6 +574,7 @@ export default function PurchaseCreatePage() {
 
                                             return (
                                                 <tr key={idx} className="border-t border-slate-200/70 dark:border-slate-700/70">
+                                                    <td className="px-3 py-2 text-muted-foreground font-medium">{idx + 1}</td>
                                                     <td className="w-[540px] min-w-[460px] px-3 py-2">
                                                         <SearchableSelect<ItemRecord>
                                                             placeholder="Search item…"
@@ -559,45 +585,47 @@ export default function PurchaseCreatePage() {
                                                                 const code = it.hsCode ? ` (${it.hsCode})` : "";
                                                                 return `${it.name}${code}`;
                                                             }}
-                                                    leftIcon={<Search className="h-4 w-4" />}
-                                                    buttonClassName="py-2"
-                                                    emptyText="No items found"
-                                                    buttonRef={idx === 0 ? firstItemSelectRef : undefined}
-                                                />
+                                                            leftIcon={<Search className="h-4 w-4" />}
+                                                            buttonClassName="py-2"
+                                                            emptyText="No items found"
+                                                            buttonRef={idx === 0 ? firstItemSelectRef : undefined}
+                                                        />
                                                     </td>
 
                                                     <td className="px-3 py-2 text-right">
-                                                <Input
-                                                    type="number"
-                                                    min="0"
-                                                    step="0.01"
-                                                    value={line.qty}
-                                                    onChange={(e) => updateLine(idx, { qty: e.target.value })}
-                                                    placeholder="Qty"
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === "Enter") {
-                                                            e.preventDefault();
-                                                            focusNextElement(e.currentTarget);
-                                                        }
-                                                    }}
-                                                />
+                                                        <Input
+                                                            type="number"
+                                                            min="0"
+                                                            step="0.01"
+                                                            value={line.qty}
+                                                            onChange={(e) => updateLine(idx, { qty: e.target.value })}
+                                                            className="bg-white text-center dark:bg-slate-900"
+                                                            placeholder="Qty"
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === "Enter") {
+                                                                    e.preventDefault();
+                                                                    focusNextElement(e.currentTarget);
+                                                                }
+                                                            }}
+                                                        />
                                                     </td>
 
                                                     <td className="px-3 py-2 text-right">
-                                                <Input
-                                                    type="number"
-                                                    min="0"
-                                                    step="0.01"
-                                                    value={line.rate}
-                                                    onChange={(e) => updateLine(idx, { rate: e.target.value })}
-                                                    placeholder="Rate"
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === "Enter") {
-                                                            e.preventDefault();
-                                                            focusNextElement(e.currentTarget);
-                                                        }
-                                                    }}
-                                                />
+                                                        <Input
+                                                            type="number"
+                                                            min="0"
+                                                            step="0.01"
+                                                            value={line.rate}
+                                                            onChange={(e) => updateLine(idx, { rate: e.target.value })}
+                                                            className="bg-white text-center dark:bg-slate-900"
+                                                            placeholder="Rate"
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === "Enter") {
+                                                                    e.preventDefault();
+                                                                    focusNextElement(e.currentTarget);
+                                                                }
+                                                            }}
+                                                        />
                                                     </td>
 
                                                     <td className="px-3 py-2 text-right">
@@ -621,11 +649,18 @@ export default function PurchaseCreatePage() {
                                             );
                                         })}
 
-                                        <tr className="border-t bg-slate-100/60 dark:bg-slate-800/40">
-                                            <td className="px-3 py-2 text-right font-medium" colSpan={3}>
+                                        <tr className="border-t bg-slate-100/60 font-semibold dark:bg-slate-800/40">
+                                            <td />
+                                            <td className="px-3 py-2 text-right">
                                                 Total
                                             </td>
-                                            <td className="px-3 py-2 text-right font-semibold">
+                                            <td className="px-3 py-2 text-center text-xm">
+                                                {totalQty % 1 === 0 ? totalQty : totalQty.toFixed(2)}
+                                            </td>
+                                            <td className="px-3 py-2 text-center text-xm">
+                                                <MoneyText value={totalRate} />
+                                            </td>
+                                            <td className="px-3 py-2 text-right">
                                                 <MoneyText value={subtotal} />
                                             </td>
                                             <td />
@@ -660,6 +695,15 @@ export default function PurchaseCreatePage() {
                                 <div className="lg:col-span-7 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-700 dark:bg-slate-900/40">
                                     <div className="space-y-2 text-sm">
                                         <div className="flex items-center justify-between">
+                                            <span className="text-muted-foreground">Taxable Total</span>
+                                            <MoneyText value={taxableAmount} />
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-muted-foreground">Non-Taxable Total</span>
+                                            <MoneyText value={nonTaxableAmount} />
+                                        </div>
+                                        <div className="h-px bg-slate-200 dark:bg-slate-700 my-1 op-40" />
+                                        <div className="flex items-center justify-between">
                                             <span className="text-muted-foreground">Subtotal</span>
                                             <MoneyText value={subtotal} />
                                         </div>
@@ -668,7 +712,7 @@ export default function PurchaseCreatePage() {
                                             <MoneyText value={discount} />
                                         </div>
                                         <div className="flex items-center justify-between">
-                                            <span className="text-muted-foreground">Tax</span>
+                                            <span className="text-muted-foreground">VAT</span>
                                             <MoneyText value={taxTotal} />
                                         </div>
                                     </div>
