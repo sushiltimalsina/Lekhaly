@@ -7,13 +7,13 @@ import { X, Save, UserPlus, Mail, Phone, MapPin, Hash, Banknote } from "lucide-r
 import { cn } from "@/lib/utils";
 import { createPortal } from "react-dom";
 
-type AddCustomerDialogProps = {
+type AddVendorDialogProps = {
     open: boolean;
     onClose: () => void;
     onSuccess: (party: any) => void;
 };
 
-export default function AddCustomerDialog({ open, onClose, onSuccess }: AddCustomerDialogProps) {
+export default function AddVendorDialog({ open, onClose, onSuccess }: AddVendorDialogProps) {
     const [saving, setSaving] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
 
@@ -24,7 +24,7 @@ export default function AddCustomerDialog({ open, onClose, onSuccess }: AddCusto
         address: "",
         panNo: "",
         openingBalance: "",
-        balanceType: "dr" as "dr" | "cr",
+        balanceType: "cr" as "dr" | "cr",
     });
 
     const update = (key: keyof typeof form, value: string) => {
@@ -47,7 +47,7 @@ export default function AddCustomerDialog({ open, onClose, onSuccess }: AddCusto
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!form.name.trim()) {
-            setError("Customer name is required");
+            setError("Vendor name is required");
             return;
         }
         setSaving(true);
@@ -55,7 +55,7 @@ export default function AddCustomerDialog({ open, onClose, onSuccess }: AddCusto
         try {
             const res = await createParty({
                 name: form.name.trim(),
-                type: "customer",
+                type: "supplier",
                 email: form.email.trim() || undefined,
                 phone: form.phone.trim() || undefined,
                 address: form.address.trim() || undefined,
@@ -67,10 +67,10 @@ export default function AddCustomerDialog({ open, onClose, onSuccess }: AddCusto
             onClose();
             // Reset form
             setForm({
-                name: "", email: "", phone: "", address: "", panNo: "", openingBalance: "", balanceType: "dr"
+                name: "", email: "", phone: "", address: "", panNo: "", openingBalance: "", balanceType: "cr"
             });
         } catch (err: any) {
-            setError(err?.message ?? "Failed to create customer");
+            setError(err?.message ?? "Failed to create vendor");
         } finally {
             setSaving(false);
         }
@@ -82,12 +82,12 @@ export default function AddCustomerDialog({ open, onClose, onSuccess }: AddCusto
                 {/* Header */}
                 <div className="flex items-center justify-between border-b px-8 py-5 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30">
                     <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-200 dark:shadow-none">
+                        <div className="h-12 w-12 rounded-2xl bg-purple-600 flex items-center justify-center text-white shadow-lg shadow-purple-200 dark:shadow-none">
                             <UserPlus className="h-6 w-6" />
                         </div>
                         <div>
-                            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">Add New Customer</h3>
-                            <p className="text-xs text-muted-foreground">Register a new client in your system</p>
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">Add New Vendor</h3>
+                            <p className="text-xs text-muted-foreground">Register a new supplier in your system</p>
                         </div>
                     </div>
                     <button
@@ -108,13 +108,13 @@ export default function AddCustomerDialog({ open, onClose, onSuccess }: AddCusto
 
                     <div className="grid gap-6">
                         <label className="space-y-1.5 block">
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">FULL NAME *</span>
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">VENDOR NAME *</span>
                             <Input
                                 autoFocus
                                 value={form.name}
                                 onChange={e => update("name", e.target.value)}
-                                placeholder="e.g. Acme Corporation"
-                                className="h-12 rounded-2xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-2 focus:ring-indigo-500"
+                                placeholder="e.g. Acme Supplier"
+                                className="h-12 rounded-2xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-2 focus:ring-purple-500"
                             />
                         </label>
 
@@ -139,7 +139,7 @@ export default function AddCustomerDialog({ open, onClose, onSuccess }: AddCusto
                                         type="email"
                                         value={form.email}
                                         onChange={e => update("email", e.target.value)}
-                                        placeholder="contact@company.com"
+                                        placeholder="contact@supplier.com"
                                         className="h-12 rounded-2xl pl-11 bg-slate-50 dark:bg-slate-900"
                                     />
                                 </div>
@@ -176,7 +176,7 @@ export default function AddCustomerDialog({ open, onClose, onSuccess }: AddCusto
                         {/* Opening Balance Section */}
                         <div className="space-y-4 pt-2 border-t dark:border-slate-800">
                             <div className="flex items-center gap-3">
-                                <div className="h-10 w-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-lg shadow-emerald-200 dark:shadow-none">
+                                <div className="h-10 w-10 rounded-xl bg-purple-600 flex items-center justify-center text-white shadow-lg shadow-purple-200 dark:shadow-none">
                                     <Banknote className="h-5 w-5" />
                                 </div>
                                 <div>
@@ -208,7 +208,7 @@ export default function AddCustomerDialog({ open, onClose, onSuccess }: AddCusto
                                                 className={cn(
                                                     "flex-1 h-full rounded-xl text-[10px] font-bold transition-all uppercase tracking-widest",
                                                     form.balanceType === t
-                                                        ? "bg-white dark:bg-slate-800 shadow-sm text-indigo-600 dark:text-indigo-400"
+                                                        ? "bg-white dark:bg-slate-800 shadow-sm text-purple-600 dark:text-purple-400"
                                                         : "text-slate-500 hover:text-slate-700 font-medium"
                                                 )}
                                             >
@@ -232,7 +232,7 @@ export default function AddCustomerDialog({ open, onClose, onSuccess }: AddCusto
                         <button
                             type="submit"
                             disabled={saving}
-                            className="h-12 px-8 rounded-2xl text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-700 shadow-xl shadow-indigo-200 dark:shadow-none transition-all flex items-center gap-2 font-mono"
+                            className="h-12 px-8 rounded-2xl text-sm font-bold bg-purple-600 text-white hover:bg-purple-700 shadow-xl shadow-purple-200 dark:shadow-none transition-all flex items-center gap-2 font-mono"
                         >
                             {saving ? (
                                 <div className="flex items-center gap-2">
@@ -242,7 +242,7 @@ export default function AddCustomerDialog({ open, onClose, onSuccess }: AddCusto
                             ) : (
                                 <>
                                     <Save className="h-5 w-5" />
-                                    SAVE CUSTOMER
+                                    SAVE VENDOR
                                 </>
                             )}
                         </button>

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, MoreHorizontal, User, Mail, Phone, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 type CustomerRow = {
   id: string;
@@ -106,10 +107,12 @@ export default function CustomersPage() {
         title="Customers"
         description="Manage your customer relationships and track outstanding balances."
         actions={
-          <Button className="shadow-lg shadow-primary/20">
-            <Plus className="mr-2 h-4 w-4" />
-            New Customer
-          </Button>
+          <Link href="/customers/new">
+            <Button className="shadow-lg shadow-primary/20">
+              <Plus className="mr-2 h-4 w-4" />
+              New Customer
+            </Button>
+          </Link>
         }
       />
 

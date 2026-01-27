@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, MoreHorizontal, Building2, Mail, Phone, ExternalLink, Briefcase } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 type VendorRow = {
   id: string;
@@ -106,10 +107,12 @@ export default function VendorsPage() {
         title="Vendors"
         description="Manage your suppliers and track pending payables."
         actions={
-          <Button className="shadow-lg shadow-primary/20 bg-purple-600 hover:bg-purple-700">
-            <Plus className="mr-2 h-4 w-4" />
-            New Vendor
-          </Button>
+          <Link href="/vendors/new">
+            <Button className="shadow-lg shadow-primary/20 bg-purple-600 hover:bg-purple-700">
+              <Plus className="mr-2 h-4 w-4" />
+              New Vendor
+            </Button>
+          </Link>
         }
       />
 

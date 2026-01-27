@@ -26,6 +26,8 @@ export async function createParty(input: {
   phone?: string;
   address?: string;
   panNo?: string;
+  openingBalance?: number;
+  balanceType?: "dr" | "cr";
 }) {
   return apiRequest<PartyRecord>({
     method: "POST",

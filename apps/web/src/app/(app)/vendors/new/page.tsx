@@ -9,7 +9,7 @@ import { ArrowLeft, Save, UserPlus, Mail, Phone, MapPin, Hash, Banknote } from "
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
-export default function NewCustomerPage() {
+export default function NewVendorPage() {
     const router = useRouter();
     const [saving, setSaving] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
@@ -22,7 +22,7 @@ export default function NewCustomerPage() {
         address: "",
         panNo: "",
         openingBalance: "",
-        balanceType: "dr" as "dr" | "cr",
+        balanceType: "cr" as "dr" | "cr", // Default to Credit (Payable) for Vendors
     });
 
     const update = (key: keyof typeof form, value: any) => {
@@ -32,7 +32,7 @@ export default function NewCustomerPage() {
     const onSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!form.name.trim()) {
-            setError("Customer name is required.");
+            setError("Vendor name is required.");
             return;
         }
 
@@ -41,7 +41,7 @@ export default function NewCustomerPage() {
         try {
             await createParty({
                 name: form.name.trim(),
-                type: "customer",
+                type: "supplier",
                 email: form.email.trim() || undefined,
                 phone: form.phone.trim() || undefined,
                 address: form.address.trim() || undefined,
@@ -49,10 +49,10 @@ export default function NewCustomerPage() {
                 openingBalance: form.openingBalance ? Number(form.openingBalance) : undefined,
                 balanceType: form.balanceType,
             });
-            setSuccess("Customer created successfully.");
-            setTimeout(() => router.push("/customers"), 1000);
+            setSuccess("Vendor created successfully.");
+            setTimeout(() => router.push("/vendors"), 1000);
         } catch (err: any) {
-            setError(err?.message ?? "Failed to create customer.");
+            setError(err?.message ?? "Failed to create vendor.");
         } finally {
             setSaving(false);
         }
@@ -61,15 +61,15 @@ export default function NewCustomerPage() {
     return (
         <div className="space-y-10">
             <PageHeader
-                title="Add New Customer"
-                description="Register a new client with their contact and billing information."
+                title="Add New Vendor"
+                description="Register a new supplier or service provider in your system."
                 actions={
                     <Link
-                        href="/customers"
+                        href="/vendors"
                         className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition"
                     >
                         <ArrowLeft className="h-4 w-4" />
-                        Back to Customers
+                        Back to Vendors
                     </Link>
                 }
             />
@@ -81,19 +81,19 @@ export default function NewCustomerPage() {
                             <UserPlus className="h-7 w-7" />
                         </div>
                         <div>
-                            <div className="text-lg font-bold">Customer Profile</div>
-                            <div className="text-sm text-muted-foreground">Basic information and contact details.</div>
+                            <div className="text-lg font-bold">Vendor Profile</div>
+                            <div className="text-sm text-muted-foreground">Company name and primary contact details.</div>
                         </div>
                     </div>
 
                     <div className="grid gap-8">
                         <label className="space-y-2 text-sm">
-                            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Full Name *</span>
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Company Name *</span>
                             <Input
                                 autoFocus
                                 value={form.name}
                                 onChange={(e) => update("name", e.target.value)}
-                                placeholder="e.g. ABC Traders Pvt. Ltd."
+                                placeholder="e.g. Reliable Suppliers Ltd."
                                 className="h-14 rounded-2xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-base"
                                 required
                             />
@@ -120,7 +120,7 @@ export default function NewCustomerPage() {
                                         type="email"
                                         value={form.email}
                                         onChange={(e) => update("email", e.target.value)}
-                                        placeholder="contact@company.com"
+                                        placeholder="orders@supplier.com"
                                         className="h-14 rounded-2xl pl-12 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
                                     />
                                 </div>
@@ -141,7 +141,7 @@ export default function NewCustomerPage() {
                                 </div>
                             </label>
                             <label className="space-y-2 text-sm">
-                                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Billing Address</span>
+                                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Office Address</span>
                                 <div className="relative">
                                     <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                                     <Input
@@ -216,7 +216,7 @@ export default function NewCustomerPage() {
 
                         <div className="flex items-center gap-3 w-full sm:w-auto">
                             <Link
-                                href="/customers"
+                                href="/vendors"
                                 className="flex-1 sm:flex-initial h-14 px-8 rounded-2xl border-2 border-slate-200 dark:border-slate-800 flex items-center justify-center font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-900 transition-all font-mono"
                             >
                                 CANCEL
@@ -234,7 +234,7 @@ export default function NewCustomerPage() {
                                 ) : (
                                     <>
                                         <Save className="h-5 w-5" />
-                                        CREATE CUSTOMER
+                                        CREATE VENDOR
                                     </>
                                 )}
                             </button>

@@ -4,6 +4,7 @@ import * as React from "react";
 import { Input } from "@/components/ui/input";
 import { createItemGroup } from "@/lib/api/item-groups";
 import { X, Save, FolderPlus } from "lucide-react";
+import { createPortal } from "react-dom";
 
 type AddGroupDialogProps = {
     open: boolean;
@@ -15,6 +16,17 @@ export default function AddGroupDialog({ open, onClose, onSuccess }: AddGroupDia
     const [name, setName] = React.useState("");
     const [saving, setSaving] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
+
+    React.useEffect(() => {
+        if (open) {
+            document.body.style.overflow = "hidden";
+        } else {
+            document.body.style.overflow = "unset";
+        }
+        return () => {
+            document.body.style.overflow = "unset";
+        };
+    }, [open]);
 
     if (!open) return null;
 
@@ -35,9 +47,9 @@ export default function AddGroupDialog({ open, onClose, onSuccess }: AddGroupDia
         }
     };
 
-    return (
-        <div className="fixed inset-0 z-[110] grid place-items-center bg-black/40 backdrop-blur-sm p-4">
-            <div className="w-full max-w-md rounded-3xl border bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950 overflow-hidden">
+    return createPortal(
+        <div className="fixed inset-0 z-[10000] grid place-items-center bg-black/40 backdrop-blur-md p-4 animate-in fade-in duration-200">
+            <div className="w-full max-w-md rounded-3xl border bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950 overflow-hidden animate-in zoom-in-95 duration-200">
                 <div className="flex items-center justify-between border-b px-6 py-4 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30">
                     <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 dark:bg-blue-950/30">
@@ -82,6 +94,7 @@ export default function AddGroupDialog({ open, onClose, onSuccess }: AddGroupDia
                     </div>
                 </form>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

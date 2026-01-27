@@ -28,6 +28,7 @@ import {
   Printer,
   ChevronRight,
 } from "lucide-react";
+import Link from "next/link";
 import { toBs } from "@/lib/dates/bs";
 
 type Line = { itemId: string; qty: string; rate: string; description?: string };

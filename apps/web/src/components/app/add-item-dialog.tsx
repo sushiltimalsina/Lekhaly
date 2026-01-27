@@ -8,6 +8,7 @@ import { listItemGroups, type ItemGroupRecord } from "@/lib/api/item-groups";
 import { listTaxes } from "@/lib/api/taxes";
 import { X, Save, PackagePlus, Info, Banknote, History, FileText, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { createPortal } from "react-dom";
 import AddUnitDialog from "./add-unit-dialog";
 import AddGroupDialog from "./add-group-dialog";
 
@@ -73,6 +74,17 @@ export default function AddItemDialog({ open, onClose, onSuccess }: AddItemDialo
         }).catch(() => { });
     }, [open]);
 
+    React.useEffect(() => {
+        if (open) {
+            document.body.style.overflow = "hidden";
+        } else {
+            document.body.style.overflow = "unset";
+        }
+        return () => {
+            document.body.style.overflow = "unset";
+        };
+    }, [open]);
+
     if (!open) return null;
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -115,9 +127,9 @@ export default function AddItemDialog({ open, onClose, onSuccess }: AddItemDialo
         }
     };
 
-    return (
-        <div className="fixed inset-0 z-[100] grid place-items-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-            <div className="my-8 w-full max-w-2xl rounded-[2.5rem] border bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950 overflow-hidden flex flex-col max-h-[90vh]">
+    return createPortal(
+        <div className="fixed inset-0 z-[9999] grid place-items-center bg-black/40 backdrop-blur-md p-4 overflow-y-auto animate-in fade-in duration-300">
+            <div className="my-8 w-full max-w-2xl rounded-[2.5rem] border bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950 overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300">
                 {/* Header */}
                 <div className="flex items-center justify-between border-b px-8 py-5 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30">
                     <div className="flex items-center gap-4">
@@ -438,6 +450,7 @@ export default function AddItemDialog({ open, onClose, onSuccess }: AddItemDialo
                     update("groupId", newGroup.id);
                 }}
             />
-        </div>
+        </div>,
+        document.body
     );
 }
