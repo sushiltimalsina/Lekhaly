@@ -27,7 +27,7 @@ exports.AuthModule = AuthModule = __decorate([
                 signOptions: (() => {
                     const issuer = process.env.JWT_ISSUER;
                     const audience = process.env.JWT_AUDIENCE;
-                    const options = { expiresIn: 900 };
+                    const options = { expiresIn: 86400 };
                     if (issuer)
                         options.issuer = issuer;
                     if (audience)

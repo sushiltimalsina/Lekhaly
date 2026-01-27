@@ -5,7 +5,7 @@ import type { AuthUser } from "../../common/auth/auth.types";
 
 @Injectable()
 export class ItemsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   private async validateRefs(companyId: string, input: Prisma.ItemCreateInput | Prisma.ItemUpdateInput) {
     const ids = [
@@ -69,8 +69,8 @@ export class ItemsService {
         taxCodeId: (input as any).taxCodeId,
         itemTaxCodes: Array.isArray(taxCodeIds) && taxCodeIds.length
           ? {
-              create: taxCodeIds.map((id) => ({ taxCodeId: id }))
-            }
+            create: taxCodeIds.map((id) => ({ taxCodeId: id }))
+          }
           : undefined
       }
     });
@@ -151,7 +151,7 @@ export class ItemsService {
       where,
       orderBy: { name: "asc" },
       skip: filters.skip || 0,
-      take: filters.take || 50
+      take: filters.take || 1000
     });
   }
 

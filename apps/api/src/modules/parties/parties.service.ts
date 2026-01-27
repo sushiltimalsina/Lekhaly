@@ -5,7 +5,7 @@ import type { AuthUser } from "../../common/auth/auth.types";
 
 @Injectable()
 export class PartiesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async create(user: AuthUser, input: Prisma.PartyCreateInput) {
     return this.prisma.party.create({
@@ -55,7 +55,7 @@ export class PartiesService {
       where,
       orderBy: { name: "asc" },
       skip: filters.skip || 0,
-      take: filters.take || 50
+      take: filters.take || 1000
     });
   }
 

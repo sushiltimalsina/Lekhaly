@@ -60,17 +60,20 @@ let AccountsService = class AccountsService {
     }
     async list(user, filters) {
         const where = { companyId: user.companyId };
-        if (filters.type)
+        if (filters.type) {
             where.type = filters.type;
-        if (filters.isActive !== undefined)
+        }
+        if (filters.isActive !== undefined) {
             where.isActive = filters.isActive;
-        if (filters.q)
+        }
+        if (filters.q) {
             where.name = { contains: filters.q, mode: "insensitive" };
+        }
         return this.prisma.chartOfAccount.findMany({
             where,
             orderBy: { code: "asc" },
-            skip: filters.skip || 0,
-            take: filters.take || 200
+            skip: filters.skip ?? 0,
+            take: filters.take ?? 1000
         });
     }
     async remove(user, id) {

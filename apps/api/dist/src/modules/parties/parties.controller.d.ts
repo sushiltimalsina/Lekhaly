@@ -4,6 +4,7 @@ export declare class PartiesController {
     private parties;
     constructor(parties: PartiesService);
     create(user: AuthUser, body: any): Promise<{
+        id: string;
         type: import("@prisma/client").$Enums.PartyType;
         name: string;
         email: string | null;
@@ -12,12 +13,12 @@ export declare class PartiesController {
         panNumber: string | null;
         vatNumber: string | null;
         isActive: boolean;
-        companyId: string;
-        id: string;
         createdAt: Date;
         updatedAt: Date;
+        companyId: string;
     }>;
     update(user: AuthUser, id: string, body: any): Promise<{
+        id: string;
         type: import("@prisma/client").$Enums.PartyType;
         name: string;
         email: string | null;
@@ -26,12 +27,12 @@ export declare class PartiesController {
         panNumber: string | null;
         vatNumber: string | null;
         isActive: boolean;
-        companyId: string;
-        id: string;
         createdAt: Date;
         updatedAt: Date;
+        companyId: string;
     }>;
     get(user: AuthUser, id: string): Promise<{
+        id: string;
         type: import("@prisma/client").$Enums.PartyType;
         name: string;
         email: string | null;
@@ -40,12 +41,12 @@ export declare class PartiesController {
         panNumber: string | null;
         vatNumber: string | null;
         isActive: boolean;
-        companyId: string;
-        id: string;
         createdAt: Date;
         updatedAt: Date;
+        companyId: string;
     }>;
     list(user: AuthUser, query: any): Promise<{
+        id: string;
         type: import("@prisma/client").$Enums.PartyType;
         name: string;
         email: string | null;
@@ -54,12 +55,12 @@ export declare class PartiesController {
         panNumber: string | null;
         vatNumber: string | null;
         isActive: boolean;
-        companyId: string;
-        id: string;
         createdAt: Date;
         updatedAt: Date;
+        companyId: string;
     }[]>;
     remove(user: AuthUser, id: string): Promise<{
+        id: string;
         type: import("@prisma/client").$Enums.PartyType;
         name: string;
         email: string | null;
@@ -68,12 +69,12 @@ export declare class PartiesController {
         panNumber: string | null;
         vatNumber: string | null;
         isActive: boolean;
-        companyId: string;
-        id: string;
         createdAt: Date;
         updatedAt: Date;
+        companyId: string;
     }>;
     restore(user: AuthUser, id: string): Promise<{
+        id: string;
         type: import("@prisma/client").$Enums.PartyType;
         name: string;
         email: string | null;
@@ -82,9 +83,8 @@ export declare class PartiesController {
         panNumber: string | null;
         vatNumber: string | null;
         isActive: boolean;
-        companyId: string;
-        id: string;
         createdAt: Date;
         updatedAt: Date;
+        companyId: string;
     }>;
 }

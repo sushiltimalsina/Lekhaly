@@ -16,7 +16,7 @@ import { AuthService } from "./auth.service";
       signOptions: (() => {
         const issuer = process.env.JWT_ISSUER;
         const audience = process.env.JWT_AUDIENCE;
-        const options: JwtSignOptions = { expiresIn: 900 };
+        const options: JwtSignOptions = { expiresIn: 86400 };
         if (issuer) options.issuer = issuer;
         if (audience) options.audience = audience;
         return options;
@@ -31,4 +31,4 @@ import { AuthService } from "./auth.service";
     { provide: APP_GUARD, useClass: StepUpGuard }
   ]
 })
-export class AuthModule {}
+export class AuthModule { }

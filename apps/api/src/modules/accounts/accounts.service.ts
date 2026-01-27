@@ -5,7 +5,7 @@ import type { AuthUser } from "../../common/auth/auth.types";
 
 @Injectable()
 export class AccountsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   private async validateParent(companyId: string, parentId?: string | null, id?: string) {
     if (!parentId) return;
@@ -50,15 +50,21 @@ export class AccountsService {
 
   async list(user: AuthUser, filters: { type?: string; isActive?: boolean; q?: string; skip?: number; take?: number }) {
     const where: Prisma.ChartOfAccountWhereInput = { companyId: user.companyId };
-    if (filters.type) where.type = filters.type as any;
-    if (filters.isActive !== undefined) where.isActive = filters.isActive;
-    if (filters.q) where.name = { contains: filters.q, mode: "insensitive" };
+    if (filters.type) {
+      where.type = filters.type as any;
+    }
+    if (filters.isActive !== undefined) {
+      where.isActive = filters.isActive;
+    }
+    if (filters.q) {
+      where.name = { contains: filters.q, mode: "insensitive" };
+    }
 
     return this.prisma.chartOfAccount.findMany({
       where,
       orderBy: { code: "asc" },
-      skip: filters.skip || 0,
-      take: filters.take || 200
+      skip: filters.skip ?? 0,
+      take: filters.take ?? 1000
     });
   }
 

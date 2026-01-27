@@ -62,7 +62,7 @@ let PartiesService = class PartiesService {
             where,
             orderBy: { name: "asc" },
             skip: filters.skip || 0,
-            take: filters.take || 50
+            take: filters.take || 1000
         });
     }
     async remove(user, id) {

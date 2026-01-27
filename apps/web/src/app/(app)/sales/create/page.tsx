@@ -73,6 +73,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
   buttonRef?: React.Ref<HTMLButtonElement>;
   onEnterNext?: () => void;
   onKeyDownCustom?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  fallbackLabel?: string;
 }) {
   const {
     label,
@@ -110,7 +111,9 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
   });
 
   const selected = React.useMemo(() => options.find((o) => o.id === valueId), [options, valueId]);
-  const selectedLabel = selected ? (getLabel ? getLabel(selected) : selected.name ?? selected.id) : "";
+  const selectedLabel = selected
+    ? (getLabel ? getLabel(selected) : selected.name ?? selected.id)
+    : (props.fallbackLabel || "");
 
   const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -305,6 +308,8 @@ export default function SalesCreatePage() {
   const dueDateRef = React.useRef<HTMLInputElement>(null);
   const invoiceNoRef = React.useRef<HTMLInputElement>(null);
   const paymentMethodRef = React.useRef<HTMLSelectElement>(null);
+  const salesTypeRef = React.useRef<HTMLSelectElement>(null);
+  const memoRef = React.useRef<HTMLInputElement>(null);
   const referenceNoRef = React.useRef<HTMLInputElement>(null);
   const customerSelectRef = React.useRef<HTMLButtonElement>(null);
   const addLineButtonRef = React.useRef<HTMLButtonElement>(null);
@@ -322,7 +327,10 @@ export default function SalesCreatePage() {
     rate: (HTMLInputElement | null)[];
   }>({ select: [], qty: [], rate: [] });
 
-  const sundryRefs = React.useRef<HTMLInputElement[]>([]);
+  const sundryRefs = React.useRef<{
+    select: (HTMLButtonElement | null)[];
+    rate: (HTMLInputElement | null)[];
+  }>({ select: [], rate: [] });
 
   const [parties, setParties] = React.useState<PartyRecord[]>([]);
   const [accounts, setAccounts] = React.useState<AccountRecord[]>([]);
@@ -355,7 +363,8 @@ export default function SalesCreatePage() {
     referenceNo: "",
 
     paymentMethod: "" as any,
-
+    salesType: "vat_13" as any,
+    memo: "",
     notes: "",
     termsOverrideEnabled: false,
     termsText: "",
@@ -422,7 +431,23 @@ export default function SalesCreatePage() {
         setParties(normalizeList<PartyRecord>(p));
         setAccounts(normalizeList<AccountRecord>(a));
         setItems(normalizeList<ItemRecord>(i));
-        setSundryOptions(normalizeList<BillSundryRecord>(s));
+        const opts = normalizeList<BillSundryRecord>(s);
+        setSundryOptions(opts);
+
+        // Auto-link default sundries if they exist in the options
+        setBillSundries(prev => prev.map(row => {
+          if (row.sundryId) return row;
+          const match = opts.find(o => o.name.toLowerCase() === row.name.toLowerCase());
+          if (match) {
+            return {
+              ...row,
+              sundryId: match.id,
+              type: match.type as any,
+              ratePct: row.id === "vat" ? "13" : (row.ratePct || match.rate?.toString() || "0")
+            };
+          }
+          return row;
+        }));
       })
       .catch((e: any) => {
         if (!alive) return;
@@ -439,7 +464,12 @@ export default function SalesCreatePage() {
   }, [lines]);
 
   const billSundryComputed = React.useMemo(() => {
-    const rows = billSundries.map((r) => {
+    const filteredRows = billSundries.filter(r => {
+      if (r.id === "vat" && form.salesType !== "vat_13") return false;
+      return true;
+    });
+
+    const rows = filteredRows.map((r) => {
       const pct = Number(r.ratePct || 0);
       const amount = (itemsSubtotal * pct) / 100;
       return { ...r, amount };
@@ -447,7 +477,7 @@ export default function SalesCreatePage() {
     const add = rows.filter((r) => r.type === "add").reduce((s, r) => s + r.amount, 0);
     const less = rows.filter((r) => r.type === "less").reduce((s, r) => s + r.amount, 0);
     return { rows, net: add - less };
-  }, [billSundries, itemsSubtotal]);
+  }, [billSundries, itemsSubtotal, form.salesType]);
 
   const totalQty = React.useMemo(() => {
     return lines.reduce((sum, l) => sum + Number(l.qty || 0), 0);
@@ -556,6 +586,8 @@ export default function SalesCreatePage() {
       dueDate: form.dueDate.ad || undefined,
       dueDateBs: form.dueDate.bs || undefined,
       receivableAccountId: form.receivableAccountId,
+      salesType: form.salesType,
+      memo: form.memo || undefined,
       items: payloadItems,
       sundries: billSundryComputed.rows.map(r => ({
         billSundryId: r.sundryId,
@@ -690,7 +722,7 @@ export default function SalesCreatePage() {
                     if (e.key === "Enter") {
                       if (!form.paymentMethod) return;
                       e.preventDefault();
-                      safeFocus(referenceNoRef.current);
+                      safeFocus(memoRef.current);
                     }
                   }}
                   className="mt-2 h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900"
@@ -702,6 +734,43 @@ export default function SalesCreatePage() {
                   <option value="cash">Cash</option>
                   <option value="credit">Credit (Pay later)</option>
                 </select>
+
+                <div className="mt-4">
+                  <div className="text-xs text-muted-foreground">Memo / Remarks</div>
+                  <Input
+                    ref={memoRef}
+                    value={form.memo}
+                    onChange={(e) => setForm((f) => ({ ...f, memo: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        safeFocus(salesTypeRef.current);
+                      }
+                    }}
+                    placeholder="Brief description of sales"
+                    className="mt-2 h-11 rounded-2xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700"
+                  />
+                </div>
+
+                <div className="mt-4">
+                  <div className="text-xs text-muted-foreground">Sales Type <span className="text-red-500">*</span></div>
+                  <select
+                    ref={salesTypeRef}
+                    value={form.salesType}
+                    onChange={(e) => setForm((f) => ({ ...f, salesType: e.target.value as any }))}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        safeFocus(referenceNoRef.current);
+                      }
+                    }}
+                    className="mt-2 h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900"
+                  >
+                    <option value="vat_13">VAT 13% Sales</option>
+                    <option value="exempt">Exempt Sales</option>
+                    <option value="export">Export Sales</option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -737,7 +806,7 @@ export default function SalesCreatePage() {
               onKeyDownCustom={(e: React.KeyboardEvent<HTMLInputElement>) => {
                 if (e.key === "Enter" && e.shiftKey) {
                   e.preventDefault();
-                  safeFocus(sundryRefs.current[0]);
+                  safeFocus(sundryRefs.current.select[0]);
                 }
               }}
               buttonClassName="h-12 rounded-2xl bg-white dark:bg-slate-900 pr-[140px]"
@@ -756,16 +825,19 @@ export default function SalesCreatePage() {
         </section>
 
         {/* Add Column */}
-        <div className="mb-3 flex items-center justify-end">
+        <div className="mb-3 flex flex-col items-end gap-1.5">
           <Button
             ref={addLineButtonRef}
             type="button"
             onClick={addLine}
-            className="rounded-full bg-indigo-600 text-white hover:bg-indigo-700"
+            className="rounded-full bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm transition-all active:scale-95"
           >
             <Plus className="mr-2 h-4 w-4" />
             Add Column
           </Button>
+          <div className="text-[10px] text-muted-foreground italic pr-2">
+            Tip: Press <kbd className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border text-[9px] not-italic font-sans">Shift + Enter</kbd> to jump sundry column
+          </div>
         </div>
 
         {/* Items Details */}
@@ -815,7 +887,7 @@ export default function SalesCreatePage() {
                               onKeyDownCustom={(e: React.KeyboardEvent<HTMLInputElement>) => {
                                 if (e.key === "Enter" && e.shiftKey) {
                                   e.preventDefault();
-                                  safeFocus(sundryRefs.current[0]);
+                                  safeFocus(sundryRefs.current.select[0]);
                                 }
                               }}
                               leftIcon={<Search className="h-4 w-4" />}
@@ -852,7 +924,7 @@ export default function SalesCreatePage() {
                               if (e.key === "Enter") {
                                 if (e.shiftKey) {
                                   e.preventDefault();
-                                  safeFocus(sundryRefs.current[0]);
+                                  safeFocus(sundryRefs.current.select[0]);
                                   return;
                                 }
                                 if (!line.qty || Number(line.qty) <= 0) {
@@ -895,7 +967,7 @@ export default function SalesCreatePage() {
                               if (e.key === "Enter") {
                                 if (e.shiftKey) {
                                   e.preventDefault();
-                                  safeFocus(sundryRefs.current[0]);
+                                  safeFocus(sundryRefs.current.select[0]);
                                   return;
                                 }
                                 if (!line.rate || Number(line.rate) <= 0) {
@@ -974,9 +1046,7 @@ export default function SalesCreatePage() {
 
 
         <div className="mb-4 flex flex-col items-end gap-2 text-right">
-          <div className="text-[10px] text-muted-foreground italic pr-2">
-            Tip: Press <kbd className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border text-[9px] not-italic font-sans">Shift + Enter</kbd> to jump sundry column
-          </div>
+
 
           <Button type="button" variant="outline" onClick={addSundry} className="rounded-full bg-indigo-600 text-white hover:bg-indigo-700">
             <Plus className="mr-2 h-4 w-4" />
@@ -1014,8 +1084,10 @@ export default function SalesCreatePage() {
                       <td className="px-3 py-2">
                         <div className="relative">
                           <SearchableSelect<BillSundryRecord>
+                            buttonRef={(el) => { sundryRefs.current.select[i] = el; }}
                             placeholder="Search sundry…"
                             valueId={r.sundryId || ""}
+                            fallbackLabel={r.name}
                             onChange={(id, opt) => {
                               if (opt) {
                                 updateSundry(r.id, {
@@ -1028,37 +1100,51 @@ export default function SalesCreatePage() {
                                 updateSundry(r.id, { sundryId: id, name: "" });
                               }
                             }}
+                            onEnterNext={() => safeFocus(sundryRefs.current.rate[i])}
                             options={sundryOptions}
                             getLabel={(s) => s.name}
-                            buttonClassName="h-10 rounded-xl pr-[80px]"
+                            buttonClassName="h-10 rounded-xl pr-[110px]"
                             emptyText="No sundries found"
                           />
                           <Button
                             type="button"
-                            variant="ghost"
-                            size="sm"
+                            variant="outline"
                             onClick={() => {
                               setActiveSundryIdx(i);
                               setAddSundryOpen(true);
                             }}
-                            className="absolute right-8 top-1/2 -translate-y-1/2 h-7 w-7 p-0 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                            className="absolute right-7 top-1/2 -translate-y-1/2 h-7 rounded-lg px-1.5 text-[10px] font-medium bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
                           >
-                            <Plus className="h-3.5 w-3.5" />
+                            <Plus className="h-3 w-3" />
+                            Define New
                           </Button>
                         </div>
                       </td>
                       <td className="px-3 py-2 text-right">
                         <div className="inline-flex items-center gap-2">
                           <Input
+                            ref={(el) => { sundryRefs.current.rate[i] = el; }}
                             value={r.ratePct}
                             onChange={(e) => updateSundry(r.id, { ratePct: e.target.value })}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                if (sundryRefs.current.select[i + 1]) {
+                                  safeFocus(sundryRefs.current.select[i + 1]);
+                                } else {
+                                  // Optionally focus save button
+                                }
+                              }
+                            }}
                             className="h-10 w-[110px] rounded-xl bg-white text-right dark:bg-slate-900"
                           />
                           <span className="text-muted-foreground">%</span>
                         </div>
                       </td>
                       <td className="px-3 py-2 text-right font-semibold">
+                        {r.type === "less" ? "(" : null}
                         <MoneyText value={r.amount} />
+                        {r.type === "less" ? ")" : null}
                       </td>
                       <td className="px-3 py-2 text-right">
                         <button
