@@ -15,6 +15,8 @@ import { listAccounts, type AccountRecord } from "@/lib/api/accounts";
 import { listItems, type ItemRecord } from "@/lib/api/items";
 import AddItemDialog from "@/components/app/add-item-dialog";
 import AddVendorDialog from "@/components/app/add-vendor-dialog";
+import AddBillSundryDialog from "@/components/app/add-bill-sundry-dialog";
+import { listBillSundries, type BillSundryRecord } from "@/lib/api/bill-sundries";
 
 import {
     Plus,
@@ -32,7 +34,7 @@ import Link from "next/link";
 import { toBs } from "@/lib/dates/bs";
 
 type Line = { itemId: string; qty: string; rate: string; description?: string; expenseAccountId?: string };
-type BillSundryRow = { id: string; name: string; type: "add" | "less"; ratePct: string };
+type BillSundryRow = { id: string; sundryId?: string; name: string; type: "add" | "less"; ratePct: string };
 
 function useOutsideClick<T extends HTMLElement>(
     onOutside: () => void,
@@ -295,6 +297,8 @@ export default function PurchaseCreatePage() {
     const [addItemOpen, setAddItemOpen] = React.useState(false);
     const [activeLineIdx, setActiveLineIdx] = React.useState<number | null>(null);
     const [addVendorOpen, setAddVendorOpen] = React.useState(false);
+    const [addSundryOpen, setAddSundryOpen] = React.useState(false);
+    const [activeSundryIdx, setActiveSundryIdx] = React.useState<number | null>(null);
 
     // For item table navigation
     const rowRefs = React.useRef<{
@@ -308,6 +312,7 @@ export default function PurchaseCreatePage() {
     const [parties, setParties] = React.useState<PartyRecord[]>([]);
     const [accounts, setAccounts] = React.useState<AccountRecord[]>([]);
     const [items, setItems] = React.useState<ItemRecord[]>([]);
+    const [sundryOptions, setSundryOptions] = React.useState<BillSundryRecord[]>([]);
 
     const safeFocus = (el: HTMLElement | null) => {
         if (!el) return;
@@ -385,12 +390,14 @@ export default function PurchaseCreatePage() {
             listParties({ type: "supplier", take: 200 }),
             listAccounts({ type: "liability", take: 200 }),
             listItems({ take: 500 }),
+            listBillSundries({ take: 100 })
         ])
-            .then(([p, a, i]) => {
+            .then(([p, a, i, s]) => {
                 if (!alive) return;
                 setParties(normalizeList<PartyRecord>(p));
                 setAccounts(normalizeList<AccountRecord>(a));
                 setItems(normalizeList<ItemRecord>(i));
+                setSundryOptions(normalizeList<BillSundryRecord>(s));
             })
             .catch((e: any) => {
                 if (!alive) return;
@@ -479,7 +486,7 @@ export default function PurchaseCreatePage() {
     const addSundry = () =>
         setBillSundries((prev) => [
             ...prev,
-            { id: crypto.randomUUID(), name: "Sundry", type: "add", ratePct: "0" },
+            { id: crypto.randomUUID(), name: "", type: "add", ratePct: "0" },
         ]);
 
     const removeSundry = (id: string) => setBillSundries((prev) => prev.filter((r) => r.id !== id));
@@ -514,6 +521,27 @@ export default function PurchaseCreatePage() {
             });
 
         if (!payloadLines.length) throw new Error("Add at least one item line.");
+
+        // Add Sundry lines
+        billSundryComputed.rows.forEach(r => {
+            if (Math.abs(r.amount) < 0.01) return;
+
+            // Find the account for this sundry
+            const sundryOpt = sundryOptions.find(o => o.id === r.sundryId);
+            const accountId = sundryOpt?.accountId;
+
+            if (!accountId) {
+                // Skip if no account
+                return;
+            }
+
+            payloadLines.push({
+                accountId: accountId,
+                debit: r.type === "add" ? r.amount : 0,
+                credit: r.type === "less" ? r.amount : 0,
+                description: r.name,
+            } as any);
+        });
 
         // Add Credit line for Payable
         payloadLines.push({
@@ -991,11 +1019,40 @@ export default function PurchaseCreatePage() {
                                         <tr key={r.id} className="border-t border-slate-200/70 dark:border-slate-800/60">
                                             <td className="px-3 py-2 text-muted-foreground">{i + 1}</td>
                                             <td className="px-3 py-2">
-                                                <Input
-                                                    value={r.name}
-                                                    onChange={(e) => updateSundry(r.id, { name: e.target.value })}
-                                                    className="h-10 rounded-xl bg-white dark:bg-slate-900"
-                                                />
+                                                <div className="relative">
+                                                    <SearchableSelect<BillSundryRecord>
+                                                        placeholder="Search sundry…"
+                                                        valueId={r.sundryId || ""}
+                                                        onChange={(id, opt) => {
+                                                            if (opt) {
+                                                                updateSundry(r.id, {
+                                                                    sundryId: opt.id,
+                                                                    name: opt.name,
+                                                                    type: opt.type as any,
+                                                                    ratePct: opt.rate?.toString() || "0"
+                                                                });
+                                                            } else {
+                                                                updateSundry(r.id, { sundryId: id, name: "" });
+                                                            }
+                                                        }}
+                                                        options={sundryOptions}
+                                                        getLabel={(s) => s.name}
+                                                        buttonClassName="h-10 rounded-xl pr-[80px]"
+                                                        emptyText="No sundries found"
+                                                    />
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            setActiveSundryIdx(i);
+                                                            setAddSundryOpen(true);
+                                                        }}
+                                                        className="absolute right-8 top-1/2 -translate-y-1/2 h-7 w-7 p-0 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                                                    >
+                                                        <Plus className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                </div>
                                             </td>
                                             <td className="px-3 py-2 text-right">
                                                 <div className="inline-flex items-center gap-2">

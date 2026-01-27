@@ -117,6 +117,7 @@ model Company {
   apiIdempotencies   ApiIdempotency[]
   outboxEvents       OutboxEvent[]
   pdfJobs            PdfJob[]
+  billSundries       BillSundry[]
 
   changeLog ChangeLog[]
 }
@@ -278,6 +279,8 @@ model ChartOfAccount {
     outputTaxCodes TaxCode[]     @relation("TaxOutputAccount")
     bankAccounts   BankAccount[]
     invoices       Invoice[]     @relation("InvoiceReceivableAccount")
+    billSundries   BillSundry[]
+    invoiceSundries InvoiceSundry[]
 
   @@unique([companyId, code])
   @@index([companyId, type])
@@ -310,6 +313,25 @@ model TaxCode {
   expenses         Expense[]
   vatRegisterLines VatRegisterLine[]
 
+  @@index([companyId, isActive])
+}
+
+model BillSundry {
+  id        String   @id @default(uuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  name      String
+  type      String   @default("add") // add | less
+  rate      Decimal? @db.Decimal(10, 2)
+  accountId String?
+  account   ChartOfAccount? @relation(fields: [accountId], references: [id])
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  invoiceSundries InvoiceSundry[]
+
+  @@unique([companyId, name])
   @@index([companyId, isActive])
 }
 
@@ -534,7 +556,8 @@ model Invoice {
   total     Decimal @db.Decimal(14, 2)
   status    String
 
-  items InvoiceItem[]
+  items     InvoiceItem[]
+  sundries  InvoiceSundry[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -572,6 +595,25 @@ model InvoiceItemTax {
   taxAmount     Decimal @db.Decimal(14, 2)
 
   @@unique([invoiceItemId, taxCodeId])
+}
+
+model InvoiceSundry {
+  id        String  @id @default(uuid())
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  billSundryId String?
+  billSundry   BillSundry? @relation(fields: [billSundryId], references: [id])
+
+  name      String
+  type      String   // add | less
+  rate      Decimal? @db.Decimal(10, 2)
+  amount    Decimal  @db.Decimal(14, 2)
+  
+  accountId String?
+  account   ChartOfAccount? @relation(fields: [accountId], references: [id])
+
+  createdAt DateTime @default(now())
 }
 
 model StockLedger {

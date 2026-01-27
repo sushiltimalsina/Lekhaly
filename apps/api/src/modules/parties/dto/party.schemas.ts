@@ -19,5 +19,5 @@ export const ListPartyQuerySchema = z.object({
   isActive: z.coerce.boolean().optional(),
   q: z.string().trim().max(120).optional(),
   skip: z.coerce.number().int().min(0).optional(),
-  take: z.coerce.number().int().min(1).max(100).optional()
+  take: z.coerce.number().int().min(1).max(1000).optional()
 });

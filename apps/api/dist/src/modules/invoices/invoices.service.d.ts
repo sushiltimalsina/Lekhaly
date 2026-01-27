@@ -24,6 +24,13 @@ export declare class InvoicesService {
             taxCodeId?: string;
             taxCodeIds?: string[];
         }>;
+        sundries?: Array<{
+            billSundryId?: string;
+            name: string;
+            type: "add" | "less";
+            rate?: number | null;
+            amount: number;
+        }>;
     }): Promise<{
         totals: {
             subtotal: Prisma.Decimal;
@@ -54,6 +61,14 @@ export declare class InvoicesService {
             rate: number;
             taxCodeIds?: string[];
         }[];
+        sundries: {
+            amount: Prisma.Decimal;
+            accountId: string | undefined;
+            billSundryId?: string;
+            name: string;
+            type: "add" | "less";
+            rate?: number | null;
+        }[];
         date: Date;
         dateBs: string | undefined;
         dueDate: Date | undefined;
@@ -75,6 +90,13 @@ export declare class InvoicesService {
             taxCodeId?: string;
             taxCodeIds?: string[];
         }>;
+        sundries?: Array<{
+            billSundryId?: string;
+            name: string;
+            type: "add" | "less";
+            rate?: number | null;
+            amount: number;
+        }>;
     }): Promise<{
         items: {
             id: string;
@@ -86,6 +108,17 @@ export declare class InvoicesService {
             taxAmount: Prisma.Decimal;
             qty: Prisma.Decimal;
             amount: Prisma.Decimal;
+            invoiceId: string;
+        }[];
+        sundries: {
+            id: string;
+            name: string;
+            createdAt: Date;
+            type: string;
+            rate: Prisma.Decimal | null;
+            accountId: string | null;
+            amount: Prisma.Decimal;
+            billSundryId: string | null;
             invoiceId: string;
         }[];
     } & {
@@ -172,43 +205,16 @@ export declare class InvoicesService {
         total: Prisma.Decimal;
     }[]>;
     getById(user: AuthUser, invoiceId: string): Promise<{
-        items: {
-            itemName: string | undefined;
-            hsCode: string | undefined;
-            taxBreakdown: any;
-            item: {
-                id: string;
-                name: string;
-                hsCode: string | null;
-            } | null;
-            taxes: ({
-                taxCode: {
-                    id: string;
-                    companyId: string;
-                    name: string;
-                    createdAt: Date;
-                    updatedAt: Date;
-                    isActive: boolean;
-                    rate: Prisma.Decimal;
-                    isInclusive: boolean;
-                    inputTaxAccountId: string | null;
-                    outputTaxAccountId: string | null;
-                };
-            } & {
-                id: string;
-                taxCodeId: string;
-                taxAmount: Prisma.Decimal;
-                invoiceItemId: string;
-            })[];
+        items: any[];
+        sundries: {
             id: string;
+            name: string;
             createdAt: Date;
-            description: string | null;
-            rate: Prisma.Decimal;
-            taxCodeId: string | null;
-            itemId: string | null;
-            taxAmount: Prisma.Decimal;
-            qty: Prisma.Decimal;
+            type: string;
+            rate: Prisma.Decimal | null;
+            accountId: string | null;
             amount: Prisma.Decimal;
+            billSundryId: string | null;
             invoiceId: string;
         }[];
         id: string;

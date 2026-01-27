@@ -11,7 +11,9 @@ exports.TaxCodeSchema = zod_1.z.object({
 });
 exports.TaxListQuerySchema = zod_1.z.object({
     isActive: zod_1.z.coerce.boolean().optional(),
-    q: zod_1.z.string().trim().max(100).optional()
+    q: zod_1.z.string().trim().max(100).optional(),
+    skip: zod_1.z.coerce.number().int().min(0).optional(),
+    take: zod_1.z.coerce.number().int().min(1).max(1000).optional()
 });
 exports.VatReportQuerySchema = zod_1.z.object({
     from: zod_1.z.coerce.date().optional(),

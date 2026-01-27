@@ -6,7 +6,7 @@ import { resolveAdDate } from "../../common/date/nepali-date";
 
 @Injectable()
 export class InvoicesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   private async getCompany(companyId: string) {
     const company = await this.prisma.company.findUnique({ where: { id: companyId } });
@@ -64,7 +64,7 @@ export class InvoicesService {
       select: { id: true, name: true, type: true }
     });
 
-    const goodsIds = dbItems.filter((i) => (i as any).type !== "services").map((i) => i.id);
+    const goodsIds = dbItems.filter((i: any) => i.type !== "services").map((i) => i.id);
     if (!goodsIds.length) return;
 
     const ledger = await this.prisma.stockLedger.findMany({
@@ -101,6 +101,7 @@ export class InvoicesService {
       dueDateBs?: string;
       receivableAccountId: string;
       items: Array<{ itemId?: string; description?: string; qty: number; rate: number; taxCodeId?: string; taxCodeIds?: string[] }>;
+      sundries?: Array<{ billSundryId?: string; name: string; type: "add" | "less"; rate?: number | null; amount: number }>;
     }
   ) {
     await this.validateItems(user.companyId, input.items);
@@ -121,9 +122,9 @@ export class InvoicesService {
     const itemIds = Array.from(new Set(input.items.map((i) => i.itemId).filter(Boolean))) as string[];
     const itemDefaults = itemIds.length
       ? await this.prisma.item.findMany({
-          where: { id: { in: itemIds }, companyId: user.companyId },
-          select: { id: true, taxCodeId: true }
-        })
+        where: { id: { in: itemIds }, companyId: user.companyId },
+        select: { id: true, taxCodeId: true }
+      })
       : [];
 
     const explicitTaxIds = Array.from(
@@ -141,9 +142,9 @@ export class InvoicesService {
         : Promise.resolve([]),
       itemIds.length
         ? this.prisma.itemTaxCode.findMany({
-            where: { itemId: { in: itemIds } },
-            include: { taxCode: true }
-          })
+          where: { itemId: { in: itemIds } },
+          include: { taxCode: true }
+        })
         : Promise.resolve([])
     ]);
 
@@ -189,6 +190,27 @@ export class InvoicesService {
 
     const totals = this.computeTotals(itemsWithTax);
 
+    // Add sundries to total
+    let sundryNet = new Prisma.Decimal(0);
+    const billSundryIds = (input.sundries || []).map(s => s.billSundryId).filter(Boolean) as string[];
+    const dbBillSundries = billSundryIds.length
+      ? await this.prisma.billSundry.findMany({ where: { id: { in: billSundryIds } } })
+      : [];
+
+    const processedSundries = (input.sundries || []).map(s => {
+      const amount = new Prisma.Decimal(s.amount);
+      if (s.type === "add") sundryNet = sundryNet.add(amount);
+      else sundryNet = sundryNet.sub(amount);
+
+      const dbSundry = s.billSundryId ? dbBillSundries.find((b: any) => b.id === s.billSundryId) : null;
+      return {
+        ...s,
+        amount,
+        accountId: dbSundry?.accountId || undefined
+      };
+    });
+    totals.total = totals.total.add(sundryNet);
+
     const voucherLines: Array<{
       accountId: string;
       debit: Prisma.Decimal;
@@ -231,25 +253,27 @@ export class InvoicesService {
 
     for (const item of itemsWithTax) {
       const accountId = item.itemId ? itemMap.get(item.itemId) : undefined;
-      if (!accountId) throw new BadRequestException("Item missing income account");
-      if (input.type === "sales") {
-        voucherLines.push({
-          accountId,
-          debit: new Prisma.Decimal(0),
-          credit: item.amount,
-          description: item.description,
-          taxCodeId: item.taxCodeId,
-          taxAmount: item.taxAmount
-        });
-      } else {
-        voucherLines.push({
-          accountId,
-          debit: item.amount,
-          credit: new Prisma.Decimal(0),
-          description: item.description,
-          taxCodeId: item.taxCodeId,
-          taxAmount: item.taxAmount
-        });
+      // Map item lines
+      if (accountId) {
+        if (input.type === "sales") {
+          voucherLines.push({
+            accountId,
+            debit: new Prisma.Decimal(0),
+            credit: item.amount,
+            description: item.description,
+            taxCodeId: item.taxCodeId,
+            taxAmount: item.taxAmount
+          });
+        } else {
+          voucherLines.push({
+            accountId,
+            debit: item.amount,
+            credit: new Prisma.Decimal(0),
+            description: item.description,
+            taxCodeId: item.taxCodeId,
+            taxAmount: item.taxAmount
+          });
+        }
       }
     }
 
@@ -294,6 +318,32 @@ export class InvoicesService {
       }
     }
 
+    for (const s of processedSundries) {
+      if (s.amount.lte(0)) continue;
+
+      const accountId = s.accountId;
+      if (!accountId) continue;
+
+      const isAdd = s.type === "add";
+      const isSales = input.type === "sales";
+
+      if (isSales) {
+        voucherLines.push({
+          accountId,
+          debit: isAdd ? new Prisma.Decimal(0) : s.amount,
+          credit: isAdd ? s.amount : new Prisma.Decimal(0),
+          description: s.name
+        });
+      } else {
+        voucherLines.push({
+          accountId,
+          debit: isAdd ? s.amount : new Prisma.Decimal(0),
+          credit: isAdd ? new Prisma.Decimal(0) : s.amount,
+          description: s.name
+        });
+      }
+    }
+
     if (input.type === "sales") {
       voucherLines.push({
         accountId: receivable.id,
@@ -316,6 +366,7 @@ export class InvoicesService {
       voucherLines,
       receivableAccountId: receivable.id,
       items: itemsWithTax,
+      sundries: processedSundries,
       date: resolvedDate.date,
       dateBs: resolvedDate.bs || input.dateBs,
       dueDate: resolvedDue?.date,
@@ -334,6 +385,7 @@ export class InvoicesService {
       dueDateBs?: string;
       receivableAccountId: string;
       items: Array<{ itemId?: string; description?: string; qty: number; rate: number; taxCodeId?: string; taxCodeIds?: string[] }>;
+      sundries?: Array<{ billSundryId?: string; name: string; type: "add" | "less"; rate?: number | null; amount: number }>;
     }
   ) {
     const preview = await this.preview(user, input);
@@ -364,23 +416,33 @@ export class InvoicesService {
             taxAmount: item.taxAmount,
             taxes: item.taxBreakdown?.length
               ? {
-                  create: item.taxBreakdown.map((t: any) => ({
-                    taxCodeId: t.taxCodeId,
-                    taxAmount: t.taxAmount
-                  }))
-                }
+                create: item.taxBreakdown.map((t: any) => ({
+                  taxCodeId: t.taxCodeId,
+                  taxAmount: t.taxAmount
+                }))
+              }
               : undefined
+          }))
+        },
+        sundries: {
+          create: preview.sundries.map((s: any) => ({
+            billSundryId: s.billSundryId,
+            name: s.name,
+            type: s.type,
+            rate: s.rate ? new Prisma.Decimal(s.rate) : null,
+            amount: s.amount,
+            accountId: s.accountId
           }))
         }
       },
-      include: { items: true }
+      include: { items: true, sundries: true }
     });
   }
 
   async post(user: AuthUser, invoiceId: string) {
     const invoice = await this.prisma.invoice.findFirst({
       where: { id: invoiceId, companyId: user.companyId },
-      include: { items: true }
+      include: { items: true, sundries: true }
     });
     if (!invoice) throw new NotFoundException("Invoice not found");
     if (invoice.status !== "draft") throw new ForbiddenException("Only draft invoices can be posted");
@@ -396,19 +458,26 @@ export class InvoicesService {
       date: invoice.date,
       dueDate: invoice.dueDate || undefined,
       receivableAccountId: invoice.receivableAccountId,
-      items: invoice.items.map((i) => ({
+      items: invoice.items.map((i: any) => ({
         itemId: i.itemId || undefined,
         description: i.description || undefined,
-        qty: i.qty.toNumber(),
-        rate: i.rate.toNumber(),
+        qty: i.qty.toNumber ? i.qty.toNumber() : Number(i.qty),
+        rate: i.rate.toNumber ? i.rate.toNumber() : Number(i.rate),
         taxCodeId: i.taxCodeId || undefined
+      })),
+      sundries: (invoice.sundries as any[]).map((s: any) => ({
+        billSundryId: s.billSundryId || undefined,
+        name: s.name,
+        type: s.type as any,
+        rate: s.rate?.toNumber ? s.rate.toNumber() : (s.rate ? Number(s.rate) : null),
+        amount: s.amount.toNumber ? s.amount.toNumber() : Number(s.amount)
       }))
     });
 
     if (invoice.type === "sales") {
-      await this.enforceStockForSales(user, invoice.items.map((i) => ({
+      await this.enforceStockForSales(user, invoice.items.map((i: any) => ({
         itemId: i.itemId || undefined,
-        qty: i.qty.toNumber()
+        qty: i.qty.toNumber ? i.qty.toNumber() : Number(i.qty)
       })));
     }
 
@@ -506,17 +575,18 @@ export class InvoicesService {
             item: { select: { id: true, name: true, hsCode: true } },
             taxes: { include: { taxCode: true } }
           }
-        }
+        },
+        sundries: true
       }
     });
     if (!invoice) throw new NotFoundException("Invoice not found");
     return {
       ...invoice,
-      items: invoice.items.map((it) => ({
+      items: invoice.items.map((it: any) => ({
         ...it,
         itemName: it.item?.name ?? undefined,
         hsCode: it.item?.hsCode ?? undefined,
-        taxBreakdown: (it as any).taxes?.map((t: any) => ({
+        taxBreakdown: it.taxes?.map((t: any) => ({
           taxCodeId: t.taxCodeId,
           name: t.taxCode?.name,
           rate: t.taxCode?.rate,

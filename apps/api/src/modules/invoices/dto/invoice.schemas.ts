@@ -17,7 +17,14 @@ export const CreateInvoiceDraftSchema = z.object({
   dueDate: z.coerce.date().optional(),
   dueDateBs: z.string().trim().max(20).optional(),
   receivableAccountId: z.string().uuid(),
-  items: z.array(InvoiceItemSchema).min(1)
+  items: z.array(InvoiceItemSchema).min(1),
+  sundries: z.array(z.object({
+    billSundryId: z.string().uuid().optional(),
+    name: z.string().min(1),
+    type: z.enum(["add", "less"]),
+    rate: z.number().optional().nullable(),
+    amount: z.number()
+  })).optional()
 }).superRefine((data, ctx) => {
   if (!data.date && !data.dateBs) {
     ctx.addIssue({ code: "custom", message: "date or dateBs is required", path: ["date"] });

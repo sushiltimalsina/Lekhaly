@@ -164,6 +164,25 @@ let InvoicesService = class InvoicesService {
             };
         });
         const totals = this.computeTotals(itemsWithTax);
+        let sundryNet = new client_1.Prisma.Decimal(0);
+        const billSundryIds = (input.sundries || []).map(s => s.billSundryId).filter(Boolean);
+        const dbBillSundries = billSundryIds.length
+            ? await this.prisma.billSundry.findMany({ where: { id: { in: billSundryIds } } })
+            : [];
+        const processedSundries = (input.sundries || []).map(s => {
+            const amount = new client_1.Prisma.Decimal(s.amount);
+            if (s.type === "add")
+                sundryNet = sundryNet.add(amount);
+            else
+                sundryNet = sundryNet.sub(amount);
+            const dbSundry = s.billSundryId ? dbBillSundries.find((b) => b.id === s.billSundryId) : null;
+            return {
+                ...s,
+                amount,
+                accountId: dbSundry?.accountId || undefined
+            };
+        });
+        totals.total = totals.total.add(sundryNet);
         const voucherLines = [];
         const receivable = await this.prisma.chartOfAccount.findFirst({
             where: { id: input.receivableAccountId, companyId: user.companyId }
@@ -196,27 +215,27 @@ let InvoicesService = class InvoicesService {
         }
         for (const item of itemsWithTax) {
             const accountId = item.itemId ? itemMap.get(item.itemId) : undefined;
-            if (!accountId)
-                throw new common_1.BadRequestException("Item missing income account");
-            if (input.type === "sales") {
-                voucherLines.push({
-                    accountId,
-                    debit: new client_1.Prisma.Decimal(0),
-                    credit: item.amount,
-                    description: item.description,
-                    taxCodeId: item.taxCodeId,
-                    taxAmount: item.taxAmount
-                });
-            }
-            else {
-                voucherLines.push({
-                    accountId,
-                    debit: item.amount,
-                    credit: new client_1.Prisma.Decimal(0),
-                    description: item.description,
-                    taxCodeId: item.taxCodeId,
-                    taxAmount: item.taxAmount
-                });
+            if (accountId) {
+                if (input.type === "sales") {
+                    voucherLines.push({
+                        accountId,
+                        debit: new client_1.Prisma.Decimal(0),
+                        credit: item.amount,
+                        description: item.description,
+                        taxCodeId: item.taxCodeId,
+                        taxAmount: item.taxAmount
+                    });
+                }
+                else {
+                    voucherLines.push({
+                        accountId,
+                        debit: item.amount,
+                        credit: new client_1.Prisma.Decimal(0),
+                        description: item.description,
+                        taxCodeId: item.taxCodeId,
+                        taxAmount: item.taxAmount
+                    });
+                }
             }
         }
         const taxGroups = new Map();
@@ -258,6 +277,31 @@ let InvoicesService = class InvoicesService {
                 }
             }
         }
+        for (const s of processedSundries) {
+            if (s.amount.lte(0))
+                continue;
+            const accountId = s.accountId;
+            if (!accountId)
+                continue;
+            const isAdd = s.type === "add";
+            const isSales = input.type === "sales";
+            if (isSales) {
+                voucherLines.push({
+                    accountId,
+                    debit: isAdd ? new client_1.Prisma.Decimal(0) : s.amount,
+                    credit: isAdd ? s.amount : new client_1.Prisma.Decimal(0),
+                    description: s.name
+                });
+            }
+            else {
+                voucherLines.push({
+                    accountId,
+                    debit: isAdd ? s.amount : new client_1.Prisma.Decimal(0),
+                    credit: isAdd ? new client_1.Prisma.Decimal(0) : s.amount,
+                    description: s.name
+                });
+            }
+        }
         if (input.type === "sales") {
             voucherLines.push({
                 accountId: receivable.id,
@@ -280,6 +324,7 @@ let InvoicesService = class InvoicesService {
             voucherLines,
             receivableAccountId: receivable.id,
             items: itemsWithTax,
+            sundries: processedSundries,
             date: resolvedDate.date,
             dateBs: resolvedDate.bs || input.dateBs,
             dueDate: resolvedDue?.date,
@@ -321,15 +366,25 @@ let InvoicesService = class InvoicesService {
                             }
                             : undefined
                     }))
+                },
+                sundries: {
+                    create: preview.sundries.map((s) => ({
+                        billSundryId: s.billSundryId,
+                        name: s.name,
+                        type: s.type,
+                        rate: s.rate ? new client_1.Prisma.Decimal(s.rate) : null,
+                        amount: s.amount,
+                        accountId: s.accountId
+                    }))
                 }
             },
-            include: { items: true }
+            include: { items: true, sundries: true }
         });
     }
     async post(user, invoiceId) {
         const invoice = await this.prisma.invoice.findFirst({
             where: { id: invoiceId, companyId: user.companyId },
-            include: { items: true }
+            include: { items: true, sundries: true }
         });
         if (!invoice)
             throw new common_1.NotFoundException("Invoice not found");
@@ -348,15 +403,22 @@ let InvoicesService = class InvoicesService {
             items: invoice.items.map((i) => ({
                 itemId: i.itemId || undefined,
                 description: i.description || undefined,
-                qty: i.qty.toNumber(),
-                rate: i.rate.toNumber(),
+                qty: i.qty.toNumber ? i.qty.toNumber() : Number(i.qty),
+                rate: i.rate.toNumber ? i.rate.toNumber() : Number(i.rate),
                 taxCodeId: i.taxCodeId || undefined
+            })),
+            sundries: invoice.sundries.map((s) => ({
+                billSundryId: s.billSundryId || undefined,
+                name: s.name,
+                type: s.type,
+                rate: s.rate?.toNumber ? s.rate.toNumber() : (s.rate ? Number(s.rate) : null),
+                amount: s.amount.toNumber ? s.amount.toNumber() : Number(s.amount)
             }))
         });
         if (invoice.type === "sales") {
             await this.enforceStockForSales(user, invoice.items.map((i) => ({
                 itemId: i.itemId || undefined,
-                qty: i.qty.toNumber()
+                qty: i.qty.toNumber ? i.qty.toNumber() : Number(i.qty)
             })));
         }
         const voucherType = invoice.type === "sales" ? client_1.VoucherType.sales_invoice : client_1.VoucherType.sales_return;
@@ -449,7 +511,8 @@ let InvoicesService = class InvoicesService {
                         item: { select: { id: true, name: true, hsCode: true } },
                         taxes: { include: { taxCode: true } }
                     }
-                }
+                },
+                sundries: true
             }
         });
         if (!invoice)

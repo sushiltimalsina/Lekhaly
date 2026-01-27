@@ -9,6 +9,8 @@ export declare const TaxCodeSchema: z.ZodObject<{
 export declare const TaxListQuerySchema: z.ZodObject<{
     isActive: z.ZodOptional<z.ZodCoercedBoolean<unknown>>;
     q: z.ZodOptional<z.ZodString>;
+    skip: z.ZodOptional<z.ZodCoercedNumber<unknown>>;
+    take: z.ZodOptional<z.ZodCoercedNumber<unknown>>;
 }, z.core.$strip>;
 export declare const VatReportQuerySchema: z.ZodObject<{
     from: z.ZodOptional<z.ZodCoercedDate<unknown>>;

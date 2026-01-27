@@ -16,6 +16,17 @@ export declare class InvoicesController {
             amount: import("@prisma/client/runtime/client").Decimal;
             invoiceId: string;
         }[];
+        sundries: {
+            id: string;
+            name: string;
+            createdAt: Date;
+            type: string;
+            rate: import("@prisma/client/runtime/client").Decimal | null;
+            accountId: string | null;
+            amount: import("@prisma/client/runtime/client").Decimal;
+            billSundryId: string | null;
+            invoiceId: string;
+        }[];
     } & {
         id: string;
         companyId: string;
@@ -64,6 +75,14 @@ export declare class InvoicesController {
             qty: number;
             rate: number;
             taxCodeIds?: string[];
+        }[];
+        sundries: {
+            amount: import("@prisma/client/runtime/client").Decimal;
+            accountId: string | undefined;
+            billSundryId?: string;
+            name: string;
+            type: "add" | "less";
+            rate?: number | null;
         }[];
         date: Date;
         dateBs: string | undefined;
@@ -128,43 +147,16 @@ export declare class InvoicesController {
         total: import("@prisma/client/runtime/client").Decimal;
     }[]>;
     getById(user: AuthUser, id: string): Promise<{
-        items: {
-            itemName: string | undefined;
-            hsCode: string | undefined;
-            taxBreakdown: any;
-            item: {
-                id: string;
-                name: string;
-                hsCode: string | null;
-            } | null;
-            taxes: ({
-                taxCode: {
-                    id: string;
-                    companyId: string;
-                    name: string;
-                    createdAt: Date;
-                    updatedAt: Date;
-                    isActive: boolean;
-                    rate: import("@prisma/client/runtime/client").Decimal;
-                    isInclusive: boolean;
-                    inputTaxAccountId: string | null;
-                    outputTaxAccountId: string | null;
-                };
-            } & {
-                id: string;
-                taxCodeId: string;
-                taxAmount: import("@prisma/client/runtime/client").Decimal;
-                invoiceItemId: string;
-            })[];
+        items: any[];
+        sundries: {
             id: string;
+            name: string;
             createdAt: Date;
-            description: string | null;
-            rate: import("@prisma/client/runtime/client").Decimal;
-            taxCodeId: string | null;
-            itemId: string | null;
-            taxAmount: import("@prisma/client/runtime/client").Decimal;
-            qty: import("@prisma/client/runtime/client").Decimal;
+            type: string;
+            rate: import("@prisma/client/runtime/client").Decimal | null;
+            accountId: string | null;
             amount: import("@prisma/client/runtime/client").Decimal;
+            billSundryId: string | null;
             invoiceId: string;
         }[];
         id: string;

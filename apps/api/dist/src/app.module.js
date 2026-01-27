@@ -34,6 +34,7 @@ const pdf_module_1 = require("./modules/pdf/pdf.module");
 const health_module_1 = require("./moduls/health/health.module");
 const units_module_1 = require("./modules/units/units.module");
 const item_groups_module_1 = require("./modules/item-groups/item-groups.module");
+const bill_sundries_module_1 = require("./modules/bill-sundries/bill-sundries.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -61,7 +62,8 @@ exports.AppModule = AppModule = __decorate([
             items_module_1.ItemsModule,
             item_groups_module_1.ItemGroupsModule,
             units_module_1.UnitsModule,
-            accounts_module_1.AccountsModule
+            accounts_module_1.AccountsModule,
+            bill_sundries_module_1.BillSundriesModule
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService, { provide: core_1.APP_INTERCEPTOR, useClass: audit_interceptor_1.AuditInterceptor }]

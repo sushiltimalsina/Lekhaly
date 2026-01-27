@@ -25,6 +25,7 @@ import { PdfModule } from "./modules/pdf/pdf.module";
 import { HealthModule } from "./moduls/health/health.module";
 import { UnitsModule } from "./modules/units/units.module";
 import { ItemGroupsModule } from "./modules/item-groups/item-groups.module";
+import { BillSundriesModule } from "./modules/bill-sundries/bill-sundries.module";
 
 @Module({
   imports: [
@@ -49,9 +50,10 @@ import { ItemGroupsModule } from "./modules/item-groups/item-groups.module";
     ItemsModule,
     ItemGroupsModule,
     UnitsModule,
-    AccountsModule
+    AccountsModule,
+    BillSundriesModule
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_INTERCEPTOR, useClass: AuditInterceptor }]
 })
-export class AppModule {}
+export class AppModule { }

@@ -26,6 +26,6 @@ exports.ListItemQuerySchema = zod_1.z.object({
     q: zod_1.z.string().trim().max(120).optional(),
     type: zod_1.z.enum(["goods", "services"]).optional(),
     skip: zod_1.z.coerce.number().int().min(0).optional(),
-    take: zod_1.z.coerce.number().int().min(1).max(100).optional()
+    take: zod_1.z.coerce.number().int().min(1).max(1000).optional()
 });
 //# sourceMappingURL=item.schemas.js.map

@@ -59,7 +59,8 @@ async function upsertPermissions() {
         { code: "settings.security", description: "Manage security settings" },
         { code: "settings.tax", description: "Manage tax settings" },
         { code: "settings.coa", description: "Manage chart of accounts" },
-        { code: "settings.users", description: "Manage users/roles" }
+        { code: "settings.users", description: "Manage users/roles" },
+        { code: "manage.billSundries", description: "Manage bill sundries" }
     ];
     for (const p of permissions) {
         await prisma.permission.upsert({
@@ -363,6 +364,15 @@ async function main() {
     if (existingAdmin) {
         companyId = existingAdmin.companyId;
         companyCode = existingAdmin.company.code ?? null;
+        const rolesToSync = await prisma.role.findMany({
+            where: { companyId, name: { in: ["Admin", "Accountant"] } }
+        });
+        for (const role of rolesToSync) {
+            await prisma.rolePermission.createMany({
+                data: permAll.map(code => ({ roleId: role.id, permissionCode: code })),
+                skipDuplicates: true
+            });
+        }
     }
     else {
         const created = await createDemoCompany(permAll);

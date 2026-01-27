@@ -27,7 +27,8 @@ async function upsertPermissions() {
     { code: "settings.security", description: "Manage security settings" },
     { code: "settings.tax", description: "Manage tax settings" },
     { code: "settings.coa", description: "Manage chart of accounts" },
-    { code: "settings.users", description: "Manage users/roles" }
+    { code: "settings.users", description: "Manage users/roles" },
+    { code: "manage.billSundries", description: "Manage bill sundries" }
   ];
 
   for (const p of permissions) {
@@ -89,7 +90,7 @@ async function createDemoCompany(permAll: string[]) {
 
   const cash = await prisma.chartOfAccount.create({ data: { companyId: company.id, code: "1010", name: "Cash in Hand", type: CoaType.asset } });
   const bank = await prisma.chartOfAccount.create({ data: { companyId: company.id, code: "1020", name: "Bank", type: CoaType.asset } });
-  const ar   = await prisma.chartOfAccount.create({ data: { companyId: company.id, code: "1100", name: "Accounts Receivable", type: CoaType.asset } });
+  const ar = await prisma.chartOfAccount.create({ data: { companyId: company.id, code: "1100", name: "Accounts Receivable", type: CoaType.asset } });
   const vatReceivable = await prisma.chartOfAccount.create({ data: { companyId: company.id, code: "1110", name: "VAT Receivable", type: CoaType.asset } });
   await prisma.chartOfAccount.create({ data: { companyId: company.id, code: "1200", name: "Inventory", type: CoaType.asset } });
 
@@ -366,6 +367,17 @@ async function main() {
   if (existingAdmin) {
     companyId = existingAdmin.companyId;
     companyCode = existingAdmin.company.code ?? null;
+
+    // Sync permissions for Admin and Accountant roles
+    const rolesToSync = await prisma.role.findMany({
+      where: { companyId, name: { in: ["Admin", "Accountant"] } }
+    });
+    for (const role of rolesToSync) {
+      await prisma.rolePermission.createMany({
+        data: permAll.map(code => ({ roleId: role.id, permissionCode: code })),
+        skipDuplicates: true
+      });
+    }
   } else {
     const created = await createDemoCompany(permAll);
     companyId = created.company.id;

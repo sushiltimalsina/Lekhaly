@@ -15,6 +15,8 @@ import { listAccounts, type AccountRecord } from "@/lib/api/accounts";
 import { listItems, type ItemRecord } from "@/lib/api/items";
 import AddItemDialog from "@/components/app/add-item-dialog";
 import AddCustomerDialog from "@/components/app/add-customer-dialog";
+import AddBillSundryDialog from "@/components/app/add-bill-sundry-dialog";
+import { listBillSundries, type BillSundryRecord } from "@/lib/api/bill-sundries";
 
 import {
   Plus,
@@ -32,7 +34,7 @@ import Link from "next/link";
 import { toBs } from "@/lib/dates/bs";
 
 type Line = { itemId: string; qty: string; rate: string; description?: string };
-type BillSundryRow = { id: string; name: string; type: "add" | "less"; ratePct: string };
+type BillSundryRow = { id: string; sundryId?: string; name: string; type: "add" | "less"; ratePct: string };
 
 function useOutsideClick<T extends HTMLElement>(
   onOutside: () => void,
@@ -61,7 +63,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
   label?: string;
   placeholder?: string;
   valueId: string;
-  onChange: (id: string) => void;
+  onChange: (id: string, opt?: T) => void;
   options: T[];
   getLabel?: (opt: T) => string;
   leftIcon?: React.ReactNode;
@@ -231,7 +233,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                       e.preventDefault();
                       const item = filtered[activeIndex];
                       if (item) {
-                        onChange(item.id);
+                        onChange(item.id, item);
                         setOpen(false);
                         setQuery("");
                         setTimeout(() => {
@@ -259,7 +261,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                       type="button"
                       onMouseMove={() => setActiveIndex(idx)}
                       onClick={() => {
-                        onChange(o.id);
+                        onChange(o.id, o);
                         setOpen(false);
                         setQuery("");
                         setTimeout(() => {
@@ -310,6 +312,8 @@ export default function SalesCreatePage() {
   const [addItemOpen, setAddItemOpen] = React.useState(false);
   const [activeLineIdx, setActiveLineIdx] = React.useState<number | null>(null);
   const [addCustomerOpen, setAddCustomerOpen] = React.useState(false);
+  const [addSundryOpen, setAddSundryOpen] = React.useState(false);
+  const [activeSundryIdx, setActiveSundryIdx] = React.useState<number | null>(null);
 
   // For item table navigation
   const rowRefs = React.useRef<{
@@ -323,6 +327,7 @@ export default function SalesCreatePage() {
   const [parties, setParties] = React.useState<PartyRecord[]>([]);
   const [accounts, setAccounts] = React.useState<AccountRecord[]>([]);
   const [items, setItems] = React.useState<ItemRecord[]>([]);
+  const [sundryOptions, setSundryOptions] = React.useState<BillSundryRecord[]>([]);
 
   const safeFocus = (el: HTMLElement | null) => {
     if (!el) return;
@@ -410,12 +415,14 @@ export default function SalesCreatePage() {
       listParties({ type: "customer", take: 200 }),
       listAccounts({ type: "asset", take: 200 }),
       listItems({ take: 500 }),
+      listBillSundries({ take: 100 })
     ])
-      .then(([p, a, i]) => {
+      .then(([p, a, i, s]) => {
         if (!alive) return;
         setParties(normalizeList<PartyRecord>(p));
         setAccounts(normalizeList<AccountRecord>(a));
         setItems(normalizeList<ItemRecord>(i));
+        setSundryOptions(normalizeList<BillSundryRecord>(s));
       })
       .catch((e: any) => {
         if (!alive) return;
@@ -505,7 +512,7 @@ export default function SalesCreatePage() {
   const addSundry = () =>
     setBillSundries((prev) => [
       ...prev,
-      { id: crypto.randomUUID(), name: "Sundry", type: "add", ratePct: "0" },
+      { id: crypto.randomUUID(), name: "", type: "add", ratePct: "0" },
     ]);
 
   const removeSundry = (id: string) => setBillSundries((prev) => prev.filter((r) => r.id !== id));
@@ -550,6 +557,13 @@ export default function SalesCreatePage() {
       dueDateBs: form.dueDate.bs || undefined,
       receivableAccountId: form.receivableAccountId,
       items: payloadItems,
+      sundries: billSundryComputed.rows.map(r => ({
+        billSundryId: r.sundryId,
+        name: r.name,
+        type: r.type,
+        rate: Number(r.ratePct) || null,
+        amount: r.amount
+      })).filter(s => Math.abs(s.amount) > 0.01)
     };
   };
 
@@ -998,12 +1012,40 @@ export default function SalesCreatePage() {
                     <tr key={r.id} className="border-t border-slate-200/70 dark:border-slate-800/60">
                       <td className="px-3 py-2 text-muted-foreground">{i + 1}</td>
                       <td className="px-3 py-2">
-                        <Input
-                          ref={(el) => { if (el) sundryRefs.current[i] = el; }}
-                          value={r.name}
-                          onChange={(e) => updateSundry(r.id, { name: e.target.value })}
-                          className="h-10 rounded-xl bg-white dark:bg-slate-900"
-                        />
+                        <div className="relative">
+                          <SearchableSelect<BillSundryRecord>
+                            placeholder="Search sundry…"
+                            valueId={r.sundryId || ""}
+                            onChange={(id, opt) => {
+                              if (opt) {
+                                updateSundry(r.id, {
+                                  sundryId: opt.id,
+                                  name: opt.name,
+                                  type: opt.type as any,
+                                  ratePct: opt.rate?.toString() || "0"
+                                });
+                              } else {
+                                updateSundry(r.id, { sundryId: id, name: "" });
+                              }
+                            }}
+                            options={sundryOptions}
+                            getLabel={(s) => s.name}
+                            buttonClassName="h-10 rounded-xl pr-[80px]"
+                            emptyText="No sundries found"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setActiveSundryIdx(i);
+                              setAddSundryOpen(true);
+                            }}
+                            className="absolute right-8 top-1/2 -translate-y-1/2 h-7 w-7 p-0 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </td>
                       <td className="px-3 py-2 text-right">
                         <div className="inline-flex items-center gap-2">
@@ -1213,6 +1255,24 @@ export default function SalesCreatePage() {
           setParties(prev => [...prev, newCustomer]);
           setForm(f => ({ ...f, partyId: newCustomer.id }));
           setTimeout(() => safeFocus(rowRefs.current.select[0]), 50);
+        }}
+      />
+      <AddBillSundryDialog
+        open={addSundryOpen}
+        onClose={() => setAddSundryOpen(false)}
+        onSuccess={(newSundry) => {
+          setSundryOptions(prev => [...prev, newSundry]);
+          if (activeSundryIdx !== null) {
+            const r = billSundries[activeSundryIdx];
+            if (r) {
+              updateSundry(r.id, {
+                sundryId: newSundry.id,
+                name: newSundry.name,
+                type: newSundry.type as any,
+                ratePct: newSundry.rate?.toString() || "0"
+              });
+            }
+          }
         }}
       />
     </div>

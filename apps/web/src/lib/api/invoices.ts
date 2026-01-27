@@ -19,6 +19,13 @@ export type InvoiceDraftInput = {
   dueDateBs?: string; // BS string
   receivableAccountId: string;
   items: InvoiceItemInput[];
+  sundries?: Array<{
+    billSundryId?: string;
+    name: string;
+    type: "add" | "less";
+    rate?: number | null;
+    amount: number;
+  }>;
 };
 
 export async function createInvoiceDraft(input: InvoiceDraftInput) {
@@ -65,4 +72,3 @@ export async function getInvoice(id: string) {
     path: `/invoices/${id}`,
   });
 }
-    

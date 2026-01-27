@@ -10,7 +10,9 @@ export const TaxCodeSchema = z.object({
 
 export const TaxListQuerySchema = z.object({
   isActive: z.coerce.boolean().optional(),
-  q: z.string().trim().max(100).optional()
+  q: z.string().trim().max(100).optional(),
+  skip: z.coerce.number().int().min(0).optional(),
+  take: z.coerce.number().int().min(1).max(1000).optional()
 });
 
 export const VatReportQuerySchema = z.object({

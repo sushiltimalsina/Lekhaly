@@ -12,6 +12,9 @@ import { cn } from "@/lib/utils";
 import { getCurrencySettings, setCurrencySymbol, setNumberFormat, subscribeUi } from "@/lib/store/ui";
 import { MoneyText } from "@/components/app/money";
 import { getSettings, setCalendarPreference, subscribeSettings } from "@/lib/store/settings";
+import { listBillSundries, deleteBillSundry, type BillSundryRecord } from "@/lib/api/bill-sundries";
+import AddBillSundryDialog from "@/components/app/add-bill-sundry-dialog";
+import { Calculator, Plus, Trash2, Settings2 } from "lucide-react";
 
 type CompanyForm = {
   companyName?: string;
@@ -41,6 +44,10 @@ export default function SettingsPage() {
     panVat: "",
   });
 
+  const [sundries, setSundries] = React.useState<BillSundryRecord[]>([]);
+  const [sundryLoading, setSundryLoading] = React.useState(false);
+  const [addSundryOpen, setAddSundryOpen] = React.useState(false);
+
   React.useEffect(() => {
     if (typeof window === "undefined") return;
     const stored = localStorage.getItem("lekhaly-theme") as "light" | "dark" | "system" | null;
@@ -50,17 +57,19 @@ export default function SettingsPage() {
   }, []);
 
   React.useEffect(() => {
-    return subscribeUi((next) => {
+    const unsubscribe = subscribeUi((next) => {
       setCurrencySymbolState(next.currencySymbol);
       setNumberFormatState(next.numberFormat);
     });
+    return () => unsubscribe();
   }, []);
 
   React.useEffect(() => {
     setCalendarPreferenceState(getSettings().calendarPreference);
-    return subscribeSettings((next) => {
+    const unsubscribe = subscribeSettings((next) => {
       setCalendarPreferenceState(next.calendarPreference);
     });
+    return () => unsubscribe();
   }, []);
 
   const applyTheme = (newTheme: "light" | "dark" | "system") => {
@@ -121,8 +130,31 @@ export default function SettingsPage() {
     }
   }
 
+  async function loadSundries() {
+    setSundryLoading(true);
+    try {
+      const res: any = await listBillSundries();
+      setSundries(Array.isArray(res) ? res : res?.items ?? []);
+    } catch (e) {
+      console.error("Failed to load sundries", e);
+    } finally {
+      setSundryLoading(false);
+    }
+  }
+
+  async function removeSundry(id: string) {
+    if (!confirm("Are you sure you want to delete this bill sundry?")) return;
+    try {
+      await deleteBillSundry(id);
+      loadSundries();
+    } catch (e) {
+      console.error("Failed to delete sundry", e);
+    }
+  }
+
   React.useEffect(() => {
     load();
+    loadSundries();
   }, []);
 
   return (
@@ -384,8 +416,76 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
+          <Card className="glass-card">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <div>
+                <CardTitle>Bill Sundries</CardTitle>
+                <CardDescription>
+                  Predefined items for additional charges or discounts
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setAddSundryOpen(true)}
+                className="rounded-xl"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add New
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {sundryLoading ? (
+                  <div className="py-8 text-center text-sm text-muted-foreground">Loading sundries...</div>
+                ) : sundries.length === 0 ? (
+                  <div className="py-8 text-center text-sm text-muted-foreground border-2 border-dashed rounded-2xl">
+                    No predefined sundries found.
+                  </div>
+                ) : (
+                  sundries.map((s) => (
+                    <div
+                      key={s.id}
+                      className="flex items-center justify-between rounded-2xl border bg-muted/20 p-4 transition-all hover:bg-muted/40"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          "flex h-10 w-10 items-center justify-center rounded-xl",
+                          s.type === "add" ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-950/30" : "bg-red-100 text-red-600 dark:bg-red-950/30"
+                        )}>
+                          {s.type === "add" ? <Plus className="h-5 w-5" /> : <Calculator className="h-5 w-5" />}
+                        </div>
+                        <div>
+                          <div className="font-semibold">{s.name}</div>
+                          <div className="text-xs text-muted-foreground uppercase tracking-tight font-mono">
+                            {s.rate ? `${s.rate}%` : "Manual"} • {s.type} {s.account?.name ? `• ${s.account.name}` : ""}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeSundry(s.id)}
+                          className="h-9 w-9 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
+
+      <AddBillSundryDialog
+        open={addSundryOpen}
+        onClose={() => setAddSundryOpen(false)}
+        onSuccess={() => loadSundries()}
+      />
     </div>
   );
 }

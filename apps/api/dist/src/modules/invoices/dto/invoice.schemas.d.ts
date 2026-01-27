@@ -26,6 +26,16 @@ export declare const CreateInvoiceDraftSchema: z.ZodObject<{
         taxCodeId: z.ZodOptional<z.ZodString>;
         taxCodeIds: z.ZodOptional<z.ZodArray<z.ZodString>>;
     }, z.core.$strip>>;
+    sundries: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        billSundryId: z.ZodOptional<z.ZodString>;
+        name: z.ZodString;
+        type: z.ZodEnum<{
+            add: "add";
+            less: "less";
+        }>;
+        rate: z.ZodNullable<z.ZodOptional<z.ZodNumber>>;
+        amount: z.ZodNumber;
+    }, z.core.$strip>>>;
 }, z.core.$strip>;
 export declare const InvoiceListQuerySchema: z.ZodObject<{
     type: z.ZodOptional<z.ZodEnum<{
