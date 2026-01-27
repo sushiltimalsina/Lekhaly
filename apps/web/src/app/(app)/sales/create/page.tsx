@@ -13,6 +13,7 @@ import { createInvoiceDraft } from "@/lib/api/invoices";
 import { listParties, type PartyRecord } from "@/lib/api/parties";
 import { listAccounts, type AccountRecord } from "@/lib/api/accounts";
 import { listItems, type ItemRecord } from "@/lib/api/items";
+import AddItemDialog from "@/components/app/add-item-dialog";
 
 import {
   Plus,
@@ -67,6 +68,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
   emptyText?: string;
   buttonRef?: React.Ref<HTMLButtonElement>;
   onEnterNext?: () => void;
+  onKeyDownCustom?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
 }) {
   const {
     label,
@@ -220,6 +222,10 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                       setActiveIndex((prev) => (prev - 1 + filtered.length) % Math.max(1, filtered.length));
                     }
                     if (e.key === "Enter") {
+                      if (props.onKeyDownCustom) {
+                        props.onKeyDownCustom(e);
+                        if (e.defaultPrevented) return;
+                      }
                       e.preventDefault();
                       const item = filtered[activeIndex];
                       if (item) {
@@ -298,6 +304,9 @@ export default function SalesCreatePage() {
   const referenceNoRef = React.useRef<HTMLInputElement>(null);
   const customerSelectRef = React.useRef<HTMLButtonElement>(null);
   const addLineButtonRef = React.useRef<HTMLButtonElement>(null);
+  const [lineErrors, setLineErrors] = React.useState<Record<number, { qty?: string; rate?: string }>>({});
+  const [addItemOpen, setAddItemOpen] = React.useState(false);
+  const [activeLineIdx, setActiveLineIdx] = React.useState<number | null>(null);
 
   // For item table navigation
   const rowRefs = React.useRef<{
@@ -305,6 +314,8 @@ export default function SalesCreatePage() {
     qty: (HTMLInputElement | null)[];
     rate: (HTMLInputElement | null)[];
   }>({ select: [], qty: [], rate: [] });
+
+  const sundryRefs = React.useRef<HTMLInputElement[]>([]);
 
   const [parties, setParties] = React.useState<PartyRecord[]>([]);
   const [accounts, setAccounts] = React.useState<AccountRecord[]>([]);
@@ -706,6 +717,12 @@ export default function SalesCreatePage() {
               getLabel={(p) => p.name}
               leftIcon={<Search className="h-4 w-4" />}
               onEnterNext={() => safeFocus(rowRefs.current.select[0])}
+              onKeyDownCustom={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                if (e.key === "Enter" && e.shiftKey) {
+                  e.preventDefault();
+                  safeFocus(sundryRefs.current[0]);
+                }
+              }}
               buttonClassName="h-12 rounded-2xl bg-white dark:bg-slate-900 pr-[140px]"
             />
 
@@ -761,69 +778,108 @@ export default function SalesCreatePage() {
                       <tr key={idx} className="border-t border-slate-200/70 dark:border-slate-800/60">
                         <td className="px-4 py-3 text-muted-foreground font-medium">{idx + 1}</td>
                         <td className="px-4 py-3">
-                          <SearchableSelect<ItemRecord>
-                            buttonRef={(el) => { rowRefs.current.select[idx] = el; }}
-                            placeholder="Search item…"
-                            valueId={line.itemId}
-                            onChange={(id) => updateLine(idx, { itemId: id })}
-                            options={items}
-                            getLabel={(it) => {
-                              const code = it.hsCode ? ` (${it.hsCode})` : "";
-                              return `${it.name ?? "Item"}${code}`;
-                            }}
-                            onEnterNext={() => safeFocus(rowRefs.current.qty[idx])}
-                            leftIcon={<Search className="h-4 w-4" />}
-                            buttonClassName="h-11 rounded-2xl bg-white dark:bg-slate-900"
-                            emptyText="No items found"
-                          />
+                          <div className="relative">
+                            <SearchableSelect<ItemRecord>
+                              buttonRef={(el) => { rowRefs.current.select[idx] = el; }}
+                              placeholder="Search item…"
+                              valueId={line.itemId}
+                              onChange={(id) => updateLine(idx, { itemId: id })}
+                              options={items}
+                              getLabel={(it) => {
+                                const code = it.hsCode ? ` (${it.hsCode})` : "";
+                                return `${it.name ?? "Item"}${code}`;
+                              }}
+                              onEnterNext={() => safeFocus(rowRefs.current.qty[idx])}
+                              onKeyDownCustom={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                                if (e.key === "Enter" && e.shiftKey) {
+                                  e.preventDefault();
+                                  safeFocus(sundryRefs.current[0]);
+                                }
+                              }}
+                              leftIcon={<Search className="h-4 w-4" />}
+                              buttonClassName="h-11 rounded-2xl bg-white dark:bg-slate-900 pr-[100px]"
+                              emptyText="No items found"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => {
+                                setActiveLineIdx(idx);
+                                setAddItemOpen(true);
+                              }}
+                              className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 rounded-xl px-3 text-[10px] font-medium bg-slate-50 dark:bg-slate-800"
+                            >
+                              <Plus className="mr-1 h-3 w-3" />
+                              Add item
+                            </Button>
+                          </div>
                         </td>
 
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 align-top">
                           <Input
                             ref={(el) => { rowRefs.current.qty[idx] = el; }}
                             type="number"
                             min="0"
                             step="0.01"
                             value={line.qty}
-                            onChange={(e) => updateLine(idx, { qty: e.target.value })}
+                            onChange={(e) => {
+                              updateLine(idx, { qty: e.target.value });
+                              setLineErrors(prev => ({ ...prev, [idx]: { ...prev[idx], qty: undefined } }));
+                            }}
                             onKeyDown={(e) => {
                               if (e.key === "Enter") {
-                                if (!line.qty || Number(line.qty) <= 0) {
-                                  setError("Please enter a valid quantity.");
+                                if (e.shiftKey) {
+                                  e.preventDefault();
+                                  safeFocus(sundryRefs.current[0]);
                                   return;
                                 }
-                                setError(null);
+                                if (!line.qty || Number(line.qty) <= 0) {
+                                  setLineErrors(prev => ({ ...prev, [idx]: { ...prev[idx], qty: "Required" } }));
+                                  return;
+                                }
                                 e.preventDefault();
                                 safeFocus(rowRefs.current.rate[idx]);
                               }
                             }}
                             onBlur={() => {
                               if (line.itemId && (!line.qty || Number(line.qty) <= 0)) {
-                                setError(`Line ${idx + 1}: Quantity is required.`);
+                                setLineErrors(prev => ({ ...prev, [idx]: { ...prev[idx], qty: "Required" } }));
                               }
                             }}
                             className={cn(
                               "h-11 rounded-2xl bg-white text-center dark:bg-slate-900 transition-colors",
-                              line.itemId && (!line.qty || Number(line.qty) <= 0) && "border-red-500 focus:ring-red-200"
+                              lineErrors[idx]?.qty && "border-red-500 focus:ring-red-200"
                             )}
                           />
+                          {lineErrors[idx]?.qty && (
+                            <div className="mt-1 text-[10px] text-red-500 font-medium text-center">
+                              {lineErrors[idx].qty}
+                            </div>
+                          )}
                         </td>
 
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 align-top">
                           <Input
                             ref={(el) => { rowRefs.current.rate[idx] = el; }}
                             type="number"
                             min="0"
                             step="0.01"
                             value={line.rate}
-                            onChange={(e) => updateLine(idx, { rate: e.target.value })}
+                            onChange={(e) => {
+                              updateLine(idx, { rate: e.target.value });
+                              setLineErrors(prev => ({ ...prev, [idx]: { ...prev[idx], rate: undefined } }));
+                            }}
                             onKeyDown={(e) => {
                               if (e.key === "Enter") {
-                                if (!line.rate || Number(line.rate) <= 0) {
-                                  setError("Please enter a valid rate.");
+                                if (e.shiftKey) {
+                                  e.preventDefault();
+                                  safeFocus(sundryRefs.current[0]);
                                   return;
                                 }
-                                setError(null);
+                                if (!line.rate || Number(line.rate) <= 0) {
+                                  setLineErrors(prev => ({ ...prev, [idx]: { ...prev[idx], rate: "Required" } }));
+                                  return;
+                                }
                                 e.preventDefault();
                                 if (rowRefs.current.select[idx + 1]) {
                                   safeFocus(rowRefs.current.select[idx + 1]);
@@ -834,15 +890,20 @@ export default function SalesCreatePage() {
                             }}
                             onBlur={() => {
                               if (line.itemId && (!line.rate || Number(line.rate) <= 0)) {
-                                setError(`Line ${idx + 1}: Rate is required.`);
+                                setLineErrors(prev => ({ ...prev, [idx]: { ...prev[idx], rate: "Required" } }));
                               }
                             }}
                             className={cn(
                               "h-11 rounded-2xl bg-white text-center dark:bg-slate-900 transition-colors",
-                              line.itemId && (!line.rate || Number(line.rate) <= 0) && "border-red-500 focus:ring-red-200"
+                              lineErrors[idx]?.rate && "border-red-500 focus:ring-red-200"
                             )}
                             placeholder="Rate"
                           />
+                          {lineErrors[idx]?.rate && (
+                            <div className="mt-1 text-[10px] text-red-500 font-medium text-center">
+                              {lineErrors[idx].rate}
+                            </div>
+                          )}
                         </td>
 
                         <td className="px-4 py-3 text-right font-semibold">
@@ -887,7 +948,13 @@ export default function SalesCreatePage() {
             </div>
           </div>
         </section>
-        <div className="mb-3 flex items-right justify-end">
+
+
+
+        <div className="mb-4 flex flex-col items-end gap-2 text-right">
+          <div className="text-[10px] text-muted-foreground italic pr-2">
+            Tip: Press <kbd className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border text-[9px] not-italic font-sans">Shift + Enter</kbd> to jump sundry column
+          </div>
 
           <Button type="button" variant="outline" onClick={addSundry} className="rounded-full bg-indigo-600 text-white hover:bg-indigo-700">
             <Plus className="mr-2 h-4 w-4" />
@@ -924,6 +991,7 @@ export default function SalesCreatePage() {
                       <td className="px-3 py-2 text-muted-foreground">{i + 1}</td>
                       <td className="px-3 py-2">
                         <Input
+                          ref={(el) => { if (el) sundryRefs.current[i] = el; }}
                           value={r.name}
                           onChange={(e) => updateSundry(r.id, { name: e.target.value })}
                           className="h-10 rounded-xl bg-white dark:bg-slate-900"
@@ -1116,6 +1184,20 @@ export default function SalesCreatePage() {
           </div>
         </section>
       </div>
+      <AddItemDialog
+        open={addItemOpen}
+        onClose={() => setAddItemOpen(false)}
+        onSuccess={(newItem) => {
+          setItems(prev => [...prev, newItem]);
+          if (activeLineIdx !== null) {
+            updateLine(activeLineIdx, {
+              itemId: newItem.id,
+              rate: newItem.salesPrice?.toString() || ""
+            });
+            setTimeout(() => safeFocus(rowRefs.current.qty[activeLineIdx]), 50);
+          }
+        }}
+      />
     </div>
   );
 }
