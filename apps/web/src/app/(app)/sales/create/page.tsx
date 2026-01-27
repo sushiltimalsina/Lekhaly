@@ -34,7 +34,7 @@ import Link from "next/link";
 import { toBs } from "@/lib/dates/bs";
 
 type Line = { itemId: string; qty: string; rate: string; description?: string };
-type BillSundryRow = { id: string; sundryId?: string; name: string; type: "add" | "less"; ratePct: string };
+type BillSundryRow = { id: string; sundryId?: string; name: string; type: "add" | "less"; ratePct: string; manualAmount?: string; isManual?: boolean };
 
 function useOutsideClick<T extends HTMLElement>(
   onOutside: () => void,
@@ -86,6 +86,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
     className,
     buttonClassName,
     emptyText = "No items found",
+    fallbackLabel,
   } = props;
 
   const [open, setOpen] = React.useState(false);
@@ -113,7 +114,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
   const selected = React.useMemo(() => options.find((o) => o.id === valueId), [options, valueId]);
   const selectedLabel = selected
     ? (getLabel ? getLabel(selected) : selected.name ?? selected.id)
-    : (props.fallbackLabel || "");
+    : (fallbackLabel || "");
 
   const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -471,7 +472,7 @@ export default function SalesCreatePage() {
 
     const rows = filteredRows.map((r) => {
       const pct = Number(r.ratePct || 0);
-      const amount = (itemsSubtotal * pct) / 100;
+      const amount = (r.isManual || pct === 0) ? Number(r.manualAmount || 0) : (itemsSubtotal * pct) / 100;
       return { ...r, amount };
     });
     const add = rows.filter((r) => r.type === "add").reduce((s, r) => s + r.amount, 0);
@@ -812,15 +813,17 @@ export default function SalesCreatePage() {
               buttonClassName="h-12 rounded-2xl bg-white dark:bg-slate-900 pr-[140px]"
             />
 
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setAddCustomerOpen(true)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 h-9 rounded-full px-4 text-xs"
-            >
-              <Plus className="mr-2 h-3.5 w-3.5" />
-              New Customer
-            </Button>
+            {!form.partyId && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setAddCustomerOpen(true)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-9 rounded-full px-4 text-xs"
+              >
+                <Plus className="mr-2 h-3.5 w-3.5" />
+                New Customer
+              </Button>
+            )}
           </div>
         </section>
 
@@ -894,18 +897,20 @@ export default function SalesCreatePage() {
                               buttonClassName="h-11 rounded-2xl bg-white dark:bg-slate-900 pr-[100px]"
                               emptyText="No items found"
                             />
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={() => {
-                                setActiveLineIdx(idx);
-                                setAddItemOpen(true);
-                              }}
-                              className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 rounded-xl px-3 text-[10px] font-medium bg-slate-50 dark:bg-slate-800"
-                            >
-                              <Plus className="mr-1 h-3 w-3" />
-                              Add item
-                            </Button>
+                            {!line.itemId && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => {
+                                  setActiveLineIdx(idx);
+                                  setAddItemOpen(true);
+                                }}
+                                className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 rounded-xl px-3 text-[10px] font-medium bg-slate-50 dark:bg-slate-800"
+                              >
+                                <Plus className="mr-1 h-3 w-3" />
+                                Add item
+                              </Button>
+                            )}
                           </div>
                         </td>
 
@@ -1105,19 +1110,22 @@ export default function SalesCreatePage() {
                             getLabel={(s) => s.name}
                             buttonClassName="h-10 rounded-xl pr-[110px]"
                             emptyText="No sundries found"
+                            
                           />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => {
-                              setActiveSundryIdx(i);
-                              setAddSundryOpen(true);
-                            }}
-                            className="absolute right-7 top-1/2 -translate-y-1/2 h-7 rounded-lg px-1.5 text-[10px] font-medium bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
-                          >
-                            <Plus className="h-3 w-3" />
-                            Define New
-                          </Button>
+                          {!r.sundryId && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => {
+                                setActiveSundryIdx(i);
+                                setAddSundryOpen(true);
+                              }}
+                              className="absolute z-10 right-7 top-1/2 -translate-y-1/2 h-7 rounded-lg px-1.5 text-[10px] font-medium bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                            >
+                              <Plus className="h-3 w-3" />
+                              Define New
+                            </Button>
+                          )}
                         </div>
                       </td>
                       <td className="px-3 py-2 text-right">
@@ -1125,7 +1133,13 @@ export default function SalesCreatePage() {
                           <Input
                             ref={(el) => { sundryRefs.current.rate[i] = el; }}
                             value={r.ratePct}
-                            onChange={(e) => updateSundry(r.id, { ratePct: e.target.value })}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              updateSundry(r.id, {
+                                ratePct: val,
+                                isManual: false
+                              });
+                            }}
                             onKeyDown={(e) => {
                               if (e.key === "Enter") {
                                 e.preventDefault();
@@ -1142,9 +1156,32 @@ export default function SalesCreatePage() {
                         </div>
                       </td>
                       <td className="px-3 py-2 text-right font-semibold">
-                        {r.type === "less" ? "(" : null}
-                        <MoneyText value={r.amount} />
-                        {r.type === "less" ? ")" : null}
+                        <div className="inline-flex items-center justify-end gap-1">
+                          {r.type === "less" ? "(" : null}
+                          {r.isManual || Number(r.ratePct || 0) === 0 ? (
+                            <div className="flex items-center">
+                              <span className="mr-1 text-xs text-muted-foreground font-normal">Rs.</span>
+                              <Input
+                                value={r.manualAmount || ""}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  const amt = Number(val || 0);
+                                  const pct = itemsSubtotal > 0 ? (amt / itemsSubtotal) * 100 : 0;
+                                  updateSundry(r.id, {
+                                    manualAmount: val,
+                                    ratePct: pct % 1 === 0 ? pct.toString() : pct.toFixed(2),
+                                    isManual: true
+                                  });
+                                }}
+                                placeholder="0.00"
+                                className="h-8 w-24 rounded-lg border-slate-200 bg-white px-2 text-right text-sm dark:border-slate-800 dark:bg-slate-900"
+                              />
+                            </div>
+                          ) : (
+                            <MoneyText value={r.amount} />
+                          )}
+                          {r.type === "less" ? ")" : null}
+                        </div>
                       </td>
                       <td className="px-3 py-2 text-right">
                         <button

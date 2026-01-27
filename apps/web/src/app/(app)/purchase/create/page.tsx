@@ -34,7 +34,7 @@ import Link from "next/link";
 import { toBs } from "@/lib/dates/bs";
 
 type Line = { itemId: string; qty: string; rate: string; description?: string; expenseAccountId?: string };
-type BillSundryRow = { id: string; sundryId?: string; name: string; type: "add" | "less"; ratePct: string };
+type BillSundryRow = { id: string; sundryId?: string; name: string; type: "add" | "less"; ratePct: string; manualAmount?: string; isManual?: boolean };
 
 function useOutsideClick<T extends HTMLElement>(
     onOutside: () => void,
@@ -86,6 +86,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
         className,
         buttonClassName,
         emptyText = "No items found",
+        fallbackLabel,
     } = props;
 
     const [open, setOpen] = React.useState(false);
@@ -113,7 +114,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
     const selected = React.useMemo(() => options.find((o) => o.id === valueId), [options, valueId]);
     const selectedLabel = selected
         ? (getLabel ? getLabel(selected) : selected.name ?? selected.id)
-        : (props.fallbackLabel || "");
+        : (fallbackLabel || "");
 
     const filtered = React.useMemo(() => {
         const q = query.trim().toLowerCase();
@@ -446,7 +447,7 @@ export default function PurchaseCreatePage() {
 
         const rows = filteredRows.map((r) => {
             const pct = Number(r.ratePct || 0);
-            const amount = (itemsSubtotal * pct) / 100;
+            const amount = (r.isManual || pct === 0) ? Number(r.manualAmount || 0) : (itemsSubtotal * pct) / 100;
             return { ...r, amount };
         });
         const add = rows.filter((r) => r.type === "add").reduce((s, r) => s + r.amount, 0);
@@ -532,34 +533,49 @@ export default function PurchaseCreatePage() {
             throw new Error("Payable account is required. Please ensure liability accounts are set up.");
         }
 
-        const payloadLines = lines
-            .filter((l) => l.itemId)
-            .map((l, idx) => {
-                const qty = Number(l.qty);
-                const rate = Number(l.rate);
+        // Validate Items lines
+        lines.forEach((l, idx) => {
+            if (!l.itemId) {
+                throw new Error(`Line ${idx + 1}: Item is required.`);
+            }
+            const qty = Number(l.qty);
+            const rate = Number(l.rate);
+            if (isNaN(qty) || qty <= 0) {
+                throw new Error(`Line ${idx + 1}: Quantity must be greater than zero.`);
+            }
+            if (isNaN(rate) || rate <= 0) {
+                throw new Error(`Line ${idx + 1}: Rate is required and must be greater than zero.`);
+            }
+        });
 
-                if (isNaN(qty) || qty <= 0) {
-                    throw new Error(`Line ${idx + 1}: Quantity must be greater than zero.`);
-                }
-                if (isNaN(rate) || rate <= 0) {
-                    throw new Error(`Line ${idx + 1}: Rate is required and must be greater than zero.`);
-                }
-
-                const item = items.find(it => it.id === l.itemId);
-
-                return {
-                    itemId: l.itemId,
-                    accountId: l.expenseAccountId || item?.expenseAccountId || "",
-                    debit: qty * rate,
-                    qty,
-                    description: l.description || "Purchase",
-                };
-            });
+        const payloadLines = lines.map((l) => {
+            const qty = Number(l.qty);
+            const rate = Number(l.rate);
+            const item = items.find(it => it.id === l.itemId);
+            return {
+                itemId: l.itemId,
+                accountId: l.expenseAccountId || item?.expenseAccountId || "",
+                debit: qty * rate,
+                qty,
+                description: l.description || "Purchase",
+            };
+        });
 
         if (!payloadLines.length) throw new Error("Add at least one item line.");
 
-        // Add Sundry lines
+        // Validate and Add Sundry lines
         billSundryComputed.rows.forEach(r => {
+            // Validate Sundry Name/Selection
+            if (!r.sundryId) {
+                throw new Error(`Bill Sundry '${r.name || "Unknown"}': Name is required.`);
+            }
+
+            if (Math.abs(r.amount) < 0.01 && !r.isManual) return; // Skip zero amount rows unless manual? Actually usually skip 0 effect. 
+            // Wait, if validation is mandatory "if column is added", we should throw error even if amount is 0?
+            // User requirement: "make ... sundry name mandatory if column is added"
+            // So if checking sundryId above handles it.
+
+            // Re-check amount for posting
             if (Math.abs(r.amount) < 0.01) return;
 
             // Find the account for this sundry
@@ -567,8 +583,7 @@ export default function PurchaseCreatePage() {
             const accountId = sundryOpt?.accountId;
 
             if (!accountId) {
-                // Skip if no account
-                return;
+                throw new Error(`Bill Sundry '${r.name}': No linked account found.`);
             }
 
             payloadLines.push({
@@ -792,15 +807,17 @@ export default function PurchaseCreatePage() {
                             buttonClassName="h-12 rounded-2xl bg-white dark:bg-slate-900 pr-[140px]"
                         />
 
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => setAddVendorOpen(true)}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 h-9 rounded-full px-4 text-xs"
-                        >
-                            <Plus className="mr-2 h-3.5 w-3.5" />
-                            New Vendor
-                        </Button>
+                        {!form.partyId && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setAddVendorOpen(true)}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 h-9 rounded-full px-4 text-xs"
+                            >
+                                <Plus className="mr-2 h-3.5 w-3.5" />
+                                New Vendor
+                            </Button>
+                        )}
                     </div>
                 </section>
 
@@ -880,18 +897,20 @@ export default function PurchaseCreatePage() {
                                                             buttonClassName="h-11 rounded-2xl bg-white dark:bg-slate-900 pr-[100px]"
                                                             emptyText="No items found"
                                                         />
-                                                        <Button
-                                                            type="button"
-                                                            variant="outline"
-                                                            onClick={() => {
-                                                                setActiveLineIdx(idx);
-                                                                setAddItemOpen(true);
-                                                            }}
-                                                            className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 rounded-xl px-3 text-[10px] font-medium bg-slate-50 dark:bg-slate-800"
-                                                        >
-                                                            <Plus className="mr-1 h-3 w-3" />
-                                                            Add item
-                                                        </Button>
+                                                        {!line.itemId && (
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                onClick={() => {
+                                                                    setActiveLineIdx(idx);
+                                                                    setAddItemOpen(true);
+                                                                }}
+                                                                className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 rounded-xl px-3 text-[10px] font-medium bg-slate-50 dark:bg-slate-800"
+                                                            >
+                                                                <Plus className="mr-1 h-3 w-3" />
+                                                                Add item
+                                                            </Button>
+                                                        )}
                                                     </div>
                                                 </td>
 
@@ -1030,10 +1049,6 @@ export default function PurchaseCreatePage() {
                 </section>
 
                 <div className="mb-4 flex flex-col items-end gap-2 text-right">
-                    <div className="text-[10px] text-muted-foreground italic pr-2">
-                        Tip: Press <kbd className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border text-[9px] not-italic font-sans">Shift + Enter</kbd> to jump sundry column
-                    </div>
-
                     <Button type="button" variant="outline" onClick={addSundry} className="rounded-full bg-indigo-600 text-white hover:bg-indigo-700">
                         <Plus className="mr-2 h-4 w-4" />
                         Add Sundry Column
@@ -1042,7 +1057,7 @@ export default function PurchaseCreatePage() {
 
                 {/* BILL SUNDRY */}
                 <section className="mb-6">
-                    <div className="rounded-2xl border bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950">
                         <div className="mr-4 text-sm font-semibold text-slate-700 dark:text-slate-200">Bill Sundry Details</div>
                         <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
                             <table className="min-w-full text-sm">
@@ -1084,18 +1099,22 @@ export default function PurchaseCreatePage() {
                                                         getLabel={(s) => s.name}
                                                         buttonClassName="h-10 rounded-xl pr-[110px]"
                                                         emptyText="No sundries found"
+                                                        
                                                     />
-                                                    <Button
-                                                        type="button"
-                                                        variant="outline"
-                                                        onClick={() => {
-                                                            setActiveSundryIdx(i);
-                                                            setAddSundryOpen(true);
-                                                        }}
-                                                        className="absolute right-7 top-1/2 -translate-y-1/2 h-7 rounded-lg px-1.5 text-[10px] font-medium bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
-                                                    >
-                                                        <Plus className="h-3 w-3" />
-                                                    </Button>
+                                                    {!r.sundryId && (
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            onClick={() => {
+                                                                setActiveSundryIdx(i);
+                                                                setAddSundryOpen(true);
+                                                            }}
+                                                            className="absolute z-10 right-7 top-1/2 -translate-y-1/2 h-7 rounded-lg px-1.5 text-[10px] font-medium bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                                                        >
+                                                            <Plus className="h-3 w-3" />
+                                                            Define New
+                                                        </Button>
+                                                    )}
                                                 </div>
                                             </td>
                                             <td className="px-3 py-2 text-right">
@@ -1104,7 +1123,13 @@ export default function PurchaseCreatePage() {
                                                         ref={(el) => { if (el) sundryRefs.current.rate[i] = el; }}
                                                         type="number"
                                                         value={r.ratePct}
-                                                        onChange={(e) => updateSundry(r.id, { ratePct: e.target.value })}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            updateSundry(r.id, {
+                                                                ratePct: val,
+                                                                isManual: false
+                                                            });
+                                                        }}
                                                         onKeyDown={(e) => {
                                                             if (e.key === "Enter") {
                                                                 e.preventDefault();
@@ -1119,9 +1144,32 @@ export default function PurchaseCreatePage() {
                                                 </div>
                                             </td>
                                             <td className="px-3 py-2 text-right font-semibold">
-                                                {r.type === "less" ? "(" : null}
-                                                <MoneyText value={r.amount} />
-                                                {r.type === "less" ? ")" : null}
+                                                <div className="inline-flex items-center justify-end gap-1">
+                                                    {r.type === "less" ? "(" : null}
+                                                    {r.isManual || Number(r.ratePct || 0) === 0 ? (
+                                                        <div className="flex items-center">
+                                                            <span className="mr-1 text-xs text-muted-foreground font-normal">Rs.</span>
+                                                            <Input
+                                                                value={r.manualAmount || ""}
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    const amt = Number(val || 0);
+                                                                    const pct = itemsSubtotal > 0 ? (amt / itemsSubtotal) * 100 : 0;
+                                                                    updateSundry(r.id, {
+                                                                        manualAmount: val,
+                                                                        ratePct: pct % 1 === 0 ? pct.toString() : pct.toFixed(2),
+                                                                        isManual: true
+                                                                    });
+                                                                }}
+                                                                placeholder="0.00"
+                                                                className="h-8 w-24 rounded-lg border-slate-200 bg-white px-2 text-right text-sm dark:border-slate-800 dark:bg-slate-900"
+                                                            />
+                                                        </div>
+                                                    ) : (
+                                                        <MoneyText value={r.amount} />
+                                                    )}
+                                                    {r.type === "less" ? ")" : null}
+                                                </div>
                                             </td>
                                             <td className="px-3 py-2 text-right">
                                                 <button
@@ -1291,6 +1339,24 @@ export default function PurchaseCreatePage() {
                     setParties(prev => [...prev, newVendor]);
                     setForm(f => ({ ...f, partyId: newVendor.id }));
                     setTimeout(() => safeFocus(rowRefs.current.select[0]), 50);
+                }}
+            />
+            <AddBillSundryDialog
+                open={addSundryOpen}
+                onClose={() => setAddSundryOpen(false)}
+                onSuccess={(newSundry) => {
+                    setSundryOptions(prev => [...prev, newSundry]);
+                    if (activeSundryIdx !== null) {
+                        const r = billSundries[activeSundryIdx];
+                        if (r) {
+                            updateSundry(r.id, {
+                                sundryId: newSundry.id,
+                                name: newSundry.name,
+                                type: newSundry.type as any,
+                                ratePct: newSundry.rate?.toString() || "0"
+                            });
+                        }
+                    }
                 }}
             />
         </div>
