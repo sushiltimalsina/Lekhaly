@@ -69,10 +69,11 @@ export default function JournalCreatePage() {
     const saveButtonRef = React.useRef<HTMLButtonElement>(null);
 
     const rowRefs = React.useRef<{
+        typeToggle: (HTMLButtonElement | null)[];
         select: (HTMLButtonElement | null)[];
         amount: (HTMLInputElement | null)[];
         narration: (HTMLInputElement | null)[];
-    }>({ select: [], amount: [], narration: [] });
+    }>({ typeToggle: [], select: [], amount: [], narration: [] });
 
     const safeFocus = (el: HTMLElement | null) => {
         if (!el) return;
@@ -86,6 +87,7 @@ export default function JournalCreatePage() {
 
     // Clean up refs when lines change
     React.useEffect(() => {
+        rowRefs.current.typeToggle = rowRefs.current.typeToggle.slice(0, lines.length);
         rowRefs.current.select = rowRefs.current.select.slice(0, lines.length);
         rowRefs.current.amount = rowRefs.current.amount.slice(0, lines.length);
         rowRefs.current.narration = rowRefs.current.narration.slice(0, lines.length);
@@ -131,7 +133,9 @@ export default function JournalCreatePage() {
 
     const addLine = () => {
         const lastType = lines[lines.length - 1]?.type === "dr" ? "cr" : "dr";
+        const newIdx = lines.length;
         setLines([...lines, { id: Math.random().toString(), type: lastType, accountId: "", partyId: "", description: "", amount: "" }]);
+        setTimeout(() => safeFocus(rowRefs.current.typeToggle[newIdx]), 50);
     };
 
     const removeLine = (id: string) => {
@@ -234,6 +238,9 @@ export default function JournalCreatePage() {
                                         onChange={(date) => setForm(f => ({ ...f, date }))}
                                         onEnterNext={() => safeFocus(referenceNoRef.current)}
                                     />
+                                    <div className="text-[9px] text-slate-400 italic px-1 pt-1">
+                                        Press <kbd className="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border text-[8px] not-italic font-sans">Enter</kbd> for today
+                                    </div>
                                 </div>
                                 <div className="w-[180px] space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500">Vch No.</label>
@@ -253,42 +260,66 @@ export default function JournalCreatePage() {
                                         onKeyDown={(e) => {
                                             if (e.key === "Enter") {
                                                 e.preventDefault();
-                                                safeFocus(rowRefs.current.select[0]);
+                                                safeFocus(rowRefs.current.typeToggle[0]);
                                             }
                                         }}
                                         className="h-10 rounded-xl border-slate-200 hover:border-indigo-400 focus:ring-indigo-500 dark:border-slate-800 dark:bg-slate-950 transition-all font-medium"
                                     />
+                                    <div className="text-[9px] text-slate-400 italic px-1 pt-1">
+                                        Press <kbd className="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border text-[8px] not-italic font-sans">Enter</kbd> to jump to items
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
                         {/* Entry Table Panel */}
-                        <div className="flex flex-col rounded-3xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900/50 overflow-hidden">
-                            <div className="overflow-x-auto overflow-y-visible">
-                                <table className="w-full border-collapse min-w-[1000px]">
-                                    <thead className="bg-slate-50/80 dark:bg-slate-800/80 border-b border-slate-100 dark:border-slate-800 backdrop-blur-sm sticky top-0 z-10">
-                                        <tr className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500">
-                                            <th className="w-12 px-6 py-4 text-left">S.N.</th>
-                                            <th className="w-24 px-4 py-4 text-center">D/C</th>
-                                            <th className="px-4 py-4 text-left">Account / Party Name</th>
-                                            <th className="w-48 px-4 py-4 text-right">Debit (Rs.)</th>
-                                            <th className="w-48 px-4 py-4 text-right">Credit (Rs.)</th>
-                                            <th className="px-4 py-4 text-left">Narration</th>
-                                            <th className="w-16 px-6 py-4"></th>
+                        <div className="rounded-3xl border border-slate-100 bg-white/50 dark:border-slate-800/50 dark:bg-slate-900/20 overflow-hidden backdrop-blur-sm">
+                            <div className="overflow-x-auto scrollbar-none">
+                                <table className="w-full text-left border-collapse min-w-[1000px]">
+                                    <thead>
+                                        <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40">
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-wider text-slate-400 w-[60px]">#</th>
+                                            <th className="px-2 py-4 text-[10px] font-black uppercase tracking-wider text-slate-400 w-[80px]">D/C</th>
+                                            <th className="px-2 py-4 text-[10px] font-black uppercase tracking-wider text-slate-400 w-[400px]">Account/Party Detail</th>
+                                            <th className="px-2 py-4 text-[10px] font-black uppercase tracking-wider text-slate-400 w-[180px]">Debit (To)</th>
+                                            <th className="px-2 py-4 text-[10px] font-black uppercase tracking-wider text-slate-400 w-[180px]">Credit (From)</th>
+                                            <th className="px-2 py-4 text-[10px] font-black uppercase tracking-wider text-slate-400">Note</th>
+                                            <th className="px-6 py-4 w-[60px]"></th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
+                                        <tr className="bg-white/30 dark:bg-transparent">
+                                            <td colSpan={7} className="px-6 py-1.5">
+                                                <div className="flex gap-4 text-[9px] text-slate-400 italic">
+                                                    <span>Press <kbd className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border text-[8px] not-italic font-sans">Space</kbd> to toggle D/C</span>
+                                                    <span>Press <kbd className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border text-[8px] not-italic font-sans">Shift + Enter</kbd> in Note to jump to Memo</span>
+                                                </div>
+                                            </td>
+                                        </tr>
                                         {lines.map((line, idx) => (
                                             <tr key={line.id} className="group hover:bg-slate-50/50 dark:hover:bg-indigo-900/5 transition-colors duration-200">
                                                 <td className="px-6 py-3 text-xs font-bold text-slate-300 dark:text-slate-600">{idx + 1}</td>
                                                 <td className="px-2 py-3">
                                                     <button
-                                                        onClick={() => updateLine(line.id, { type: line.type === "dr" ? "cr" : "dr" })}
+                                                        ref={(el) => { rowRefs.current.typeToggle[idx] = el; }}
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            updateLine(line.id, { type: line.type === "dr" ? "cr" : "dr" });
+                                                        }}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === "Enter") {
+                                                                e.preventDefault();
+                                                                safeFocus(rowRefs.current.select[idx]);
+                                                            } else if (e.key === " ") {
+                                                                e.preventDefault();
+                                                                updateLine(line.id, { type: line.type === "dr" ? "cr" : "dr" });
+                                                            }
+                                                        }}
                                                         className={cn(
-                                                            "w-full h-9 rounded-lg text-[10px] font-black transition-all transform active:scale-90 flex items-center justify-center border-2",
+                                                            "w-full h-9 rounded-lg text-[10px] font-black transition-all transform active:scale-90 flex items-center justify-center border-2 outline-none focus:ring-2 focus:ring-offset-1",
                                                             line.type === "dr"
-                                                                ? "bg-blue-600 border-blue-500 text-white shadow-sm"
-                                                                : "bg-rose-600 border-rose-500 text-white shadow-sm"
+                                                                ? "bg-blue-600 border-blue-500 text-white shadow-sm focus:ring-blue-500"
+                                                                : "bg-rose-600 border-rose-500 text-white shadow-sm focus:ring-rose-500"
                                                         )}
                                                     >
                                                         {line.type.toUpperCase()}
@@ -376,15 +407,20 @@ export default function JournalCreatePage() {
                                                         placeholder="Short narration..."
                                                         onKeyDown={(e) => {
                                                             if (e.key === "Enter") {
+                                                                if (e.shiftKey) {
+                                                                    e.preventDefault();
+                                                                    safeFocus(memoRef.current);
+                                                                    return;
+                                                                }
                                                                 e.preventDefault();
-                                                                if (rowRefs.current.select[idx + 1]) {
-                                                                    safeFocus(rowRefs.current.select[idx + 1]);
+                                                                if (rowRefs.current.typeToggle[idx + 1]) {
+                                                                    safeFocus(rowRefs.current.typeToggle[idx + 1]);
                                                                 } else {
                                                                     safeFocus(addRowButtonRef.current);
                                                                 }
                                                             }
                                                         }}
-                                                        className="h-9 rounded-xl border-slate-200 bg-transparent hover:bg-white focus:bg-white dark:border-slate-800 dark:hover:bg-slate-950 dark:text-slate-300 transition-all font-medium"
+                                                        className="h-9 rounded-xl border-slate-200 bg-transparent hover:bg-white focus:bg-white dark:border-slate-800 dark:hover:bg-slate-900 dark:focus:bg-slate-900 dark:text-slate-300 transition-all font-medium"
                                                     />
                                                 </td>
                                                 <td className="px-6 py-3 text-right">
@@ -432,16 +468,21 @@ export default function JournalCreatePage() {
                         {/* Narration Panel */}
                         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/50 mb-12">
                             <div className="space-y-4">
-                                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500">
-                                    <ArrowRightCircle className="h-3.5 w-3.5" />
-                                    General Memo / Long Narration
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500">
+                                        <ArrowRightCircle className="h-3.5 w-3.5" />
+                                        General Memo / Long Narration
+                                    </div>
+                                    <div className="text-[9px] text-slate-400 italic">
+                                        Press <kbd className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border text-[8px] not-italic font-sans">Shift + Enter</kbd> to jump to Save
+                                    </div>
                                 </div>
                                 <textarea
                                     ref={memoRef}
                                     value={form.memo}
                                     onChange={(e) => setForm(f => ({ ...f, memo: e.target.value }))}
                                     onKeyDown={(e) => {
-                                        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                                        if (e.key === "Enter" && (e.shiftKey || e.ctrlKey || e.metaKey)) {
                                             e.preventDefault();
                                             safeFocus(saveButtonRef.current);
                                         }
@@ -495,14 +536,6 @@ export default function JournalCreatePage() {
 
                     <div className="flex items-center gap-3 w-full md:w-auto">
                         <Button
-                            variant="outline"
-                            onClick={onPrint}
-                            className="flex-1 md:flex-none rounded-2xl h-12 px-6 font-bold text-xs uppercase tracking-widest border-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
-                        >
-                            <Printer className="mr-2 h-4 w-4" />
-                            Print
-                        </Button>
-                        <Button
                             ref={saveButtonRef}
                             onClick={onSave}
                             disabled={loading || !totals.balanced}
@@ -513,7 +546,15 @@ export default function JournalCreatePage() {
                                     : "bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-50 shadow-none"
                             )}
                         >
-                            {loading ? "Saving..." : "Save Voucher"}
+                            {loading ? "Saving..." : "Save Journal"}
+                        </Button>
+                        <Button
+                            variant="outline"
+                            onClick={onPrint}
+                            className="flex-1 md:flex-none rounded-2xl h-12 px-6 font-bold text-xs uppercase tracking-widest border-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
+                        >
+                            <Printer className="mr-2 h-4 w-4" />
+                            Print
                         </Button>
                     </div>
                 </div>
