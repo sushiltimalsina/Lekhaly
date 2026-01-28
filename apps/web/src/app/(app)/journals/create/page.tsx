@@ -322,9 +322,10 @@ export default function JournalCreatePage() {
                                                 </td>
                                                 <td className="px-2 py-3">
                                                     <Input
-                                                        ref={(el) => { rowRefs.current.amount[idx] = el; }}
+                                                        ref={(el) => { if (line.type === "dr") rowRefs.current.amount[idx] = el; }}
                                                         type="number"
-                                                        value={line.amount}
+                                                        value={line.type === "dr" ? line.amount : ""}
+                                                        disabled={line.type !== "dr"}
                                                         onChange={(e) => updateLine(line.id, { amount: e.target.value })}
                                                         placeholder="0.00"
                                                         onKeyDown={(e) => {
@@ -339,7 +340,31 @@ export default function JournalCreatePage() {
                                                             "h-9 rounded-xl text-right font-black transition-all border-2",
                                                             line.type === "dr"
                                                                 ? "bg-white border-blue-100 focus:border-blue-500 dark:bg-slate-950 dark:border-blue-900/30"
-                                                                : "bg-white border-rose-100 focus:border-rose-500 dark:bg-slate-950 dark:border-rose-900/30"
+                                                                : "bg-slate-50/50 border-transparent text-transparent dark:bg-slate-900/50"
+                                                        )}
+                                                    />
+                                                </td>
+                                                <td className="px-2 py-3">
+                                                    <Input
+                                                        ref={(el) => { if (line.type === "cr") rowRefs.current.amount[idx] = el; }}
+                                                        type="number"
+                                                        value={line.type === "cr" ? line.amount : ""}
+                                                        disabled={line.type !== "cr"}
+                                                        onChange={(e) => updateLine(line.id, { amount: e.target.value })}
+                                                        placeholder="0.00"
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === "Enter") {
+                                                                e.preventDefault();
+                                                                if (line.amount) {
+                                                                    safeFocus(rowRefs.current.narration[idx]);
+                                                                }
+                                                            }
+                                                        }}
+                                                        className={cn(
+                                                            "h-9 rounded-xl text-right font-black transition-all border-2",
+                                                            line.type === "cr"
+                                                                ? "bg-white border-rose-100 focus:border-rose-500 dark:bg-slate-950 dark:border-rose-900/30"
+                                                                : "bg-slate-50/50 border-transparent text-transparent dark:bg-slate-900/50"
                                                         )}
                                                     />
                                                 </td>

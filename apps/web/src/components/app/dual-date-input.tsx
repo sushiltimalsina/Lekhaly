@@ -341,8 +341,15 @@ const DualDateInput = React.forwardRef<HTMLInputElement, DualDateInputProps>(
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
-                  if (preference === "AD") handleAdCommit(localMain || value.ad || "");
-                  else handleBsCommit(localMain || value.bs || "");
+                  // If empty, default to today
+                  let val = localMain || (preference === "AD" ? value.ad : value.bs);
+                  if (!val) {
+                    val = preference === "AD" ? todayAd : todayBs;
+                  }
+
+                  if (preference === "AD") handleAdCommit(val);
+                  else handleBsCommit(val);
+
                   setLocalMain("");
                   setOpen(false);
                   onEnterNext?.();

@@ -49,9 +49,15 @@ export function MoneyText({
     });
   }, []);
 
-  // On server/first-render, use the default settings but don't worry about reactive updates yet
-  // Once mounted, it will re-render with client-side settings if they differ.
-  const currentSettings = mounted ? settings : getCurrencySettings();
+  // On server/first-render, usage of getCurrencySettings() is unsafe because it might return
+  // client-specific values (from localStorage) on the first client pass, causing a mismatch
+  // with the server which always uses defaults.
+  // We explicitly hardcode the server defaults here to match `ui.ts`.
+  const currentSettings = mounted ? settings : {
+    currencyCode: "NPR",
+    currencySymbol: "रु.",
+    numberFormat: "en-IN",
+  };
 
   return (
     <span className={["mono-numbers tabular-nums", className ?? ""].join(" ")}>
