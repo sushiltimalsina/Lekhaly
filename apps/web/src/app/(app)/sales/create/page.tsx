@@ -1326,44 +1326,70 @@ export default function SalesCreatePage() {
               </div>
             </div>
 
-            <Input
+            <textarea
               value={form.notes}
               onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-              placeholder="Additional notes..."
-              className="h-11 rounded-2xl bg-slate-50/60"
+              placeholder="Add overall remarks or terms for this sale..."
+              className="min-h-[120px] w-full rounded-2xl border-2 border-slate-100 bg-slate-50/30 p-5 text-sm outline-none ring-indigo-500/10 focus:border-indigo-500 focus:bg-white focus:ring-4 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 transition-all font-medium leading-relaxed"
             />
+          </div>
 
-            <div className="mt-5 flex flex-wrap items-center justify-end gap-2">
-              <Button type="button" variant="outline" onClick={onPreview} className="rounded-full px-5">
-                <Eye className="mr-2 h-4 w-4" />
-                Preview
-              </Button>
+          <div className="lg:col-span-12">
+            {/* Static Action Footer */}
+            <div className="mt-8 border-t border-slate-100 dark:border-slate-800 pt-8 pb-12">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-white dark:bg-slate-900/50 p-6 md:p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm">
+                <div className="flex flex-wrap items-center gap-8">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Items Subtotal</span>
+                    <div className="text-xl font-black text-slate-900 dark:text-slate-100">
+                      <MoneyText value={itemsSubtotal} />
+                    </div>
+                  </div>
+                  <div className="hidden md:block w-px h-10 bg-slate-100 dark:bg-slate-800" />
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-1">Grand Total</span>
+                    <div className="text-2xl font-black text-indigo-600 dark:text-indigo-400">
+                      <MoneyText value={total} />
+                    </div>
+                  </div>
+                </div>
 
-              <Button type="button" variant="outline" onClick={onPrint} className="rounded-full px-5">
-                <Printer className="mr-2 h-4 w-4" />
-                Print
-              </Button>
-
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onSave}
-                disabled={loading || sending}
-                className="rounded-full px-6"
-              >
-                <Save className="mr-2 h-4 w-4" />
-                {loading ? "Saving..." : "Save"}
-              </Button>
-
-              <Button
-                type="button"
-                onClick={onSend}
-                disabled={loading || sending}
-                className="rounded-full bg-indigo-600 px-7 text-white hover:bg-indigo-700"
-              >
-                <Send className="mr-2 h-4 w-4" />
-                {sending ? "Sending..." : "Send"}
-              </Button>
+                <div className="flex items-center gap-3 w-full md:w-auto">
+                  <Button
+                    variant="outline"
+                    onClick={onPreview}
+                    className="flex-1 md:flex-none rounded-2xl h-12 px-6 font-bold text-xs uppercase tracking-widest border-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
+                  >
+                    <Eye className="mr-2 h-4 w-4" />
+                    Preview
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={onPrint}
+                    className="flex-1 md:flex-none rounded-2xl h-12 px-6 font-bold text-xs uppercase tracking-widest border-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
+                  >
+                    <Printer className="mr-2 h-4 w-4" />
+                    Print
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={onSave}
+                    disabled={loading || sending}
+                    className="flex-1 md:flex-none rounded-2xl h-12 px-6 font-bold text-xs uppercase tracking-widest border-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
+                  >
+                    <Save className="mr-2 h-4 w-4" />
+                    {loading ? "Saving..." : "Save Draft"}
+                  </Button>
+                  <Button
+                    onClick={onSend}
+                    disabled={loading || sending}
+                    className="flex-1 md:flex-none rounded-2xl h-12 px-10 font-black text-xs uppercase tracking-widest shadow-xl transition-all bg-indigo-600 text-white hover:bg-indigo-700 hover:scale-105 active:scale-95 shadow-indigo-500/25"
+                  >
+                    <Send className="mr-2 h-4 w-4" />
+                    {sending ? "Sending..." : "Record Sale"}
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         </section>

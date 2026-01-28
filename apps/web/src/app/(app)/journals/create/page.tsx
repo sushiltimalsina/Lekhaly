@@ -62,10 +62,39 @@ export default function JournalCreatePage() {
         voucherNo: "NEW",
     });
 
+    const dateRef = React.useRef<HTMLInputElement>(null);
+    const referenceNoRef = React.useRef<HTMLInputElement>(null);
+    const memoRef = React.useRef<HTMLTextAreaElement>(null);
+    const addRowButtonRef = React.useRef<HTMLButtonElement>(null);
+    const saveButtonRef = React.useRef<HTMLButtonElement>(null);
+
+    const rowRefs = React.useRef<{
+        select: (HTMLButtonElement | null)[];
+        amount: (HTMLInputElement | null)[];
+        narration: (HTMLInputElement | null)[];
+    }>({ select: [], amount: [], narration: [] });
+
+    const safeFocus = (el: HTMLElement | null) => {
+        if (!el) return;
+        el.focus({ preventScroll: true });
+    };
+
     const [lines, setLines] = React.useState<JournalLine[]>([
         { id: Math.random().toString(), type: "dr", accountId: "", partyId: "", description: "", amount: "" },
         { id: Math.random().toString(), type: "cr", accountId: "", partyId: "", description: "", amount: "" },
     ]);
+
+    // Clean up refs when lines change
+    React.useEffect(() => {
+        rowRefs.current.select = rowRefs.current.select.slice(0, lines.length);
+        rowRefs.current.amount = rowRefs.current.amount.slice(0, lines.length);
+        rowRefs.current.narration = rowRefs.current.narration.slice(0, lines.length);
+    }, [lines.length]);
+
+    React.useEffect(() => {
+        const timer = setTimeout(() => safeFocus(dateRef.current), 100);
+        return () => clearTimeout(timer);
+    }, []);
 
     React.useEffect(() => {
         listAccounts().then(setAccounts).catch(console.error);
@@ -198,10 +227,12 @@ export default function JournalCreatePage() {
                             <div className="flex flex-wrap gap-12">
                                 <div className="w-[280px]">
                                     <DualDateInput
+                                        ref={dateRef}
                                         label="Voucher Date"
                                         value={form.date}
                                         accentColor="bg-indigo-600"
                                         onChange={(date) => setForm(f => ({ ...f, date }))}
+                                        onEnterNext={() => safeFocus(referenceNoRef.current)}
                                     />
                                 </div>
                                 <div className="w-[180px] space-y-2">
@@ -215,9 +246,16 @@ export default function JournalCreatePage() {
                                 <div className="w-[220px] space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500">Reference No.</label>
                                     <Input
+                                        ref={referenceNoRef}
                                         value={form.referenceNo}
                                         onChange={(e) => setForm(f => ({ ...f, referenceNo: e.target.value }))}
                                         placeholder="Ref / Chq No."
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter") {
+                                                e.preventDefault();
+                                                safeFocus(rowRefs.current.select[0]);
+                                            }
+                                        }}
                                         className="h-10 rounded-xl border-slate-200 hover:border-indigo-400 focus:ring-indigo-500 dark:border-slate-800 dark:bg-slate-950 transition-all font-medium"
                                     />
                                 </div>
@@ -258,6 +296,7 @@ export default function JournalCreatePage() {
                                                 </td>
                                                 <td className="px-2 py-3">
                                                     <SearchableSelect<LedgerOption>
+                                                        buttonRef={(el) => { rowRefs.current.select[idx] = el; }}
                                                         valueId={line.accountId || line.partyId}
                                                         onChange={(id, opt) => {
                                                             if (opt?.type === "account") {
@@ -266,6 +305,7 @@ export default function JournalCreatePage() {
                                                                 updateLine(line.id, { partyId: id, accountId: "" });
                                                             }
                                                         }}
+                                                        onEnterNext={() => safeFocus(rowRefs.current.amount[idx])}
                                                         options={ledgerOptions}
                                                         getLabel={(opt) => opt.name}
                                                         placeholder="Search Ledger..."
@@ -282,39 +322,43 @@ export default function JournalCreatePage() {
                                                 </td>
                                                 <td className="px-2 py-3">
                                                     <Input
+                                                        ref={(el) => { rowRefs.current.amount[idx] = el; }}
                                                         type="number"
-                                                        value={line.type === "dr" ? line.amount : ""}
-                                                        disabled={line.type !== "dr"}
+                                                        value={line.amount}
                                                         onChange={(e) => updateLine(line.id, { amount: e.target.value })}
                                                         placeholder="0.00"
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === "Enter") {
+                                                                e.preventDefault();
+                                                                if (line.amount) {
+                                                                    safeFocus(rowRefs.current.narration[idx]);
+                                                                }
+                                                            }
+                                                        }}
                                                         className={cn(
                                                             "h-9 rounded-xl text-right font-black transition-all border-2",
                                                             line.type === "dr"
                                                                 ? "bg-white border-blue-100 focus:border-blue-500 dark:bg-slate-950 dark:border-blue-900/30"
-                                                                : "bg-slate-50/50 border-transparent text-slate-300 dark:bg-slate-900/50"
+                                                                : "bg-white border-rose-100 focus:border-rose-500 dark:bg-slate-950 dark:border-rose-900/30"
                                                         )}
                                                     />
                                                 </td>
                                                 <td className="px-2 py-3">
                                                     <Input
-                                                        type="number"
-                                                        value={line.type === "cr" ? line.amount : ""}
-                                                        disabled={line.type !== "cr"}
-                                                        onChange={(e) => updateLine(line.id, { amount: e.target.value })}
-                                                        placeholder="0.00"
-                                                        className={cn(
-                                                            "h-9 rounded-xl text-right font-black transition-all border-2",
-                                                            line.type === "cr"
-                                                                ? "bg-white border-rose-100 focus:border-rose-500 dark:bg-slate-950 dark:border-rose-900/30"
-                                                                : "bg-slate-50/50 border-transparent text-slate-300 dark:bg-slate-900/50"
-                                                        )}
-                                                    />
-                                                </td>
-                                                <td className="px-2 py-3">
-                                                    <Input
+                                                        ref={(el) => { rowRefs.current.narration[idx] = el; }}
                                                         value={line.description}
                                                         onChange={(e) => updateLine(line.id, { description: e.target.value })}
                                                         placeholder="Short narration..."
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === "Enter") {
+                                                                e.preventDefault();
+                                                                if (rowRefs.current.select[idx + 1]) {
+                                                                    safeFocus(rowRefs.current.select[idx + 1]);
+                                                                } else {
+                                                                    safeFocus(addRowButtonRef.current);
+                                                                }
+                                                            }
+                                                        }}
                                                         className="h-9 rounded-xl border-slate-200 bg-transparent hover:bg-white focus:bg-white dark:border-slate-800 dark:hover:bg-slate-950 dark:text-slate-300 transition-all font-medium"
                                                     />
                                                 </td>
@@ -336,8 +380,18 @@ export default function JournalCreatePage() {
                                         <tr>
                                             <td colSpan={7} className="px-6 py-4">
                                                 <Button
+                                                    ref={addRowButtonRef}
                                                     variant="outline"
                                                     onClick={addLine}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === "Enter") {
+                                                            e.preventDefault();
+                                                            addLine();
+                                                        } else if (e.key === "Tab" && !e.shiftKey) {
+                                                            e.preventDefault();
+                                                            safeFocus(memoRef.current);
+                                                        }
+                                                    }}
                                                     className="h-10 rounded-xl border-dashed border-indigo-200 text-indigo-500 hover:text-white hover:bg-indigo-600 hover:border-indigo-600 dark:border-indigo-900/50 transition-all font-bold px-6"
                                                 >
                                                     <Plus className="mr-2 h-4 w-4" />
@@ -358,8 +412,15 @@ export default function JournalCreatePage() {
                                     General Memo / Long Narration
                                 </div>
                                 <textarea
+                                    ref={memoRef}
                                     value={form.memo}
                                     onChange={(e) => setForm(f => ({ ...f, memo: e.target.value }))}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                                            e.preventDefault();
+                                            safeFocus(saveButtonRef.current);
+                                        }
+                                    }}
                                     placeholder="Add a detailed description for this voucher entry..."
                                     className="min-h-[120px] w-full rounded-2xl border-2 border-slate-100 bg-slate-50/30 p-5 text-sm outline-none ring-indigo-500/10 focus:border-indigo-500 focus:bg-white focus:ring-4 dark:border-slate-800 dark:bg-slate-950 dark:focus:bg-slate-950 dark:text-slate-300 transition-all font-medium leading-relaxed"
                                 />
@@ -417,6 +478,7 @@ export default function JournalCreatePage() {
                             Print
                         </Button>
                         <Button
+                            ref={saveButtonRef}
                             onClick={onSave}
                             disabled={loading || !totals.balanced}
                             className={cn(
