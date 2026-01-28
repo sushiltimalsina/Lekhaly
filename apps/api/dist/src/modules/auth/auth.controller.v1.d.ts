@@ -25,16 +25,16 @@ export declare class AuthV1Controller {
         ok: boolean;
     }>;
     profile(userId: string): Promise<{
-        companyId: string;
         id: string;
-        name: string | null;
+        companyId: string;
         email: string;
+        name: string | null;
     }>;
     updateProfile(userId: string, body: any): Promise<{
-        companyId: string;
         id: string;
-        name: string | null;
+        companyId: string;
         email: string;
+        name: string | null;
     }>;
     company(userId: string): Promise<{
         id: string;

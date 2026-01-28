@@ -22,19 +22,19 @@ export declare class AuthService {
         userId: string;
     }>;
     getProfile(userId: string): Promise<{
-        companyId: string;
         id: string;
-        name: string | null;
+        companyId: string;
         email: string;
+        name: string | null;
     }>;
     updateProfile(userId: string, dto: {
         name?: string;
         email?: string;
     }): Promise<{
-        companyId: string;
         id: string;
-        name: string | null;
+        companyId: string;
         email: string;
+        name: string | null;
     }>;
     getCompany(userId: string): Promise<{
         id: string;

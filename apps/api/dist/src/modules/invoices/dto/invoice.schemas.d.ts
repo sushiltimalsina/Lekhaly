@@ -30,8 +30,8 @@ export declare const CreateInvoiceDraftSchema: z.ZodObject<{
         billSundryId: z.ZodOptional<z.ZodString>;
         name: z.ZodString;
         type: z.ZodEnum<{
-            add: "add";
             less: "less";
+            add: "add";
         }>;
         rate: z.ZodNullable<z.ZodOptional<z.ZodNumber>>;
         amount: z.ZodNumber;
