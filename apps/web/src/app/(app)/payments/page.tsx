@@ -1,136 +1,201 @@
 "use client";
 
 import * as React from "react";
-import PageHeader from "@/components/app/page-header";
-import FiltersBar from "@/components/app/filters-bar";
-import DataTable, { Column } from "@/components/app/data-table";
-import StatusBadge, { DocStatus } from "@/components/app/status-badge";
-import BsDateInput from "@/components/app/bs-date-input";
-import { MoneyText } from "@/components/app/money";
-import DateDisplay from "@/components/app/date-display";
-import { useDateFormat } from "@/lib/date-format";
-import { getDateLabel } from "@/lib/dates/display";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
+import {
+  Search,
+  Plus,
+  ChevronRight,
+  CreditCard,
+  ArrowRight,
+  Filter,
+  Calendar,
+  User,
+  ArrowUpRight
+} from "lucide-react";
+import PageHeader from "@/components/app/page-header";
+import StatusBadge, { DocStatus } from "@/components/app/status-badge";
+import { MoneyText } from "@/components/app/money";
+import { listVouchers } from "@/lib/api/vouchers";
+import { useDateFormat } from "@/lib/date-format";
+import { getDateDisplay } from "@/lib/dates/display";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
-type PaymentRow = {
-  id: string;
-  refNo?: string;
-  partyName?: string;
-  dateBs?: string;
-  date?: string;
-  amount?: number;
-  status?: DocStatus;
-};
-
-export default function PaymentsPage() {
+export default function PaymentsListPage() {
+  const router = useRouter();
   const { dateFormat } = useDateFormat();
-  const [q, setQ] = React.useState("");
-  const [from, setFrom] = React.useState<{ bs: string; ad: string }>({ bs: "", ad: "" });
-  const [to, setTo] = React.useState<{ bs: string; ad: string }>({ bs: "", ad: "" });
 
-  const [rows] = React.useState<PaymentRow[]>([
-    {
-      id: "p1",
-      refNo: "PAY-0001",
-      partyName: "ABC Traders",
-      dateBs: "2082-05-01",
-      date: "2026-01-10T00:00:00.000Z",
-      amount: 12500,
-      status: "posted",
-    },
-    {
-      id: "p2",
-      refNo: "PAY-0002",
-      partyName: "Everest Distributors",
-      dateBs: "2082-05-03",
-      date: "2026-01-12T00:00:00.000Z",
-      amount: 42000,
-      status: "draft",
-    },
-  ]);
+  const [loading, setLoading] = React.useState(true);
+  const [vouchers, setVouchers] = React.useState<any[]>([]);
+  const [search, setSearch] = React.useState("");
+  const [error, setError] = React.useState<string | null>(null);
 
-  const filtered = rows.filter((r) => {
-    if (!q.trim()) return true;
-    return `${r.refNo ?? ""} ${r.partyName ?? ""}`.toLowerCase().includes(q.toLowerCase());
-  });
+  async function load() {
+    setLoading(true);
+    try {
+      const res = await listVouchers({
+        type: "payment",
+        q: search || undefined,
+        take: 50,
+      });
+      const list = Array.isArray(res) ? res : res?.items ?? res?.data ?? [];
+      setVouchers(list);
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to load payments");
+    } finally {
+      setLoading(false);
+    }
+  }
 
-  const columns: Column<PaymentRow>[] = [
-    {
-      key: "ref",
-      header: "Payment #",
-      cell: (r) => <div className="font-medium">{r.refNo ?? r.id.slice(0, 8).toUpperCase()}</div>,
-    },
-    { key: "party", header: "Payee", cell: (r) => <div className="truncate">{r.partyName ?? "—"}</div> },
-    {
-      key: "date",
-      header: getDateLabel(dateFormat),
-      cell: (r) => <DateDisplay ad={r.date} bs={r.dateBs} />,
-    },
-    {
-      key: "amount",
-      header: <span className="w-full block text-right">Amount</span>,
-      align: "right",
-      cell: (r) => <MoneyText value={Number(r.amount ?? 0)} />,
-      width: 160,
-    },
-    {
-      key: "status",
-      header: "Status",
-      cell: (r) => <StatusBadge status={(r.status ?? "draft") as DocStatus} />,
-      width: 110,
-    },
-    {
-      key: "actions",
-      header: "",
-      align: "right",
-      width: 120,
-      cell: () => (
-        <button className="rounded-xl border bg-background px-3 py-1.5 text-xs hover:bg-muted">
-          View
-        </button>
-      ),
-    },
-  ];
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      load();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Cash Payments"
-        description="View and manage payments to vendors/expenses"
+        title="Outgoing Payments"
+        description="Track all vendor payments, expense settlements, and cash outflows."
         actions={
-          <Link
-            href="/payments/create"
-            className="inline-flex items-center rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 shadow-sm shadow-primary/20"
+          <Button
+            onClick={() => router.push("/payments/create")}
+            className="rounded-2xl bg-rose-600 hover:bg-rose-700 text-white shadow-lg shadow-rose-500/20 px-8 h-11 transition-all active:scale-95 border-none"
           >
             <Plus className="mr-2 h-4 w-4" />
             New Payment
-          </Link>
+          </Button>
         }
       />
 
-      <FiltersBar
-        left={
-          <>
-            <div className="w-full sm:w-[260px]">
-              <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Search payment…"
-                className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-            <div className="w-full sm:w-[220px]">
-              <BsDateInput label={getDateLabel(dateFormat, "From")} valueBs={from.bs} valueAd={from.ad} onChange={setFrom} />
-            </div>
-            <div className="w-full sm:w-[220px]">
-              <BsDateInput label={getDateLabel(dateFormat, "To")} valueBs={to.bs} valueAd={to.ad} onChange={setTo} />
-            </div>
-          </>
-        }
-      />
+      {/* Filters Bar */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center p-4 bg-white dark:bg-slate-900 rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="relative flex-1 max-w-md group">
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-focus-within:text-rose-500 transition-colors" />
+          <Input
+            placeholder="Search by payee, payment number or memo..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10 h-11 rounded-2xl bg-slate-50/50 border-slate-100 hover:border-slate-200 focus:border-rose-500 transition-all dark:bg-slate-800/30 dark:border-slate-800 dark:focus:border-rose-400 font-medium"
+          />
+        </div>
 
-      <DataTable rows={filtered} columns={columns} />
+        <div className="flex items-center gap-2 px-4 py-2 bg-rose-50/50 dark:bg-rose-900/10 rounded-2xl border border-rose-100/50 dark:border-rose-800/50">
+          <Calendar className="h-4 w-4 text-rose-600" />
+          <span className="text-xs font-black text-rose-700 dark:text-rose-400 uppercase tracking-widest">Disbursement Period: All Time</span>
+        </div>
+      </div>
+
+      <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl shadow-slate-200/40 dark:border-slate-800 dark:bg-slate-950 dark:shadow-none">
+        {loading && vouchers.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-24 space-y-4">
+            <div className="relative h-12 w-12">
+              <div className="absolute inset-0 rounded-full border-4 border-slate-100 dark:border-slate-900/30"></div>
+              <div className="absolute inset-0 rounded-full border-4 border-rose-600 border-t-transparent animate-spin"></div>
+            </div>
+            <p className="text-sm font-black text-slate-400 animate-pulse uppercase tracking-widest text-[10px]">Syncing Payments...</p>
+          </div>
+        ) : vouchers.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead>
+                <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30">
+                  <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Date (AD/BS)</th>
+                  <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Payment Identity</th>
+                  <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Payee / Purpose</th>
+                  <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Amount Paid</th>
+                  <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-center">Status</th>
+                  <th className="px-6 py-4 w-10"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
+                {vouchers.map((v) => {
+                  const dateInfo = getDateDisplay({ ad: v.voucherDate, bs: v.voucherDateBs, format: dateFormat });
+
+                  return (
+                    <tr
+                      key={v.id}
+                      onClick={() => router.push(`/vouchers/${v.id}`)}
+                      className="group cursor-pointer hover:bg-rose-50/20 dark:hover:bg-rose-900/10 transition-colors"
+                    >
+                      <td className="px-6 py-5 whitespace-nowrap">
+                        <div className="flex flex-col">
+                          <span className="font-bold text-slate-700 dark:text-slate-200">{dateInfo.primary}</span>
+                          <span className="text-[10px] text-slate-400 font-black uppercase tracking-tighter">{dateInfo.secondary}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5 whitespace-nowrap">
+                        <div className="flex items-center gap-3">
+                          <div className="h-9 w-9 rounded-xl bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center shrink-0 border border-rose-100/50 dark:border-rose-800/50 text-rose-600">
+                            <ArrowUpRight className="h-4 w-4" />
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="font-black text-slate-900 dark:text-white group-hover:text-rose-600 transition-colors">
+                              {v.voucherNumber || v.voucherNo || `PAY-D-${v.id.slice(0, 4)}`}
+                            </span>
+                            {v.referenceNo && (
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ref: {v.referenceNo}</span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5">
+                        <div className="flex flex-col max-w-[240px]">
+                          <span className="truncate font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                            {v.party?.name || v.partyName || "General Disbursement"}
+                          </span>
+                          <span className="truncate text-xs text-slate-400 font-medium italic">
+                            {v.memo || "No memo recorded"}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5 whitespace-nowrap text-right">
+                        <span className="font-black text-rose-600 tabular-nums text-base">
+                          <MoneyText value={v.amount || 0} />
+                        </span>
+                      </td>
+                      <td className="px-6 py-5 whitespace-nowrap text-center">
+                        <StatusBadge status={v.status as DocStatus} />
+                      </td>
+                      <td className="px-6 py-5 text-right">
+                        <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-rose-400 group-hover:translate-x-1 transition-all" />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-32 px-6 text-center space-y-4">
+            <div className="h-24 w-24 rounded-full bg-slate-50 dark:bg-slate-900 flex items-center justify-center border-4 border-dotted border-slate-200 dark:border-slate-800">
+              <CreditCard className="h-10 w-10 text-slate-300" />
+            </div>
+            <div className="max-w-xs space-y-1">
+              <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-widest text-sm text-rose-600">No Payments Recorded</h3>
+              <p className="text-sm text-slate-500 font-medium leading-relaxed">Outgoing transactions recorded via the Payment module will be tracked here.</p>
+            </div>
+            <Button onClick={() => router.push("/payments/create")} className="bg-rose-600 rounded-2xl h-11 px-8 font-black text-xs uppercase tracking-widest shadow-xl shadow-rose-500/20">
+              New Payment
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {vouchers.length > 0 && (
+        <div className="flex items-center justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">
+          <p>Disbursement Log: {vouchers.length} payments found</p>
+          <div className="flex items-center gap-1.5 font-bold text-rose-600">
+            <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse"></span>
+            <span>All outflows are synchronized with the chart of accounts</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

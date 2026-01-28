@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ListVoucherQuerySchema = exports.UpdateVoucherDraftSchema = exports.CreateVoucherDraftSchema = exports.VoucherLineSchema = void 0;
 const zod_1 = require("zod");
 exports.VoucherLineSchema = zod_1.z.object({
-    accountId: zod_1.z.string().uuid(),
+    accountId: zod_1.z.string().uuid().optional(),
     partyId: zod_1.z.string().uuid().optional(),
     itemId: zod_1.z.string().uuid().optional(),
     description: zod_1.z.string().trim().max(255).optional(),
@@ -38,7 +38,7 @@ exports.CreateVoucherDraftSchema = VoucherDraftBaseSchema.superRefine((data, ctx
     if (!data.voucherDate && !data.voucherDateBs) {
         ctx.addIssue({ code: "custom", message: "voucherDate or voucherDateBs is required", path: ["voucherDate"] });
     }
-    const requiresParty = ["sales_invoice", "sales_return", "purchase", "purchase_return", "receipt", "payment"];
+    const requiresParty = ["sales_invoice", "sales_return", "purchase", "purchase_return"];
     const forbidsParty = ["journal", "opening", "reversal"];
     if (requiresParty.includes(data.voucherType) && !data.partyId) {
         ctx.addIssue({ code: "custom", message: "Party is required for this voucher type", path: ["partyId"] });

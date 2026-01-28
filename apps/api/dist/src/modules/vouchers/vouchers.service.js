@@ -28,9 +28,7 @@ let VouchersService = class VouchersService {
             client_1.VoucherType.sales_invoice,
             client_1.VoucherType.sales_return,
             client_1.VoucherType.purchase,
-            client_1.VoucherType.purchase_return,
-            client_1.VoucherType.receipt,
-            client_1.VoucherType.payment
+            client_1.VoucherType.purchase_return
         ];
         const forbidsParty = [
             client_1.VoucherType.journal,
@@ -101,7 +99,8 @@ let VouchersService = class VouchersService {
         if (input.partyId)
             partyIds.add(input.partyId);
         for (const line of input.lines || []) {
-            accountIds.add(line.accountId);
+            if (line.accountId)
+                accountIds.add(line.accountId);
             if (line.partyId)
                 partyIds.add(line.partyId);
             if (line.itemId)
@@ -298,7 +297,7 @@ let VouchersService = class VouchersService {
                 memo: input.memo,
                 createdByUserId: user.sub,
                 lines: {
-                    create: lines.map((l) => ({ ...l, companyId: user.companyId }))
+                    create: lines.map((l) => ({ ...l, accountId: l.accountId, companyId: user.companyId }))
                 }
             },
             include: { lines: true }
@@ -344,7 +343,7 @@ let VouchersService = class VouchersService {
                 const lines = this.normalizeLines(input.lines);
                 await tx.voucherLine.deleteMany({ where: { voucherId: voucher.id } });
                 await tx.voucherLine.createMany({
-                    data: lines.map((l) => ({ ...l, voucherId: voucher.id, companyId: user.companyId }))
+                    data: lines.map((l) => ({ ...l, accountId: l.accountId, voucherId: voucher.id, companyId: user.companyId }))
                 });
             }
             const updated = await tx.voucher.update({

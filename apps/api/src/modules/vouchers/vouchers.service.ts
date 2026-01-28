@@ -13,7 +13,7 @@ type DraftInput = {
   partyId?: string;
   memo?: string;
   lines?: Array<{
-    accountId: string;
+    accountId?: string;
     partyId?: string;
     itemId?: string;
     description?: string;
@@ -36,16 +36,14 @@ type TaxLineInput = {
 
 @Injectable()
 export class VouchersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   private enforceVoucherRules(voucherType: VoucherType, partyId?: string | null) {
     const requiresParty: VoucherType[] = [
       VoucherType.sales_invoice,
       VoucherType.sales_return,
       VoucherType.purchase,
-      VoucherType.purchase_return,
-      VoucherType.receipt,
-      VoucherType.payment
+      VoucherType.purchase_return
     ];
     const forbidsParty: VoucherType[] = [
       VoucherType.journal,
@@ -135,7 +133,7 @@ export class VouchersService {
 
     if (input.partyId) partyIds.add(input.partyId);
     for (const line of input.lines || []) {
-      accountIds.add(line.accountId);
+      if (line.accountId) accountIds.add(line.accountId);
       if (line.partyId) partyIds.add(line.partyId);
       if (line.itemId) itemIds.add(line.itemId);
       if (line.taxCodeId) taxCodeIds.add(line.taxCodeId);
@@ -144,8 +142,8 @@ export class VouchersService {
     const [accounts, parties, items, taxCodes] = await Promise.all([
       accountIds.size
         ? this.prisma.chartOfAccount.findMany({
-            where: { id: { in: Array.from(accountIds) }, companyId }
-          })
+          where: { id: { in: Array.from(accountIds) }, companyId }
+        })
         : Promise.resolve([] as ChartOfAccount[]),
       partyIds.size
         ? this.prisma.party.findMany({ where: { id: { in: Array.from(partyIds) }, companyId } })
@@ -348,7 +346,7 @@ export class VouchersService {
         memo: input.memo,
         createdByUserId: user.sub,
         lines: {
-          create: lines.map((l) => ({ ...l, companyId: user.companyId }))
+          create: lines.map((l) => ({ ...l, accountId: l.accountId!, companyId: user.companyId }))
         }
       },
       include: { lines: true }
@@ -403,7 +401,7 @@ export class VouchersService {
         const lines = this.normalizeLines(input.lines);
         await tx.voucherLine.deleteMany({ where: { voucherId: voucher.id } });
         await tx.voucherLine.createMany({
-          data: lines.map((l) => ({ ...l, voucherId: voucher.id, companyId: user.companyId }))
+          data: lines.map((l) => ({ ...l, accountId: l.accountId!, voucherId: voucher.id, companyId: user.companyId }))
         });
       }
 

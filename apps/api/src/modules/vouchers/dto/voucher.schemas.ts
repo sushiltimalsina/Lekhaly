@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const VoucherLineSchema = z.object({
-  accountId: z.string().uuid(),
+  accountId: z.string().uuid().optional(),
   partyId: z.string().uuid().optional(),
   itemId: z.string().uuid().optional(),
   description: z.string().trim().max(255).optional(),
@@ -38,7 +38,7 @@ export const CreateVoucherDraftSchema = VoucherDraftBaseSchema.superRefine((data
   if (!data.voucherDate && !data.voucherDateBs) {
     ctx.addIssue({ code: "custom", message: "voucherDate or voucherDateBs is required", path: ["voucherDate"] });
   }
-  const requiresParty = ["sales_invoice", "sales_return", "purchase", "purchase_return", "receipt", "payment"];
+  const requiresParty = ["sales_invoice", "sales_return", "purchase", "purchase_return"];
   const forbidsParty = ["journal", "opening", "reversal"];
   if (requiresParty.includes(data.voucherType) && !data.partyId) {
     ctx.addIssue({ code: "custom", message: "Party is required for this voucher type", path: ["partyId"] });

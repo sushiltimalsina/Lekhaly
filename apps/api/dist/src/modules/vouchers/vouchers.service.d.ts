@@ -8,7 +8,7 @@ type DraftInput = {
     partyId?: string;
     memo?: string;
     lines?: Array<{
-        accountId: string;
+        accountId?: string;
         partyId?: string;
         itemId?: string;
         description?: string;
@@ -34,74 +34,74 @@ export declare class VouchersService {
     createDraft(user: AuthUser, input: DraftInput, idempotencyKey?: string): Promise<Prisma.JsonValue | ({
         lines: {
             id: string;
-            companyId: string;
             createdAt: Date;
-            description: string | null;
-            taxCodeId: string | null;
+            companyId: string;
             partyId: string | null;
-            voucherId: string;
             lineNo: number;
-            accountId: string;
-            itemId: string | null;
+            description: string | null;
             debit: Prisma.Decimal;
             credit: Prisma.Decimal;
             taxAmount: Prisma.Decimal;
+            accountId: string;
+            itemId: string | null;
+            taxCodeId: string | null;
+            voucherId: string;
         }[];
     } & {
         id: string;
-        companyId: string;
-        status: import("@prisma/client").$Enums.VoucherStatus;
-        createdAt: Date;
-        updatedAt: Date;
         voucherType: import("@prisma/client").$Enums.VoucherType;
+        status: import("@prisma/client").$Enums.VoucherStatus;
         voucherNumber: string | null;
         voucherDate: Date;
         voucherDateBs: string | null;
-        partyId: string | null;
         memo: string | null;
         source: string;
+        postedAt: Date | null;
+        voidedAt: Date | null;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+        partyId: string | null;
         createdByUserId: string | null;
         postedByUserId: string | null;
         voidedByUserId: string | null;
-        postedAt: Date | null;
-        voidedAt: Date | null;
         reversalOfVoucherId: string | null;
         revisionOfVoucherId: string | null;
     })>;
     updateDraft(user: AuthUser, voucherId: string, input: DraftInput): Promise<({
         lines: {
             id: string;
-            companyId: string;
             createdAt: Date;
-            description: string | null;
-            taxCodeId: string | null;
+            companyId: string;
             partyId: string | null;
-            voucherId: string;
             lineNo: number;
-            accountId: string;
-            itemId: string | null;
+            description: string | null;
             debit: Prisma.Decimal;
             credit: Prisma.Decimal;
             taxAmount: Prisma.Decimal;
+            accountId: string;
+            itemId: string | null;
+            taxCodeId: string | null;
+            voucherId: string;
         }[];
     } & {
         id: string;
-        companyId: string;
-        status: import("@prisma/client").$Enums.VoucherStatus;
-        createdAt: Date;
-        updatedAt: Date;
         voucherType: import("@prisma/client").$Enums.VoucherType;
+        status: import("@prisma/client").$Enums.VoucherStatus;
         voucherNumber: string | null;
         voucherDate: Date;
         voucherDateBs: string | null;
-        partyId: string | null;
         memo: string | null;
         source: string;
+        postedAt: Date | null;
+        voidedAt: Date | null;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+        partyId: string | null;
         createdByUserId: string | null;
         postedByUserId: string | null;
         voidedByUserId: string | null;
-        postedAt: Date | null;
-        voidedAt: Date | null;
         reversalOfVoucherId: string | null;
         revisionOfVoucherId: string | null;
     }) | null>;
@@ -115,37 +115,37 @@ export declare class VouchersService {
     post(user: AuthUser, voucherId: string, idempotencyKey?: string): Promise<Prisma.JsonValue | ({
         lines: {
             id: string;
-            companyId: string;
             createdAt: Date;
-            description: string | null;
-            taxCodeId: string | null;
+            companyId: string;
             partyId: string | null;
-            voucherId: string;
             lineNo: number;
-            accountId: string;
-            itemId: string | null;
+            description: string | null;
             debit: Prisma.Decimal;
             credit: Prisma.Decimal;
             taxAmount: Prisma.Decimal;
+            accountId: string;
+            itemId: string | null;
+            taxCodeId: string | null;
+            voucherId: string;
         }[];
     } & {
         id: string;
-        companyId: string;
-        status: import("@prisma/client").$Enums.VoucherStatus;
-        createdAt: Date;
-        updatedAt: Date;
         voucherType: import("@prisma/client").$Enums.VoucherType;
+        status: import("@prisma/client").$Enums.VoucherStatus;
         voucherNumber: string | null;
         voucherDate: Date;
         voucherDateBs: string | null;
-        partyId: string | null;
         memo: string | null;
         source: string;
+        postedAt: Date | null;
+        voidedAt: Date | null;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+        partyId: string | null;
         createdByUserId: string | null;
         postedByUserId: string | null;
         voidedByUserId: string | null;
-        postedAt: Date | null;
-        voidedAt: Date | null;
         reversalOfVoucherId: string | null;
         revisionOfVoucherId: string | null;
     })>;
@@ -156,37 +156,37 @@ export declare class VouchersService {
     getById(user: AuthUser, voucherId: string): Promise<{
         lines: {
             id: string;
-            companyId: string;
             createdAt: Date;
-            description: string | null;
-            taxCodeId: string | null;
+            companyId: string;
             partyId: string | null;
-            voucherId: string;
             lineNo: number;
-            accountId: string;
-            itemId: string | null;
+            description: string | null;
             debit: Prisma.Decimal;
             credit: Prisma.Decimal;
             taxAmount: Prisma.Decimal;
+            accountId: string;
+            itemId: string | null;
+            taxCodeId: string | null;
+            voucherId: string;
         }[];
     } & {
         id: string;
-        companyId: string;
-        status: import("@prisma/client").$Enums.VoucherStatus;
-        createdAt: Date;
-        updatedAt: Date;
         voucherType: import("@prisma/client").$Enums.VoucherType;
+        status: import("@prisma/client").$Enums.VoucherStatus;
         voucherNumber: string | null;
         voucherDate: Date;
         voucherDateBs: string | null;
-        partyId: string | null;
         memo: string | null;
         source: string;
+        postedAt: Date | null;
+        voidedAt: Date | null;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+        partyId: string | null;
         createdByUserId: string | null;
         postedByUserId: string | null;
         voidedByUserId: string | null;
-        postedAt: Date | null;
-        voidedAt: Date | null;
         reversalOfVoucherId: string | null;
         revisionOfVoucherId: string | null;
     }>;
@@ -206,36 +206,36 @@ export declare class VouchersService {
         take?: number;
     }): Promise<{
         id: string;
+        voucherType: import("@prisma/client").$Enums.VoucherType;
         status: import("@prisma/client").$Enums.VoucherStatus;
+        voucherNumber: string | null;
+        voucherDate: Date;
+        voucherDateBs: string | null;
+        memo: string | null;
+        postedAt: Date | null;
         createdAt: Date;
         party: {
             id: string;
             name: string;
         } | null;
-        voucherType: import("@prisma/client").$Enums.VoucherType;
-        voucherNumber: string | null;
-        voucherDate: Date;
-        voucherDateBs: string | null;
         partyId: string | null;
-        memo: string | null;
-        postedAt: Date | null;
     }[]>;
     listAttachments(user: AuthUser, voucherId: string): Promise<({
         uploadedByUser: {
             id: string;
-            email: string;
             name: string | null;
+            email: string;
         } | null;
     } & {
         id: string;
-        companyId: string;
         createdAt: Date;
+        companyId: string;
         voucherId: string;
+        uploadedByUserId: string | null;
         fileName: string;
         mimeType: string;
         sizeBytes: number;
         storageKey: string;
-        uploadedByUserId: string | null;
     })[]>;
     getAttachmentUrl(user: AuthUser, voucherId: string, attachmentId: string): Promise<{
         attachmentId: string;
@@ -251,14 +251,14 @@ export declare class VouchersService {
         storageKey: string;
     }): Promise<{
         id: string;
-        companyId: string;
         createdAt: Date;
+        companyId: string;
         voucherId: string;
+        uploadedByUserId: string | null;
         fileName: string;
         mimeType: string;
         sizeBytes: number;
         storageKey: string;
-        uploadedByUserId: string | null;
     }>;
     removeAttachment(user: AuthUser, voucherId: string, attachmentId: string): Promise<{
         id: string;
