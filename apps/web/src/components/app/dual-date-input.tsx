@@ -1,16 +1,16 @@
 ﻿"use client";
 
 import * as React from "react";
-import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { dateConfigMap } from "nepali-date-converter";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { adToBs, bsToAd } from "@/lib/dates/convert";
 import { formatDisplayDate } from "@/lib/dates/display";
-import { getSettings, subscribeSettings } from "@/lib/store/settings";
+import { getSettings, subscribeSettings, type CalendarPreference } from "@/lib/store/settings";
+import { createPortal } from "react-dom";
 
 type DualDateValue = { ad: string; bs: string };
-type CalendarPreference = "BS" | "AD";
 
 type DualDateInputProps = {
   label: string;
@@ -20,6 +20,8 @@ type DualDateInputProps = {
   required?: boolean;
   disabled?: boolean;
   onEnterNext?: () => void;
+  className?: string;
+  accentColor?: string; // Optional accent color class e.g. "bg-rose-600"
 };
 
 const BS_MONTHS = [
@@ -98,190 +100,191 @@ function getMaxBsDay(year: number, month: number) {
 function isValidBsDay(year: number, month: number, day: number) {
   if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return false;
   if (month < 1 || month > 12 || day < 1) return false;
-  const maxDay = getMaxBsDay(year, month);
-  return maxDay > 0 && day <= maxDay;
+  const max = getMaxBsDay(year, month);
+  return day <= max;
 }
 
-function useCalendarPreference(): CalendarPreference {
-  return React.useSyncExternalStore(
-    subscribeSettings,
-    () => getSettings().calendarPreference,
-    () => "BS"
-  );
+function useOutsideClick<T extends HTMLElement>(
+  onOutside: () => void,
+  extraRefs: Array<React.RefObject<HTMLElement | null>> = []
+) {
+  const ref = React.useRef<T | null>(null);
+
+  React.useEffect(() => {
+    function onDown(e: MouseEvent) {
+      const el = ref.current;
+      if (!el) return;
+      const target = e.target as Node | null;
+      if (!target) return;
+      const isInsideMain = el.contains(target);
+      const isInsideExtra = extraRefs.some((r) => r.current?.contains(target));
+      if (!isInsideMain && !isInsideExtra) onOutside();
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [onOutside, extraRefs]);
+
+  return ref;
 }
 
 const DualDateInput = React.forwardRef<HTMLInputElement, DualDateInputProps>(
-  (
-    { label, value, onChange, preferred, required, disabled, onEnterNext },
-    ref
-  ) => {
-    const storePref = useCalendarPreference();
-    const preference = preferred ?? storePref;
+  (props, ref) => {
+    const {
+      label,
+      value,
+      onChange,
+      preferred,
+      required,
+      disabled,
+      onEnterNext,
+      className,
+      accentColor = "bg-primary",
+    } = props;
 
-    const [error, setError] = React.useState<string | null>(null);
-    const [localMain, setLocalMain] = React.useState("");
-    const [open, setOpen] = React.useState(false);
-    const [openAd, setOpenAd] = React.useState(false);
-    const panelRef = React.useRef<HTMLDivElement>(null);
-    const buttonRef = React.useRef<HTMLButtonElement>(null);
-    const panelRefAd = React.useRef<HTMLDivElement>(null);
-    const buttonRefAd = React.useRef<HTMLButtonElement>(null);
-
-    const todayAd = React.useMemo(() => new Date().toISOString().slice(0, 10), []);
-    const todayBs = React.useMemo(() => {
-      try {
-        return adToBs(todayAd);
-      } catch {
-        return "";
-      }
-    }, [todayAd]);
-
-    const selectedBs =
-      parseBs(value.bs) ??
-      (value.ad ? parseBs(safeAdToBs(value.ad)) : null) ??
-      parseBs(todayBs);
-    const [viewYear, setViewYear] = React.useState(selectedBs?.year ?? 2080);
-    const [viewMonth, setViewMonth] = React.useState(selectedBs?.month ?? 1);
-
-    React.useEffect(() => {
-      if (!open) return;
-      const next =
-        parseBs(value.bs) ?? (value.ad ? parseBs(safeAdToBs(value.ad)) : null) ?? parseBs(todayBs);
-      if (next) {
-        setViewYear(next.year);
-        setViewMonth(next.month);
-      }
-    }, [open, value.ad, value.bs, todayBs]);
-
-    const selectedAd = parseAd(value.ad?.slice(0, 10) || "") ?? parseAd(todayAd);
-    const [viewAdYear, setViewAdYear] = React.useState(
-      selectedAd?.year ?? new Date().getUTCFullYear()
-    );
-    const [viewAdMonth, setViewAdMonth] = React.useState(
-      selectedAd?.month ?? new Date().getUTCMonth() + 1
+    const [mounted, setMounted] = React.useState(false);
+    const [preference, setPreference] = React.useState<CalendarPreference>(
+      preferred || getSettings().calendarPreference || "BS"
     );
 
     React.useEffect(() => {
-      if (!openAd) return;
-      const next = parseAd(value.ad?.slice(0, 10) || "") ?? parseAd(todayAd);
-      if (next) {
-        setViewAdYear(next.year);
-        setViewAdMonth(next.month);
-      }
-    }, [openAd, value.ad, todayAd]);
-
-    React.useEffect(() => {
-      function onClick(e: MouseEvent) {
-        const target = e.target as Node | null;
-        if (!target) return;
-        const inPanel = panelRef.current?.contains(target);
-        const inButton = buttonRef.current?.contains(target);
-        const inPanelAd = panelRefAd.current?.contains(target);
-        const inButtonAd = buttonRefAd.current?.contains(target);
-        if (!inPanel && !inButton) setOpen(false);
-        if (!inPanelAd && !inButtonAd) setOpenAd(false);
-      }
-      document.addEventListener("mousedown", onClick);
-      return () => document.removeEventListener("mousedown", onClick);
+      setMounted(true);
+      const unsubscribe = subscribeSettings((s) => {
+        if (s.calendarPreference) setPreference(s.calendarPreference);
+      });
+      return () => { unsubscribe(); };
     }, []);
 
-    function safeAdToBs(ad: string) {
-      try {
-        return adToBs(ad);
-      } catch {
-        return "";
+    const [open, setOpen] = React.useState(false);
+    const [localMain, setLocalMain] = React.useState("");
+    const [error, setError] = React.useState<string | null>(null);
+
+    // View state for BS
+    const [viewYear, setViewYear] = React.useState<number>(2080);
+    const [viewMonth, setViewMonth] = React.useState<number>(1);
+
+    // View state for AD
+    const [viewAdYear, setViewAdYear] = React.useState<number>(2024);
+    const [viewAdMonth, setViewAdMonth] = React.useState<number>(1);
+
+    const buttonRef = React.useRef<HTMLButtonElement>(null);
+    const panelRef = useOutsideClick<HTMLDivElement>(() => setOpen(false), [buttonRef]);
+
+    const [menuStyle, setMenuStyle] = React.useState<React.CSSProperties>({
+      position: "fixed",
+      top: -9999,
+      left: -9999,
+      opacity: 0,
+    });
+
+    // Sync view states when value changes or when opening
+    React.useEffect(() => {
+      if (open) {
+        if (preference === "BS" && value.bs) {
+          const p = parseBs(value.bs);
+          if (p) {
+            setViewYear(p.year);
+            setViewMonth(p.month);
+          }
+        } else if (preference === "AD" && value.ad) {
+          const p = parseAd(value.ad);
+          if (p) {
+            setViewAdYear(p.year);
+            setViewAdMonth(p.month);
+          }
+        } else {
+          // Default to today
+          const now = new Date();
+          setViewAdYear(now.getFullYear());
+          setViewAdMonth(now.getMonth() + 1);
+          const bs = parseBs(adToBs(now.toISOString().slice(0, 10)));
+          if (bs) {
+            setViewYear(bs.year);
+            setViewMonth(bs.month);
+          }
+        }
+
+        // Update position
+        const rect = buttonRef.current?.parentElement?.getBoundingClientRect();
+        if (rect) {
+          setMenuStyle({
+            position: "fixed",
+            top: rect.bottom + 8,
+            left: rect.left,
+            zIndex: 1000,
+            opacity: 1,
+          });
+        }
       }
-    }
+    }, [open, preference, value.ad, value.bs]);
 
-    function getDaysInMonth(year: number, month: number) {
-      const maxDay = getMaxBsDay(year, month);
-      if (maxDay <= 0) return [];
-      return Array.from({ length: maxDay }, (_, i) => i + 1);
-    }
+    const todayAd = new Date().toISOString().slice(0, 10);
+    const todayBs = adToBs(todayAd);
 
-    function getFirstWeekday(year: number, month: number) {
-      try {
-        const ad = bsToAd(`${year}-${pad(month)}-01`);
-        const dt = new Date(`${ad}T00:00:00Z`);
-        return dt.getUTCDay();
-      } catch {
-        return 0;
-      }
-    }
-
-    const monthDays = React.useMemo(() => getDaysInMonth(viewYear, viewMonth), [viewYear, viewMonth]);
-    const firstWeekday = React.useMemo(
-      () => getFirstWeekday(viewYear, viewMonth),
-      [viewYear, viewMonth]
-    );
-    const adRangeLabel = React.useMemo(() => {
-      try {
-        const maxDay = getMaxBsDay(viewYear, viewMonth);
-        if (maxDay <= 0) return "";
-        const startAd = bsToAd(`${viewYear}-${pad(viewMonth)}-01`);
-        const endAd = bsToAd(`${viewYear}-${pad(viewMonth)}-${pad(maxDay)}`);
-        const startDate = new Date(`${startAd}T00:00:00Z`);
-        const endDate = new Date(`${endAd}T00:00:00Z`);
-        if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) return "";
-        const monthFmt = new Intl.DateTimeFormat("en-US", { month: "short" });
-        const yearFmt = new Intl.DateTimeFormat("en-US", { year: "numeric" });
-        const startMonth = monthFmt.format(startDate);
-        const endMonth = monthFmt.format(endDate);
-        const yearLabel = yearFmt.format(endDate);
-        const monthLabel = startMonth === endMonth ? startMonth : `${startMonth}/${endMonth}`;
-        return `${monthLabel} ${yearLabel}`;
-      } catch {
-        return "";
-      }
-    }, [viewMonth, viewYear]);
-
-    function getDaysInAdMonth(year: number, month: number) {
-      if (!Number.isFinite(year) || !Number.isFinite(month)) return [];
-      const maxDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
-      return Array.from({ length: maxDay }, (_, i) => i + 1);
-    }
-
-    function getFirstWeekdayAd(year: number, month: number) {
-      const dt = new Date(Date.UTC(year, month - 1, 1));
-      return dt.getUTCDay();
-    }
-
-    const adMonthDays = React.useMemo(
-      () => getDaysInAdMonth(viewAdYear, viewAdMonth),
-      [viewAdMonth, viewAdYear]
-    );
-    const adFirstWeekday = React.useMemo(
-      () => getFirstWeekdayAd(viewAdYear, viewAdMonth),
-      [viewAdMonth, viewAdYear]
-    );
+    // AD helpers
     const adHeaderLabel = React.useMemo(() => {
-      const dt = new Date(Date.UTC(viewAdYear, viewAdMonth - 1, 1));
-      return new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(dt);
-    }, [viewAdMonth, viewAdYear]);
+      const date = new Date(viewAdYear, viewAdMonth - 1, 1);
+      return date.toLocaleString("en-US", { month: "long", year: "numeric" });
+    }, [viewAdYear, viewAdMonth]);
+
     const bsHeaderLabel = React.useMemo(() => {
       try {
-        const maxDay = new Date(Date.UTC(viewAdYear, viewAdMonth, 0)).getUTCDate();
-        const startBs = parseBs(adToBs(`${viewAdYear}-${pad(viewAdMonth)}-01`));
-        const endBs = parseBs(adToBs(`${viewAdYear}-${pad(viewAdMonth)}-${pad(maxDay)}`));
-        if (!startBs || !endBs) return "";
-        const startMonth = BS_MONTHS_NP[startBs.month - 1];
-        const endMonth = BS_MONTHS_NP[endBs.month - 1];
-        const startYear = toNepaliDigits(startBs.year);
-        const endYear = toNepaliDigits(endBs.year);
-        if (startMonth === endMonth && startBs.year === endBs.year) {
-          return `${startMonth} ${startYear}`;
+        const startAd = `${viewAdYear}-${pad(viewAdMonth)}-01`;
+        const endAd = `${viewAdYear}-${pad(viewAdMonth)}-${new Date(viewAdYear, viewAdMonth, 0).getDate()}`;
+        const startBs = parseBs(adToBs(startAd));
+        const endBs = parseBs(adToBs(endAd));
+        if (startBs && endBs) {
+          if (startBs.month === endBs.month) {
+            return `${BS_MONTHS[startBs.month - 1]} ${startBs.year}`;
+          }
+          return `${BS_MONTHS[startBs.month - 1]}/${BS_MONTHS[endBs.month - 1]} ${startBs.year}`;
         }
-        if (startBs.year === endBs.year) {
-          return `${startMonth}/${endMonth} ${endYear}`;
-        }
-        return `${startMonth} ${startYear}/${endMonth} ${endYear}`;
-      } catch {
-        return "";
-      }
-    }, [viewAdMonth, viewAdYear]);
+      } catch { return ""; }
+      return "";
+    }, [viewAdYear, viewAdMonth]);
 
-    const display = formatDisplayDate(value, preference);
-    const secondaryLabel = preference === "AD" ? "BS" : "AD";
+    const adMonthDays = React.useMemo(() => {
+      const days = new Date(viewAdYear, viewAdMonth, 0).getDate();
+      return Array.from({ length: days }, (_, i) => i + 1);
+    }, [viewAdYear, viewAdMonth]);
+
+    const adFirstWeekday = React.useMemo(() => {
+      return new Date(viewAdYear, viewAdMonth - 1, 1).getDay();
+    }, [viewAdYear, viewAdMonth]);
+
+    // BS helpers
+    const adRangeLabel = React.useMemo(() => {
+      try {
+        const startAd = bsToAd(`${viewYear}-${pad(viewMonth)}-01`);
+        const maxDay = getMaxBsDay(viewYear, viewMonth);
+        const endAd = bsToAd(`${viewYear}-${pad(viewMonth)}-${pad(maxDay)}`);
+
+        const start = new Date(startAd);
+        const end = new Date(endAd);
+
+        if (start.getMonth() === end.getMonth()) {
+          return `${start.toLocaleString("en-US", { month: "short" })} ${start.getFullYear()}`;
+        }
+        return `${start.toLocaleString("en-US", { month: "short" })}/${end.toLocaleString("en-US", { month: "short" })} ${start.getFullYear()}`;
+      } catch { return ""; }
+    }, [viewYear, viewMonth]);
+
+    const bsMonthDays = React.useMemo(() => {
+      const days = getMaxBsDay(viewYear, viewMonth);
+      return Array.from({ length: days }, (_, i) => i + 1);
+    }, [viewYear, viewMonth]);
+
+    const bsFirstWeekday = React.useMemo(() => {
+      const ad = bsToAd(`${viewYear}-${pad(viewMonth)}-01`);
+      return new Date(ad).getDay();
+    }, [viewYear, viewMonth]);
+
+    const display = React.useMemo(() => {
+      const formatted = formatDisplayDate(value, preference);
+      return {
+        main: formatted.primary === "--" ? "" : formatted.primary,
+        secondary: formatted.secondary,
+      };
+    }, [preference, value.ad, value.bs]);
 
     const handleAdCommit = (nextAd: string) => {
       if (!nextAd) {
@@ -290,12 +293,13 @@ const DualDateInput = React.forwardRef<HTMLInputElement, DualDateInputProps>(
         return;
       }
       try {
-        const nextBs = adToBs(nextAd);
+        const parsed = parseAd(nextAd);
+        if (!parsed) throw new Error("Invalid AD format");
+        const bs = adToBs(nextAd);
         setError(null);
-        onChange({ ad: nextAd, bs: nextBs });
+        onChange({ ad: nextAd, bs });
       } catch {
         setError("Invalid AD date");
-        onChange({ ad: nextAd, bs: value.bs });
       }
     };
 
@@ -310,199 +314,35 @@ const DualDateInput = React.forwardRef<HTMLInputElement, DualDateInputProps>(
         if (!parsed || !isValidBsDay(parsed.year, parsed.month, parsed.day)) {
           throw new Error("Invalid BS day");
         }
-        const nextAd = bsToAd(nextBs);
+        const ad = bsToAd(nextBs);
         setError(null);
-        onChange({ ad: nextAd, bs: nextBs });
+        onChange({ ad, bs: nextBs });
       } catch {
         setError("Invalid BS date");
-        onChange({ ad: value.ad, bs: nextBs });
       }
     };
 
+    const secondaryLabel = preference === "AD" ? "BS" : "AD";
+
     return (
-      <div className="space-y-1">
-        <label className="text-xs text-muted-foreground">
+      <div className={cn("space-y-1 relative", className)}>
+        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 block mb-1">
           {label}
           {required ? " *" : ""}
         </label>
 
-        {preference === "AD" ? (
+        <div className="group/input">
           <div className="relative">
             <Input
               ref={ref}
               type="text"
-              value={localMain || value.ad?.slice(0, 10) || ""}
+              value={localMain || display.main || ""}
               onChange={(e) => setLocalMain(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
-                  handleAdCommit(localMain || value.ad || "");
-                  setLocalMain("");
-                  setOpenAd(false);
-                  onEnterNext?.();
-                }
-              }}
-              onBlur={() => {
-                if (localMain) {
-                  handleAdCommit(localMain);
-                  setLocalMain("");
-                }
-              }}
-              placeholder="YYYY-MM-DD"
-              disabled={disabled}
-              className="pr-10 rounded-xl"
-              onFocus={() => setOpenAd(true)}
-            />
-            <button
-              type="button"
-              ref={buttonRefAd}
-              onClick={() => setOpenAd((v) => !v)}
-              disabled={disabled}
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground hover:bg-muted"
-            >
-              <Calendar className="h-4 w-4" />
-            </button>
-
-            {openAd ? (
-              <div
-                ref={panelRefAd}
-                className="absolute z-30 mt-2 w-[320px] overflow-hidden rounded-2xl border bg-card shadow-xl"
-              >
-                <div className="flex items-center justify-between bg-emerald-600 px-3 py-2 text-white">
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setViewAdYear((y) => y - 1)}
-                      className="rounded-md px-1 py-0.5 text-xs hover:bg-white/10"
-                    >
-                      {"<<"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const nextMonth = viewAdMonth - 1;
-                        if (nextMonth <= 0) {
-                          setViewAdYear(viewAdYear - 1);
-                          setViewAdMonth(12);
-                        } else {
-                          setViewAdMonth(nextMonth);
-                        }
-                      }}
-                      className="rounded-md p-1 hover:bg-white/10"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <div className="text-center text-sm font-semibold">
-                    <div>{adHeaderLabel}</div>
-                    <div className="text-[11px] text-white/80">{bsHeaderLabel}</div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const nextMonth = viewAdMonth + 1;
-                        if (nextMonth > 12) {
-                          setViewAdYear(viewAdYear + 1);
-                          setViewAdMonth(1);
-                        } else {
-                          setViewAdMonth(nextMonth);
-                        }
-                      }}
-                      className="rounded-md p-1 hover:bg-white/10"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setViewAdYear((y) => y + 1)}
-                      className="rounded-md px-1 py-0.5 text-xs hover:bg-white/10"
-                    >
-                      {">>"}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-7 gap-1 px-3 pt-2 text-[11px] text-muted-foreground">
-                  {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
-                    <div key={d} className="py-1 text-center">
-                      {d}
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-1 grid grid-cols-7 gap-1 px-3 pb-2 text-sm">
-                  {Array.from({ length: adFirstWeekday }).map((_, i) => (
-                    <div key={`ad-empty-${i}`} />
-                  ))}
-                  {adMonthDays.map((day) => {
-                    const adValue = `${viewAdYear}-${pad(viewAdMonth)}-${pad(day)}`;
-                    const selected = value.ad?.slice(0, 10) === adValue;
-                    let bsDayLabel = "";
-                    try {
-                      const bs = parseBs(adToBs(adValue));
-                      if (bs) bsDayLabel = toNepaliDigits(bs.day);
-                    } catch {
-                      bsDayLabel = "";
-                    }
-                    return (
-                      <button
-                        key={adValue}
-                        type="button"
-                        onClick={() => {
-                          handleAdCommit(adValue);
-                          setOpenAd(false);
-                          onEnterNext?.();
-                        }}
-                        className={cn(
-                          "rounded-lg py-1 text-center transition",
-                          selected
-                            ? "bg-emerald-600 text-white"
-                            : "hover:bg-muted"
-                        )}
-                      >
-                        <div className="flex flex-col items-center leading-tight">
-                          <span>{day}</span>
-                          <span
-                            className={cn(
-                              "text-[10px]",
-                              selected ? "text-white/80" : "text-muted-foreground/70"
-                            )}
-                          >
-                            {bsDayLabel}
-                          </span>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className="flex items-center justify-between border-t px-3 py-2 text-xs text-muted-foreground">
-                  <span>AD</span>
-                  <button
-                    type="button"
-                    className="rounded-md border px-2 py-1 text-xs hover:bg-muted"
-                    onClick={() => {
-                      handleAdCommit(todayAd);
-                      setOpenAd(false);
-                    }}
-                  >
-                    Today
-                  </button>
-                </div>
-              </div>
-            ) : null}
-          </div>
-        ) : (
-          <div className="relative">
-            <Input
-              ref={ref}
-              value={localMain || value.bs || ""}
-              onChange={(e) => setLocalMain(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleBsCommit(localMain || value.bs || "");
+                  if (preference === "AD") handleAdCommit(localMain || value.ad || "");
+                  else handleBsCommit(localMain || value.bs || "");
                   setLocalMain("");
                   setOpen(false);
                   onEnterNext?.();
@@ -510,13 +350,14 @@ const DualDateInput = React.forwardRef<HTMLInputElement, DualDateInputProps>(
               }}
               onBlur={() => {
                 if (localMain) {
-                  handleBsCommit(localMain);
+                  if (preference === "AD") handleAdCommit(localMain);
+                  else handleBsCommit(localMain);
                   setLocalMain("");
                 }
               }}
               placeholder="YYYY-MM-DD"
               disabled={disabled}
-              className="pr-10 rounded-xl"
+              className="h-10 rounded-xl bg-white border-slate-200 pr-10 hover:border-slate-300 focus:ring-2 focus:ring-slate-100 dark:bg-slate-950 dark:border-slate-800 dark:hover:border-slate-700 dark:text-slate-200 transition-all font-mono font-medium"
               onFocus={() => setOpen(true)}
             />
             <button
@@ -524,151 +365,180 @@ const DualDateInput = React.forwardRef<HTMLInputElement, DualDateInputProps>(
               ref={buttonRef}
               onClick={() => setOpen((v) => !v)}
               disabled={disabled}
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground hover:bg-muted"
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:text-slate-300 dark:hover:bg-slate-800 transition-all"
             >
               <Calendar className="h-4 w-4" />
             </button>
+          </div>
 
-            {open ? (
-              <div
-                ref={panelRef}
-                className="absolute z-30 mt-2 w-[320px] overflow-hidden rounded-2xl border bg-card shadow-xl"
-              >
-                <div className="flex items-center justify-between bg-emerald-600 px-3 py-2 text-white">
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setViewYear((y) => y - 1)}
-                      className="rounded-md px-1 py-0.5 text-xs hover:bg-white/10"
-                    >
-                      {"<<"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const nextMonth = viewMonth - 1;
-                        if (nextMonth <= 0) {
-                          setViewYear(viewYear - 1);
-                          setViewMonth(12);
-                        } else {
-                          setViewMonth(nextMonth);
-                        }
-                      }}
-                      className="rounded-md p-1 hover:bg-white/10"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <div className="text-center text-sm font-semibold">
-                    <div>
-                      {BS_MONTHS_NP[viewMonth - 1]} {toNepaliDigits(viewYear)}
-                    </div>
-                    <div className="text-[11px] text-white/80">{adRangeLabel}</div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const nextMonth = viewMonth + 1;
-                        if (nextMonth > 12) {
-                          setViewYear(viewYear + 1);
-                          setViewMonth(1);
-                        } else {
-                          setViewMonth(nextMonth);
-                        }
-                      }}
-                      className="rounded-md p-1 hover:bg-white/10"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setViewYear((y) => y + 1)}
-                      className="rounded-md px-1 py-0.5 text-xs hover:bg-white/10"
-                    >
-                      {">>"}
-                    </button>
-                  </div>
-                </div>
+          <div className="mt-1 flex items-center justify-between px-1 min-h-[16px]">
+            <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">
+              {secondaryLabel}: <span className="text-slate-600 dark:text-slate-300 font-black">{display.secondary || "N/A"}</span>
+            </div>
+            {error && <div className="text-[9px] font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded dark:bg-red-500/10 uppercase tracking-tighter">{error}</div>}
+          </div>
+        </div>
 
-                <div className="grid grid-cols-7 gap-1 px-3 pt-2 text-[11px] text-muted-foreground">
-                  {WEEK_DAYS_NP.map((d) => (
-                    <div key={d} className="py-1 text-center">
-                      {d}
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-1 grid grid-cols-7 gap-1 px-3 pb-2 text-sm">
-                  {Array.from({ length: firstWeekday }).map((_, i) => (
-                    <div key={`empty-${i}`} />
-                  ))}
-                  {monthDays.map((day) => {
-                    const bsValue = `${viewYear}-${pad(viewMonth)}-${pad(day)}`;
-                    const selected = value.bs === bsValue;
-                    let adDayLabel = "";
-                    try {
-                      const ad = bsToAd(bsValue);
-                      adDayLabel = String(new Date(`${ad}T00:00:00Z`).getUTCDate());
-                    } catch {
-                      adDayLabel = "";
-                    }
-                    return (
-                      <button
-                        key={bsValue}
-                        type="button"
-                        onClick={() => {
-                          handleBsCommit(bsValue);
-                          setOpen(false);
-                          onEnterNext?.();
-                        }}
-                        className={cn(
-                          "rounded-lg py-1 text-center transition",
-                          selected
-                            ? "bg-emerald-600 text-white"
-                            : "hover:bg-muted"
-                        )}
-                      >
-                        <div className="flex flex-col items-center leading-tight">
-                          <span>{toNepaliDigits(day)}</span>
-                          <span
-                            className={cn(
-                              "text-[10px]",
-                              selected ? "text-white/80" : "text-muted-foreground/70"
-                            )}
-                          >
-                            {adDayLabel}
-                          </span>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className="flex items-center justify-between border-t px-3 py-2 text-xs text-muted-foreground">
-                  <span>BS</span>
+        {open && mounted && createPortal(
+          <div
+            ref={panelRef}
+            style={menuStyle}
+            className="w-[320px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900 animate-in fade-in zoom-in-95 duration-150"
+          >
+            {/* Calendar Header */}
+            <div className={cn("flex flex-col gap-0 px-4 py-3 text-white transition-colors duration-300", accentColor)}>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5">
                   <button
                     type="button"
-                    className="rounded-md border px-2 py-1 text-xs hover:bg-muted"
+                    onClick={() => preference === "BS" ? setViewYear(v => v - 1) : setViewAdYear(v => v - 1)}
+                    className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors"
+                  >
+                    <ChevronLeft className="h-4 w-4 opacity-50" />
+                    <ChevronLeft className="h-4 w-4 -ml-2.5" />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => {
-                      if (todayBs) {
-                        handleBsCommit(todayBs);
-                        setOpen(false);
+                      if (preference === "BS") {
+                        const next = viewMonth - 1;
+                        if (next <= 0) { setViewYear(v => v - 1); setViewMonth(12); }
+                        else setViewMonth(next);
+                      } else {
+                        const next = viewAdMonth - 1;
+                        if (next <= 0) { setViewAdYear(v => v - 1); setViewAdMonth(12); }
+                        else setViewAdMonth(next);
                       }
                     }}
+                    className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors"
                   >
-                    आज
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="text-center">
+                  <div className="text-sm font-black uppercase tracking-wide">
+                    {preference === "BS" ? `${BS_MONTHS_NP[viewMonth - 1]} ${toNepaliDigits(viewYear)}` : adHeaderLabel}
+                  </div>
+                  <div className="text-[10px] font-bold opacity-70 uppercase tracking-tighter mt-0.5">
+                    {preference === "BS" ? adRangeLabel : bsHeaderLabel}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (preference === "BS") {
+                        const next = viewMonth + 1;
+                        if (next > 12) { setViewYear(v => v + 1); setViewMonth(1); }
+                        else setViewMonth(next);
+                      } else {
+                        const next = viewAdMonth + 1;
+                        if (next > 12) { setViewAdYear(v => v + 1); setViewAdMonth(1); }
+                        else setViewAdMonth(next);
+                      }
+                    }}
+                    className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => preference === "BS" ? setViewYear(v => v + 1) : setViewAdYear(v => v + 1)}
+                    className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                    <ChevronRight className="h-4 w-4 -ml-2.5" />
                   </button>
                 </div>
               </div>
-            ) : null}
-          </div>
-        )}
 
-        <div className="text-xs text-muted-foreground">
-          {secondaryLabel}: {display.secondary}
-        </div>
-        {error ? <div className="text-xs text-red-600">{error}</div> : null}
+              <div className="grid grid-cols-7 gap-1">
+                {(preference === "BS" ? WEEK_DAYS_NP : ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"]).map(d => (
+                  <div key={d} className="text-center text-[8px] font-black uppercase opacity-60">
+                    {d}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Calendar Grid */}
+            <div className="grid grid-cols-7 gap-1 p-3">
+              {Array.from({ length: (preference === "BS" ? bsFirstWeekday : adFirstWeekday) }).map((_, i) => (
+                <div key={`empty-${i}`} />
+              ))}
+              {(preference === "BS" ? bsMonthDays : adMonthDays).map(day => {
+                const dateStr = preference === "BS"
+                  ? `${viewYear}-${pad(viewMonth)}-${pad(day)}`
+                  : `${viewAdYear}-${pad(viewAdMonth)}-${pad(day)}`;
+
+                const isSelected = preference === "BS" ? value.bs === dateStr : value.ad === dateStr;
+                const isToday = dateStr === (preference === "BS" ? todayBs : todayAd);
+
+                const subLabel = preference === "BS" ? parseAd(bsToAd(dateStr))?.day : parseBs(adToBs(dateStr))?.day;
+
+                return (
+                  <button
+                    key={day}
+                    type="button"
+                    onClick={() => {
+                      const val = preference === "BS" ? dateStr : dateStr;
+                      if (preference === "BS") handleBsCommit(val);
+                      else handleAdCommit(val);
+                      setOpen(false);
+                      onEnterNext?.();
+                    }}
+                    className={cn(
+                      "relative aspect-square rounded-xl flex flex-col items-center justify-center transition-all group/day",
+                      isSelected
+                        ? cn("text-white shadow-lg", accentColor)
+                        : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200",
+                      isToday && !isSelected && "ring-2 ring-primary ring-offset-2 dark:ring-offset-slate-900"
+                    )}
+                  >
+                    <span className="text-xs font-black leading-none">
+                      {preference === "BS" ? toNepaliDigits(day) : day}
+                    </span>
+                    <span className={cn(
+                      "text-[8px] font-bold mt-0.5",
+                      isSelected ? "text-white/70" : "text-slate-400"
+                    )}>
+                      {subLabel}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 px-4 py-2 bg-slate-50/50 dark:bg-slate-800/10">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{preference} Calendar</span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPreference(p => p === "BS" ? "AD" : "BS")}
+                  className="text-[10px] font-black text-primary uppercase hover:underline"
+                >
+                  Switch to {preference === "BS" ? "AD" : "BS"}
+                </button>
+                <div className="w-px h-3 bg-slate-200 dark:bg-slate-700" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (preference === "BS") handleBsCommit(todayBs);
+                    else handleAdCommit(todayAd);
+                    setOpen(false);
+                  }}
+                  className="text-[10px] font-black text-rose-500 uppercase hover:underline"
+                >
+                  {preference === "BS" ? "आज" : "Today"}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
       </div>
     );
   }

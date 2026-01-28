@@ -12,6 +12,18 @@ export type VoucherType =
   | "opening"
   | "reversal";
 
+export type VoucherRecord = {
+  id: string;
+  voucherNo: string;
+  voucherType: VoucherType;
+  voucherDate: string;
+  voucherDateBs: string;
+  partyId?: string;
+  memo?: string;
+  amount: number;
+  status: string;
+};
+
 export type VoucherLineInput = {
   accountId?: string;
   partyId?: string;
@@ -58,7 +70,7 @@ export async function getVoucher(id: string) {
   });
 }
 
-export async function listVouchers(params?: { skip?: number; take?: number }) {
+export async function listVouchers(params?: { type?: VoucherType; q?: string; skip?: number; take?: number }) {
   return apiRequest<any>({
     method: "GET",
     path: "/vouchers",

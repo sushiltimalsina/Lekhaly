@@ -667,6 +667,7 @@ export default function SalesCreatePage() {
               ref={invoiceDateRef}
               label="Invoice Date"
               value={form.invoiceDate}
+              accentColor="bg-blue-600"
               onChange={(next) => setForm((f) => ({ ...f, invoiceDate: next }))}
               onEnterNext={() => safeFocus(dueDateRef.current)}
             />
@@ -674,6 +675,7 @@ export default function SalesCreatePage() {
               ref={dueDateRef}
               label="Due Date"
               value={form.dueDate}
+              accentColor="bg-blue-600"
               onChange={(next) => setForm((f) => ({ ...f, dueDate: next }))}
               onEnterNext={() => safeFocus(invoiceNoRef.current)}
             />
@@ -783,11 +785,13 @@ export default function SalesCreatePage() {
               <DualDateInput
                 label="Invoice Date"
                 value={form.invoiceDate}
+                accentColor="bg-blue-600"
                 onChange={(next) => setForm((f) => ({ ...f, invoiceDate: next }))}
               />
               <DualDateInput
                 label="Due Date"
                 value={form.dueDate}
+                accentColor="bg-blue-600"
                 onChange={(next) => setForm((f) => ({ ...f, dueDate: next }))}
               />
             </div>

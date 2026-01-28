@@ -58,7 +58,7 @@ export default function QuickActionsRail() {
   const pathname = usePathname();
   const group = groups.find((g) => g.match(pathname));
 
-  if (!group) return null;
+  if (!group || pathname.includes("/create")) return null;
 
   return (
     <aside className="hidden xl:block w-72 shrink-0">
