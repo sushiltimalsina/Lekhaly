@@ -10,10 +10,11 @@ import { MoneyText } from "@/components/app/money";
 import DateDisplay from "@/components/app/date-display";
 import { useDateFormat } from "@/lib/date-format";
 import { getDateLabel } from "@/lib/dates/display";
+import Link from "next/link";
+import { Plus } from "lucide-react";
 
 type PaymentRow = {
   id: string;
-  type: "receipt" | "payment";
   refNo?: string;
   partyName?: string;
   dateBs?: string;
@@ -28,12 +29,10 @@ export default function PaymentsPage() {
   const [from, setFrom] = React.useState<{ bs: string; ad: string }>({ bs: "", ad: "" });
   const [to, setTo] = React.useState<{ bs: string; ad: string }>({ bs: "", ad: "" });
 
-  // Placeholder rows until payment/receipt mapping is implemented
   const [rows] = React.useState<PaymentRow[]>([
     {
       id: "p1",
-      type: "receipt",
-      refNo: "RCPT-0009",
+      refNo: "PAY-0001",
       partyName: "ABC Traders",
       dateBs: "2082-05-01",
       date: "2026-01-10T00:00:00.000Z",
@@ -42,8 +41,7 @@ export default function PaymentsPage() {
     },
     {
       id: "p2",
-      type: "payment",
-      refNo: "PAY-0012",
+      refNo: "PAY-0002",
       partyName: "Everest Distributors",
       dateBs: "2082-05-03",
       date: "2026-01-12T00:00:00.000Z",
@@ -54,21 +52,16 @@ export default function PaymentsPage() {
 
   const filtered = rows.filter((r) => {
     if (!q.trim()) return true;
-    return `${r.refNo ?? ""} ${r.partyName ?? ""} ${r.type}`.toLowerCase().includes(q.toLowerCase());
+    return `${r.refNo ?? ""} ${r.partyName ?? ""}`.toLowerCase().includes(q.toLowerCase());
   });
 
   const columns: Column<PaymentRow>[] = [
     {
       key: "ref",
-      header: "Reference",
-      cell: (r) => (
-        <div>
-          <div className="font-medium">{r.refNo ?? r.id.slice(0, 8).toUpperCase()}</div>
-          <div className="text-xs text-muted-foreground">{r.type.toUpperCase()}</div>
-        </div>
-      ),
+      header: "Payment #",
+      cell: (r) => <div className="font-medium">{r.refNo ?? r.id.slice(0, 8).toUpperCase()}</div>,
     },
-    { key: "party", header: "Party", cell: (r) => <div className="truncate">{r.partyName ?? "—"}</div> },
+    { key: "party", header: "Payee", cell: (r) => <div className="truncate">{r.partyName ?? "—"}</div> },
     {
       key: "date",
       header: getDateLabel(dateFormat),
@@ -101,19 +94,18 @@ export default function PaymentsPage() {
   ];
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
-        title="Payments"
-        description="Receipts and payments"
+        title="Cash Payments"
+        description="View and manage payments to vendors/expenses"
         actions={
-          <div className="flex gap-2">
-            <button className="rounded-xl border bg-background px-3 py-2 text-sm hover:bg-muted">
-              New Receipt
-            </button>
-            <button className="rounded-xl bg-primary px-3 py-2 text-sm text-white hover:bg-primary/90">
-              New Payment
-            </button>
-          </div>
+          <Link
+            href="/payments/create"
+            className="inline-flex items-center rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 shadow-sm shadow-primary/20"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            New Payment
+          </Link>
         }
       />
 
@@ -124,7 +116,7 @@ export default function PaymentsPage() {
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Search receipt/payment…"
+                placeholder="Search payment…"
                 className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
@@ -142,4 +134,3 @@ export default function PaymentsPage() {
     </div>
   );
 }
-
