@@ -35,9 +35,11 @@ export function MoneyText({
   currency?: string;
   decimals?: number;
 }) {
+  const [mounted, setMounted] = React.useState(false);
   const [settings, setSettings] = React.useState(getCurrencySettings());
 
   React.useEffect(() => {
+    setMounted(true);
     return subscribeUi((next) => {
       setSettings({
         currencyCode: next.currencyCode,
@@ -47,13 +49,17 @@ export function MoneyText({
     });
   }, []);
 
+  // On server/first-render, use the default settings but don't worry about reactive updates yet
+  // Once mounted, it will re-render with client-side settings if they differ.
+  const currentSettings = mounted ? settings : getCurrencySettings();
+
   return (
     <span className={["mono-numbers tabular-nums", className ?? ""].join(" ")}>
       {formatMoney(value, {
         currency,
         decimals,
-        symbol: settings.currencySymbol,
-        format: settings.numberFormat,
+        symbol: currentSettings.currencySymbol,
+        format: currentSettings.numberFormat,
       })}
     </span>
   );

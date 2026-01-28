@@ -23,7 +23,8 @@ import {
     Clock,
     Info,
     User,
-    Book
+    Book,
+    Printer
 } from "lucide-react";
 import SearchableSelect from "@/components/app/searchable-select";
 import { useRouter } from "next/navigation";
@@ -146,8 +147,12 @@ export default function JournalCreatePage() {
         }
     };
 
+    const onPrint = () => {
+        window.print();
+    };
+
     return (
-        <div className="flex flex-col gap-6 p-4 md:p-8 font-sans transition-colors duration-300 relative min-h-full pb-24">
+        <div className="flex flex-col gap-6 p-4 md:p-8 font-sans transition-colors duration-300 relative min-h-full pb-12">
             <div className="flex flex-col gap-6">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -364,52 +369,61 @@ export default function JournalCreatePage() {
                 </div>
             </div>
 
-            {/* Footer Status Bar - Centered relative to content area */}
-            <div className="fixed bottom-6 left-[var(--sidebar-width,84px)] right-0 flex justify-center px-4 z-40 animate-slide-up pointer-events-none">
-                <div className="bg-slate-900/95 dark:bg-slate-800/95 backdrop-blur-xl border border-slate-700/50 dark:border-slate-700/50 rounded-3xl p-4 shadow-2xl flex items-center justify-between text-white w-full max-w-4xl pointer-events-auto">
-                    <div className="flex items-center gap-8 pl-4">
+            {/* Static Action Footer */}
+            <div className="mt-8 border-t border-slate-100 dark:border-slate-800 pt-8 pb-12">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-white dark:bg-slate-900/50 p-6 md:p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm">
+                    <div className="flex flex-wrap items-center gap-8">
                         <div className="flex flex-col">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Debit</span>
-                            <div className="text-lg font-black text-blue-400">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Debit</span>
+                            <div className="text-xl font-black text-blue-600 dark:text-blue-400">
                                 <MoneyText value={totals.dr} />
                             </div>
                         </div>
-                        <div className="w-px h-8 bg-slate-700" />
+                        <div className="hidden md:block w-px h-10 bg-slate-100 dark:bg-slate-800" />
                         <div className="flex flex-col">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Credit</span>
-                            <div className="text-lg font-black text-rose-400">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Credit</span>
+                            <div className="text-xl font-black text-rose-600 dark:text-rose-400">
                                 <MoneyText value={totals.cr} />
                             </div>
                         </div>
-                    </div>
 
-                    <div className="flex items-center gap-6 pr-2">
                         {!totals.balanced && totals.dr > 0 && (
-                            <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/30 px-5 py-2.5 rounded-2xl">
+                            <div className="flex items-center gap-3 bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 px-4 py-2 rounded-2xl">
                                 <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
                                 <div className="flex flex-col">
                                     <span className="text-[9px] font-black text-red-500 uppercase tracking-widest">Difference</span>
-                                    <span className="text-sm font-black text-red-400 leading-none"><MoneyText value={totals.diff} /></span>
+                                    <span className="text-sm font-black text-red-600 dark:text-red-400 leading-none"><MoneyText value={totals.diff} /></span>
                                 </div>
                             </div>
                         )}
-                        {totals.balanced && (
-                            <div className="flex items-center gap-3 bg-emerald-500/10 border border-emerald-500/30 px-5 py-2.5 rounded-2xl">
+                        {totals.balanced && totals.dr > 0 && (
+                            <div className="flex items-center gap-3 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 px-4 py-2 rounded-2xl">
                                 <div className="h-2 w-2 rounded-full bg-emerald-500" />
                                 <div className="flex flex-col">
                                     <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">Status</span>
-                                    <span className="text-sm font-black text-emerald-400 leading-none">BALANCED</span>
+                                    <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 leading-none">BALANCED</span>
                                 </div>
                             </div>
                         )}
+                    </div>
+
+                    <div className="flex items-center gap-3 w-full md:w-auto">
+                        <Button
+                            variant="outline"
+                            onClick={onPrint}
+                            className="flex-1 md:flex-none rounded-2xl h-12 px-6 font-bold text-xs uppercase tracking-widest border-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
+                        >
+                            <Printer className="mr-2 h-4 w-4" />
+                            Print
+                        </Button>
                         <Button
                             onClick={onSave}
                             disabled={loading || !totals.balanced}
                             className={cn(
-                                "rounded-2xl h-12 px-8 font-black text-xs uppercase tracking-widest shadow-xl transition-all",
+                                "flex-1 md:flex-none rounded-2xl h-12 px-10 font-black text-xs uppercase tracking-widest shadow-xl transition-all",
                                 totals.balanced
-                                    ? "bg-indigo-600 text-white hover:bg-indigo-700 hover:scale-105 active:scale-95"
-                                    : "bg-slate-700 text-slate-400 cursor-not-allowed opacity-50"
+                                    ? "bg-indigo-600 text-white hover:bg-indigo-700 hover:scale-105 active:scale-95 shadow-indigo-500/25"
+                                    : "bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-50 shadow-none"
                             )}
                         >
                             {loading ? "Saving..." : "Save Voucher"}
