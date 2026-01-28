@@ -61,7 +61,7 @@ export default function SettingsPage() {
       setCurrencySymbolState(next.currencySymbol);
       setNumberFormatState(next.numberFormat);
     });
-    return () => unsubscribe();
+    return () => { unsubscribe(); };
   }, []);
 
   React.useEffect(() => {
@@ -69,7 +69,7 @@ export default function SettingsPage() {
     const unsubscribe = subscribeSettings((next) => {
       setCalendarPreferenceState(next.calendarPreference);
     });
-    return () => unsubscribe();
+    return () => { unsubscribe(); };
   }, []);
 
   const applyTheme = (newTheme: "light" | "dark" | "system") => {
@@ -143,6 +143,12 @@ export default function SettingsPage() {
   }
 
   async function removeSundry(id: string) {
+    const sundry = sundries.find(s => s.id === id);
+    const systemNames = ["Discount", "Shipping & Handling", "Packaging Charges", "Insurance", "Round Off", "VAT"];
+    if (sundry && systemNames.includes(sundry.name)) {
+      alert("System default bill sundries cannot be deleted.");
+      return;
+    }
     if (!confirm("Are you sure you want to delete this bill sundry?")) return;
     try {
       await deleteBillSundry(id);
@@ -456,21 +462,28 @@ export default function SettingsPage() {
                           {s.type === "add" ? <Plus className="h-5 w-5" /> : <Calculator className="h-5 w-5" />}
                         </div>
                         <div>
-                          <div className="font-semibold">{s.name}</div>
+                          <div className="font-semibold flex items-center gap-2">
+                            {s.name}
+                            {["Discount", "Shipping & Handling", "Packaging Charges", "Insurance", "Round Off", "VAT"].includes(s.name) && (
+                              <span className="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 text-[10px] px-1.5 py-0.5 rounded-md font-medium">System</span>
+                            )}
+                          </div>
                           <div className="text-xs text-muted-foreground uppercase tracking-tight font-mono">
                             {s.rate ? `${s.rate}%` : "Manual"} • {s.type} {s.account?.name ? `• ${s.account.name}` : ""}
                           </div>
                         </div>
                       </div>
                       <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeSundry(s.id)}
-                          className="h-9 w-9 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {!["Discount", "Shipping & Handling", "Packaging Charges", "Insurance", "Round Off", "VAT"].includes(s.name) && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeSundry(s.id)}
+                            className="h-9 w-9 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))

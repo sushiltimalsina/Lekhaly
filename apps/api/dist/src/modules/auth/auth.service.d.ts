@@ -10,6 +10,7 @@ export declare class AuthService {
     private signRefreshToken;
     private sha256;
     private ensurePermissions;
+    private createDefaultMasterData;
     register(dto: {
         companyCode: string;
         companyName: string;
@@ -21,19 +22,19 @@ export declare class AuthService {
         userId: string;
     }>;
     getProfile(userId: string): Promise<{
-        id: string;
         companyId: string;
-        email: string;
+        id: string;
         name: string | null;
+        email: string;
     }>;
     updateProfile(userId: string, dto: {
         name?: string;
         email?: string;
     }): Promise<{
-        id: string;
         companyId: string;
-        email: string;
+        id: string;
         name: string | null;
+        email: string;
     }>;
     getCompany(userId: string): Promise<{
         id: string;

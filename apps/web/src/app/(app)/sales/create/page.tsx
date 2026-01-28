@@ -74,6 +74,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
   onEnterNext?: () => void;
   onKeyDownCustom?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   fallbackLabel?: string;
+  disabled?: boolean;
 }) {
   const {
     label,
@@ -87,6 +88,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
     buttonClassName,
     emptyText = "No items found",
     fallbackLabel,
+    disabled,
   } = props;
 
   const [open, setOpen] = React.useState(false);
@@ -184,11 +186,13 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
 
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => !disabled && setOpen((v) => !v)}
+        disabled={disabled}
         ref={setButtonRef}
         className={cn(
           "flex w-full items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-left text-sm shadow-sm hover:bg-slate-50",
           "dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800/40",
+          disabled && "opacity-60 cursor-not-allowed bg-slate-50 dark:bg-slate-800/20",
           buttonClassName
         )}
       >
@@ -1110,9 +1114,9 @@ export default function SalesCreatePage() {
                             getLabel={(s) => s.name}
                             buttonClassName="h-10 rounded-xl pr-[110px]"
                             emptyText="No sundries found"
-                            
+                            disabled={r.id === "vat" || r.id === "discount"}
                           />
-                          {!r.sundryId && (
+                          {!r.sundryId && r.id !== "discount" && r.id !== "vat" && (
                             <Button
                               type="button"
                               variant="outline"
@@ -1140,6 +1144,7 @@ export default function SalesCreatePage() {
                                 isManual: false
                               });
                             }}
+                            disabled={r.id === "vat" || r.id === "discount"}
                             onKeyDown={(e) => {
                               if (e.key === "Enter") {
                                 e.preventDefault();
@@ -1173,6 +1178,7 @@ export default function SalesCreatePage() {
                                     isManual: true
                                   });
                                 }}
+                                disabled={r.id === "vat" || r.id === "discount"}
                                 placeholder="0.00"
                                 className="h-8 w-24 rounded-lg border-slate-200 bg-white px-2 text-right text-sm dark:border-slate-800 dark:bg-slate-900"
                               />
@@ -1187,9 +1193,10 @@ export default function SalesCreatePage() {
                         <button
                           type="button"
                           onClick={() => removeSundry(r.id)}
+                          disabled={r.id === "vat" || r.id === "discount"}
                           className={cn(
                             "inline-flex h-9 w-9 items-center justify-center rounded-xl border text-red-600 hover:bg-red-50",
-                            billSundries.length <= 1 && "pointer-events-none opacity-50"
+                            (billSundries.length <= 1 || r.id === "vat" || r.id === "discount") && "pointer-events-none opacity-50"
                           )}
                           title="Remove"
                         >

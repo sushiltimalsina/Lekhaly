@@ -120,7 +120,11 @@ async function createDemoCompany(permAll) {
     const vatPayable = await prisma.chartOfAccount.create({ data: { companyId: company.id, code: "2100", name: "VAT Payable", type: client_1.CoaType.liability } });
     await prisma.chartOfAccount.create({ data: { companyId: company.id, code: "3000", name: "Owner's Capital", type: client_1.CoaType.equity } });
     const sales = await prisma.chartOfAccount.create({ data: { companyId: company.id, code: "4000", name: "Sales", type: client_1.CoaType.income } });
+    const discountGiven = await prisma.chartOfAccount.create({ data: { companyId: company.id, code: "4100", name: "Discount Given", type: client_1.CoaType.income } });
+    const shippingIncome = await prisma.chartOfAccount.create({ data: { companyId: company.id, code: "4200", name: "Shipping & Handling Income", type: client_1.CoaType.income } });
     await prisma.chartOfAccount.create({ data: { companyId: company.id, code: "5000", name: "Cost of Goods Sold", type: client_1.CoaType.expense } });
+    const discountReceived = await prisma.chartOfAccount.create({ data: { companyId: company.id, code: "5100", name: "Discount Received", type: client_1.CoaType.expense } });
+    const shippingExpense = await prisma.chartOfAccount.create({ data: { companyId: company.id, code: "5200", name: "Shipping & Handling Expense", type: client_1.CoaType.expense } });
     await prisma.taxCode.create({
         data: {
             companyId: company.id,
@@ -164,6 +168,51 @@ async function createDemoCompany(permAll) {
                 isInclusive: false,
                 inputTaxAccountId: vatReceivable.id,
                 outputTaxAccountId: vatPayable.id
+            }
+        ],
+        skipDuplicates: true
+    });
+    await prisma.billSundry.createMany({
+        data: [
+            {
+                companyId: company.id,
+                name: "Discount",
+                type: "less",
+                rate: 0,
+                accountId: discountGiven.id,
+                isActive: true
+            },
+            {
+                companyId: company.id,
+                name: "Shipping & Handling",
+                type: "add",
+                rate: 0,
+                accountId: shippingIncome.id,
+                isActive: true
+            },
+            {
+                companyId: company.id,
+                name: "Packaging Charges",
+                type: "add",
+                rate: 0,
+                accountId: shippingIncome.id,
+                isActive: true
+            },
+            {
+                companyId: company.id,
+                name: "Insurance",
+                type: "add",
+                rate: 0,
+                accountId: shippingIncome.id,
+                isActive: true
+            },
+            {
+                companyId: company.id,
+                name: "Round Off",
+                type: "add",
+                rate: 0,
+                accountId: sales.id,
+                isActive: true
             }
         ],
         skipDuplicates: true

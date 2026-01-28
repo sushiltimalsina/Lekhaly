@@ -88,6 +88,7 @@ async function createDemoCompany(permAll: string[]) {
   });
   await prisma.userRole.create({ data: { userId: adminUser.id, roleId: adminRole.id } });
 
+  // Create Chart of Accounts
   const cash = await prisma.chartOfAccount.create({ data: { companyId: company.id, code: "1010", name: "Cash in Hand", type: CoaType.asset } });
   const bank = await prisma.chartOfAccount.create({ data: { companyId: company.id, code: "1020", name: "Bank", type: CoaType.asset } });
   const ar = await prisma.chartOfAccount.create({ data: { companyId: company.id, code: "1100", name: "Accounts Receivable", type: CoaType.asset } });
@@ -100,8 +101,14 @@ async function createDemoCompany(permAll: string[]) {
   await prisma.chartOfAccount.create({ data: { companyId: company.id, code: "3000", name: "Owner's Capital", type: CoaType.equity } });
 
   const sales = await prisma.chartOfAccount.create({ data: { companyId: company.id, code: "4000", name: "Sales", type: CoaType.income } });
-  await prisma.chartOfAccount.create({ data: { companyId: company.id, code: "5000", name: "Cost of Goods Sold", type: CoaType.expense } });
+  const discountGiven = await prisma.chartOfAccount.create({ data: { companyId: company.id, code: "4100", name: "Discount Given", type: CoaType.income } });
+  const shippingIncome = await prisma.chartOfAccount.create({ data: { companyId: company.id, code: "4200", name: "Shipping & Handling Income", type: CoaType.income } });
 
+  await prisma.chartOfAccount.create({ data: { companyId: company.id, code: "5000", name: "Cost of Goods Sold", type: CoaType.expense } });
+  const discountReceived = await prisma.chartOfAccount.create({ data: { companyId: company.id, code: "5100", name: "Discount Received", type: CoaType.expense } });
+  const shippingExpense = await prisma.chartOfAccount.create({ data: { companyId: company.id, code: "5200", name: "Shipping & Handling Expense", type: CoaType.expense } });
+
+  // Create Tax Codes
   await prisma.taxCode.create({
     data: {
       companyId: company.id,
@@ -151,6 +158,54 @@ async function createDemoCompany(permAll: string[]) {
     skipDuplicates: true
   });
 
+  // Create Bill Sundries (Discount, Shipping, etc.)
+  await prisma.billSundry.createMany({
+    data: [
+      {
+        companyId: company.id,
+        name: "Discount",
+        type: "less",
+        rate: 0,
+        accountId: discountGiven.id,
+        isActive: true
+      },
+      {
+        companyId: company.id,
+        name: "Shipping & Handling",
+        type: "add",
+        rate: 0,
+        accountId: shippingIncome.id,
+        isActive: true
+      },
+      {
+        companyId: company.id,
+        name: "Packaging Charges",
+        type: "add",
+        rate: 0,
+        accountId: shippingIncome.id,
+        isActive: true
+      },
+      {
+        companyId: company.id,
+        name: "Insurance",
+        type: "add",
+        rate: 0,
+        accountId: shippingIncome.id,
+        isActive: true
+      },
+      {
+        companyId: company.id,
+        name: "Round Off",
+        type: "add",
+        rate: 0,
+        accountId: sales.id,
+        isActive: true
+      }
+    ],
+    skipDuplicates: true
+  });
+
+  // Create default party
   await prisma.party.create({
     data: { companyId: company.id, type: PartyType.customer, name: "Walk-in Customer" }
   });

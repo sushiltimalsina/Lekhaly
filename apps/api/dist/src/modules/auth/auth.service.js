@@ -126,7 +126,8 @@ let AuthService = class AuthService {
             { code: "settings.security", description: "Manage security settings" },
             { code: "settings.tax", description: "Manage tax settings" },
             { code: "settings.coa", description: "Manage chart of accounts" },
-            { code: "settings.users", description: "Manage users/roles" }
+            { code: "settings.users", description: "Manage users/roles" },
+            { code: "manage.billSundries", description: "Manage bill sundries" }
         ];
         for (const p of permissions) {
             await tx.permission.upsert({
@@ -136,6 +137,130 @@ let AuthService = class AuthService {
             });
         }
         return permissions.map(p => p.code);
+    }
+    async createDefaultMasterData(tx, companyId) {
+        const cash = await tx.chartOfAccount.create({
+            data: { companyId, code: "1010", name: "Cash in Hand", type: "asset" }
+        });
+        const bank = await tx.chartOfAccount.create({
+            data: { companyId, code: "1020", name: "Bank", type: "asset" }
+        });
+        const ar = await tx.chartOfAccount.create({
+            data: { companyId, code: "1100", name: "Accounts Receivable", type: "asset" }
+        });
+        const vatReceivable = await tx.chartOfAccount.create({
+            data: { companyId, code: "1110", name: "VAT Receivable", type: "asset" }
+        });
+        await tx.chartOfAccount.create({
+            data: { companyId, code: "1200", name: "Inventory", type: "asset" }
+        });
+        const ap = await tx.chartOfAccount.create({
+            data: { companyId, code: "2000", name: "Accounts Payable", type: "liability" }
+        });
+        const vatPayable = await tx.chartOfAccount.create({
+            data: { companyId, code: "2100", name: "VAT Payable", type: "liability" }
+        });
+        await tx.chartOfAccount.create({
+            data: { companyId, code: "3000", name: "Owner's Capital", type: "equity" }
+        });
+        const sales = await tx.chartOfAccount.create({
+            data: { companyId, code: "4000", name: "Sales", type: "income" }
+        });
+        const discountGiven = await tx.chartOfAccount.create({
+            data: { companyId, code: "4100", name: "Discount Given", type: "income" }
+        });
+        const shippingIncome = await tx.chartOfAccount.create({
+            data: { companyId, code: "4200", name: "Shipping & Handling Income", type: "income" }
+        });
+        const cogs = await tx.chartOfAccount.create({
+            data: { companyId, code: "5000", name: "Cost of Goods Sold", type: "expense" }
+        });
+        const discountReceived = await tx.chartOfAccount.create({
+            data: { companyId, code: "5100", name: "Discount Received", type: "expense" }
+        });
+        const shippingExpense = await tx.chartOfAccount.create({
+            data: { companyId, code: "5200", name: "Shipping & Handling Expense", type: "expense" }
+        });
+        await tx.taxCode.create({
+            data: {
+                companyId,
+                name: "VAT 13%",
+                rate: 13.0,
+                isInclusive: false,
+                inputTaxAccountId: vatReceivable.id,
+                outputTaxAccountId: vatPayable.id
+            }
+        });
+        await tx.taxCode.createMany({
+            data: [
+                {
+                    companyId,
+                    name: "Digital Service Tax (DST) 2%",
+                    rate: 2.0,
+                    isInclusive: false,
+                    inputTaxAccountId: vatReceivable.id,
+                    outputTaxAccountId: vatPayable.id
+                },
+                {
+                    companyId,
+                    name: "Excise Duty",
+                    rate: 0.0,
+                    isInclusive: false,
+                    inputTaxAccountId: vatReceivable.id,
+                    outputTaxAccountId: vatPayable.id
+                }
+            ],
+            skipDuplicates: true
+        });
+        await tx.billSundry.createMany({
+            data: [
+                {
+                    companyId,
+                    name: "Discount",
+                    type: "less",
+                    rate: 0,
+                    accountId: discountGiven.id,
+                    isActive: true
+                },
+                {
+                    companyId,
+                    name: "Shipping & Handling",
+                    type: "add",
+                    rate: 0,
+                    accountId: shippingIncome.id,
+                    isActive: true
+                },
+                {
+                    companyId,
+                    name: "Packaging Charges",
+                    type: "add",
+                    rate: 0,
+                    accountId: shippingIncome.id,
+                    isActive: true
+                },
+                {
+                    companyId,
+                    name: "Insurance",
+                    type: "add",
+                    rate: 0,
+                    accountId: shippingIncome.id,
+                    isActive: true
+                },
+                {
+                    companyId,
+                    name: "Round Off",
+                    type: "add",
+                    rate: 0,
+                    accountId: sales.id,
+                    isActive: true
+                }
+            ],
+            skipDuplicates: true
+        });
+        await tx.party.create({
+            data: { companyId, type: "customer", name: "Walk-in Customer" }
+        });
+        return { cash, bank, ar, ap, sales, cogs };
     }
     async register(dto) {
         const passwordHash = await argon2_1.default.hash(dto.password);
@@ -180,6 +305,7 @@ let AuthService = class AuthService {
                     }
                 });
                 await tx.userRole.create({ data: { userId: user.id, roleId: adminRole.id } });
+                await this.createDefaultMasterData(tx, company.id);
                 return { companyId: company.id, userId: user.id };
             });
         }

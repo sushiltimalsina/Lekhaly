@@ -27,16 +27,16 @@ export declare class AuthController {
     }>;
     me(user: AuthUser): AuthUser;
     profile(userId: string): Promise<{
-        id: string;
         companyId: string;
-        email: string;
+        id: string;
         name: string | null;
+        email: string;
     }>;
     updateProfile(userId: string, body: any): Promise<{
-        id: string;
         companyId: string;
-        email: string;
+        id: string;
         name: string | null;
+        email: string;
     }>;
     company(userId: string): Promise<{
         id: string;
