@@ -30,7 +30,7 @@ const reports = [
   {
     title: "Profit & Loss",
     desc: "Detailed income and expense statement for your business performance.",
-    href: "/reports/profit-loss",
+    href: "/reports/pl",
     icon: TrendingUp,
     color: "text-emerald-600 dark:text-emerald-400",
     bg: "bg-emerald-500/10"

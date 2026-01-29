@@ -47,14 +47,12 @@
     --foreground: 210 40% 98%;
 
     --card: 222 47% 13%;
-    /* Slightly lighter than bg */
     --card-foreground: 210 40% 98%;
 
     --popover: 222 47% 13%;
     --popover-foreground: 210 40% 98%;
 
     --primary: 217 91% 60%;
-    /* Bright blue accessible on dark */
     --primary-foreground: 222 47.4% 11.2%;
 
     --secondary: 217.2 32.6% 17.5%;
@@ -102,5 +100,10 @@
 
   .text-gradient {
     @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-600 dark:from-blue-400 dark:to-purple-400;
+  }
+
+  .mono-numbers {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-variant-numeric: tabular-nums;
   }
 }
