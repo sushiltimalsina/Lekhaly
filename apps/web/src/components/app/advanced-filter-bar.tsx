@@ -41,6 +41,9 @@ interface AdvancedFilterBarProps {
     initialSearch?: string;
     searchValue?: string;
     className?: string;
+    defaultRange?: DateRangeKey;
+    showComparison?: boolean;
+    onComparisonChange?: (enabled: boolean) => void;
 }
 
 export default function AdvancedFilterBar({
@@ -48,12 +51,16 @@ export default function AdvancedFilterBar({
     onFilterChange,
     filterOptions = [],
     searchValue: externalSearchValue,
-    className
+    className,
+    defaultRange = "this_year",
+    showComparison,
+    onComparisonChange
 }: AdvancedFilterBarProps) {
     const [internalSearch, setInternalSearch] = React.useState("");
-    const [activeDateRange, setActiveDateRange] = React.useState<DateRangeKey>("this_month");
+    const [activeDateRange, setActiveDateRange] = React.useState<DateRangeKey>(defaultRange);
     const [selectedFilters, setSelectedFilters] = React.useState<Record<string, string[]>>({});
     const [isCustomDateOpen, setIsCustomDateOpen] = React.useState(false);
+    const [compareEnabled, setCompareEnabled] = React.useState(false);
 
     // Custom range state
     const [tempCustomRange, setTempCustomRange] = React.useState<{ from: string, to: string }>({
@@ -71,7 +78,15 @@ export default function AdvancedFilterBar({
 
         setActiveDateRange(key);
         const range = getDateRange(key);
-        onFilterChange?.({ ...selectedFilters, dateRange: range });
+        onFilterChange?.({ ...selectedFilters, dateRange: range, compare: compareEnabled });
+    };
+
+    const handleCompareToggle = () => {
+        const next = !compareEnabled;
+        setCompareEnabled(next);
+        onComparisonChange?.(next);
+        const range = getDateRange(activeDateRange);
+        onFilterChange?.({ ...selectedFilters, dateRange: range, compare: next });
     };
 
     const handleApplyCustomRange = () => {
@@ -270,6 +285,31 @@ export default function AdvancedFilterBar({
                         )}
                     </AnimatePresence>
                 </div>
+
+                {showComparison && (
+                    <div
+                        onClick={handleCompareToggle}
+                        className={cn(
+                            "flex items-center gap-2 px-3 py-1.5 rounded-2xl border cursor-pointer transition-all active:scale-95 select-none",
+                            compareEnabled
+                                ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-100 dark:shadow-none"
+                                : "bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-800 text-slate-400 hover:border-indigo-200"
+                        )}
+                    >
+                        <div className={cn(
+                            "h-3 w-3 rounded-full border border-current flex items-center justify-center transition-all",
+                            compareEnabled ? "bg-white" : "bg-transparent"
+                        )}>
+                            {compareEnabled && <div className="h-1.5 w-1.5 rounded-full bg-indigo-600" />}
+                        </div>
+                        <span className={cn(
+                            "text-[10px] font-black uppercase tracking-widest",
+                            compareEnabled ? "text-white" : "text-slate-400"
+                        )}>
+                            Compare with Previous Year
+                        </span>
+                    </div>
+                )}
 
                 {/* Dynamic Filters */}
                 {filterOptions.map((filter) => (

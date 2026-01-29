@@ -2,16 +2,14 @@
 
 import * as React from "react";
 import PageHeader from "@/components/app/page-header";
-import FiltersBar from "@/components/app/filters-bar";
-import BsDateInput from "@/components/app/bs-date-input";
+import AdvancedFilterBar from "@/components/app/advanced-filter-bar";
 import { MoneyText } from "@/components/app/money";
 import { getBalanceSheet } from "@/lib/api/reports";
 import { useDateFormat } from "@/lib/date-format";
-import { getDateLabel } from "@/lib/dates/display";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Printer, FileDown, RefreshCw, AlertCircle, ShieldCheck, Scale, PieChart } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getDateRange } from "@/lib/dates/ranges";
 
 type Row = {
   section?: string | "assets" | "liabilities" | "equity";
@@ -21,18 +19,22 @@ type Row = {
 
 export default function BalanceSheetPage() {
   const { dateFormat } = useDateFormat();
-  const [asOf, setAsOf] = React.useState<{ bs: string; ad: string }>({ bs: "", ad: "" });
+
+  // Initialize with end of This Year
+  const initialRange = getDateRange("this_year");
+  const [asOf, setAsOf] = React.useState<Date | null>(initialRange.to);
   const [loading, setLoading] = React.useState(false);
   const [rows, setRows] = React.useState<Row[]>([]);
   const [error, setError] = React.useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = React.useState("");
 
   async function run() {
     setLoading(true);
     setError(null);
     try {
       const res: any = await getBalanceSheet({
-        asOf: asOf.ad || undefined,
-        asOfBs: asOf.bs || undefined,
+        asOf: asOf?.toISOString() || undefined,
+        q: searchQuery || undefined,
       });
 
       const data = Array.isArray(res) ? res : res?.rows ?? res?.data ?? res?.items ?? [];
@@ -48,7 +50,7 @@ export default function BalanceSheetPage() {
   React.useEffect(() => {
     run();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [asOf, searchQuery]);
 
   const assetItems = rows.filter(r => r.section?.toLowerCase() === "assets");
   const liabilityItems = rows.filter(r => r.section?.toLowerCase() === "liabilities");
@@ -63,6 +65,13 @@ export default function BalanceSheetPage() {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleFilterChange = (filters: any) => {
+    if (filters.dateRange) {
+      // Balance sheet is usually "As of", so we take the end of the range
+      setAsOf(filters.dateRange.to || filters.dateRange.from || null);
+    }
   };
 
   return (
@@ -95,13 +104,11 @@ export default function BalanceSheetPage() {
         </div>
       </div>
 
-      <FiltersBar
+      <AdvancedFilterBar
         className="print:hidden"
-        left={
-          <div className="w-full sm:w-[240px]">
-            <BsDateInput label={getDateLabel(dateFormat, "As of")} valueBs={asOf.bs} valueAd={asOf.ad} onChange={setAsOf} />
-          </div>
-        }
+        onSearch={setSearchQuery}
+        onFilterChange={handleFilterChange}
+        defaultRange="this_year"
       />
 
       {error ? (
@@ -112,7 +119,7 @@ export default function BalanceSheetPage() {
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 print:hidden">
-        <Card className="border-border/50 bg-blue-500/5 shadow-none overflow-hidden relative">
+        <Card className="border-border/50 bg-blue-500/5 shadow-none overflow-hidden relative text-foreground">
           <CardContent className="pt-6">
             <div className="text-sm font-medium text-blue-600 dark:text-blue-400">Total Assets</div>
             <div className="mt-2 text-xl font-bold tracking-tight">
@@ -121,7 +128,7 @@ export default function BalanceSheetPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-border/50 bg-red-500/5 shadow-none overflow-hidden relative">
+        <Card className="border-border/50 bg-red-500/5 shadow-none overflow-hidden relative text-foreground">
           <CardContent className="pt-6">
             <div className="text-sm font-medium text-red-600 dark:text-red-400">Total Liabilities</div>
             <div className="mt-2 text-xl font-bold tracking-tight">
@@ -130,7 +137,7 @@ export default function BalanceSheetPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-border/50 bg-emerald-500/5 shadow-none overflow-hidden relative">
+        <Card className="border-border/50 bg-emerald-500/5 shadow-none overflow-hidden relative text-foreground">
           <CardContent className="pt-6">
             <div className="text-sm font-medium text-emerald-600 dark:text-emerald-400">Equity</div>
             <div className="mt-2 text-xl font-bold tracking-tight">
@@ -141,17 +148,17 @@ export default function BalanceSheetPage() {
 
         <Card className={cn("border-border/50 shadow-none overflow-hidden relative", isBalanced ? "bg-primary/5" : "bg-orange-500/5")}>
           <CardContent className="pt-6">
-            <div className={cn("text-sm font-medium", isBalanced ? "text-primary" : "text-orange-600")}>
+            <div className={cn("text-sm font-medium", isBalanced ? "text-primary font-bold" : "text-orange-600 font-bold")}>
               {isBalanced ? "Equation" : "Imbalance"}
             </div>
-            <div className="mt-2 text-xl font-bold tracking-tight flex items-center gap-2">
+            <div className="mt-2 text-xl font-bold tracking-tight flex items-center gap-2 text-foreground">
               {isBalanced ? (
                 <>
-                  <ShieldCheck className="h-5 w-5" /> Balanced
+                  <ShieldCheck className="h-5 w-5 text-primary" /> Balanced
                 </>
               ) : (
                 <>
-                  <Scale className="h-5 w-5" /> <MoneyText value={balanceCheck} />
+                  <Scale className="h-5 w-5 text-orange-500" /> <MoneyText value={balanceCheck} />
                 </>
               )}
             </div>
@@ -159,19 +166,19 @@ export default function BalanceSheetPage() {
         </Card>
       </div>
 
-      <Card className="border-border/50 glass-card overflow-hidden shadow-xl shadow-foreground/5 max-w-5xl mx-auto">
-        <div className="p-8 text-center border-b border-border/50 bg-muted/20">
-          <h1 className="text-2xl font-bold tracking-tight">Lekhaly</h1>
+      <Card className="border-border/50 glass-card overflow-hidden shadow-xl shadow-foreground/5 max-w-5xl mx-auto print:shadow-none print:border-none">
+        <div className="p-8 text-center border-b border-border/50 bg-muted/20 print:bg-white text-foreground">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Lekhaly</h1>
           <h2 className="text-xl font-semibold mt-1">Balance Sheet</h2>
           <div className="text-sm text-muted-foreground mt-2 uppercase tracking-widest font-medium">
-            As of {asOf.bs || asOf.ad || "Today"}
+            As of {asOf?.toLocaleDateString() || "Today"}
           </div>
         </div>
 
         <div className="grid md:grid-cols-2 divide-x divide-border/50 min-h-[500px]">
           {/* Left Column: Assets */}
-          <div className="p-6 md:p-8 space-y-8">
-            <div>
+          <div className="p-6 md:p-8 space-y-8 flex flex-col">
+            <div className="flex-1">
               <div className="flex items-center justify-between border-b-2 border-foreground/10 pb-2 mb-4">
                 <h3 className="text-sm font-extrabold uppercase tracking-widest text-foreground flex items-center gap-2">
                   <PieChart className="h-4 w-4 text-blue-500" /> Assets
@@ -180,9 +187,9 @@ export default function BalanceSheetPage() {
               <div className="space-y-3">
                 {assetItems.length > 0 ? (
                   assetItems.map((item, i) => (
-                    <div key={i} className="flex items-center justify-between px-2 hover:bg-muted/30 py-1.5 rounded-lg transition-colors">
-                      <span className="text-sm text-foreground/80">{item.name}</span>
-                      <MoneyText value={item.amount ?? 0} className="text-sm font-medium" />
+                    <div key={i} className="flex items-center justify-between px-2 hover:bg-muted/30 py-1.5 rounded-lg transition-colors text-foreground">
+                      <span className="text-sm font-medium">{item.name}</span>
+                      <MoneyText value={item.amount ?? 0} className="text-sm font-black" />
                     </div>
                   ))
                 ) : (
@@ -191,72 +198,74 @@ export default function BalanceSheetPage() {
               </div>
             </div>
 
-            <div className="mt-auto pt-4 flex items-center justify-between border-t-2 border-foreground/10 px-2 sticky bottom-0 bg-background/80 backdrop-blur-sm">
+            <div className="mt-auto pt-4 flex items-center justify-between border-t-2 border-foreground/10 px-2 sticky bottom-0 bg-background/80 backdrop-blur-sm print:bg-white text-foreground">
               <span className="text-sm font-black uppercase">Total Assets</span>
               <MoneyText value={totalAssets} className="text-lg font-black text-blue-600 dark:text-blue-400" />
             </div>
           </div>
 
           {/* Right Column: Liabilities & Equity */}
-          <div className="p-6 md:p-8 space-y-8 bg-muted/5">
-            <div>
-              <div className="flex items-center justify-between border-b-2 border-foreground/10 pb-2 mb-4">
-                <h3 className="text-sm font-extrabold uppercase tracking-widest text-foreground flex items-center gap-2">
-                  Liabilities
-                </h3>
+          <div className="p-6 md:p-8 space-y-8 bg-muted/5 flex flex-col">
+            <div className="flex-1 space-y-8">
+              <div>
+                <div className="flex items-center justify-between border-b-2 border-foreground/10 pb-2 mb-4">
+                  <h3 className="text-sm font-extrabold uppercase tracking-widest text-foreground flex items-center gap-2">
+                    Liabilities
+                  </h3>
+                </div>
+                <div className="space-y-3">
+                  {liabilityItems.length > 0 ? (
+                    liabilityItems.map((item, i) => (
+                      <div key={i} className="flex items-center justify-between px-2 hover:bg-muted/30 py-1.5 rounded-lg transition-colors text-foreground">
+                        <span className="text-sm font-medium">{item.name}</span>
+                        <MoneyText value={item.amount ?? 0} className="text-sm font-black" />
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-sm text-muted-foreground italic px-2">No liabilities recorded</div>
+                  )}
+                </div>
+                <div className="mt-3 flex items-center justify-between border-t border-dashed border-border/60 pt-2 px-2 text-foreground">
+                  <span className="text-xs font-bold text-muted-foreground uppercase">Total Liabilities</span>
+                  <MoneyText value={totalLiabilities} className="text-sm font-black" />
+                </div>
               </div>
-              <div className="space-y-3">
-                {liabilityItems.length > 0 ? (
-                  liabilityItems.map((item, i) => (
-                    <div key={i} className="flex items-center justify-between px-2 hover:bg-muted/30 py-1.5 rounded-lg transition-colors">
-                      <span className="text-sm text-foreground/80">{item.name}</span>
-                      <MoneyText value={item.amount ?? 0} className="text-sm font-medium" />
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-sm text-muted-foreground italic px-2">No liabilities recorded</div>
-                )}
-              </div>
-              <div className="mt-3 flex items-center justify-between border-t border-dashed border-border/60 pt-2 px-2">
-                <span className="text-xs font-bold text-muted-foreground uppercase">Total Liabilities</span>
-                <MoneyText value={totalLiabilities} className="text-sm font-bold" />
+
+              <div>
+                <div className="flex items-center justify-between border-b-2 border-foreground/10 pb-2 mb-4">
+                  <h3 className="text-sm font-extrabold uppercase tracking-widest text-foreground">Equity</h3>
+                </div>
+                <div className="space-y-3">
+                  {equityItems.length > 0 ? (
+                    equityItems.map((item, i) => (
+                      <div key={i} className="flex items-center justify-between px-2 hover:bg-muted/30 py-1.5 rounded-lg transition-colors text-foreground">
+                        <span className="text-sm font-medium">{item.name}</span>
+                        <MoneyText value={item.amount ?? 0} className="text-sm font-black" />
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-sm text-muted-foreground italic px-2">No equity recorded</div>
+                  )}
+                </div>
+                <div className="mt-3 flex items-center justify-between border-t border-dashed border-border/60 pt-2 px-2 text-foreground">
+                  <span className="text-xs font-bold text-muted-foreground uppercase">Total Equity</span>
+                  <MoneyText value={totalEquity} className="text-sm font-black" />
+                </div>
               </div>
             </div>
 
-            <div>
-              <div className="flex items-center justify-between border-b-2 border-foreground/10 pb-2 mb-4">
-                <h3 className="text-sm font-extrabold uppercase tracking-widest text-foreground">Equity</h3>
-              </div>
-              <div className="space-y-3">
-                {equityItems.length > 0 ? (
-                  equityItems.map((item, i) => (
-                    <div key={i} className="flex items-center justify-between px-2 hover:bg-muted/30 py-1.5 rounded-lg transition-colors">
-                      <span className="text-sm text-foreground/80">{item.name}</span>
-                      <MoneyText value={item.amount ?? 0} className="text-sm font-medium" />
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-sm text-muted-foreground italic px-2">No equity recorded</div>
-                )}
-              </div>
-              <div className="mt-3 flex items-center justify-between border-t border-dashed border-border/60 pt-2 px-2">
-                <span className="text-xs font-bold text-muted-foreground uppercase">Total Equity</span>
-                <MoneyText value={totalEquity} className="text-sm font-bold" />
-              </div>
-            </div>
-
-            <div className="mt-auto pt-4 flex items-center justify-between border-t-2 border-foreground/10 px-2 sticky bottom-0 bg-background/80 backdrop-blur-sm">
+            <div className="mt-auto pt-4 flex items-center justify-between border-t-2 border-foreground/10 px-2 sticky bottom-0 bg-background/80 backdrop-blur-sm print:bg-white text-foreground">
               <span className="text-sm font-black uppercase">Total Liabilities & Equity</span>
               <MoneyText value={totalLiabilities + totalEquity} className="text-lg font-black text-emerald-600 dark:text-emerald-400" />
             </div>
           </div>
         </div>
 
-        <div className="bg-muted/30 px-8 py-4 text-[10px] text-muted-foreground flex justify-between items-center border-t border-border/50 italic">
+        <div className="bg-muted/30 px-8 py-4 text-[10px] text-muted-foreground flex justify-between items-center border-t border-border/50 italic print:bg-white">
           <span>Generated via Lekhaly ERP • Professional Financial Statement</span>
           <div className="flex items-center gap-4">
-            <span className="mono-numbers uppercase tracking-tighter">Balanced: {isBalanced ? "Yes" : "No"}</span>
-            <span className="mono-numbers">{new Date().toLocaleString()}</span>
+            <span className="mono-numbers uppercase tracking-tighter font-black">Balanced: {isBalanced ? "Yes" : "No"}</span>
+            <span className="mono-numbers font-medium">{new Date().toLocaleString()}</span>
           </div>
         </div>
       </Card>

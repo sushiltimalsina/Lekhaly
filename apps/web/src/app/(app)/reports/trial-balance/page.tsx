@@ -2,17 +2,16 @@
 
 import * as React from "react";
 import PageHeader from "@/components/app/page-header";
-import FiltersBar from "@/components/app/filters-bar";
+import AdvancedFilterBar from "@/components/app/advanced-filter-bar";
 import DataTable, { Column } from "@/components/app/data-table";
-import BsDateInput from "@/components/app/bs-date-input";
 import { MoneyText } from "@/components/app/money";
 import { getTrialBalance } from "@/lib/api/reports";
 import { useDateFormat } from "@/lib/date-format";
-import { getDateLabel } from "@/lib/dates/display";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Printer, FileDown, Download, RefreshCw, AlertCircle } from "lucide-react";
+import { Printer, FileDown, RefreshCw, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getDateRange } from "@/lib/dates/ranges";
 
 type Row = {
   accountCode?: string;
@@ -23,21 +22,24 @@ type Row = {
 
 export default function TrialBalancePage() {
   const { dateFormat } = useDateFormat();
-  const [from, setFrom] = React.useState<{ bs: string; ad: string }>({ bs: "", ad: "" });
-  const [to, setTo] = React.useState<{ bs: string; ad: string }>({ bs: "", ad: "" });
+
+  // Initialize with This Year
+  const initialRange = getDateRange("this_year");
+  const [from, setFrom] = React.useState<Date | null>(initialRange.from);
+  const [to, setTo] = React.useState<Date | null>(initialRange.to);
   const [loading, setLoading] = React.useState(false);
   const [rows, setRows] = React.useState<Row[]>([]);
   const [error, setError] = React.useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = React.useState("");
 
   async function run() {
     setLoading(true);
     setError(null);
     try {
       const res: any = await getTrialBalance({
-        from: from.ad || undefined,
-        to: to.ad || undefined,
-        fromBs: from.bs || undefined,
-        toBs: to.bs || undefined,
+        from: from?.toISOString() || undefined,
+        to: to?.toISOString() || undefined,
+        q: searchQuery || undefined,
       });
 
       const data = Array.isArray(res) ? res : res?.rows ?? res?.data ?? res?.items ?? [];
@@ -53,7 +55,7 @@ export default function TrialBalancePage() {
   React.useEffect(() => {
     run();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [from, to, searchQuery]);
 
   const totalDebit = rows.reduce((acc, r) => acc + (r.debit ?? 0), 0);
   const totalCredit = rows.reduce((acc, r) => acc + (r.credit ?? 0), 0);
@@ -90,6 +92,13 @@ export default function TrialBalancePage() {
     window.print();
   };
 
+  const handleFilterChange = (filters: any) => {
+    if (filters.dateRange) {
+      setFrom(filters.dateRange.from || null);
+      setTo(filters.dateRange.to || null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between print:hidden">
@@ -113,18 +122,11 @@ export default function TrialBalancePage() {
         </div>
       </div>
 
-      <FiltersBar
+      <AdvancedFilterBar
         className="print:hidden"
-        left={
-          <div className="flex flex-wrap gap-4">
-            <div className="w-full sm:w-[240px]">
-              <BsDateInput label={getDateLabel(dateFormat, "From")} valueBs={from.bs} valueAd={from.ad} onChange={setFrom} />
-            </div>
-            <div className="w-full sm:w-[240px]">
-              <BsDateInput label={getDateLabel(dateFormat, "To")} valueBs={to.bs} valueAd={to.ad} onChange={setTo} />
-            </div>
-          </div>
-        }
+        onSearch={setSearchQuery}
+        onFilterChange={handleFilterChange}
+        defaultRange="this_year"
       />
 
       {error ? (
@@ -183,10 +185,10 @@ export default function TrialBalancePage() {
 
       <Card className="border-border/50 glass-card overflow-hidden shadow-xl shadow-foreground/5">
         <div className="hidden print:block p-8 text-center border-b border-border/50">
-          <h1 className="text-2xl font-bold">Lekhaly</h1>
-          <h2 className="text-xl font-semibold mt-1">Trial Balance</h2>
-          <div className="text-sm text-muted-foreground mt-2">
-            Period: {from.bs || from.ad || "Beginning"} to {to.bs || to.ad || "Today"}
+          <h1 className="text-2xl font-bold text-foreground">Lekhaly</h1>
+          <h2 className="text-xl font-semibold mt-1 text-foreground">Trial Balance</h2>
+          <div className="text-sm text-muted-foreground mt-2 uppercase tracking-widest font-medium">
+            Period: {from?.toLocaleDateString() || "Start"} - {to?.toLocaleDateString() || "End"}
           </div>
         </div>
         <DataTable
