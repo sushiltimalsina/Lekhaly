@@ -70,11 +70,19 @@ export async function getVoucher(id: string) {
   });
 }
 
-export async function listVouchers(params?: { type?: VoucherType; q?: string; skip?: number; take?: number }) {
+export async function listVouchers(params?: {
+  type?: VoucherType;
+  q?: string;
+  status?: "draft" | "posted" | "void";
+  from?: Date | string;
+  to?: Date | string;
+  skip?: number;
+  take?: number
+}) {
   return apiRequest<any>({
     method: "GET",
     path: "/vouchers",
-    query: params,
+    query: params as any,
   });
 }
 

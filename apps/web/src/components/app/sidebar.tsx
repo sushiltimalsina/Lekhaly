@@ -50,7 +50,6 @@ const navData: NavItem[] = [
         icon: FileText,
         children: [
           { label: "Add (Create)", href: "/sales/create", icon: Plus },
-          { label: "View", href: "/sales/view", icon: Eye },
           { label: "List", href: "/sales", icon: List },
         ]
       },
@@ -59,7 +58,6 @@ const navData: NavItem[] = [
         icon: Building2,
         children: [
           { label: "Add (Create)", href: "/purchase/create", icon: Plus },
-          { label: "View", href: "/purchase/view", icon: Eye },
           { label: "List", href: "/purchase", icon: List },
         ]
       },
@@ -68,7 +66,6 @@ const navData: NavItem[] = [
         icon: RefreshCcw,
         children: [
           { label: "Add (Create)", href: "/sales-return/create", icon: Plus },
-          { label: "View", href: "/sales-return/view", icon: Eye },
           { label: "List", href: "/sales-return", icon: List },
         ]
       },
@@ -77,7 +74,6 @@ const navData: NavItem[] = [
         icon: RefreshCcw,
         children: [
           { label: "Add (Create)", href: "/purchase-return/create", icon: Plus },
-          { label: "View", href: "/purchase-return/view", icon: Eye },
           { label: "List", href: "/purchase-return", icon: List },
         ]
       },
@@ -86,7 +82,6 @@ const navData: NavItem[] = [
         icon: Wallet,
         children: [
           { label: "Add (Create)", href: "/payments/create", icon: Plus },
-          { label: "View", href: "/payments/view", icon: Eye },
           { label: "List", href: "/payments", icon: List },
         ]
       },
@@ -95,7 +90,6 @@ const navData: NavItem[] = [
         icon: Receipt,
         children: [
           { label: "Add (Create)", href: "/receipts/create", icon: Plus },
-          { label: "View", href: "/receipts/view", icon: Eye },
           { label: "List", href: "/receipts", icon: List },
         ]
       },
@@ -104,7 +98,6 @@ const navData: NavItem[] = [
         icon: BookOpen,
         children: [
           { label: "Add (Create)", href: "/journals/create", icon: Plus },
-          { label: "View", href: "/journals/view", icon: Eye },
           { label: "List", href: "/journals", icon: List },
         ]
       }
@@ -131,7 +124,7 @@ const navData: NavItem[] = [
     icon: Building2
   },
   {
-    label: "Stock",href: "/items",
+    label: "Stock", href: "/items",
     icon: Package,
     children: [
       { label: "Add (Create)", href: "/items/new", icon: Plus },

@@ -4,14 +4,9 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-    Search,
     Plus,
     ChevronRight,
     Wallet,
-    ArrowRight,
-    Filter,
-    Calendar,
-    User
 } from "lucide-react";
 import PageHeader from "@/components/app/page-header";
 import StatusBadge, { DocStatus } from "@/components/app/status-badge";
@@ -21,7 +16,7 @@ import { useDateFormat } from "@/lib/date-format";
 import { getDateDisplay } from "@/lib/dates/display";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import AdvancedFilterBar from "@/components/app/advanced-filter-bar";
 
 export default function ReceiptsListPage() {
     const router = useRouter();
@@ -29,7 +24,12 @@ export default function ReceiptsListPage() {
 
     const [loading, setLoading] = React.useState(true);
     const [vouchers, setVouchers] = React.useState<any[]>([]);
-    const [search, setSearch] = React.useState("");
+    const [filters, setFilters] = React.useState({
+        q: "",
+        status: "all",
+        from: null as Date | null,
+        to: null as Date | null,
+    });
     const [error, setError] = React.useState<string | null>(null);
 
     async function load() {
@@ -37,7 +37,10 @@ export default function ReceiptsListPage() {
         try {
             const res = await listVouchers({
                 type: "receipt",
-                q: search || undefined,
+                q: filters.q || undefined,
+                status: filters.status === "all" ? undefined : (filters.status as any),
+                from: filters.from || undefined,
+                to: filters.to || undefined,
                 take: 50,
             });
             const list = Array.isArray(res) ? res : res?.items ?? res?.data ?? [];
@@ -54,7 +57,28 @@ export default function ReceiptsListPage() {
             load();
         }, 300);
         return () => clearTimeout(timer);
-    }, [search]);
+    }, [filters]);
+
+    const filterOptions = [
+        {
+            key: "status",
+            label: "Receipt Status",
+            options: [
+                { value: "draft", label: "Draft" },
+                { value: "posted", label: "Posted" },
+                { value: "void", label: "Void" },
+            ]
+        }
+    ];
+
+    const handleFilterChange = (newFilters: any) => {
+        setFilters(prev => ({
+            ...prev,
+            status: newFilters.status?.[0] || prev.status,
+            from: newFilters.dateRange?.from || null,
+            to: newFilters.dateRange?.to || null,
+        }));
+    };
 
     return (
         <div className="space-y-6">
@@ -72,23 +96,12 @@ export default function ReceiptsListPage() {
                 }
             />
 
-            {/* Filters Bar */}
-            <div className="flex flex-col gap-4 md:flex-row md:items-center p-4 bg-white dark:bg-slate-900 rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-sm">
-                <div className="relative flex-1 max-w-md group">
-                    <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500 transition-colors" />
-                    <Input
-                        placeholder="Search by payer, receipt number or memo..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="pl-10 h-11 rounded-2xl bg-slate-50/50 border-slate-100 hover:border-slate-200 focus:border-emerald-500 transition-all dark:bg-slate-800/30 dark:border-slate-800 dark:focus:border-emerald-400 font-medium"
-                    />
-                </div>
-
-                <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50/50 dark:bg-emerald-900/10 rounded-2xl border border-emerald-100/50 dark:border-emerald-800/50">
-                    <Calendar className="h-4 w-4 text-emerald-600" />
-                    <span className="text-xs font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-widest">Collection Summary: All Time</span>
-                </div>
-            </div>
+            <AdvancedFilterBar
+                onSearch={(q) => setFilters(prev => ({ ...prev, q }))}
+                onFilterChange={handleFilterChange}
+                filterOptions={filterOptions}
+                className="border-emerald-100 dark:border-emerald-800/50"
+            />
 
             <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl shadow-slate-200/40 dark:border-slate-800 dark:bg-slate-950 dark:shadow-none">
                 {loading && vouchers.length === 0 ? (
@@ -176,11 +189,14 @@ export default function ReceiptsListPage() {
                             <Wallet className="h-10 w-10 text-slate-300" />
                         </div>
                         <div className="max-w-xs space-y-1">
-                            <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-widest text-sm text-emerald-600">No Receipts</h3>
+                            <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-widest text-sm text-emerald-600">No Receipts Found</h3>
                             <p className="text-sm text-slate-500 font-medium leading-relaxed">Incoming payments recorded via the Receipt module will appear here.</p>
                         </div>
-                        <Button onClick={() => router.push("/receipts/create")} className="bg-emerald-600 rounded-2xl h-11 px-8 font-black text-xs uppercase tracking-widest shadow-xl shadow-emerald-500/20">
-                            New Receipt
+                        <Button
+                            onClick={() => setFilters({ q: "", status: "all", from: null, to: null })}
+                            className="bg-emerald-600 rounded-2xl h-11 px-8 font-black text-xs uppercase tracking-widest shadow-xl shadow-emerald-500/20"
+                        >
+                            Reset Filters
                         </Button>
                     </div>
                 )}

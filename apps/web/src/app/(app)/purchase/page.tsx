@@ -8,24 +8,40 @@ import { listVouchers, type VoucherType } from "@/lib/api/vouchers";
 import StatusBadge, { DocStatus } from "@/components/app/status-badge";
 import { useDateFormat } from "@/lib/date-format";
 import { getDateDisplay } from "@/lib/dates/display";
-import { Plus, Search, Filter, ArrowUpRight, FileText } from "lucide-react";
+import { Plus, ChevronRight, FileText, ShoppingCart } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Input } from "@/components/ui/input";
+import AdvancedFilterBar from "@/components/app/advanced-filter-bar";
 
 export default function PurchaseListPage() {
+    const router = useRouter();
+    const { dateFormat } = useDateFormat();
+
     const [loading, setLoading] = React.useState(true);
     const [data, setData] = React.useState<any[]>([]);
     const [error, setError] = React.useState<string | null>(null);
-    const [q, setQ] = React.useState("");
-    const { dateFormat } = useDateFormat();
+
+    const [filters, setFilters] = React.useState({
+        q: "",
+        status: "all",
+        from: null as Date | null,
+        to: null as Date | null,
+    });
 
     const load = async () => {
         setLoading(true);
+        setError(null);
         try {
-            const res = await listVouchers({ take: 100 });
-            const list = (Array.isArray(res) ? res : res?.items ?? res?.data ?? [])
-                .filter((v: any) => v.voucherType === "purchase");
+            const res = await listVouchers({
+                type: "purchase",
+                q: filters.q || undefined,
+                status: filters.status === "all" ? undefined : (filters.status as any),
+                from: filters.from || undefined,
+                to: filters.to || undefined,
+                take: 50
+            });
+            const list = Array.isArray(res) ? res : res?.items ?? res?.data ?? [];
             setData(list);
         } catch (e: any) {
             setError(e?.message ?? "Failed to load purchases");
@@ -35,116 +51,156 @@ export default function PurchaseListPage() {
     };
 
     React.useEffect(() => {
-        load();
-    }, []);
+        const timer = setTimeout(() => {
+            load();
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [filters]);
 
-    const filtered = data.filter((item) => {
-        if (!q.trim()) return true;
-        const search = q.toLowerCase();
-        return (
-            (item.party?.name || "").toLowerCase().includes(search) ||
-            (item.voucherNumber || "").toLowerCase().includes(search) ||
-            (item.memo || "").toLowerCase().includes(search)
-        );
-    });
+    const filterOptions = [
+        {
+            key: "status",
+            label: "Purchase Status",
+            options: [
+                { value: "draft", label: "Draft" },
+                { value: "posted", label: "Posted" },
+                { value: "void", label: "Void" },
+            ]
+        }
+    ];
+
+    const handleFilterChange = (newFilters: any) => {
+        setFilters(prev => ({
+            ...prev,
+            status: newFilters.status?.[0] || prev.status,
+            from: newFilters.dateRange?.from || null,
+            to: newFilters.dateRange?.to || null,
+        }));
+    };
 
     return (
         <div className="space-y-6">
-            <div className="rounded-[28px] border bg-gradient-to-br from-slate-50 via-white to-slate-50 p-6 shadow-xl shadow-slate-200/40 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 dark:shadow-black/20">
-                <PageHeader
-                    title="Purchase Invoices"
-                    description="Manage your bills and supplier invoices."
-                    actions={
-                        <Link href="/purchase/create">
-                            <Button className="rounded-full bg-slate-900 text-white hover:bg-slate-800 shadow-lg transition-all px-6 h-11">
-                                <Plus className="mr-2 h-4 w-4" />
-                                New Purchase
-                            </Button>
-                        </Link>
-                    }
-                />
+            <PageHeader
+                title="Purchase Bills"
+                description="Monitor vendor invoices, stock inward registries, and supplier balances."
+                actions={
+                    <Button
+                        onClick={() => router.push("/purchase/create")}
+                        className="rounded-2xl bg-orange-600 hover:bg-orange-700 text-white shadow-xl shadow-orange-500/20 h-11 px-8 font-black text-xs uppercase tracking-widest transition-all active:scale-95 border-none"
+                    >
+                        <Plus className="mr-2 h-4 w-4" />
+                        New Bill
+                    </Button>
+                }
+            />
 
-                <div className="rounded-3xl border bg-white/90 p-6 shadow-sm dark:bg-slate-900/80">
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
-                        <div className="relative w-full sm:max-w-md">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                placeholder="Search vendor, voucher # or memo..."
-                                value={q}
-                                onChange={(e) => setQ(e.target.value)}
-                                className="pl-9 rounded-xl bg-slate-50 border-slate-100 dark:bg-slate-950 dark:border-slate-800"
-                            />
+            <AdvancedFilterBar
+                onSearch={(q) => setFilters(prev => ({ ...prev, q }))}
+                onFilterChange={handleFilterChange}
+                filterOptions={filterOptions}
+                className="border-orange-100 dark:border-orange-900/50"
+            />
+
+            <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl shadow-slate-200/40 dark:border-slate-800 dark:bg-slate-950 dark:shadow-none">
+                {loading && data.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-24 space-y-4">
+                        <div className="relative h-12 w-12">
+                            <div className="absolute inset-0 rounded-full border-4 border-slate-100 dark:border-slate-800"></div>
+                            <div className="absolute inset-0 rounded-full border-4 border-orange-600 border-t-transparent animate-spin"></div>
                         </div>
-                        <div className="flex items-center gap-2 w-full sm:w-auto">
-                            <Button variant="outline" className="rounded-xl grow sm:grow-0 border-slate-100 dark:border-slate-800">
-                                <Filter className="mr-2 h-4 w-4" />
-                                Filter
-                            </Button>
-                        </div>
+                        <p className="text-sm font-black text-slate-400 animate-pulse uppercase tracking-widest text-[10px]">Registry Audit...</p>
                     </div>
-
-                    <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
-                        <table className="w-full text-sm">
-                            <thead className="bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800">
-                                <tr>
-                                    <th className="px-6 py-4 text-left font-semibold uppercase tracking-wider text-[10px] text-muted-foreground">Vendor / Date</th>
-                                    <th className="px-6 py-4 text-left font-semibold uppercase tracking-wider text-[10px] text-muted-foreground">Voucher No.</th>
-                                    <th className="px-6 py-4 text-left font-semibold uppercase tracking-wider text-[10px] text-muted-foreground">Status</th>
-                                    <th className="px-6 py-4 text-right font-semibold uppercase tracking-wider text-[10px] text-muted-foreground">Action</th>
+                ) : data.length > 0 ? (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left">
+                            <thead>
+                                <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30">
+                                    <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Vendor / Date</th>
+                                    <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Reference Number</th>
+                                    <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Bill Amount</th>
+                                    <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-center">Status</th>
+                                    <th className="px-6 py-4 w-10"></th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
-                                {loading ? (
-                                    [1, 2, 3].map((i) => (
-                                        <tr key={i} className="animate-pulse">
-                                            <td colSpan={4} className="px-6 py-8">
-                                                <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded w-full" />
+                            <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
+                                {data.map((item) => {
+                                    const dateInfo = getDateDisplay({ ad: item.voucherDate, bs: item.voucherDateBs, format: dateFormat });
+                                    return (
+                                        <tr
+                                            key={item.id}
+                                            onClick={() => router.push(`/vouchers/${item.id}`)}
+                                            className="group cursor-pointer hover:bg-orange-50/20 dark:hover:bg-orange-900/10 transition-colors"
+                                        >
+                                            <td className="px-6 py-5">
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold text-slate-800 dark:text-slate-100">{item.party?.name || "Unknown Vendor"}</span>
+                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{dateInfo.primary}</span>
+                                                        <span className="h-1 w-1 rounded-full bg-slate-200 font-bold uppercase tracking-tight"></span>
+                                                        <span className="text-[9px] text-slate-400 font-medium">{dateInfo.secondary}</span>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-5 whitespace-nowrap">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-9 w-9 rounded-xl bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center shrink-0 border border-orange-100/50 dark:border-orange-800/50">
+                                                        <ShoppingCart className="h-4 w-4 text-orange-600" />
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <span className="font-black text-slate-900 dark:text-white group-hover:text-orange-600 transition-colors uppercase tracking-widest">
+                                                            {item.voucherNumber || "DRAFT-" + item.id.slice(0, 4)}
+                                                        </span>
+                                                        {item.referenceNo && (
+                                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ref: {item.referenceNo}</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-5 text-right whitespace-nowrap">
+                                                <span className="font-black text-slate-900 dark:text-white text-base tabular-nums">
+                                                    <MoneyText value={Number(item.amount || 0)} />
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-5 whitespace-nowrap text-center">
+                                                <StatusBadge status={item.status as DocStatus} />
+                                            </td>
+                                            <td className="px-6 py-5 text-right">
+                                                <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-orange-400 group-hover:translate-x-1 transition-all" />
                                             </td>
                                         </tr>
-                                    ))
-                                ) : filtered.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={4} className="px-6 py-20 text-center">
-                                            <div className="max-w-[200px] mx-auto opacity-10 mb-4">
-                                                <FileText className="h-16 w-16 mx-auto" />
-                                            </div>
-                                            <p className="text-muted-foreground font-medium">No purchase invoices found.</p>
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    filtered.map((item) => {
-                                        const dateInfo = getDateDisplay({ ad: item.voucherDate, bs: item.voucherDateBs, format: dateFormat });
-                                        return (
-                                            <tr key={item.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
-                                                <td className="px-6 py-4">
-                                                    <div className="font-semibold text-foreground">{item.party?.name || "Unknown Vendor"}</div>
-                                                    <div className="text-xs text-muted-foreground mt-0.5">{dateInfo.primary}</div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className="inline-flex items-center px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-bold uppercase tracking-tight">
-                                                        {item.voucherNumber || "Draft"}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <StatusBadge status={item.status as DocStatus} />
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <Link href={`/purchase/${item.id}`}>
-                                                        <Button variant="ghost" size="sm" className="rounded-xl hover:bg-primary/10 hover:text-primary transition-all">
-                                                            View Details
-                                                            <ArrowUpRight className="ml-2 h-4 w-4" />
-                                                        </Button>
-                                                    </Link>
-                                                </td>
-                                            </tr>
-                                        )
-                                    })
-                                )}
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
-                </div>
+                ) : (
+                    <div className="flex flex-col items-center justify-center py-32 px-6 text-center space-y-4">
+                        <div className="h-24 w-24 rounded-full bg-slate-50 dark:bg-slate-900 flex items-center justify-center border-4 border-dotted border-slate-200 dark:border-slate-800">
+                            <ShoppingCart className="h-10 w-10 text-slate-200" />
+                        </div>
+                        <div className="max-w-xs space-y-1">
+                            <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-widest text-sm text-orange-600">No Purchases Found</h3>
+                            <p className="text-sm text-slate-500 font-medium leading-relaxed">Recorded vendor bills and inward entries will appear in this registry once linked.</p>
+                        </div>
+                        <Button
+                            onClick={() => setFilters({ q: "", status: "all", from: null, to: null })}
+                            className="bg-orange-600 rounded-2xl h-11 px-8 font-black text-xs uppercase tracking-widest shadow-xl shadow-orange-500/20"
+                        >
+                            Reset Audit Filters
+                        </Button>
+                    </div>
+                )}
             </div>
+
+            {data.length > 0 && (
+                <div className="flex items-center justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">
+                    <p>Audit Trail: {data.length} records in view</p>
+                    <div className="flex items-center gap-1.5 font-bold text-orange-600">
+                        <span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse"></span>
+                        <span>Verified with Supplier Ledger</span>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

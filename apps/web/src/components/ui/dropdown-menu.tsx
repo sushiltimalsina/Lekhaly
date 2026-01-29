@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
 
 const DropdownMenuContext = React.createContext<{
@@ -75,24 +74,18 @@ export function DropdownMenuContent({
     const context = React.useContext(DropdownMenuContext)
     if (!context) throw new Error("DropdownMenuContent must be used within DropdownMenu")
 
+    if (!context.open) return null
+
     return (
-        <AnimatePresence>
-            {context.open && (
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                    transition={{ duration: 0.15, ease: "easeOut" }}
-                    className={cn(
-                        "absolute z-50 mt-2 min-w-[8rem] overflow-hidden rounded-[20px] border border-slate-200 bg-white p-1 shadow-xl shadow-slate-200/50 outline-none dark:border-slate-800 dark:bg-slate-950 dark:shadow-none",
-                        align === "end" ? "right-0" : "left-0",
-                        className
-                    )}
-                >
-                    {children}
-                </motion.div>
+        <div
+            className={cn(
+                "absolute z-50 mt-2 min-w-[8rem] overflow-hidden rounded-[20px] border border-slate-200 bg-white p-1 shadow-xl shadow-slate-200/50 outline-none dark:border-slate-800 dark:bg-slate-950 dark:shadow-none animate-in fade-in zoom-in-95 duration-150",
+                align === "end" ? "right-0" : "left-0",
+                className
             )}
-        </AnimatePresence>
+        >
+            {children}
+        </div>
     )
 }
 

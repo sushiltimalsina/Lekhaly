@@ -4,13 +4,10 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-    Search,
     Plus,
     ChevronRight,
     ArrowRightLeft,
     ArrowRight,
-    Filter,
-    Calendar
 } from "lucide-react";
 import PageHeader from "@/components/app/page-header";
 import StatusBadge, { DocStatus } from "@/components/app/status-badge";
@@ -20,7 +17,7 @@ import { useDateFormat } from "@/lib/date-format";
 import { getDateDisplay } from "@/lib/dates/display";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import AdvancedFilterBar from "@/components/app/advanced-filter-bar";
 
 export default function JournalsListPage() {
     const router = useRouter();
@@ -28,7 +25,12 @@ export default function JournalsListPage() {
 
     const [loading, setLoading] = React.useState(true);
     const [vouchers, setVouchers] = React.useState<any[]>([]);
-    const [search, setSearch] = React.useState("");
+    const [filters, setFilters] = React.useState({
+        q: "",
+        status: "all",
+        from: null as Date | null,
+        to: null as Date | null,
+    });
     const [error, setError] = React.useState<string | null>(null);
 
     async function load() {
@@ -36,7 +38,10 @@ export default function JournalsListPage() {
         try {
             const res = await listVouchers({
                 type: "journal",
-                q: search || undefined,
+                q: filters.q || undefined,
+                status: filters.status === "all" ? undefined : (filters.status as any),
+                from: filters.from || undefined,
+                to: filters.to || undefined,
                 take: 50,
             });
             const list = Array.isArray(res) ? res : res?.items ?? res?.data ?? [];
@@ -53,7 +58,28 @@ export default function JournalsListPage() {
             load();
         }, 300);
         return () => clearTimeout(timer);
-    }, [search]);
+    }, [filters]);
+
+    const filterOptions = [
+        {
+            key: "status",
+            label: "Journal Status",
+            options: [
+                { value: "draft", label: "Draft" },
+                { value: "posted", label: "Posted" },
+                { value: "void", label: "Void" },
+            ]
+        }
+    ];
+
+    const handleFilterChange = (newFilters: any) => {
+        setFilters(prev => ({
+            ...prev,
+            status: newFilters.status?.[0] || prev.status,
+            from: newFilters.dateRange?.from || null,
+            to: newFilters.dateRange?.to || null,
+        }));
+    };
 
     return (
         <div className="space-y-6">
@@ -63,7 +89,7 @@ export default function JournalsListPage() {
                 actions={
                     <Button
                         onClick={() => router.push("/journals/create")}
-                        className="rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 px-8 h-11 transition-all active:scale-95"
+                        className="rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 px-8 h-11 transition-all active:scale-95 border-none"
                     >
                         <Plus className="mr-2 h-4 w-4" />
                         New Journal
@@ -71,23 +97,12 @@ export default function JournalsListPage() {
                 }
             />
 
-            {/* Filters Bar */}
-            <div className="flex flex-col gap-4 md:flex-row md:items-center p-4 bg-white dark:bg-slate-900 rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-sm">
-                <div className="relative flex-1 max-w-md group">
-                    <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
-                    <Input
-                        placeholder="Search by voucher number or memo..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="pl-10 h-11 rounded-2xl bg-slate-50/50 border-slate-100 hover:border-slate-200 focus:border-indigo-500 transition-all dark:bg-slate-800/30 dark:border-slate-800 dark:focus:border-indigo-400 font-medium"
-                    />
-                </div>
-
-                <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
-                    <Calendar className="h-4 w-4 text-slate-400" />
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Active Period: All Time</span>
-                </div>
-            </div>
+            <AdvancedFilterBar
+                onSearch={(q) => setFilters(prev => ({ ...prev, q }))}
+                onFilterChange={handleFilterChange}
+                filterOptions={filterOptions}
+                className="border-indigo-100 dark:border-indigo-800/50"
+            />
 
             <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl shadow-slate-200/40 dark:border-slate-800 dark:bg-slate-950 dark:shadow-none">
                 {loading && vouchers.length === 0 ? (
@@ -119,7 +134,7 @@ export default function JournalsListPage() {
                                         <tr
                                             key={v.id}
                                             onClick={() => router.push(`/vouchers/${v.id}`)}
-                                            className="group cursor-pointer hover:bg-slate-50/80 dark:hover:bg-slate-900/40 transition-colors"
+                                            className="group cursor-pointer hover:bg-indigo-50/20 dark:hover:bg-indigo-900/10 transition-colors"
                                         >
                                             <td className="px-6 py-5 whitespace-nowrap">
                                                 <div className="flex flex-col">
@@ -170,11 +185,14 @@ export default function JournalsListPage() {
                             <ArrowRightLeft className="h-10 w-10 text-slate-300" />
                         </div>
                         <div className="max-w-xs space-y-1">
-                            <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-widest text-sm">No Journals</h3>
+                            <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-widest text-sm text-indigo-600">No Journals Found</h3>
                             <p className="text-sm text-slate-500 font-medium leading-relaxed">Adjust your filters or create your first journal entry to start tracking transactions.</p>
                         </div>
-                        <Button onClick={() => router.push("/journals/create")} className="bg-indigo-600 rounded-2xl h-11 px-8 font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-500/20">
-                            New Journal
+                        <Button
+                            onClick={() => setFilters({ q: "", status: "all", from: null, to: null })}
+                            className="bg-indigo-600 rounded-2xl h-11 px-8 font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-500/20"
+                        >
+                            Reset Audit Filters
                         </Button>
                     </div>
                 )}
@@ -183,9 +201,9 @@ export default function JournalsListPage() {
             {vouchers.length > 0 && (
                 <div className="flex items-center justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">
                     <p>Audit Log: {vouchers.length} entries found</p>
-                    <div className="flex items-center gap-1.5">
-                        <ArrowRight className="h-3 w-3" />
-                        <span>Click any entry to view detailed audit trail</span>
+                    <div className="flex items-center gap-1.5 font-bold text-indigo-600">
+                        <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                        <span>Direct Ledger Visibility</span>
                     </div>
                 </div>
             )}

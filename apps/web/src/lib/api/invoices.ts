@@ -58,11 +58,19 @@ export async function voidInvoice(id: string) {
   });
 }
 
-export async function listInvoices(params?: { skip?: number; take?: number }) {
+export async function listInvoices(params?: {
+  type?: string;
+  status?: string;
+  q?: string;
+  from?: Date | string;
+  to?: Date | string;
+  skip?: number;
+  take?: number
+}) {
   return apiRequest<any>({
     method: "GET",
     path: "/invoices",
-    query: params,
+    query: params as any,
   });
 }
 
