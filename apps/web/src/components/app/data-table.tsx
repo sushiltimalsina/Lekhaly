@@ -20,6 +20,7 @@ type DataTableProps<T> = {
   emptyText?: string;
   className?: string;
   onRowClick?: (row: T) => void;
+  rowClassName?: string;
 };
 
 export default function DataTable<T>({
@@ -29,6 +30,7 @@ export default function DataTable<T>({
   emptyText = "No data found",
   className,
   onRowClick,
+  rowClassName,
 }: DataTableProps<T>) {
   const [colWidths, setColWidths] = React.useState<Record<string, number>>({});
   const resizingRef = React.useRef<{
@@ -156,7 +158,8 @@ export default function DataTable<T>({
                   onClick={() => onRowClick?.(row)}
                   className={cn(
                     "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
-                    onRowClick ? "cursor-pointer" : ""
+                    onRowClick ? "cursor-pointer" : "",
+                    rowClassName
                   )}
                 >
                   {columns.map((c) => (

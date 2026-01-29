@@ -24,7 +24,11 @@ import {
   RefreshCcw,
   ScrollText,
   Landmark,
-  Percent
+  Percent,
+  BarChart,
+  ArrowUpRight,
+  ArrowDownRight,
+  Scale
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -107,10 +111,11 @@ const navData: NavItem[] = [
     label: "Reports",
     icon: PieChart,
     children: [
-      { label: "Display", href: "/reports/display", icon: Eye },
+      { label: "General Ledger", href: "/reports/ledger", icon: BookOpen },
       { label: "Profit & Loss", href: "/reports/pl", icon: FileText },
       { label: "Balance Sheet", href: "/reports/balance-sheet", icon: FileText },
       { label: "Trial Balance", href: "/reports/trial-balance", icon: FileText },
+      { label: "Other Reports", href: "/reports/other", icon: Eye },
     ]
   },
   {
