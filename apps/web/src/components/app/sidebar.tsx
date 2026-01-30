@@ -140,6 +140,14 @@ const navData: NavItem[] = [
     ]
   },
   {
+    label: "Stock", href: "/items",
+    icon: Package,
+    children: [
+      { label: "Add (Create)", href: "/items/new", icon: Plus },
+      { label: "List", href: "/items", icon: List }
+    ]
+  },
+  {
     label: "Reports",
     icon: PieChart,
     children: [
@@ -159,14 +167,6 @@ const navData: NavItem[] = [
     label: "Vendors",
     href: "/vendors",
     icon: Building2
-  },
-  {
-    label: "Stock", href: "/items",
-    icon: Package,
-    children: [
-      { label: "Add (Create)", href: "/items/new", icon: Plus },
-      { label: "List", href: "/items", icon: List }
-    ]
   },
   {
     label: "Chart of Accounts",

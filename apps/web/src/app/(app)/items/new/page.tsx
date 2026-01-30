@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, PackagePlus, Plus, Save } from "lucide-react";
 import Link from "next/link";
+import AddUnitDialog from "@/components/app/add-unit-dialog";
+import AddGroupDialog from "@/components/app/add-group-dialog";
 
 type ItemType = "goods" | "services";
 type TaxCode = { id: string; name: string; rate: number };
@@ -24,6 +26,8 @@ export default function NewItemPage() {
   const [taxes, setTaxes] = React.useState<TaxCode[]>([]);
   const [units, setUnits] = React.useState<UnitRecord[]>([]);
   const [groups, setGroups] = React.useState<ItemGroupRecord[]>([]);
+  const [addUnitOpen, setAddUnitOpen] = React.useState(false);
+  const [addGroupOpen, setAddGroupOpen] = React.useState(false);
   const [form, setForm] = React.useState({
     name: "",
     sku: "",
@@ -49,8 +53,8 @@ export default function NewItemPage() {
         setTaxes(
           Array.isArray(data)
             ? data
-                .filter((t: any) => t && typeof t.id === "string")
-                .map((t: any) => ({ id: t.id, name: String(t.name), rate: Number(t.rate ?? 0) }))
+              .filter((t: any) => t && typeof t.id === "string")
+              .map((t: any) => ({ id: t.id, name: String(t.name), rate: Number(t.rate ?? 0) }))
             : []
         );
       })
@@ -72,8 +76,8 @@ export default function NewItemPage() {
         setUnits(
           Array.isArray(data)
             ? data
-                .filter((u: any) => u && typeof u.id === "string")
-                .map((u: any) => ({ id: u.id, name: String(u.name) }))
+              .filter((u: any) => u && typeof u.id === "string")
+              .map((u: any) => ({ id: u.id, name: String(u.name) }))
             : []
         );
       })
@@ -95,8 +99,8 @@ export default function NewItemPage() {
         setGroups(
           Array.isArray(data)
             ? data
-                .filter((g: any) => g && typeof g.id === "string")
-                .map((g: any) => ({ id: g.id, name: String(g.name) }))
+              .filter((g: any) => g && typeof g.id === "string")
+              .map((g: any) => ({ id: g.id, name: String(g.name) }))
             : []
         );
       })
@@ -111,10 +115,6 @@ export default function NewItemPage() {
 
   const update = (key: keyof typeof form, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const goToConfig = (focus: "units" | "groups") => {
-    router.push(`/configuration?focus=${focus}`);
   };
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -213,7 +213,7 @@ export default function NewItemPage() {
                 {form.type === "goods" ? (
                   <button
                     type="button"
-                    onClick={() => goToConfig("groups")}
+                    onClick={() => setAddGroupOpen(true)}
                     className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-3 py-1 text-[10px] font-medium text-white hover:bg-blue-500"
                   >
                     <span aria-hidden>+</span>
@@ -240,7 +240,7 @@ export default function NewItemPage() {
                 {form.type === "goods" ? (
                   <button
                     type="button"
-                    onClick={() => goToConfig("units")}
+                    onClick={() => setAddUnitOpen(true)}
                     className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-2 py-1 text-[10px] font-medium text-white hover:bg-blue-500"
                   >
                     <span aria-hidden>+</span>
@@ -462,6 +462,24 @@ export default function NewItemPage() {
           </button>
         </section>
       </form>
+
+      <AddUnitDialog
+        open={addUnitOpen}
+        onClose={() => setAddUnitOpen(false)}
+        onSuccess={(unit) => {
+          setUnits((prev) => [...prev, unit]);
+          update("unit", unit.name);
+        }}
+      />
+
+      <AddGroupDialog
+        open={addGroupOpen}
+        onClose={() => setAddGroupOpen(false)}
+        onSuccess={(group) => {
+          setGroups((prev) => [...prev, group]);
+          update("groupId", group.id);
+        }}
+      />
     </div>
   );
 }

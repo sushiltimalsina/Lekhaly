@@ -11,6 +11,8 @@ import { Plus, Search, Package } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { getStockReport, StockReportRow } from "@/lib/api/inventory";
+import AddItemDialog from "@/components/app/add-item-dialog";
+import AddGroupDialog from "@/components/app/add-group-dialog";
 
 type ItemRow = StockReportRow;
 
@@ -34,6 +36,8 @@ export default function ItemsPage() {
   const [rows, setRows] = React.useState<ItemRow[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [addItemOpen, setAddItemOpen] = React.useState(false);
+  const [addGroupOpen, setAddGroupOpen] = React.useState(false);
 
   React.useEffect(() => {
     let alive = true;
@@ -56,6 +60,19 @@ export default function ItemsPage() {
       alive = false;
     };
   }, []);
+
+  async function refresh() {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getStockReport();
+      setRows(data);
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to load stock report");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   const filtered = rows.filter((r) => {
     if (typeFilter !== "all" && r.type !== typeFilter) return false;
@@ -108,7 +125,7 @@ export default function ItemsPage() {
       cell: (r) => <div className="font-medium text-foreground">{r.name}</div>,
       width: 200,
     },
-    
+
     {
       key: "hsCode",
       header: "HS Code",
@@ -221,12 +238,16 @@ export default function ItemsPage() {
         title="Items Inventory"
         description="Manage your product catalog, prices, and stock levels."
         actions={
-          <Button asChild className="shadow-lg shadow-primary/20">
-            <Link href="/items/new">
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setAddGroupOpen(true)} className="rounded-xl border-border/50">
+              <Plus className="mr-2 h-4 w-4" />
+              New Group
+            </Button>
+            <Button onClick={() => setAddItemOpen(true)} className="shadow-lg shadow-primary/20">
               <Plus className="mr-2 h-4 w-4" />
               New Item
-            </Link>
-          </Button>
+            </Button>
+          </div>
         }
       />
 
@@ -315,6 +336,22 @@ export default function ItemsPage() {
           <DataTable rows={sorted} columns={columns} loading={loading} className="border-0 shadow-none" />
         </div>
       </div>
+
+      <AddItemDialog
+        open={addItemOpen}
+        onClose={() => setAddItemOpen(false)}
+        onSuccess={() => {
+          refresh();
+        }}
+      />
+
+      <AddGroupDialog
+        open={addGroupOpen}
+        onClose={() => setAddGroupOpen(false)}
+        onSuccess={() => {
+          // No need to refresh stock report but could refresh group list if we had one
+        }}
+      />
     </div>
   );
 }
