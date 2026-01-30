@@ -28,7 +28,9 @@ import {
   BarChart,
   ArrowUpRight,
   ArrowDownRight,
-  Scale
+  Scale,
+  ShoppingCart,
+  ClipboardList
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -105,6 +107,36 @@ const navData: NavItem[] = [
           { label: "List", href: "/journals", icon: List },
         ]
       }
+    ]
+  },
+  {
+    label: "Orders",
+    icon: ShoppingCart,
+    children: [
+      {
+        label: "Sales Order",
+        icon: FileText,
+        children: [
+          { label: "Add (Create)", href: "/sales-orders/create", icon: Plus },
+          { label: "List", href: "/sales-orders", icon: List },
+        ]
+      },
+      {
+        label: "Purchase Order",
+        icon: Building2,
+        children: [
+          { label: "Add (Create)", href: "/purchase-orders/create", icon: Plus },
+          { label: "List", href: "/purchase-orders", icon: List },
+        ]
+      }
+    ]
+  },
+  {
+    label: "Quotations",
+    icon: ClipboardList,
+    children: [
+      { label: "Add (Create)", href: "/quotations/create", icon: Plus },
+      { label: "List", href: "/quotations", icon: List },
     ]
   },
   {
