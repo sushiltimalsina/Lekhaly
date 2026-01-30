@@ -320,7 +320,8 @@ export default function PurchaseCreatePage() {
     const sundryRefs = React.useRef<{
         select: (HTMLButtonElement | null)[];
         rate: (HTMLInputElement | null)[];
-    }>({ select: [], rate: [] });
+        amount: (HTMLInputElement | null)[];
+    }>({ select: [], rate: [], amount: [] });
 
     const [parties, setParties] = React.useState<PartyRecord[]>([]);
     const [accounts, setAccounts] = React.useState<AccountRecord[]>([]);
@@ -1138,11 +1139,12 @@ export default function PurchaseCreatePage() {
                                                                 isManual: false
                                                             });
                                                         }}
-                                                        disabled={r.id === "vat" || r.id === "discount"}
                                                         onKeyDown={(e) => {
                                                             if (e.key === "Enter") {
                                                                 e.preventDefault();
-                                                                if (sundryRefs.current.select[i + 1]) {
+                                                                if (sundryRefs.current.amount[i]) {
+                                                                    safeFocus(sundryRefs.current.amount[i]);
+                                                                } else if (sundryRefs.current.select[i + 1]) {
                                                                     safeFocus(sundryRefs.current.select[i + 1]);
                                                                 }
                                                             }
@@ -1155,29 +1157,33 @@ export default function PurchaseCreatePage() {
                                             <td className="px-3 py-2 text-right font-semibold">
                                                 <div className="inline-flex items-center justify-end gap-1">
                                                     {r.type === "less" ? "(" : null}
-                                                    {r.isManual || Number(r.ratePct || 0) === 0 ? (
-                                                        <div className="flex items-center">
-                                                            <span className="mr-1 text-xs text-muted-foreground font-normal">Rs.</span>
-                                                            <Input
-                                                                value={r.manualAmount || ""}
-                                                                onChange={(e) => {
-                                                                    const val = e.target.value;
-                                                                    const amt = Number(val || 0);
-                                                                    const pct = itemsSubtotal > 0 ? (amt / itemsSubtotal) * 100 : 0;
-                                                                    updateSundry(r.id, {
-                                                                        manualAmount: val,
-                                                                        ratePct: pct % 1 === 0 ? pct.toString() : pct.toFixed(2),
-                                                                        isManual: true
-                                                                    });
-                                                                }}
-                                                                disabled={r.id === "vat" || r.id === "discount"}
-                                                                placeholder="0.00"
-                                                                className="h-8 w-24 rounded-lg border-slate-200 bg-white px-2 text-right text-sm dark:border-slate-800 dark:bg-slate-900"
-                                                            />
-                                                        </div>
-                                                    ) : (
-                                                        <MoneyText value={r.amount} />
-                                                    )}
+                                                    <div className="flex items-center">
+                                                        <span className="mr-1 text-xs text-muted-foreground font-normal">Rs.</span>
+                                                        <Input
+                                                            ref={(el) => { sundryRefs.current.amount[i] = el; }}
+                                                            value={r.isManual ? (r.manualAmount || "") : (r.ratePct && Number(r.ratePct) !== 0 ? r.amount.toFixed(2) : "")}
+                                                            onChange={(e) => {
+                                                                const val = e.target.value;
+                                                                const amt = Number(val || 0);
+                                                                const pct = itemsSubtotal > 0 ? (amt / itemsSubtotal) * 100 : 0;
+                                                                updateSundry(r.id, {
+                                                                    manualAmount: val,
+                                                                    ratePct: pct % 1 === 0 ? pct.toString() : pct.toFixed(2),
+                                                                    isManual: true
+                                                                });
+                                                            }}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === "Enter") {
+                                                                    e.preventDefault();
+                                                                    if (sundryRefs.current.select[i + 1]) {
+                                                                        safeFocus(sundryRefs.current.select[i + 1]);
+                                                                    }
+                                                                }
+                                                            }}
+                                                            placeholder="0.00"
+                                                            className="h-8 w-24 rounded-lg border-slate-200 bg-white px-2 text-right text-sm dark:border-slate-800 dark:bg-slate-900"
+                                                        />
+                                                    </div>
                                                     {r.type === "less" ? ")" : null}
                                                 </div>
                                             </td>

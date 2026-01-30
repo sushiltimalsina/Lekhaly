@@ -6,7 +6,7 @@ import { IS_PUBLIC_KEY } from "./auth.decorator";
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
-  constructor(private jwt: JwtService, private reflector: Reflector) {}
+  constructor(private jwt: JwtService, private reflector: Reflector) { }
 
   canActivate(context: ExecutionContext): boolean {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
@@ -27,10 +27,14 @@ export class JwtAuthGuard implements CanActivate {
     const verifyOptions: { issuer?: string; audience?: string } = {};
     if (issuer) verifyOptions.issuer = issuer;
     if (audience) verifyOptions.audience = audience;
-    const payload = this.jwt.verify(token, verifyOptions) as AuthUser & { typ?: string };
-    if (payload.typ === "refresh") throw new UnauthorizedException("Invalid token");
 
-    req.user = payload;
-    return true;
+    try {
+      const payload = this.jwt.verify(token, verifyOptions) as AuthUser & { typ?: string };
+      if (payload.typ === "refresh") throw new UnauthorizedException("Invalid token");
+      req.user = payload;
+      return true;
+    } catch {
+      throw new UnauthorizedException("Invalid or expired token");
+    }
   }
 }

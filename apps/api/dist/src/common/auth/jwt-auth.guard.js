@@ -42,11 +42,16 @@ let JwtAuthGuard = class JwtAuthGuard {
             verifyOptions.issuer = issuer;
         if (audience)
             verifyOptions.audience = audience;
-        const payload = this.jwt.verify(token, verifyOptions);
-        if (payload.typ === "refresh")
-            throw new common_1.UnauthorizedException("Invalid token");
-        req.user = payload;
-        return true;
+        try {
+            const payload = this.jwt.verify(token, verifyOptions);
+            if (payload.typ === "refresh")
+                throw new common_1.UnauthorizedException("Invalid token");
+            req.user = payload;
+            return true;
+        }
+        catch {
+            throw new common_1.UnauthorizedException("Invalid or expired token");
+        }
     }
 };
 exports.JwtAuthGuard = JwtAuthGuard;
