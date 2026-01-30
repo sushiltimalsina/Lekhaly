@@ -61,8 +61,8 @@ export default function VatReportPage() {
     const totalTaxable = rows.reduce((acc, r) => acc + (r.taxableAmount ?? 0), 0);
 
     const columns: Column<VatRow>[] = [
-        { key: "date", header: "Date", width: 120 },
-        { key: "ref", header: "Ref No", width: 120 },
+        { key: "date", header: "Date", width: 120, cell: (r) => r.date || "—" },
+        { key: "ref", header: "Ref No", width: 120, cell: (r) => r.ref || "—" },
         {
             key: "party", header: "Party Name", cell: (r) => (
                 <div className="flex flex-col">
