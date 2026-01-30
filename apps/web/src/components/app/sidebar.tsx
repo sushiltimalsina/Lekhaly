@@ -30,7 +30,8 @@ import {
   ArrowDownRight,
   Scale,
   ShoppingCart,
-  ClipboardList
+  ClipboardList,
+  KeyRoundIcon
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -186,7 +187,7 @@ const navData: NavItem[] = [
   {
     label: "Configuration",
     href: "/configuration",
-    icon: Settings
+    icon: KeyRoundIcon
   },
   {
     label: "Settings",
