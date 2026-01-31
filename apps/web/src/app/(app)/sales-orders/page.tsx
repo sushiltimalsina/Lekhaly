@@ -9,7 +9,6 @@ import StatusBadge from "@/components/app/status-badge";
 import { useDateFormat } from "@/lib/date-format";
 import { getDateDisplay } from "@/lib/dates/display";
 import { Plus, ChevronRight, FileText, Download, Package } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import AdvancedFilterBar from "@/components/app/advanced-filter-bar";
@@ -102,7 +101,7 @@ export default function SalesOrdersListPage() {
                         </Button>
                         <Button
                             onClick={() => router.push("/sales-orders/create")}
-                            className="rounded-2xl bg-slate-900 text-white hover:bg-slate-800 shadow-xl shadow-slate-200 dark:shadow-none h-11 px-8 font-black text-xs uppercase tracking-widest transition-all active:scale-95"
+                            className="rounded-2xl bg-indigo-600 text-white hover:bg-indigo-700 shadow-xl shadow-indigo-200 dark:shadow-none h-11 px-8 font-black text-xs uppercase tracking-widest transition-all active:scale-95"
                         >
                             <Plus className="mr-2 h-4 w-4" />
                             New Order
