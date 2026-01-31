@@ -72,7 +72,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
     emptyText?: string;
     buttonRef?: React.Ref<HTMLButtonElement>;
     onEnterNext?: () => void;
-    onKeyDownCustom?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+    onKeyDownCustom?: (e: React.KeyboardEvent<any>) => void;
     fallbackLabel?: string;
     disabled?: boolean;
 }) {
@@ -186,6 +186,16 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
             <button
                 type="button"
                 onClick={() => !disabled && setOpen((v) => !v)}
+                onKeyDown={(e) => {
+                    if (props.onKeyDownCustom) {
+                        props.onKeyDownCustom(e);
+                        if (e.defaultPrevented) return;
+                    }
+                    if (!disabled && (e.key === "Enter" || e.key === " " || e.key === "ArrowDown")) {
+                        e.preventDefault();
+                        setOpen(true);
+                    }
+                }}
                 disabled={disabled}
                 ref={setButtonRef}
                 className={cn(
@@ -303,6 +313,7 @@ export default function PurchaseReturnCreatePage() {
     const referenceNoRef = React.useRef<HTMLInputElement>(null);
     const vendorSelectRef = React.useRef<HTMLButtonElement>(null);
     const addLineButtonRef = React.useRef<HTMLButtonElement>(null);
+    const addSundryButtonRef = React.useRef<HTMLButtonElement>(null);
     const [lineErrors, setLineErrors] = React.useState<Record<number, { qty?: string; rate?: string }>>({});
     const [addItemOpen, setAddItemOpen] = React.useState(false);
     const [activeLineIdx, setActiveLineIdx] = React.useState<number | null>(null);
@@ -1054,7 +1065,7 @@ export default function PurchaseReturnCreatePage() {
                 </section>
 
                 <div className="mb-4 flex flex-col items-end gap-2 text-right">
-                    <Button type="button" variant="outline" onClick={addSundry} className="rounded-full bg-indigo-600 text-white hover:bg-indigo-700">
+                    <Button ref={addSundryButtonRef} type="button" variant="outline" onClick={addSundry} className="rounded-full bg-indigo-600 text-white hover:bg-indigo-700">
                         <Plus className="mr-2 h-4 w-4" />
                         Add Sundry Column
                     </Button>
@@ -1173,6 +1184,8 @@ export default function PurchaseReturnCreatePage() {
                                                                     e.preventDefault();
                                                                     if (sundryRefs.current.select[i + 1]) {
                                                                         safeFocus(sundryRefs.current.select[i + 1]);
+                                                                    } else {
+                                                                        safeFocus(addSundryButtonRef.current);
                                                                     }
                                                                 }
                                                             }}

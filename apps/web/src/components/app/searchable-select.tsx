@@ -41,7 +41,7 @@ export interface SearchableSelectProps<T> {
     emptyText?: string;
     buttonRef?: React.Ref<HTMLButtonElement>;
     onEnterNext?: () => void;
-    onKeyDownCustom?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+    onKeyDownCustom?: (e: React.KeyboardEvent<any>) => void;
     fallbackLabel?: string;
     disabled?: boolean;
 }
@@ -157,6 +157,16 @@ export default function SearchableSelect<T extends { id: string; name?: string }
             <button
                 type="button"
                 onClick={() => !disabled && setOpen((v) => !v)}
+                onKeyDown={(e) => {
+                    if (props.onKeyDownCustom) {
+                        props.onKeyDownCustom(e);
+                        if (e.defaultPrevented) return;
+                    }
+                    if (!disabled && (e.key === "Enter" || e.key === " " || e.key === "ArrowDown")) {
+                        e.preventDefault();
+                        setOpen(true);
+                    }
+                }}
                 disabled={disabled}
                 ref={setButtonRef}
                 className={cn(

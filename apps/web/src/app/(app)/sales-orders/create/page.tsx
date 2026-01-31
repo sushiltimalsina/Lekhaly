@@ -72,6 +72,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
     emptyText?: string;
     buttonRef?: React.Ref<HTMLButtonElement>;
     onEnterNext?: () => void;
+    onKeyDownCustom?: (e: React.KeyboardEvent<any>) => void;
     fallbackLabel?: string;
     disabled?: boolean;
 }) {
@@ -185,6 +186,16 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
             <button
                 type="button"
                 onClick={() => !disabled && setOpen((v) => !v)}
+                onKeyDown={(e) => {
+                    if (props.onKeyDownCustom) {
+                        props.onKeyDownCustom(e);
+                        if (e.defaultPrevented) return;
+                    }
+                    if (!disabled && (e.key === "Enter" || e.key === " " || e.key === "ArrowDown")) {
+                        e.preventDefault();
+                        setOpen(true);
+                    }
+                }}
                 disabled={disabled}
                 ref={setButtonRef}
                 className={cn(
@@ -232,6 +243,10 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                                             setActiveIndex((prev) => (prev - 1 + filtered.length) % Math.max(1, filtered.length));
                                         }
                                         if (e.key === "Enter") {
+                                            if (props.onKeyDownCustom) {
+                                                props.onKeyDownCustom(e);
+                                                if (e.defaultPrevented) return;
+                                            }
                                             e.preventDefault();
                                             const item = filtered[activeIndex];
                                             if (item) {
@@ -329,6 +344,8 @@ export default function CreateSalesOrderPage() {
         rate: (HTMLInputElement | null)[];
         amount: (HTMLInputElement | null)[];
     }>({ select: [], rate: [], amount: [] });
+
+    const addSundryButtonRef = React.useRef<HTMLButtonElement>(null);
 
     const [parties, setParties] = React.useState<PartyRecord[]>([]);
     const [items, setItems] = React.useState<ItemRecord[]>([]);
@@ -703,6 +720,12 @@ export default function CreateSalesOrderPage() {
                             getLabel={(p) => p.name}
                             leftIcon={<Search className="h-4 w-4" />}
                             onEnterNext={() => safeFocus(rowRefs.current.select[0])}
+                            onKeyDownCustom={(e) => {
+                                if (e.key === "Enter" && e.shiftKey) {
+                                    e.preventDefault();
+                                    safeFocus(sundryRefs.current.select[0]);
+                                }
+                            }}
                             buttonClassName="h-12 rounded-2xl bg-white dark:bg-slate-900 pr-[140px]"
                         />
 
@@ -731,6 +754,9 @@ export default function CreateSalesOrderPage() {
                         <Plus className="mr-2 h-4 w-4" />
                         Add Item Line
                     </Button>
+                    <div className="text-[10px] text-muted-foreground italic pr-2">
+                        Tip: Press <kbd className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border text-[9px] not-italic font-sans">Shift + Enter</kbd> to jump sundry column
+                    </div>
                 </div>
 
                 {/* Items Table */}
@@ -777,6 +803,12 @@ export default function CreateSalesOrderPage() {
                                                                 return `${it.name ?? "Item"}${code}`;
                                                             }}
                                                             onEnterNext={() => safeFocus(rowRefs.current.qty[idx])}
+                                                            onKeyDownCustom={(e) => {
+                                                                if (e.key === "Enter" && e.shiftKey) {
+                                                                    e.preventDefault();
+                                                                    safeFocus(sundryRefs.current.select[0]);
+                                                                }
+                                                            }}
                                                             leftIcon={<Search className="h-4 w-4" />}
                                                             buttonClassName="h-11 rounded-2xl bg-white dark:bg-slate-900 pr-[100px]"
                                                             emptyText="No items found"
@@ -811,6 +843,11 @@ export default function CreateSalesOrderPage() {
                                                         }}
                                                         onKeyDown={(e) => {
                                                             if (e.key === "Enter") {
+                                                                if (e.shiftKey) {
+                                                                    e.preventDefault();
+                                                                    safeFocus(sundryRefs.current.select[0]);
+                                                                    return;
+                                                                }
                                                                 if (!line.qty || Number(line.qty) <= 0) {
                                                                     setLineErrors(prev => ({ ...prev, [idx]: { ...prev[idx], qty: "Required" } }));
                                                                     return;
@@ -849,6 +886,11 @@ export default function CreateSalesOrderPage() {
                                                         }}
                                                         onKeyDown={(e) => {
                                                             if (e.key === "Enter") {
+                                                                if (e.shiftKey) {
+                                                                    e.preventDefault();
+                                                                    safeFocus(sundryRefs.current.select[0]);
+                                                                    return;
+                                                                }
                                                                 if (!line.rate || Number(line.rate) <= 0) {
                                                                     setLineErrors(prev => ({ ...prev, [idx]: { ...prev[idx], rate: "Required" } }));
                                                                     return;
@@ -904,7 +946,7 @@ export default function CreateSalesOrderPage() {
 
                 {/* Add Sundry Button */}
                 <div className="mb-4 flex flex-col items-end gap-2 text-right">
-                    <Button type="button" variant="outline" onClick={addSundry} className="rounded-full bg-indigo-600 text-white hover:bg-indigo-700">
+                    <Button ref={addSundryButtonRef} type="button" variant="outline" onClick={addSundry} className="rounded-full bg-indigo-600 text-white hover:bg-indigo-700">
                         <Plus className="mr-2 h-4 w-4" />
                         Add Sundry Column
                     </Button>
@@ -1022,6 +1064,8 @@ export default function CreateSalesOrderPage() {
                                                                     e.preventDefault();
                                                                     if (sundryRefs.current.select[i + 1]) {
                                                                         safeFocus(sundryRefs.current.select[i + 1]);
+                                                                    } else {
+                                                                        safeFocus(addSundryButtonRef.current);
                                                                     }
                                                                 }
                                                             }}
