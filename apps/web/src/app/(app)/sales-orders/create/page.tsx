@@ -16,6 +16,7 @@ import AddItemDialog from "@/components/app/add-item-dialog";
 import AddCustomerDialog from "@/components/app/add-customer-dialog";
 import AddBillSundryDialog from "@/components/app/add-bill-sundry-dialog";
 import { listBillSundries, type BillSundryRecord } from "@/lib/api/bill-sundries";
+import { useUiState } from "@/lib/store/ui";
 
 import {
     Plus,
@@ -319,6 +320,7 @@ function isoAddDays(iso: string, days: number) {
 }
 
 export default function CreateSalesOrderPage() {
+    const ui = useUiState();
     const router = useRouter();
     const [mounted, setMounted] = React.useState(false);
 
@@ -1197,7 +1199,7 @@ export default function CreateSalesOrderPage() {
                                                 <div className="inline-flex items-center justify-end gap-1">
                                                     {r.type === "less" ? "(" : null}
                                                     <div className="flex items-center">
-                                                        <span className="mr-1 text-xs text-muted-foreground font-normal">Rs.</span>
+                                                        <span className="mr-1 text-xs text-muted-foreground font-normal">{ui.currencySymbol}</span>
                                                         <Input
                                                             ref={(el) => { sundryRefs.current.amount[i] = el; }}
                                                             value={r.isManual ? (r.manualAmount || "") : (r.ratePct && Number(r.ratePct) !== 0 ? r.amount.toFixed(2) : "")}

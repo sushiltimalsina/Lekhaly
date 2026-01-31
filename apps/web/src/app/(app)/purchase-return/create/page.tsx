@@ -17,6 +17,7 @@ import AddItemDialog from "@/components/app/add-item-dialog";
 import AddVendorDialog from "@/components/app/add-vendor-dialog";
 import AddBillSundryDialog from "@/components/app/add-bill-sundry-dialog";
 import { listBillSundries, type BillSundryRecord } from "@/lib/api/bill-sundries";
+import { useUiState } from "@/lib/store/ui";
 
 import {
     Plus,
@@ -33,6 +34,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { toBs } from "@/lib/dates/bs";
+import { useRouter } from "next/router";
 
 type Line = { itemId: string; qty: string; rate: string; description?: string; expenseAccountId?: string };
 type BillSundryRow = { id: string; sundryId?: string; name: string; type: "add" | "less"; ratePct: string; manualAmount?: string; isManual?: boolean };
@@ -387,6 +389,9 @@ export default function PurchaseReturnCreatePage() {
     const defaultPayable = React.useMemo(() => accounts[0]?.id ?? "", [accounts]);
 
     React.useEffect(() => setMounted(true), []);
+
+    const ui = useUiState();
+    const router = useRouter();
 
     React.useEffect(() => {
         const now = new Date();
@@ -1289,7 +1294,7 @@ export default function PurchaseReturnCreatePage() {
                                                 <div className="inline-flex items-center justify-end gap-1">
                                                     {r.type === "less" ? "(" : null}
                                                     <div className="flex items-center">
-                                                        <span className="mr-1 text-xs text-muted-foreground font-normal">Rs.</span>
+                                                        <span className="mr-1 text-xs text-muted-foreground font-normal">{ui.currencySymbol}</span>
                                                         <Input
                                                             ref={(el) => { sundryRefs.current.amount[i] = el; }}
                                                             value={r.isManual ? (r.manualAmount || "") : (r.ratePct && Number(r.ratePct) !== 0 ? r.amount.toFixed(2) : "")}

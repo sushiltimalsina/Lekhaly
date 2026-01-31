@@ -17,6 +17,7 @@ import AddItemDialog from "@/components/app/add-item-dialog";
 import AddCustomerDialog from "@/components/app/add-customer-dialog";
 import AddBillSundryDialog from "@/components/app/add-bill-sundry-dialog";
 import { listBillSundries, type BillSundryRecord } from "@/lib/api/bill-sundries";
+import { useUiState } from "@/lib/store/ui";
 
 import {
   Plus,
@@ -33,6 +34,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { toBs } from "@/lib/dates/bs";
+import { useRouter } from "next/router";
 
 type Line = { itemId: string; qty: string; rate: string; description?: string };
 type BillSundryRow = { id: string; sundryId?: string; name: string; type: "add" | "less"; ratePct: string; manualAmount?: string; isManual?: boolean };
@@ -411,6 +413,8 @@ export default function SalesCreatePage() {
 
   React.useEffect(() => setMounted(true), []);
 
+  const ui = useUiState();
+  const router = useRouter();
   React.useEffect(() => {
     const now = new Date();
     const ad = now.toISOString().slice(0, 10);
@@ -1167,7 +1171,7 @@ export default function SalesCreatePage() {
                     <th className="w-[70px] px-3 py-2 text-left text-xs text-muted-foreground">S.N.</th>
                     <th className="px-3 py-2 text-left text-xs text-muted-foreground">Bill Sundry</th>
                     <th className="w-[140px] px-3 py-2 text-right text-xs text-muted-foreground">@</th>
-                    <th className="w-[200px] px-3 py-2 text-right text-xs text-muted-foreground">Amount (Rs.)</th>
+                    <th className="w-[200px] px-3 py-2 text-right text-xs text-muted-foreground">Amount ({ui.currencySymbol})</th>
                     <th className="w-[60px] px-3 py-2 text-right text-xs text-muted-foreground" />
                   </tr>
                 </thead>
@@ -1310,7 +1314,7 @@ export default function SalesCreatePage() {
                         <div className="inline-flex items-center justify-end gap-1">
                           {r.type === "less" ? "(" : null}
                           <div className="flex items-center">
-                            <span className="mr-1 text-xs text-muted-foreground font-normal">Rs.</span>
+                            <span className="mr-1 text-xs text-muted-foreground font-normal">{ui.currencySymbol}</span>
                             <Input
                               ref={(el) => { sundryRefs.current.amount[i] = el; }}
                               value={r.isManual ? (r.manualAmount || "") : (r.ratePct && Number(r.ratePct) !== 0 ? r.amount.toFixed(2) : "")}
