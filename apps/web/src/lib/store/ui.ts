@@ -1,4 +1,5 @@
 ﻿// apps/web/src/lib/store/ui.ts
+import * as React from "react";
 
 type UiState = {
   sidebarOpen: boolean;
@@ -107,3 +108,14 @@ export function subscribeUi(listener: Listener) {
   };
 }
 
+export function useUiState() {
+  const [ui, setUi] = React.useState(state);
+
+  React.useEffect(() => {
+    return subscribeUi((next) => {
+      setUi(next);
+    });
+  }, []);
+
+  return ui;
+}
