@@ -28,6 +28,7 @@ import {
     Check,
     Eye,
     Printer,
+    FileText,
     ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
@@ -349,6 +350,9 @@ export default function SalesReturnCreatePage() {
         amount: (HTMLInputElement | null)[];
     }>({ select: [], rate: [], amount: [] });
 
+    const termsRef = React.useRef<HTMLTextAreaElement>(null);
+    const notesRef = React.useRef<HTMLInputElement>(null);
+
     const [parties, setParties] = React.useState<PartyRecord[]>([]);
     const [accounts, setAccounts] = React.useState<AccountRecord[]>([]);
     const [items, setItems] = React.useState<ItemRecord[]>([]);
@@ -648,6 +652,7 @@ export default function SalesReturnCreatePage() {
 
     const onPreview = () => setSuccess("Preview: connect to your invoice preview route/API.");
     const onPrint = () => setSuccess("Print: connect to your PDF + print flow.");
+    const onPrintPreview = () => setSuccess("Print Preview: PDF version loading...");
 
     // ✅ Early return AFTER all hooks are declared
     if (!mounted) return <div className="min-h-screen" />;
@@ -906,7 +911,7 @@ export default function SalesReturnCreatePage() {
                                                             onKeyDownCustom={(e: React.KeyboardEvent<HTMLInputElement>) => {
                                                                 if (e.key === "Enter" && e.shiftKey) {
                                                                     e.preventDefault();
-                                                                    safeFocus(sundryRefs.current.select[0]);
+                                                                    safeFocus(sundryRefs.current.rate[0]);
                                                                 }
                                                             }}
                                                             leftIcon={<Search className="h-4 w-4" />}
@@ -942,10 +947,34 @@ export default function SalesReturnCreatePage() {
                                                             setLineErrors(prev => ({ ...prev, [idx]: { ...prev[idx], qty: undefined } }));
                                                         }}
                                                         onKeyDown={(e) => {
+                                                            if (e.key === "ArrowRight") {
+                                                                e.preventDefault();
+                                                                safeFocus(rowRefs.current.rate[idx]);
+                                                            }
+                                                            if (e.key === "ArrowLeft") {
+                                                                e.preventDefault();
+                                                                safeFocus(rowRefs.current.select[idx]);
+                                                            }
+                                                            if (e.key === "ArrowDown") {
+                                                                e.preventDefault();
+                                                                if (rowRefs.current.qty[idx + 1]) {
+                                                                    safeFocus(rowRefs.current.qty[idx + 1]);
+                                                                } else {
+                                                                    safeFocus(sundryRefs.current.rate[0]);
+                                                                }
+                                                            }
+                                                            if (e.key === "ArrowUp") {
+                                                                e.preventDefault();
+                                                                if (rowRefs.current.qty[idx - 1]) {
+                                                                    safeFocus(rowRefs.current.qty[idx - 1]);
+                                                                } else {
+                                                                    safeFocus(rowRefs.current.select[idx]);
+                                                                }
+                                                            }
                                                             if (e.key === "Enter") {
                                                                 if (e.shiftKey) {
                                                                     e.preventDefault();
-                                                                    safeFocus(sundryRefs.current.select[0]);
+                                                                    safeFocus(sundryRefs.current.rate[0]);
                                                                     return;
                                                                 }
                                                                 if (!line.qty || Number(line.qty) <= 0) {
@@ -985,10 +1014,30 @@ export default function SalesReturnCreatePage() {
                                                             setLineErrors(prev => ({ ...prev, [idx]: { ...prev[idx], rate: undefined } }));
                                                         }}
                                                         onKeyDown={(e) => {
+                                                            if (e.key === "ArrowLeft") {
+                                                                e.preventDefault();
+                                                                safeFocus(rowRefs.current.qty[idx]);
+                                                            }
+                                                            if (e.key === "ArrowDown") {
+                                                                e.preventDefault();
+                                                                if (rowRefs.current.rate[idx + 1]) {
+                                                                    safeFocus(rowRefs.current.rate[idx + 1]);
+                                                                } else {
+                                                                    safeFocus(sundryRefs.current.rate[0]);
+                                                                }
+                                                            }
+                                                            if (e.key === "ArrowUp") {
+                                                                e.preventDefault();
+                                                                if (rowRefs.current.rate[idx - 1]) {
+                                                                    safeFocus(rowRefs.current.rate[idx - 1]);
+                                                                } else {
+                                                                    safeFocus(rowRefs.current.qty[idx]);
+                                                                }
+                                                            }
                                                             if (e.key === "Enter") {
                                                                 if (e.shiftKey) {
                                                                     e.preventDefault();
-                                                                    safeFocus(sundryRefs.current.select[0]);
+                                                                    safeFocus(sundryRefs.current.rate[0]);
                                                                     return;
                                                                 }
                                                                 if (!line.rate || Number(line.rate) <= 0) {
@@ -1067,13 +1116,10 @@ export default function SalesReturnCreatePage() {
 
 
                 <div className="mb-4 flex flex-col items-end gap-2 text-right">
-
-
                     <Button ref={addSundryButtonRef} type="button" variant="outline" onClick={addSundry} className="rounded-full bg-indigo-600 text-white hover:bg-indigo-700">
                         <Plus className="mr-2 h-4 w-4" />
                         Add Sundry Column
                     </Button>
-
                 </div>
 
                 {/* BILL SUNDRY */}
@@ -1115,6 +1161,34 @@ export default function SalesReturnCreatePage() {
                                                                 updateSundry(r.id, { sundryId: id, name: "" });
                                                             }
                                                         }}
+                                                        onKeyDownCustom={(e) => {
+                                                            if (e.key === "Enter" && e.shiftKey) {
+                                                                e.preventDefault();
+                                                                safeFocus(termsRef.current);
+                                                                return;
+                                                            }
+                                                            if (e.key === "ArrowRight") {
+                                                                e.preventDefault();
+                                                                safeFocus(sundryRefs.current.rate[i]);
+                                                            }
+                                                            if (e.key === "ArrowDown") {
+                                                                e.preventDefault();
+                                                                if (sundryRefs.current.select[i + 1]) {
+                                                                    safeFocus(sundryRefs.current.select[i + 1]);
+                                                                } else {
+                                                                    safeFocus(termsRef.current);
+                                                                }
+                                                            }
+                                                            if (e.key === "ArrowUp") {
+                                                                e.preventDefault();
+                                                                if (sundryRefs.current.select[i - 1]) {
+                                                                    safeFocus(sundryRefs.current.select[i - 1]);
+                                                                } else {
+                                                                    const lastItemIdx = lines.length - 1;
+                                                                    safeFocus(rowRefs.current.select[lastItemIdx]);
+                                                                }
+                                                            }
+                                                        }}
                                                         onEnterNext={() => safeFocus(sundryRefs.current.rate[i])}
                                                         options={sundryOptions}
                                                         getLabel={(s) => s.name}
@@ -1151,17 +1225,46 @@ export default function SalesReturnCreatePage() {
                                                             });
                                                         }}
                                                         onKeyDown={(e) => {
+                                                            if (e.key === "ArrowRight") {
+                                                                e.preventDefault();
+                                                                safeFocus(sundryRefs.current.amount[i]);
+                                                            }
+                                                            if (e.key === "ArrowLeft") {
+                                                                e.preventDefault();
+                                                                safeFocus(sundryRefs.current.select[i]);
+                                                            }
+                                                            if (e.key === "ArrowDown") {
+                                                                e.preventDefault();
+                                                                if (sundryRefs.current.rate[i + 1]) {
+                                                                    safeFocus(sundryRefs.current.rate[i + 1]);
+                                                                } else {
+                                                                    safeFocus(termsRef.current);
+                                                                }
+                                                            }
+                                                            if (e.key === "ArrowUp") {
+                                                                e.preventDefault();
+                                                                if (sundryRefs.current.rate[i - 1]) {
+                                                                    safeFocus(sundryRefs.current.rate[i - 1]);
+                                                                } else {
+                                                                    const lastItemIdx = lines.length - 1;
+                                                                    safeFocus(rowRefs.current.rate[lastItemIdx]);
+                                                                }
+                                                            }
                                                             if (e.key === "Enter") {
+                                                                if (e.shiftKey) {
+                                                                    e.preventDefault();
+                                                                    safeFocus(termsRef.current);
+                                                                    return;
+                                                                }
                                                                 e.preventDefault();
                                                                 if (sundryRefs.current.amount[i]) {
                                                                     safeFocus(sundryRefs.current.amount[i]);
                                                                 } else if (sundryRefs.current.select[i + 1]) {
                                                                     safeFocus(sundryRefs.current.select[i + 1]);
-                                                                } else {
-                                                                    // Optionally focus save button
                                                                 }
                                                             }
                                                         }}
+                                                        disabled={r.id === "vat"}
                                                         className="h-10 w-[110px] rounded-xl bg-white text-right dark:bg-slate-900"
                                                     />
                                                     <span className="text-muted-foreground">%</span>
@@ -1186,7 +1289,33 @@ export default function SalesReturnCreatePage() {
                                                                 });
                                                             }}
                                                             onKeyDown={(e) => {
+                                                                if (e.key === "ArrowLeft") {
+                                                                    e.preventDefault();
+                                                                    safeFocus(sundryRefs.current.rate[i]);
+                                                                }
+                                                                if (e.key === "ArrowDown") {
+                                                                    e.preventDefault();
+                                                                    if (sundryRefs.current.amount[i + 1]) {
+                                                                        safeFocus(sundryRefs.current.amount[i + 1]);
+                                                                    } else {
+                                                                        safeFocus(termsRef.current);
+                                                                    }
+                                                                }
+                                                                if (e.key === "ArrowUp") {
+                                                                    e.preventDefault();
+                                                                    if (sundryRefs.current.amount[i - 1]) {
+                                                                        safeFocus(sundryRefs.current.amount[i - 1]);
+                                                                    } else {
+                                                                        const lastItemIdx = lines.length - 1;
+                                                                        safeFocus(rowRefs.current.rate[lastItemIdx]);
+                                                                    }
+                                                                }
                                                                 if (e.key === "Enter") {
+                                                                    if (e.shiftKey) {
+                                                                        e.preventDefault();
+                                                                        safeFocus(termsRef.current);
+                                                                        return;
+                                                                    }
                                                                     e.preventDefault();
                                                                     if (sundryRefs.current.select[i + 1]) {
                                                                         safeFocus(sundryRefs.current.select[i + 1]);
@@ -1196,6 +1325,7 @@ export default function SalesReturnCreatePage() {
                                                                 }
                                                             }}
                                                             placeholder="0.00"
+                                                            disabled={r.id === "vat"}
                                                             className="h-8 w-24 rounded-lg border-slate-200 bg-white px-2 text-right text-sm dark:border-slate-800 dark:bg-slate-900"
                                                         />
                                                     </div>
@@ -1253,9 +1383,25 @@ export default function SalesReturnCreatePage() {
                             </label>
 
                             <textarea
+                                ref={termsRef}
                                 value={form.termsText}
                                 onChange={(e) => setForm((f) => ({ ...f, termsText: e.target.value }))}
                                 disabled={!form.termsOverrideEnabled}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter" && e.shiftKey) {
+                                        e.preventDefault();
+                                        safeFocus(notesRef.current);
+                                    }
+                                    if (e.key === "ArrowDown" && !e.shiftKey) {
+                                        e.preventDefault();
+                                        safeFocus(notesRef.current);
+                                    }
+                                    if (e.key === "ArrowUp") {
+                                        e.preventDefault();
+                                        const lastSundryIdx = billSundryComputed.rows.length - 1;
+                                        safeFocus(sundryRefs.current.rate[lastSundryIdx]);
+                                    }
+                                }}
                                 className={cn(
                                     "min-h-[110px] w-full rounded-2xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-950",
                                     !form.termsOverrideEnabled && "opacity-70"
@@ -1336,29 +1482,26 @@ export default function SalesReturnCreatePage() {
                         </div>
 
                         <Input
+                            ref={notesRef}
                             value={form.notes}
                             onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                            onKeyDown={(e) => {
+                                if (e.key === "ArrowUp") {
+                                    e.preventDefault();
+                                    safeFocus(termsRef.current);
+                                }
+                            }}
                             placeholder="Additional notes..."
                             className="h-11 rounded-2xl bg-slate-50/60"
                         />
 
                         <div className="mt-5 flex flex-wrap items-center justify-end gap-2">
-                            <Button type="button" variant="outline" onClick={onPreview} className="rounded-full px-5">
-                                <Eye className="mr-2 h-4 w-4" />
-                                Preview
-                            </Button>
-
-                            <Button type="button" variant="outline" onClick={onPrint} className="rounded-full px-5">
-                                <Printer className="mr-2 h-4 w-4" />
-                                Print
-                            </Button>
-
                             <Button
                                 type="button"
                                 variant="outline"
                                 onClick={onSave}
                                 disabled={loading || sending}
-                                className="rounded-full px-6"
+                                className="rounded-full px-5"
                             >
                                 <Save className="mr-2 h-4 w-4" />
                                 {loading ? "Saving..." : "Save"}
@@ -1371,7 +1514,22 @@ export default function SalesReturnCreatePage() {
                                 className="rounded-full bg-indigo-600 px-7 text-white hover:bg-indigo-700"
                             >
                                 <Send className="mr-2 h-4 w-4" />
-                                {sending ? "Sending..." : "Send"}
+                                {sending ? "Sending..." : "Record Return"}
+                            </Button>
+
+                            <Button type="button" variant="outline" onClick={onPreview} className="rounded-full px-5">
+                                <Eye className="mr-2 h-4 w-4" />
+                                Preview
+                            </Button>
+
+                            <Button type="button" variant="outline" onClick={onPrint} className="rounded-full px-5">
+                                <Printer className="mr-2 h-4 w-4" />
+                                Print
+                            </Button>
+
+                            <Button type="button" variant="outline" onClick={onPrintPreview} className="rounded-full px-5">
+                                <FileText className="mr-2 h-4 w-4" />
+                                Print Preview
                             </Button>
                         </div>
                     </div>

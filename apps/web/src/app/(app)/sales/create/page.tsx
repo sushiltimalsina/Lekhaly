@@ -28,6 +28,7 @@ import {
   Check,
   Eye,
   Printer,
+  FileText,
   ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
@@ -349,6 +350,9 @@ export default function SalesCreatePage() {
     amount: (HTMLInputElement | null)[];
   }>({ select: [], rate: [], amount: [] });
 
+  const termsRef = React.useRef<HTMLTextAreaElement>(null);
+  const notesRef = React.useRef<HTMLTextAreaElement>(null);
+
   const [parties, setParties] = React.useState<PartyRecord[]>([]);
   const [accounts, setAccounts] = React.useState<AccountRecord[]>([]);
   const [items, setItems] = React.useState<ItemRecord[]>([]);
@@ -648,6 +652,7 @@ export default function SalesCreatePage() {
 
   const onPreview = () => setSuccess("Preview: connect to your invoice preview route/API.");
   const onPrint = () => setSuccess("Print: connect to your PDF + print flow.");
+  const onPrintPreview = () => setSuccess("Print Preview: PDF version loading...");
 
   // ✅ Early return AFTER all hooks are declared
   if (!mounted) return <div className="min-h-screen" />;
@@ -910,7 +915,28 @@ export default function SalesCreatePage() {
                               onKeyDownCustom={(e) => {
                                 if (e.key === "Enter" && e.shiftKey) {
                                   e.preventDefault();
-                                  safeFocus(sundryRefs.current.select[0]);
+                                  safeFocus(sundryRefs.current.rate[0]);
+                                  return;
+                                }
+                                if (e.key === "ArrowRight") {
+                                  e.preventDefault();
+                                  safeFocus(rowRefs.current.qty[idx]);
+                                }
+                                if (e.key === "ArrowDown") {
+                                  e.preventDefault();
+                                  if (rowRefs.current.select[idx + 1]) {
+                                    safeFocus(rowRefs.current.select[idx + 1]);
+                                  } else {
+                                    safeFocus(sundryRefs.current.rate[0]);
+                                  }
+                                }
+                                if (e.key === "ArrowUp") {
+                                  e.preventDefault();
+                                  if (rowRefs.current.select[idx - 1]) {
+                                    safeFocus(rowRefs.current.select[idx - 1]);
+                                  } else {
+                                    safeFocus(customerSelectRef.current);
+                                  }
                                 }
                               }}
                               leftIcon={<Search className="h-4 w-4" />}
@@ -946,10 +972,34 @@ export default function SalesCreatePage() {
                               setLineErrors(prev => ({ ...prev, [idx]: { ...prev[idx], qty: undefined } }));
                             }}
                             onKeyDown={(e) => {
+                              if (e.key === "ArrowRight") {
+                                e.preventDefault();
+                                safeFocus(rowRefs.current.rate[idx]);
+                              }
+                              if (e.key === "ArrowLeft") {
+                                e.preventDefault();
+                                safeFocus(rowRefs.current.select[idx]);
+                              }
+                              if (e.key === "ArrowDown") {
+                                e.preventDefault();
+                                if (rowRefs.current.qty[idx + 1]) {
+                                  safeFocus(rowRefs.current.qty[idx + 1]);
+                                } else {
+                                  safeFocus(sundryRefs.current.rate[0]);
+                                }
+                              }
+                              if (e.key === "ArrowUp") {
+                                e.preventDefault();
+                                if (rowRefs.current.qty[idx - 1]) {
+                                  safeFocus(rowRefs.current.qty[idx - 1]);
+                                } else {
+                                  safeFocus(rowRefs.current.select[idx]);
+                                }
+                              }
                               if (e.key === "Enter") {
                                 if (e.shiftKey) {
                                   e.preventDefault();
-                                  safeFocus(sundryRefs.current.select[0]);
+                                  safeFocus(sundryRefs.current.rate[0]);
                                   return;
                                 }
                                 if (!line.qty || Number(line.qty) <= 0) {
@@ -989,10 +1039,30 @@ export default function SalesCreatePage() {
                               setLineErrors(prev => ({ ...prev, [idx]: { ...prev[idx], rate: undefined } }));
                             }}
                             onKeyDown={(e) => {
+                              if (e.key === "ArrowLeft") {
+                                e.preventDefault();
+                                safeFocus(rowRefs.current.qty[idx]);
+                              }
+                              if (e.key === "ArrowDown") {
+                                e.preventDefault();
+                                if (rowRefs.current.rate[idx + 1]) {
+                                  safeFocus(rowRefs.current.rate[idx + 1]);
+                                } else {
+                                  safeFocus(sundryRefs.current.rate[0]);
+                                }
+                              }
+                              if (e.key === "ArrowUp") {
+                                e.preventDefault();
+                                if (rowRefs.current.rate[idx - 1]) {
+                                  safeFocus(rowRefs.current.rate[idx - 1]);
+                                } else {
+                                  safeFocus(rowRefs.current.qty[idx]);
+                                }
+                              }
                               if (e.key === "Enter") {
                                 if (e.shiftKey) {
                                   e.preventDefault();
-                                  safeFocus(sundryRefs.current.select[0]);
+                                  safeFocus(sundryRefs.current.rate[0]);
                                   return;
                                 }
                                 if (!line.rate || Number(line.rate) <= 0) {
@@ -1125,6 +1195,34 @@ export default function SalesCreatePage() {
                                 updateSundry(r.id, { sundryId: id, name: "" });
                               }
                             }}
+                            onKeyDownCustom={(e) => {
+                              if (e.key === "Enter" && e.shiftKey) {
+                                e.preventDefault();
+                                safeFocus(termsRef.current);
+                                return;
+                              }
+                              if (e.key === "ArrowRight") {
+                                e.preventDefault();
+                                safeFocus(sundryRefs.current.rate[i]);
+                              }
+                              if (e.key === "ArrowDown") {
+                                e.preventDefault();
+                                if (sundryRefs.current.select[i + 1]) {
+                                  safeFocus(sundryRefs.current.select[i + 1]);
+                                } else {
+                                  safeFocus(termsRef.current);
+                                }
+                              }
+                              if (e.key === "ArrowUp") {
+                                e.preventDefault();
+                                if (sundryRefs.current.select[i - 1]) {
+                                  safeFocus(sundryRefs.current.select[i - 1]);
+                                } else {
+                                  const lastItemIdx = lines.length - 1;
+                                  safeFocus(rowRefs.current.select[lastItemIdx]);
+                                }
+                              }
+                            }}
                             onEnterNext={() => safeFocus(sundryRefs.current.rate[i])}
                             options={sundryOptions}
                             getLabel={(s) => s.name}
@@ -1161,7 +1259,37 @@ export default function SalesCreatePage() {
                               });
                             }}
                             onKeyDown={(e) => {
+                              if (e.key === "ArrowRight") {
+                                e.preventDefault();
+                                safeFocus(sundryRefs.current.amount[i]);
+                              }
+                              if (e.key === "ArrowLeft") {
+                                e.preventDefault();
+                                safeFocus(sundryRefs.current.select[i]);
+                              }
+                              if (e.key === "ArrowDown") {
+                                e.preventDefault();
+                                if (sundryRefs.current.rate[i + 1]) {
+                                  safeFocus(sundryRefs.current.rate[i + 1]);
+                                } else {
+                                  safeFocus(termsRef.current);
+                                }
+                              }
+                              if (e.key === "ArrowUp") {
+                                e.preventDefault();
+                                if (sundryRefs.current.rate[i - 1]) {
+                                  safeFocus(sundryRefs.current.rate[i - 1]);
+                                } else {
+                                  const lastItemIdx = lines.length - 1;
+                                  safeFocus(rowRefs.current.rate[lastItemIdx]);
+                                }
+                              }
                               if (e.key === "Enter") {
+                                if (e.shiftKey) {
+                                  e.preventDefault();
+                                  safeFocus(termsRef.current);
+                                  return;
+                                }
                                 e.preventDefault();
                                 if (sundryRefs.current.amount[i]) {
                                   safeFocus(sundryRefs.current.amount[i]);
@@ -1172,6 +1300,7 @@ export default function SalesCreatePage() {
                                 }
                               }
                             }}
+                            disabled={r.id === "vat"}
                             className="h-10 w-[110px] rounded-xl bg-white text-right dark:bg-slate-900"
                           />
                           <span className="text-muted-foreground">%</span>
@@ -1196,7 +1325,33 @@ export default function SalesCreatePage() {
                                 });
                               }}
                               onKeyDown={(e) => {
+                                if (e.key === "ArrowLeft") {
+                                  e.preventDefault();
+                                  safeFocus(sundryRefs.current.rate[i]);
+                                }
+                                if (e.key === "ArrowDown") {
+                                  e.preventDefault();
+                                  if (sundryRefs.current.amount[i + 1]) {
+                                    safeFocus(sundryRefs.current.amount[i + 1]);
+                                  } else {
+                                    safeFocus(termsRef.current);
+                                  }
+                                }
+                                if (e.key === "ArrowUp") {
+                                  e.preventDefault();
+                                  if (sundryRefs.current.amount[i - 1]) {
+                                    safeFocus(sundryRefs.current.amount[i - 1]);
+                                  } else {
+                                    const lastItemIdx = lines.length - 1;
+                                    safeFocus(rowRefs.current.rate[lastItemIdx]);
+                                  }
+                                }
                                 if (e.key === "Enter") {
+                                  if (e.shiftKey) {
+                                    e.preventDefault();
+                                    safeFocus(termsRef.current);
+                                    return;
+                                  }
                                   e.preventDefault();
                                   if (sundryRefs.current.select[i + 1]) {
                                     safeFocus(sundryRefs.current.select[i + 1]);
@@ -1206,6 +1361,7 @@ export default function SalesCreatePage() {
                                 }
                               }}
                               placeholder="0.00"
+                              disabled={r.id === "vat"}
                               className="h-8 w-24 rounded-lg border-slate-200 bg-white px-2 text-right text-sm dark:border-slate-800 dark:bg-slate-900"
                             />
                           </div>
@@ -1263,9 +1419,25 @@ export default function SalesCreatePage() {
               </label>
 
               <textarea
+                ref={termsRef}
                 value={form.termsText}
                 onChange={(e) => setForm((f) => ({ ...f, termsText: e.target.value }))}
                 disabled={!form.termsOverrideEnabled}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && e.shiftKey) {
+                    e.preventDefault();
+                    safeFocus(notesRef.current);
+                  }
+                  if (e.key === "ArrowDown" && !e.shiftKey) {
+                    e.preventDefault();
+                    safeFocus(notesRef.current);
+                  }
+                  if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    const lastSundryIdx = billSundryComputed.rows.length - 1;
+                    safeFocus(sundryRefs.current.rate[lastSundryIdx]);
+                  }
+                }}
                 className={cn(
                   "min-h-[110px] w-full rounded-2xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-950",
                   !form.termsOverrideEnabled && "opacity-70"
@@ -1346,8 +1518,15 @@ export default function SalesCreatePage() {
             </div>
 
             <textarea
+              ref={notesRef}
               value={form.notes}
               onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+              onKeyDown={(e) => {
+                if (e.key === "ArrowUp") {
+                  e.preventDefault();
+                  safeFocus(termsRef.current);
+                }
+              }}
               placeholder="Add overall remarks or terms for this sale..."
               className="min-h-[120px] w-full rounded-2xl border-2 border-slate-100 bg-slate-50/30 p-5 text-sm outline-none ring-indigo-500/10 focus:border-indigo-500 focus:bg-white focus:ring-4 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 transition-all font-medium leading-relaxed"
             />
@@ -1376,12 +1555,32 @@ export default function SalesCreatePage() {
                 <div className="flex items-center gap-3 w-full md:w-auto">
                   <Button
                     variant="outline"
+                    onClick={onSave}
+                    disabled={loading || sending}
+                    className="flex-1 md:flex-none rounded-2xl h-12 px-6 font-bold text-xs uppercase tracking-widest border-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
+                  >
+                    <Save className="mr-2 h-4 w-4" />
+                    {loading ? "Saving..." : "Save Draft"}
+                  </Button>
+
+                  <Button
+                    onClick={onSend}
+                    disabled={loading || sending}
+                    className="flex-1 md:flex-none rounded-2xl h-12 px-10 font-black text-xs uppercase tracking-widest shadow-xl transition-all bg-indigo-600 text-white hover:bg-indigo-700 hover:scale-105 active:scale-95 shadow-indigo-500/25"
+                  >
+                    <Send className="mr-2 h-4 w-4" />
+                    {sending ? "Sending..." : "Record Sale"}
+                  </Button>
+
+                  <Button
+                    variant="outline"
                     onClick={onPreview}
                     className="flex-1 md:flex-none rounded-2xl h-12 px-6 font-bold text-xs uppercase tracking-widest border-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
                   >
                     <Eye className="mr-2 h-4 w-4" />
                     Preview
                   </Button>
+
                   <Button
                     variant="outline"
                     onClick={onPrint}
@@ -1390,22 +1589,14 @@ export default function SalesCreatePage() {
                     <Printer className="mr-2 h-4 w-4" />
                     Print
                   </Button>
+
                   <Button
                     variant="outline"
-                    onClick={onSave}
-                    disabled={loading || sending}
+                    onClick={onPrintPreview}
                     className="flex-1 md:flex-none rounded-2xl h-12 px-6 font-bold text-xs uppercase tracking-widest border-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
                   >
-                    <Save className="mr-2 h-4 w-4" />
-                    {loading ? "Saving..." : "Save Draft"}
-                  </Button>
-                  <Button
-                    onClick={onSend}
-                    disabled={loading || sending}
-                    className="flex-1 md:flex-none rounded-2xl h-12 px-10 font-black text-xs uppercase tracking-widest shadow-xl transition-all bg-indigo-600 text-white hover:bg-indigo-700 hover:scale-105 active:scale-95 shadow-indigo-500/25"
-                  >
-                    <Send className="mr-2 h-4 w-4" />
-                    {sending ? "Sending..." : "Record Sale"}
+                    <FileText className="mr-2 h-4 w-4" />
+                    Print Preview
                   </Button>
                 </div>
               </div>
