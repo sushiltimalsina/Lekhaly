@@ -52,15 +52,7 @@ const groups: ActionGroup[] = [
       { label: "View Ledger", href: "/reports/ledger" },
     ],
   },
-  {
-    title: "Sales",
-    match: (path) => path.startsWith("/sales"),
-    actions: [
-      { label: "New Quotation", href: "/sales/quotations/create" },
-      { label: "Sales Order", href: "/sales/orders/create" },
-      { label: "Invoice (Direct)", href: "/sales/create" },
-    ],
-  },
+
 ];
 
 export default function QuickActionsRail() {
