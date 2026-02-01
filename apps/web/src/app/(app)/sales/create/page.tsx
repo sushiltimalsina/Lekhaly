@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/app/money";
 import { cn } from "@/lib/utils";
 
-import { createInvoiceDraft } from "@/lib/api/invoices";
+import { createInvoiceDraft, postInvoice } from "@/lib/api/invoices";
 import { listParties, type PartyRecord } from "@/lib/api/parties";
 import { listAccounts, type AccountRecord } from "@/lib/api/accounts";
 import { listItems, type ItemRecord } from "@/lib/api/items";
@@ -639,14 +639,18 @@ export default function SalesCreatePage() {
     }
   };
 
-  const onSend = async () => {
+  const onPost = async () => {
     setError(null);
     setSuccess(null);
     setSending(true);
     try {
       const res: any = await createInvoiceDraft(buildPayload());
       const id = res?.id ?? res?.invoiceId ?? res?.data?.id;
-      setSuccess(id ? `Draft ready to send: ${id}` : "Draft ready to send.");
+      if (!id) throw new Error("Failed to create draft.");
+
+      await postInvoice(id);
+      setSuccess(`Invoice posted successfully: ${id}`);
+      setTimeout(() => router.push("/sales"), 1500);
     } catch (e: any) {
       setError(e?.message ?? "Something went wrong.");
     } finally {
@@ -1568,12 +1572,12 @@ export default function SalesCreatePage() {
                   </Button>
 
                   <Button
-                    onClick={onSend}
+                    onClick={onPost}
                     disabled={loading || sending}
                     className="flex-1 md:flex-none rounded-2xl h-12 px-10 font-black text-xs uppercase tracking-widest shadow-xl transition-all bg-indigo-600 text-white hover:bg-indigo-700 hover:scale-105 active:scale-95 shadow-indigo-500/25"
                   >
                     <Send className="mr-2 h-4 w-4" />
-                    {sending ? "Sending..." : "Record Sale"}
+                    {sending ? "Posting..." : "Post & Finalize"}
                   </Button>
 
                   <Button

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/app/money";
 import { cn } from "@/lib/utils";
 
-import { createVoucherDraft, type VoucherDraftInput } from "@/lib/api/vouchers";
+import { createVoucherDraft, postVoucher, type VoucherDraftInput } from "@/lib/api/vouchers";
 import { listParties, type PartyRecord } from "@/lib/api/parties";
 import { listAccounts, type AccountRecord } from "@/lib/api/accounts";
 import { listItems, type ItemRecord } from "@/lib/api/items";
@@ -654,14 +654,18 @@ export default function PurchaseReturnCreatePage() {
         }
     };
 
-    const onSend = async () => {
+    const onPost = async () => {
         setError(null);
         setSuccess(null);
         setSending(true);
         try {
             const res: any = await createVoucherDraft(buildPayload());
             const id = res?.id ?? res?.voucherId ?? res?.data?.id;
-            setSuccess(id ? `Purchase recorded and sent: ${id}` : "Purchase recorded.");
+            if (!id) throw new Error("Failed to create draft.");
+
+            await postVoucher(id);
+            setSuccess(`Purchase return posted successfully: ${id}`);
+            setTimeout(() => router.push("/purchase-return"), 1500);
         } catch (e: any) {
             setError(e?.message ?? "Something went wrong.");
         } finally {
@@ -1477,20 +1481,20 @@ export default function PurchaseReturnCreatePage() {
                                 variant="outline"
                                 onClick={onSave}
                                 disabled={loading || sending}
-                                className="rounded-full px-6"
+                                className="flex-1 md:flex-none rounded-2xl h-12 px-6 font-bold text-xs uppercase tracking-widest border-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
                             >
                                 <Save className="mr-2 h-4 w-4" />
-                                {loading ? "Saving..." : "Save"}
+                                {loading ? "Saving..." : "Save Draft"}
                             </Button>
 
                             <Button
                                 type="button"
-                                onClick={onSend}
+                                onClick={onPost}
                                 disabled={loading || sending}
-                                className="rounded-full bg-indigo-600 px-8 text-white hover:bg-indigo-700"
+                                className="flex-1 md:flex-none rounded-2xl h-12 px-10 font-black text-xs uppercase tracking-widest shadow-xl transition-all bg-indigo-600 text-white hover:bg-indigo-700 hover:scale-105 active:scale-95 shadow-indigo-500/25"
                             >
                                 <Send className="mr-2 h-4 w-4" />
-                                {sending ? "Sending..." : "Record Purchase"}
+                                {sending ? "Posting..." : "Post & Finalize"}
                             </Button>
 
                             <Button type="button" variant="outline" onClick={onPreview} className="rounded-full px-6">
