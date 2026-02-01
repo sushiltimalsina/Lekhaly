@@ -484,6 +484,7 @@ model Voucher {
   status      VoucherStatus @default(draft)
 
   voucherNumber String?
+  referenceNo   String?
   voucherDate   DateTime
   voucherDateBs String?
 
@@ -537,8 +538,9 @@ model Invoice {
   voucherId String? @unique
   voucher   Voucher? @relation(fields: [voucherId], references: [id])
 
-  invoiceNo String?
-  type      String // sales | sales_return
+  invoiceNo   String?
+  referenceNo String?
+  type        String // sales | sales_return
 
   partyId String
   party   Party @relation(fields: [partyId], references: [id])

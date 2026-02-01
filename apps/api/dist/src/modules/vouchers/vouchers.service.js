@@ -294,6 +294,7 @@ let VouchersService = class VouchersService {
                 voucherDate: resolved.date,
                 voucherDateBs: resolved.bs || null,
                 partyId: input.partyId,
+                referenceNo: input.referenceNo,
                 memo: input.memo,
                 createdByUserId: user.sub,
                 lines: {
@@ -327,6 +328,8 @@ let VouchersService = class VouchersService {
         if (input.partyId !== undefined) {
             data.party = input.partyId ? { connect: { id: input.partyId } } : { disconnect: true };
         }
+        if (input.referenceNo !== undefined)
+            data.referenceNo = input.referenceNo;
         if (input.memo !== undefined)
             data.memo = input.memo;
         return this.prisma.$transaction(async (tx) => {
@@ -590,6 +593,7 @@ let VouchersService = class VouchersService {
                 status: true,
                 partyId: true,
                 party: { select: { id: true, name: true } },
+                referenceNo: true,
                 memo: true,
                 createdAt: true,
                 postedAt: true

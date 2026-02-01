@@ -116,13 +116,22 @@ export default function SalesListPage() {
                         <p className="text-sm font-black text-slate-400 animate-pulse uppercase tracking-widest text-[10px]">Processing Records...</p>
                     </div>
                 ) : data.length > 0 ? (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
+                    <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800">
+                        <table className="w-full text-sm text-left min-w-[1400px]">
                             <thead>
                                 <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30">
-                                    <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Customer / Date</th>
-                                    <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Invoice Identity</th>
-                                    <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Invoice Amount</th>
+                                    <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Date</th>
+                                    <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Invoice No</th>
+                                    <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Ref No</th>
+                                    <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Customer Name</th>
+                                    <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">PAN/VAT</th>
+                                    <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Item Details</th>
+                                    <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Qty</th>
+                                    <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Rate</th>
+                                    <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Taxable</th>
+                                    <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Non-Taxable</th>
+                                    <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Amount</th>
+                                    <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Notes</th>
                                     <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-center">Status</th>
                                     <th className="px-6 py-4 w-10"></th>
                                 </tr>
@@ -130,41 +139,81 @@ export default function SalesListPage() {
                             <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
                                 {data.map((item) => {
                                     const dateInfo = getDateDisplay({ ad: item.date, bs: item.dateBs, format: dateFormat });
+                                    const items = item.items || [];
+                                    const firstItem = items[0];
+                                    const itemSummary = items.length > 1
+                                        ? `${firstItem?.item?.name || firstItem?.description || "Mixed"} (+${items.length - 1})`
+                                        : (firstItem?.item?.name || firstItem?.description || "—");
+
+                                    const totalQty = items.reduce((sum: number, i: any) => sum + Number(i.qty || 0), 0);
+                                    const avgRate = items.length === 1 ? Number(firstItem?.rate || 0) : null;
+
+                                    let taxableAmount = 0;
+                                    let nonTaxableAmount = 0;
+
+                                    items.forEach((i: any) => {
+                                        const lineVal = Number(i.amount || 0);
+                                        const hasTax = Number(i.taxAmount || 0) > 0 || !!i.taxCodeId;
+                                        if (hasTax) {
+                                            taxableAmount += lineVal;
+                                        } else {
+                                            nonTaxableAmount += lineVal;
+                                        }
+                                    });
+
                                     return (
                                         <tr
                                             key={item.id}
                                             onClick={() => router.push(`/vouchers/${item.voucherId || item.id}`)}
                                             className="group cursor-pointer hover:bg-slate-50/80 dark:hover:bg-slate-900/40 transition-colors"
                                         >
-                                            <td className="px-6 py-5">
+                                            <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="flex flex-col">
-                                                    <span className="font-bold text-slate-800 dark:text-slate-100">{item.partyName || item.party?.name || "Unknown Customer"}</span>
-                                                    <div className="flex items-center gap-2 mt-0.5">
-                                                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{dateInfo.primary}</span>
-                                                        <span className="h-1 w-1 rounded-full bg-slate-200"></span>
-                                                        <span className="text-[9px] text-slate-400 font-medium">{dateInfo.secondary}</span>
-                                                    </div>
+                                                    <span className="font-bold text-slate-800 dark:text-slate-100">{dateInfo.primary}</span>
+                                                    <span className="text-[9px] text-slate-400 font-medium">{dateInfo.secondary}</span>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-5 whitespace-nowrap">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="h-9 w-9 rounded-xl bg-slate-50 dark:bg-slate-900 flex items-center justify-center shrink-0 border border-slate-100/50 dark:border-slate-800/50">
-                                                        <FileText className="h-4 w-4 text-indigo-500" />
-                                                    </div>
-                                                    <span className="font-black text-slate-900 dark:text-white group-hover:text-indigo-600 transition-colors uppercase tracking-widest">
-                                                        {item.invoiceNo || "DRAFT-" + item.id.slice(0, 4)}
-                                                    </span>
-                                                </div>
+                                            <td className="px-6 py-4 whitespace-nowrap font-black text-slate-900 dark:text-white uppercase tracking-widest text-[11px]">
+                                                {item.invoiceNo || "DRAFT"}
                                             </td>
-                                            <td className="px-6 py-5 text-right whitespace-nowrap">
-                                                <span className="font-black text-slate-900 dark:text-white text-base tabular-nums">
+                                            <td className="px-6 py-4 whitespace-nowrap text-slate-400 text-xs">{item.referenceNo || item.voucher?.referenceNo || "—"}</td>
+                                            <td className="px-6 py-4">
+                                                <span className="font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">{item.partyName || item.party?.name || "Unknown Customer"}</span>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-500 font-medium">
+                                                {item.party?.panNumber || item.party?.vatNumber || "—"}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className="text-xs font-medium text-slate-600 dark:text-slate-400 truncate max-w-[200px] block" title={itemSummary}>
+                                                    {itemSummary}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-right font-bold text-slate-700 dark:text-slate-300">
+                                                {totalQty.toLocaleString()}
+                                            </td>
+                                            <td className="px-6 py-4 text-right text-slate-500 whitespace-nowrap">
+                                                {avgRate !== null ? <MoneyText value={avgRate} /> : <span className="text-[10px] italic">Mixed</span>}
+                                            </td>
+                                            <td className="px-6 py-4 text-right font-medium text-slate-900 dark:text-white">
+                                                <MoneyText value={taxableAmount} />
+                                            </td>
+                                            <td className="px-6 py-4 text-right text-slate-400">
+                                                <MoneyText value={nonTaxableAmount} />
+                                            </td>
+                                            <td className="px-6 py-4 text-right whitespace-nowrap">
+                                                <span className="font-black text-indigo-600 dark:text-indigo-400 text-base tabular-nums">
                                                     <MoneyText value={Number(item.total || 0)} />
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-5 whitespace-nowrap text-center">
+                                            <td className="px-6 py-4">
+                                                <span className="text-xs text-slate-400 font-medium truncate max-w-[150px] block" title={item.voucher?.memo || item.memo}>
+                                                    {item.voucher?.memo || item.memo || "—"}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-center">
                                                 <StatusBadge status={item.status as DocStatus} />
                                             </td>
-                                            <td className="px-6 py-5 text-right">
+                                            <td className="px-6 py-4 text-right">
                                                 <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-indigo-400 group-hover:translate-x-1 transition-all" />
                                             </td>
                                         </tr>

@@ -627,7 +627,7 @@ export default function PurchaseReturnCreatePage() {
         } as any);
 
         return {
-            voucherType: "purchase",
+            voucherType: "purchase_return",
             voucherDate: form.purchaseDate.ad || undefined,
             voucherDateBs: form.purchaseDate.bs || undefined,
             partyId: form.partyId,
@@ -1451,113 +1451,4 @@ export default function PurchaseReturnCreatePage() {
                         </div>
                     </div>
 
-                    <div className="lg:col-span-6 rounded-3xl border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                        <div className="mb-2 flex items-center justify-between">
-                            <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">Additional notes</div>
-                            <div className="text-xs text-muted-foreground">
-                                BS: <span className="font-medium text-foreground">{form.purchaseDate.bs || "—"}</span>{" "}
-                                <span className="text-muted-foreground">({form.purchaseDate.ad || "—"})</span>
-                            </div>
-                        </div>
-
-                        <Input
-                            ref={notesRef}
-                            value={form.notes}
-                            onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                            onKeyDown={(e) => {
-                                if (e.key === "ArrowUp") {
-                                    e.preventDefault();
-                                    const lastSundryIdx = billSundryComputed.rows.length - 1;
-                                    safeFocus(sundryRefs.current.rate[lastSundryIdx]);
-                                }
-                            }}
-                            placeholder="Internal record notes..."
-                            className="h-11 rounded-2xl bg-slate-50/60"
-                        />
-
-                        <div className="mt-8 flex flex-wrap items-center justify-end gap-2">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={onSave}
-                                disabled={loading || sending}
-                                className="flex-1 md:flex-none rounded-2xl h-12 px-6 font-bold text-xs uppercase tracking-widest border-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
-                            >
-                                <Save className="mr-2 h-4 w-4" />
-                                {loading ? "Saving..." : "Save Draft"}
-                            </Button>
-
-                            <Button
-                                type="button"
-                                onClick={onPost}
-                                disabled={loading || sending}
-                                className="flex-1 md:flex-none rounded-2xl h-12 px-10 font-black text-xs uppercase tracking-widest shadow-xl transition-all bg-indigo-600 text-white hover:bg-indigo-700 hover:scale-105 active:scale-95 shadow-indigo-500/25"
-                            >
-                                <Send className="mr-2 h-4 w-4" />
-                                {sending ? "Posting..." : "Post & Finalize"}
-                            </Button>
-
-                            <Button type="button" variant="outline" onClick={onPreview} className="rounded-full px-6">
-                                <Eye className="mr-2 h-4 w-4" />
-                                Preview
-                            </Button>
-
-                            <Button type="button" variant="outline" onClick={onPrint} className="rounded-full px-6">
-                                <Printer className="mr-2 h-4 w-4" />
-                                Print
-                            </Button>
-
-                            <Button type="button" variant="outline" onClick={onPrintPreview} className="rounded-full px-6">
-                                <FileText className="mr-2 h-4 w-4" />
-                                Print Preview
-                            </Button>
-                        </div>
-                    </div>
-                </section>
-            </div>
-
-            {/* Dialogs */}
-            <AddItemDialog
-                open={addItemOpen}
-                onClose={() => setAddItemOpen(false)}
-                onSuccess={(newItem) => {
-                    setItems(prev => [...prev, newItem]);
-                    if (activeLineIdx !== null) {
-                        updateLine(activeLineIdx, {
-                            itemId: newItem.id,
-                            rate: newItem.purchasePrice?.toString() || ""
-                        });
-                        setTimeout(() => safeFocus(rowRefs.current.qty[activeLineIdx]), 50);
-                    }
-                }}
-            />
-            <AddVendorDialog
-                open={addVendorOpen}
-                onClose={() => setAddVendorOpen(false)}
-                onSuccess={(newVendor) => {
-                    setParties(prev => [...prev, newVendor]);
-                    setForm(f => ({ ...f, partyId: newVendor.id }));
-                    setTimeout(() => safeFocus(rowRefs.current.select[0]), 50);
-                }}
-            />
-            <AddBillSundryDialog
-                open={addSundryOpen}
-                onClose={() => setAddSundryOpen(false)}
-                onSuccess={(newSundry) => {
-                    setSundryOptions(prev => [...prev, newSundry]);
-                    if (activeSundryIdx !== null) {
-                        const r = billSundries[activeSundryIdx];
-                        if (r) {
-                            updateSundry(r.id, {
-                                sundryId: newSundry.id,
-                                name: newSundry.name,
-                                type: newSundry.type as any,
-                                ratePct: newSundry.rate?.toString() || "0"
-                            });
-                        }
-                    }
-                }}
-            />
-        </div>
-    );
-}
+/

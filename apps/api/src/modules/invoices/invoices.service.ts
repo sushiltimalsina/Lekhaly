@@ -100,6 +100,7 @@ export class InvoicesService {
       dueDate?: Date;
       dueDateBs?: string;
       receivableAccountId: string;
+      referenceNo?: string;
       items: Array<{ itemId?: string; description?: string; qty: number; rate: number; taxCodeId?: string; taxCodeIds?: string[] }>;
       sundries?: Array<{ billSundryId?: string; name: string; type: "add" | "less"; rate?: number | null; amount: number }>;
     }
@@ -370,7 +371,8 @@ export class InvoicesService {
       date: resolvedDate.date,
       dateBs: resolvedDate.bs || input.dateBs,
       dueDate: resolvedDue?.date,
-      dueDateBs: resolvedDue?.bs || input.dueDateBs
+      dueDateBs: resolvedDue?.bs || input.dueDateBs,
+      referenceNo: input.referenceNo
     };
   }
 
@@ -384,6 +386,7 @@ export class InvoicesService {
       dueDate?: Date;
       dueDateBs?: string;
       receivableAccountId: string;
+      referenceNo?: string;
       items: Array<{ itemId?: string; description?: string; qty: number; rate: number; taxCodeId?: string; taxCodeIds?: string[] }>;
       sundries?: Array<{ billSundryId?: string; name: string; type: "add" | "less"; rate?: number | null; amount: number }>;
     }
@@ -400,6 +403,7 @@ export class InvoicesService {
         dateBs: preview.dateBs || null,
         dueDate: preview.dueDate,
         dueDateBs: preview.dueDateBs || null,
+        referenceNo: preview.referenceNo,
         receivableAccountId: input.receivableAccountId,
         subtotal: totals.subtotal,
         vatAmount: totals.vatAmount,
@@ -457,6 +461,7 @@ export class InvoicesService {
       partyId: invoice.partyId,
       date: invoice.date,
       dueDate: invoice.dueDate || undefined,
+      referenceNo: invoice.referenceNo || undefined,
       receivableAccountId: invoice.receivableAccountId,
       items: invoice.items.map((i: any) => ({
         itemId: i.itemId || undefined,
@@ -493,6 +498,7 @@ export class InvoicesService {
           status: VoucherStatus.posted,
           voucherDate: invoice.date,
           partyId: invoice.partyId,
+          referenceNo: invoice.referenceNo,
           memo: `Invoice ${invoice.id}`,
           postedAt: new Date(),
           postedByUserId: user.sub,
@@ -560,6 +566,19 @@ export class InvoicesService {
 
     return this.prisma.invoice.findMany({
       where,
+      include: {
+        party: {
+          select: { id: true, name: true, panNumber: true, vatNumber: true }
+        },
+        items: {
+          include: {
+            item: { select: { id: true, name: true } }
+          }
+        },
+        voucher: {
+          select: { memo: true, referenceNo: true }
+        }
+      },
       orderBy: { date: "desc" },
       skip: filters.skip || 0,
       take: filters.take || 50

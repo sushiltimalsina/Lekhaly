@@ -614,6 +614,7 @@ export default function SalesReturnCreatePage() {
             receivableAccountId: form.receivableAccountId,
             salesType: form.salesType,
             memo: form.memo || undefined,
+            referenceNo: form.referenceNo || undefined,
             items: payloadItems,
             sundries: billSundryComputed.rows.map(r => ({
                 billSundryId: r.sundryId,

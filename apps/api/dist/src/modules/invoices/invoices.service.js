@@ -328,7 +328,8 @@ let InvoicesService = class InvoicesService {
             date: resolvedDate.date,
             dateBs: resolvedDate.bs || input.dateBs,
             dueDate: resolvedDue?.date,
-            dueDateBs: resolvedDue?.bs || input.dueDateBs
+            dueDateBs: resolvedDue?.bs || input.dueDateBs,
+            referenceNo: input.referenceNo
         };
     }
     async createDraft(user, input) {
@@ -343,6 +344,7 @@ let InvoicesService = class InvoicesService {
                 dateBs: preview.dateBs || null,
                 dueDate: preview.dueDate,
                 dueDateBs: preview.dueDateBs || null,
+                referenceNo: preview.referenceNo,
                 receivableAccountId: input.receivableAccountId,
                 subtotal: totals.subtotal,
                 vatAmount: totals.vatAmount,
@@ -399,6 +401,7 @@ let InvoicesService = class InvoicesService {
             partyId: invoice.partyId,
             date: invoice.date,
             dueDate: invoice.dueDate || undefined,
+            referenceNo: invoice.referenceNo || undefined,
             receivableAccountId: invoice.receivableAccountId,
             items: invoice.items.map((i) => ({
                 itemId: i.itemId || undefined,
@@ -432,6 +435,7 @@ let InvoicesService = class InvoicesService {
                     status: client_1.VoucherStatus.posted,
                     voucherDate: invoice.date,
                     partyId: invoice.partyId,
+                    referenceNo: invoice.referenceNo,
                     memo: `Invoice ${invoice.id}`,
                     postedAt: new Date(),
                     postedByUserId: user.sub,
@@ -497,6 +501,19 @@ let InvoicesService = class InvoicesService {
         }
         return this.prisma.invoice.findMany({
             where,
+            include: {
+                party: {
+                    select: { id: true, name: true, panNumber: true, vatNumber: true }
+                },
+                items: {
+                    include: {
+                        item: { select: { id: true, name: true } }
+                    }
+                },
+                voucher: {
+                    select: { memo: true, referenceNo: true }
+                }
+            },
             orderBy: { date: "desc" },
             skip: filters.skip || 0,
             take: filters.take || 50
