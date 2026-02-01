@@ -14,14 +14,18 @@ export function formatMoney(
 
   if (!Number.isFinite(value)) return "—";
 
+  const absValue = Math.abs(value);
+  const isNegative = value < 0;
+
   // Nepal typically uses comma grouping similar to Indian system,
   // but JS Intl "en-IN" gives a good default for NPR formatting.
   const formatted = new Intl.NumberFormat(format, {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
-  }).format(value);
+  }).format(absValue);
 
-  return currency ? `${symbol} ${formatted}` : formatted;
+  const result = currency ? `${symbol} ${formatted}` : formatted;
+  return isNegative ? `(${result})` : result;
 }
 
 export function MoneyText({
