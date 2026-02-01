@@ -65,11 +65,13 @@ export function DropdownMenuTrigger({
 export function DropdownMenuContent({
     children,
     align = "end",
-    className
+    className,
+    sideOffset
 }: {
     children: React.ReactNode
     align?: "start" | "end"
     className?: string
+    sideOffset?: number
 }) {
     const context = React.useContext(DropdownMenuContext)
     if (!context) throw new Error("DropdownMenuContent must be used within DropdownMenu")
@@ -79,10 +81,11 @@ export function DropdownMenuContent({
     return (
         <div
             className={cn(
-                "absolute z-50 mt-2 min-w-[8rem] overflow-hidden rounded-[20px] border border-slate-200 bg-white p-1 shadow-xl shadow-slate-200/50 outline-none dark:border-slate-800 dark:bg-slate-950 dark:shadow-none animate-in fade-in zoom-in-95 duration-150",
+                "absolute z-50 overflow-hidden rounded-[20px] border border-slate-200 bg-white p-1 shadow-xl shadow-slate-200/50 outline-none dark:border-slate-800 dark:bg-slate-950 dark:shadow-none animate-in fade-in zoom-in-95 duration-150",
                 align === "end" ? "right-0" : "left-0",
                 className
             )}
+            style={{ marginTop: sideOffset ? `${sideOffset}px` : '0.5rem' }}
         >
             {children}
         </div>
@@ -92,11 +95,13 @@ export function DropdownMenuContent({
 export function DropdownMenuItem({
     children,
     onClick,
-    className
+    className,
+    closeOnSelect
 }: {
     children: React.ReactNode
     onClick?: () => void
     className?: string
+    closeOnSelect?: boolean
 }) {
     const context = React.useContext(DropdownMenuContext)
     if (!context) throw new Error("DropdownMenuItem must be used within DropdownMenu")
@@ -105,7 +110,9 @@ export function DropdownMenuItem({
         e.preventDefault()
         e.stopPropagation()
         onClick?.()
-        context.setOpen(false)
+        if (closeOnSelect !== false) {
+            context.setOpen(false)
+        }
     }
 
     return (

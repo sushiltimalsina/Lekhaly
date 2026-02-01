@@ -13,10 +13,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import AdvancedFilterBar from "@/components/app/advanced-filter-bar";
+import { getSettings } from "@/lib/store/settings";
 
 export default function PurchaseListPage() {
     const router = useRouter();
     const { dateFormat } = useDateFormat();
+    const settings = getSettings();
 
     const [loading, setLoading] = React.useState(true);
     const [data, setData] = React.useState<any[]>([]);
@@ -69,6 +71,26 @@ export default function PurchaseListPage() {
         }
     ];
 
+    const columnOptions = [
+        { key: "date", label: "Date", defaultVisible: true },
+        { key: "voucherNo", label: "Voucher No", defaultVisible: true },
+        { key: "refNo", label: "Reference No", defaultVisible: false },
+        { key: "party", label: "Vendor Name", defaultVisible: true },
+        { key: "panVat", label: "PAN/VAT Number", defaultVisible: false },
+        { key: "items", label: "Item Details", defaultVisible: true },
+        { key: "qty", label: "Quantity", defaultVisible: true },
+        { key: "rate", label: "Rate", defaultVisible: true },
+        { key: "taxable", label: "Taxable Amount", defaultVisible: false },
+        { key: "nonTaxable", label: "Non Taxable Amount", defaultVisible: false },
+        { key: "amount", label: "Amount", defaultVisible: true },
+        { key: "notes", label: "Notes/Memo", defaultVisible: false },
+        { key: "status", label: "Status", defaultVisible: true },
+    ];
+
+    const [visibleColumns, setVisibleColumns] = React.useState<string[]>(
+        columnOptions.filter(c => c.defaultVisible).map(c => c.key)
+    );
+
     const handleFilterChange = (newFilters: any) => {
         setFilters(prev => ({
             ...prev,
@@ -77,6 +99,8 @@ export default function PurchaseListPage() {
             to: newFilters.dateRange?.to || null,
         }));
     };
+
+    const isVisible = (key: string) => visibleColumns.includes(key);
 
     return (
         <div className="space-y-6">
@@ -98,6 +122,9 @@ export default function PurchaseListPage() {
                 onSearch={(q) => setFilters(prev => ({ ...prev, q }))}
                 onFilterChange={handleFilterChange}
                 filterOptions={filterOptions}
+                defaultRange={settings.defaultDateRange}
+                columnOptions={columnOptions}
+                onVisibleColumnsChange={setVisibleColumns}
                 className="border-orange-100 dark:border-orange-900/50"
             />
 
@@ -115,55 +142,128 @@ export default function PurchaseListPage() {
                         <table className="w-full text-sm text-left">
                             <thead>
                                 <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30">
-                                    <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Vendor / Date</th>
-                                    <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Reference Number</th>
-                                    <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Bill Amount</th>
-                                    <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-center">Status</th>
+                                    {isVisible("date") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Date</th>}
+                                    {isVisible("voucherNo") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Voucher No</th>}
+                                    {isVisible("refNo") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Reference No</th>}
+                                    {isVisible("party") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Vendor Name</th>}
+                                    {isVisible("panVat") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Pan/Vat Number</th>}
+                                    {isVisible("items") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Item Details</th>}
+                                    {isVisible("qty") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Quantity</th>}
+                                    {isVisible("rate") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Rate</th>}
+                                    {isVisible("taxable") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Taxable Amount</th>}
+                                    {isVisible("nonTaxable") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Non Taxable Amount</th>}
+                                    {isVisible("amount") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Amount</th>}
+                                    {isVisible("notes") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Notes/Memo</th>}
+                                    {isVisible("status") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-center">Status</th>}
                                     <th className="px-6 py-4 w-10"></th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
                                 {data.map((item) => {
                                     const dateInfo = getDateDisplay({ ad: item.voucherDate, bs: item.voucherDateBs, format: dateFormat });
+                                    const lines = item.lines || [];
+                                    const itemLines = lines.filter((l: any) => l.itemId);
+
+                                    const firstLine = itemLines[0];
+                                    const itemSummary = itemLines.length > 1
+                                        ? `${firstLine?.item?.name || firstLine?.description || "Mixed"} (+${itemLines.length - 1})`
+                                        : (firstLine?.item?.name || firstLine?.description || "—");
+
+                                    // For purchases, typically quantity is in stock ledger, but if not we can use debit/credit as price
+                                    // Actually, we should probably have qty in lines too if it's a purchase bill.
+                                    // Since it's a generic voucher, we'll try to get data from lines.
+                                    const totalQty = itemLines.reduce((sum: number, l: any) => sum + Number(l.qty || 1), 0);
+                                    const avgRate = itemLines.length === 1 ? Number(firstLine.debit || firstLine.credit || 0) : null;
+
+                                    let taxableAmount = 0;
+                                    let nonTaxableAmount = 0;
+                                    itemLines.forEach((l: any) => {
+                                        const val = Number(l.debit || l.credit || 0);
+                                        const hasTax = Number(l.taxAmount || 0) > 0 || !!l.taxCodeId;
+                                        if (hasTax) taxableAmount += val;
+                                        else nonTaxableAmount += val;
+                                    });
+
+                                    // Total amount is usually the credit to the party for a purchase
+                                    const totalAmount = lines.find((l: any) => l.partyId === item.partyId)?.credit ||
+                                        itemLines.reduce((sum: number, l: any) => sum + Number(l.debit || 0), 0);
+
                                     return (
                                         <tr
                                             key={item.id}
                                             onClick={() => router.push(`/vouchers/${item.id}`)}
                                             className="group cursor-pointer hover:bg-orange-50/20 dark:hover:bg-orange-900/10 transition-colors"
                                         >
-                                            <td className="px-6 py-5">
-                                                <div className="flex flex-col">
-                                                    <span className="font-bold text-slate-800 dark:text-slate-100">{item.party?.name || "Unknown Vendor"}</span>
-                                                    <div className="flex items-center gap-2 mt-0.5">
-                                                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{dateInfo.primary}</span>
-                                                        <span className="h-1 w-1 rounded-full bg-slate-200 font-bold uppercase tracking-tight"></span>
+                                            {isVisible("date") && (
+                                                <td className="px-6 py-5 whitespace-nowrap">
+                                                    <div className="flex flex-col">
+                                                        <span className="font-bold text-slate-800 dark:text-slate-100">{dateInfo.primary}</span>
                                                         <span className="text-[9px] text-slate-400 font-medium">{dateInfo.secondary}</span>
                                                     </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-5 whitespace-nowrap">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="h-9 w-9 rounded-xl bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center shrink-0 border border-orange-100/50 dark:border-orange-800/50">
-                                                        <ShoppingCart className="h-4 w-4 text-orange-600" />
-                                                    </div>
-                                                    <div className="flex flex-col">
-                                                        <span className="font-black text-slate-900 dark:text-white group-hover:text-orange-600 transition-colors uppercase tracking-widest">
-                                                            {item.voucherNumber || "DRAFT-" + item.id.slice(0, 4)}
-                                                        </span>
-                                                        {item.referenceNo && (
-                                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ref: {item.referenceNo}</span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-5 text-right whitespace-nowrap">
-                                                <span className="font-black text-slate-900 dark:text-white text-base tabular-nums">
-                                                    <MoneyText value={Number(item.amount || 0)} />
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-5 whitespace-nowrap text-center">
-                                                <StatusBadge status={item.status as DocStatus} />
-                                            </td>
+                                                </td>
+                                            )}
+                                            {isVisible("voucherNo") && (
+                                                <td className="px-6 py-5 whitespace-nowrap font-black text-slate-900 dark:text-white uppercase tracking-widest text-[11px]">
+                                                    {item.voucherNumber || "DRAFT"}
+                                                </td>
+                                            )}
+                                            {isVisible("refNo") && <td className="px-6 py-5 whitespace-nowrap text-slate-400 text-xs">{item.referenceNo || "—"}</td>}
+                                            {isVisible("party") && (
+                                                <td className="px-6 py-5">
+                                                    <span className="font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">{item.party?.name || "Unknown Vendor"}</span>
+                                                </td>
+                                            )}
+                                            {isVisible("panVat") && (
+                                                <td className="px-6 py-5 whitespace-nowrap text-xs text-slate-500 font-medium">
+                                                    {item.party?.panNumber || item.party?.vatNumber || "—"}
+                                                </td>
+                                            )}
+                                            {isVisible("items") && (
+                                                <td className="px-6 py-5">
+                                                    <span className="text-xs font-medium text-slate-600 dark:text-slate-400 truncate max-w-[200px] block" title={itemSummary}>
+                                                        {itemSummary}
+                                                    </span>
+                                                </td>
+                                            )}
+                                            {isVisible("qty") && (
+                                                <td className="px-6 py-5 text-right font-bold text-slate-700 dark:text-slate-300">
+                                                    {totalQty.toLocaleString()}
+                                                </td>
+                                            )}
+                                            {isVisible("rate") && (
+                                                <td className="px-6 py-5 text-right text-slate-500 whitespace-nowrap">
+                                                    {avgRate !== null ? <MoneyText value={avgRate} /> : <span className="text-[10px] italic">Mixed</span>}
+                                                </td>
+                                            )}
+                                            {isVisible("taxable") && (
+                                                <td className="px-6 py-5 text-right font-medium text-slate-900 dark:text-white">
+                                                    <MoneyText value={taxableAmount} />
+                                                </td>
+                                            )}
+                                            {isVisible("nonTaxable") && (
+                                                <td className="px-6 py-5 text-right text-slate-400">
+                                                    <MoneyText value={nonTaxableAmount} />
+                                                </td>
+                                            )}
+                                            {isVisible("amount") && (
+                                                <td className="px-6 py-5 text-right whitespace-nowrap">
+                                                    <span className="font-black text-orange-600 dark:text-orange-400 text-base tabular-nums">
+                                                        <MoneyText value={Number(totalAmount)} />
+                                                    </span>
+                                                </td>
+                                            )}
+                                            {isVisible("notes") && (
+                                                <td className="px-6 py-5">
+                                                    <span className="text-xs text-slate-400 font-medium truncate max-w-[150px] block" title={item.memo}>
+                                                        {item.memo || "—"}
+                                                    </span>
+                                                </td>
+                                            )}
+                                            {isVisible("status") && (
+                                                <td className="px-6 py-5 whitespace-nowrap text-center">
+                                                    <StatusBadge status={item.status as DocStatus} />
+                                                </td>
+                                            )}
                                             <td className="px-6 py-5 text-right">
                                                 <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-orange-400 group-hover:translate-x-1 transition-all" />
                                             </td>

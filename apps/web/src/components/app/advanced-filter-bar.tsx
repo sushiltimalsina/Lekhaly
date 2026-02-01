@@ -10,7 +10,11 @@ import {
     Plus,
     Play,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    Settings2,
+    Eye,
+    EyeOff,
+    Check
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -26,12 +30,19 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { DATE_RANGE_LABELS, DateRangeKey, getDateRange } from "@/lib/dates/ranges";
 import { motion, AnimatePresence } from "framer-motion";
+import { useDateFormat } from "@/lib/date-format";
 
 export interface FilterOption {
     key: string;
     label: string;
     options: { value: string; label: string }[];
     multiple?: boolean;
+}
+
+export interface ColumnOption {
+    key: string;
+    label: string;
+    defaultVisible?: boolean;
 }
 
 interface AdvancedFilterBarProps {
@@ -44,6 +55,8 @@ interface AdvancedFilterBarProps {
     defaultRange?: DateRangeKey;
     showComparison?: boolean;
     onComparisonChange?: (enabled: boolean) => void;
+    columnOptions?: ColumnOption[];
+    onVisibleColumnsChange?: (columns: string[]) => void;
 }
 
 export default function AdvancedFilterBar({
@@ -54,19 +67,31 @@ export default function AdvancedFilterBar({
     className,
     defaultRange = "this_year",
     showComparison,
-    onComparisonChange
+    onComparisonChange,
+    columnOptions = [],
+    onVisibleColumnsChange
 }: AdvancedFilterBarProps) {
+    const { dateFormat } = useDateFormat();
     const [internalSearch, setInternalSearch] = React.useState("");
     const [activeDateRange, setActiveDateRange] = React.useState<DateRangeKey>(defaultRange);
     const [selectedFilters, setSelectedFilters] = React.useState<Record<string, string[]>>({});
     const [isCustomDateOpen, setIsCustomDateOpen] = React.useState(false);
     const [compareEnabled, setCompareEnabled] = React.useState(false);
+    const [visibleColumns, setVisibleColumns] = React.useState<string[]>(
+        columnOptions.filter(c => c.defaultVisible !== false).map(c => c.key)
+    );
 
     // Custom range state
     const [tempCustomRange, setTempCustomRange] = React.useState<{ from: string, to: string }>({
         from: new Date().toISOString().split('T')[0],
         to: new Date().toISOString().split('T')[0]
     });
+
+    // Initial load effect to send the default range to the parent
+    React.useEffect(() => {
+        const range = getDateRange(defaultRange, dateFormat);
+        onFilterChange?.({ ...selectedFilters, dateRange: range, compare: compareEnabled });
+    }, []);
 
     const searchValue = externalSearchValue !== undefined ? externalSearchValue : internalSearch;
 
@@ -77,7 +102,7 @@ export default function AdvancedFilterBar({
         }
 
         setActiveDateRange(key);
-        const range = getDateRange(key);
+        const range = getDateRange(key, dateFormat);
         onFilterChange?.({ ...selectedFilters, dateRange: range, compare: compareEnabled });
     };
 
@@ -85,7 +110,7 @@ export default function AdvancedFilterBar({
         const next = !compareEnabled;
         setCompareEnabled(next);
         onComparisonChange?.(next);
-        const range = getDateRange(activeDateRange);
+        const range = getDateRange(activeDateRange, dateFormat);
         onFilterChange?.({ ...selectedFilters, dateRange: range, compare: next });
     };
 
@@ -107,7 +132,15 @@ export default function AdvancedFilterBar({
 
         const newFilters = { ...selectedFilters, [key]: updated };
         setSelectedFilters(newFilters);
-        onFilterChange?.(newFilters);
+        onFilterChange?.({ ...newFilters, dateRange: getDateRange(activeDateRange, dateFormat), compare: compareEnabled });
+    };
+
+    const toggleColumn = (key: string) => {
+        const next = visibleColumns.includes(key)
+            ? visibleColumns.filter(c => c !== key)
+            : [...visibleColumns, key];
+        setVisibleColumns(next);
+        onVisibleColumnsChange?.(next);
     };
 
     const removeFilter = (key: string, value: string) => {
@@ -115,7 +148,7 @@ export default function AdvancedFilterBar({
         const updated = current.filter(v => v !== value);
         const newFilters = { ...selectedFilters, [key]: updated };
         setSelectedFilters(newFilters);
-        onFilterChange?.(newFilters);
+        onFilterChange?.({ ...newFilters, dateRange: getDateRange(activeDateRange, dateFormat), compare: compareEnabled });
     };
 
     return (
@@ -347,13 +380,108 @@ export default function AdvancedFilterBar({
                     </div>
                 ))}
 
-                <Button variant="outline" className="h-10 rounded-2xl gap-2 font-black text-[10px] uppercase tracking-widest border-2">
-                    <Plus className="h-3.5 w-3.5" /> More Filters
-                </Button>
+                {/* Registry Actions Group */}
+                <div className="flex items-center gap-2 ml-auto pt-1 sm:pt-0">
 
-                <Button className="h-10 rounded-2xl gap-2 font-black text-[10px] uppercase tracking-widest bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200">
-                    <Play className="h-3.5 w-3.5 fill-current" /> Run Report
-                </Button>
+                    {columnOptions.length > 0 && (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    className="h-10 px-5 rounded-2xl gap-2 font-black text-[10px] uppercase tracking-widest border-2 border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-indigo-200 hover:bg-indigo-50/30 dark:hover:border-indigo-900/50 transition-all active:scale-95 shadow-sm shadow-slate-200/50 dark:shadow-none"
+                                >
+                                    <Settings2 className="h-4 w-4 text-indigo-500" />
+                                    More Filters
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                                className="w-72 rounded-[28px] p-2 bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl border border-slate-200 dark:border-slate-800 shadow-[0_20px_50px_rgba(0,0,0,0.15)] dark:shadow-none z-[100]"
+                                align="start"
+                                sideOffset={12}
+                            >
+                                <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800/60 mb-2">
+                                    <h3 className="text-[11px] font-black text-slate-900 dark:text-slate-100 uppercase tracking-[0.15em]">Registry Display</h3>
+                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Configure Table Columns</p>
+                                </div>
+
+                                <div className="max-h-[350px] overflow-y-auto px-1 space-y-1 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800">
+                                    {columnOptions.map((col) => {
+                                        const isVisible = visibleColumns.includes(col.key);
+                                        return (
+                                            <DropdownMenuItem
+                                                key={col.key}
+                                                onClick={() => toggleColumn(col.key)}
+                                                closeOnSelect={false}
+                                                className={cn(
+                                                    "flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200 group outline-none",
+                                                    isVisible
+                                                        ? "bg-indigo-50/50 dark:bg-indigo-900/10 border border-transparent"
+                                                        : "hover:bg-slate-50 dark:hover:bg-slate-900 border border-transparent"
+                                                )}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className={cn(
+                                                        "h-8 w-8 rounded-lg flex items-center justify-center transition-all duration-300",
+                                                        isVisible
+                                                            ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none"
+                                                            : "bg-slate-100 dark:bg-slate-800 text-slate-400 group-hover:bg-slate-200 dark:group-hover:bg-slate-700"
+                                                    )}>
+                                                        {isVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <span className={cn(
+                                                            "text-[10px] font-black uppercase tracking-widest transition-colors",
+                                                            isVisible ? "text-slate-900 dark:text-white" : "text-slate-500"
+                                                        )}>
+                                                            {col.label}
+                                                        </span>
+                                                        <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter">
+                                                            {isVisible ? "Visible in registry" : "Hidden from view"}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <div className={cn(
+                                                    "h-5 w-5 rounded-full border-2 transition-all flex items-center justify-center",
+                                                    isVisible
+                                                        ? "border-indigo-600 bg-indigo-600"
+                                                        : "border-slate-200 dark:border-slate-800 bg-transparent"
+                                                )}>
+                                                    {isVisible && <Check className="h-3 w-3 text-white stroke-[3px]" />}
+                                                </div>
+                                            </DropdownMenuItem>
+                                        );
+                                    })}
+                                </div>
+
+                                <div className="mt-2 p-2 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
+                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest pl-2">
+                                        {visibleColumns.length} of {columnOptions.length} Active
+                                    </span>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            const defaultKeys = columnOptions.filter(c => c.defaultVisible).map(c => c.key);
+                                            setVisibleColumns(defaultKeys);
+                                            onVisibleColumnsChange?.(defaultKeys);
+                                        }}
+                                        className="h-6 px-3 text-[9px] font-black text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 uppercase tracking-widest"
+                                    >
+                                        Reset to Default
+                                    </Button>
+                                </div>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    )}
+
+                    <Button className="h-10 px-6 rounded-2xl gap-2 font-black text-[10px] uppercase tracking-widest bg-indigo-600 hover:bg-indigo-700 text-white shadow-xl shadow-indigo-500/30 transition-all active:scale-95 group relative overflow-hidden ring-offset-white dark:ring-offset-slate-950">
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer" />
+                        <Play className="h-4 w-4 fill-current" />
+                        Run Report
+                    </Button>
+                </div>
             </div>
 
             {/* Selected Filters Tags */}

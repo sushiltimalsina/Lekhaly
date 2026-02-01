@@ -13,10 +13,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import AdvancedFilterBar from "@/components/app/advanced-filter-bar";
+import { getSettings } from "@/lib/store/settings";
 
 export default function SalesListPage() {
     const router = useRouter();
     const { dateFormat } = useDateFormat();
+    const settings = getSettings();
 
     const [loading, setLoading] = React.useState(true);
     const [data, setData] = React.useState<any[]>([]);
@@ -69,6 +71,26 @@ export default function SalesListPage() {
         }
     ];
 
+    const columnOptions = [
+        { key: "date", label: "Date", defaultVisible: true },
+        { key: "invoiceNo", label: "Invoice No", defaultVisible: true },
+        { key: "refNo", label: "Reference No", defaultVisible: false },
+        { key: "party", label: "Customer Name", defaultVisible: true },
+        { key: "panVat", label: "PAN/VAT Number", defaultVisible: false },
+        { key: "items", label: "Item Details", defaultVisible: true },
+        { key: "qty", label: "Quantity", defaultVisible: true },
+        { key: "rate", label: "Rate", defaultVisible: true },
+        { key: "taxable", label: "Taxable Amount", defaultVisible: false },
+        { key: "nonTaxable", label: "Non Taxable Amount", defaultVisible: false },
+        { key: "amount", label: "Amount", defaultVisible: true },
+        { key: "notes", label: "Notes/Memo", defaultVisible: false },
+        { key: "status", label: "Status", defaultVisible: true },
+    ];
+
+    const [visibleColumns, setVisibleColumns] = React.useState<string[]>(
+        columnOptions.filter(c => c.defaultVisible).map(c => c.key)
+    );
+
     const handleFilterChange = (newFilters: any) => {
         setFilters(prev => ({
             ...prev,
@@ -77,6 +99,8 @@ export default function SalesListPage() {
             to: newFilters.dateRange?.to || null,
         }));
     };
+
+    const isVisible = (key: string) => visibleColumns.includes(key);
 
     return (
         <div className="space-y-6">
@@ -104,6 +128,9 @@ export default function SalesListPage() {
                 onSearch={(q) => setFilters(prev => ({ ...prev, q }))}
                 onFilterChange={handleFilterChange}
                 filterOptions={filterOptions}
+                defaultRange={settings.defaultDateRange}
+                columnOptions={columnOptions}
+                onVisibleColumnsChange={setVisibleColumns}
             />
 
             <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl shadow-slate-200/40 dark:border-slate-800 dark:bg-slate-950 dark:shadow-none">
@@ -120,19 +147,19 @@ export default function SalesListPage() {
                         <table className="w-full text-sm text-left min-w-[1400px]">
                             <thead>
                                 <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30">
-                                    <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Date</th>
-                                    <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Invoice No</th>
-                                    <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Ref No</th>
-                                    <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Customer Name</th>
-                                    <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">PAN/VAT</th>
-                                    <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Item Details</th>
-                                    <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Qty</th>
-                                    <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Rate</th>
-                                    <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Taxable</th>
-                                    <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Non-Taxable</th>
-                                    <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Amount</th>
-                                    <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Notes</th>
-                                    <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-center">Status</th>
+                                    {isVisible("date") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Date</th>}
+                                    {isVisible("invoiceNo") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Invoice No</th>}
+                                    {isVisible("refNo") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Reference No</th>}
+                                    {isVisible("party") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Customer Name</th>}
+                                    {isVisible("panVat") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Pan/Vat Number</th>}
+                                    {isVisible("items") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Item Details</th>}
+                                    {isVisible("qty") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Quantity</th>}
+                                    {isVisible("rate") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Rate</th>}
+                                    {isVisible("taxable") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Taxable Amount</th>}
+                                    {isVisible("nonTaxable") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Non Taxable Amount</th>}
+                                    {isVisible("amount") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Amount</th>}
+                                    {isVisible("notes") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Notes/Memo</th>}
+                                    {isVisible("status") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-center">Status</th>}
                                     <th className="px-6 py-4 w-10"></th>
                                 </tr>
                             </thead>
@@ -167,52 +194,76 @@ export default function SalesListPage() {
                                             onClick={() => router.push(`/vouchers/${item.voucherId || item.id}`)}
                                             className="group cursor-pointer hover:bg-slate-50/80 dark:hover:bg-slate-900/40 transition-colors"
                                         >
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="flex flex-col">
-                                                    <span className="font-bold text-slate-800 dark:text-slate-100">{dateInfo.primary}</span>
-                                                    <span className="text-[9px] text-slate-400 font-medium">{dateInfo.secondary}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap font-black text-slate-900 dark:text-white uppercase tracking-widest text-[11px]">
-                                                {item.invoiceNo || "DRAFT"}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-slate-400 text-xs">{item.referenceNo || item.voucher?.referenceNo || "—"}</td>
-                                            <td className="px-6 py-4">
-                                                <span className="font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">{item.partyName || item.party?.name || "Unknown Customer"}</span>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-500 font-medium">
-                                                {item.party?.panNumber || item.party?.vatNumber || "—"}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className="text-xs font-medium text-slate-600 dark:text-slate-400 truncate max-w-[200px] block" title={itemSummary}>
-                                                    {itemSummary}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-right font-bold text-slate-700 dark:text-slate-300">
-                                                {totalQty.toLocaleString()}
-                                            </td>
-                                            <td className="px-6 py-4 text-right text-slate-500 whitespace-nowrap">
-                                                {avgRate !== null ? <MoneyText value={avgRate} /> : <span className="text-[10px] italic">Mixed</span>}
-                                            </td>
-                                            <td className="px-6 py-4 text-right font-medium text-slate-900 dark:text-white">
-                                                <MoneyText value={taxableAmount} />
-                                            </td>
-                                            <td className="px-6 py-4 text-right text-slate-400">
-                                                <MoneyText value={nonTaxableAmount} />
-                                            </td>
-                                            <td className="px-6 py-4 text-right whitespace-nowrap">
-                                                <span className="font-black text-indigo-600 dark:text-indigo-400 text-base tabular-nums">
-                                                    <MoneyText value={Number(item.total || 0)} />
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className="text-xs text-slate-400 font-medium truncate max-w-[150px] block" title={item.voucher?.memo || item.memo}>
-                                                    {item.voucher?.memo || item.memo || "—"}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-center">
-                                                <StatusBadge status={item.status as DocStatus} />
-                                            </td>
+                                            {isVisible("date") && (
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className="flex flex-col">
+                                                        <span className="font-bold text-slate-800 dark:text-slate-100">{dateInfo.primary}</span>
+                                                        <span className="text-[9px] text-slate-400 font-medium">{dateInfo.secondary}</span>
+                                                    </div>
+                                                </td>
+                                            )}
+                                            {isVisible("invoiceNo") && (
+                                                <td className="px-6 py-4 whitespace-nowrap font-black text-slate-900 dark:text-white uppercase tracking-widest text-[11px]">
+                                                    {item.invoiceNo || "DRAFT"}
+                                                </td>
+                                            )}
+                                            {isVisible("refNo") && <td className="px-6 py-4 whitespace-nowrap text-slate-400 text-xs">{item.referenceNo || item.voucher?.referenceNo || "—"}</td>}
+                                            {isVisible("party") && (
+                                                <td className="px-6 py-4">
+                                                    <span className="font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">{item.partyName || item.party?.name || "Unknown Customer"}</span>
+                                                </td>
+                                            )}
+                                            {isVisible("panVat") && (
+                                                <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-500 font-medium">
+                                                    {item.party?.panNumber || item.party?.vatNumber || "—"}
+                                                </td>
+                                            )}
+                                            {isVisible("items") && (
+                                                <td className="px-6 py-4">
+                                                    <span className="text-xs font-medium text-slate-600 dark:text-slate-400 truncate max-w-[200px] block" title={itemSummary}>
+                                                        {itemSummary}
+                                                    </span>
+                                                </td>
+                                            )}
+                                            {isVisible("qty") && (
+                                                <td className="px-6 py-4 text-right font-bold text-slate-700 dark:text-slate-300">
+                                                    {totalQty.toLocaleString()}
+                                                </td>
+                                            )}
+                                            {isVisible("rate") && (
+                                                <td className="px-6 py-4 text-right text-slate-500 whitespace-nowrap">
+                                                    {avgRate !== null ? <MoneyText value={avgRate} /> : <span className="text-[10px] italic">Mixed</span>}
+                                                </td>
+                                            )}
+                                            {isVisible("taxable") && (
+                                                <td className="px-6 py-4 text-right font-medium text-slate-900 dark:text-white">
+                                                    <MoneyText value={taxableAmount} />
+                                                </td>
+                                            )}
+                                            {isVisible("nonTaxable") && (
+                                                <td className="px-6 py-4 text-right text-slate-400">
+                                                    <MoneyText value={nonTaxableAmount} />
+                                                </td>
+                                            )}
+                                            {isVisible("amount") && (
+                                                <td className="px-6 py-4 text-right whitespace-nowrap">
+                                                    <span className="font-black text-indigo-600 dark:text-indigo-400 text-base tabular-nums">
+                                                        <MoneyText value={Number(item.total || 0)} />
+                                                    </span>
+                                                </td>
+                                            )}
+                                            {isVisible("notes") && (
+                                                <td className="px-6 py-4">
+                                                    <span className="text-xs text-slate-400 font-medium truncate max-w-[150px] block" title={item.voucher?.memo || item.memo}>
+                                                        {item.voucher?.memo || item.memo || "—"}
+                                                    </span>
+                                                </td>
+                                            )}
+                                            {isVisible("status") && (
+                                                <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                    <StatusBadge status={item.status as DocStatus} />
+                                                </td>
+                                            )}
                                             <td className="px-6 py-4 text-right">
                                                 <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-indigo-400 group-hover:translate-x-1 transition-all" />
                                             </td>

@@ -17,10 +17,68 @@ export interface DateRange {
     to: Date | null;
 }
 
-export function getDateRange(key: DateRangeKey): DateRange {
+import NepaliDate from "nepali-date-converter";
+
+export function getDateRange(key: DateRangeKey, calendar: "ad" | "bs" = "ad"): DateRange {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
+    if (calendar === "bs") {
+        const nd = new NepaliDate(now);
+        const { year, month, date } = nd.getBS();
+
+        const toJSDate = (ndObj: NepaliDate) => {
+            const ad = ndObj.getAD();
+            return new Date(ad.year, ad.month, ad.date);
+        };
+
+        switch (key) {
+            case "today": {
+                const start = toJSDate(new NepaliDate(year, month, date));
+                const end = new Date(start);
+                end.setHours(23, 59, 59, 999);
+                return { from: start, to: end };
+            }
+            case "this_month": {
+                const start = toJSDate(new NepaliDate(year, month, 1));
+                const nextMonth = month === 11 ? 0 : month + 1;
+                const nextYear = month === 11 ? year + 1 : year;
+                const end = toJSDate(new NepaliDate(nextYear, nextMonth, 1));
+                end.setDate(end.getDate() - 1);
+                end.setHours(23, 59, 59, 999);
+                return { from: start, to: end };
+            }
+            case "this_quarter": {
+                const quarter = Math.floor(month / 3);
+                const startMonth = quarter * 3;
+                const endMonth = (quarter + 1) * 3;
+                const start = toJSDate(new NepaliDate(year, startMonth, 1));
+                const nextQStart = toJSDate(new NepaliDate(year, endMonth, 1));
+                nextQStart.setDate(nextQStart.getDate() - 1);
+                nextQStart.setHours(23, 59, 59, 999);
+                return { from: start, to: nextQStart };
+            }
+            case "this_year": {
+                const start = toJSDate(new NepaliDate(year, 0, 1));
+                const nextYearStart = toJSDate(new NepaliDate(year + 1, 0, 1));
+                nextYearStart.setDate(nextYearStart.getDate() - 1);
+                nextYearStart.setHours(23, 59, 59, 999);
+                return { from: start, to: nextYearStart };
+            }
+            case "yesterday": {
+                const prev = new Date(today);
+                prev.setDate(today.getDate() - 1);
+                const from = new Date(prev.getFullYear(), prev.getMonth(), prev.getDate());
+                const to = new Date(from);
+                to.setHours(23, 59, 59, 999);
+                return { from, to };
+            }
+            default:
+                break;
+        }
+    }
+
+    // Default AD Logic
     switch (key) {
         case "today": {
             const from = new Date(today);

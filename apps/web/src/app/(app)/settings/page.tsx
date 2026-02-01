@@ -11,7 +11,7 @@ import { Sun, Moon, Monitor } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getCurrencySettings, setCurrencySymbol, setNumberFormat, subscribeUi } from "@/lib/store/ui";
 import { MoneyText } from "@/components/app/money";
-import { getSettings, setCalendarPreference, subscribeSettings } from "@/lib/store/settings";
+import { getSettings, setCalendarPreference, setDefaultDateRange, subscribeSettings } from "@/lib/store/settings";
 import { listBillSundries, deleteBillSundry, type BillSundryRecord } from "@/lib/api/bill-sundries";
 import AddBillSundryDialog from "@/components/app/add-bill-sundry-dialog";
 import { Calculator, Plus, Trash2, Settings2 } from "lucide-react";
@@ -34,6 +34,7 @@ export default function SettingsPage() {
   const [currencySymbol, setCurrencySymbolState] = React.useState(getCurrencySettings().currencySymbol);
   const [numberFormat, setNumberFormatState] = React.useState(getCurrencySettings().numberFormat);
   const [calendarPreference, setCalendarPreferenceState] = React.useState<"BS" | "AD">("BS");
+  const [defaultDateRange, setDefaultDateRangeState] = React.useState<string>("this_month");
 
   const [form, setForm] = React.useState<CompanyForm>({
     companyName: "",
@@ -65,9 +66,12 @@ export default function SettingsPage() {
   }, []);
 
   React.useEffect(() => {
-    setCalendarPreferenceState(getSettings().calendarPreference);
+    const s = getSettings();
+    setCalendarPreferenceState(s.calendarPreference);
+    setDefaultDateRangeState(s.defaultDateRange);
     const unsubscribe = subscribeSettings((next) => {
       setCalendarPreferenceState(next.calendarPreference);
+      setDefaultDateRangeState(next.defaultDateRange);
     });
     return () => { unsubscribe(); };
   }, []);
@@ -354,6 +358,34 @@ export default function SettingsPage() {
                   <Monitor className="h-5 w-5" />
                   <span>System</span>
                 </button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle>Default Date Range</CardTitle>
+              <CardDescription>
+                Select the default period for list pages
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {(["today", "this_week", "this_month", "this_quarter", "this_year"] as const).map((range) => (
+                  <button
+                    key={range}
+                    type="button"
+                    onClick={() => setDefaultDateRange(range)}
+                    className={cn(
+                      "rounded-xl border px-4 py-3 text-xs font-bold uppercase tracking-widest transition-all",
+                      defaultDateRange === range
+                        ? "border-primary bg-primary text-primary-foreground shadow-md font-black"
+                        : "bg-background hover:bg-muted text-slate-500"
+                    )}
+                  >
+                    {range.replace("_", " ")}
+                  </button>
+                ))}
               </div>
             </CardContent>
           </Card>

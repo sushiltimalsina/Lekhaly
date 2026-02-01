@@ -668,19 +668,13 @@ export class VouchersService {
       orderBy: [{ voucherDate: "desc" }, { createdAt: "desc" }],
       skip: filters.skip || 0,
       take: filters.take || 50,
-      select: {
-        id: true,
-        voucherNumber: true,
-        voucherDate: true,
-        voucherDateBs: true,
-        voucherType: true,
-        status: true,
-        partyId: true,
-        party: { select: { id: true, name: true } },
-        referenceNo: true,
-        memo: true,
-        createdAt: true,
-        postedAt: true
+      include: {
+        party: { select: { id: true, name: true, panNumber: true, vatNumber: true } },
+        lines: {
+          include: {
+            item: { select: { id: true, name: true, code: true } }
+          }
+        }
       }
     });
   }
