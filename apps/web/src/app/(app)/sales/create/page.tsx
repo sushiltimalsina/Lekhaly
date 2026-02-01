@@ -34,7 +34,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { toBs } from "@/lib/dates/bs";
-import { useRouter } from "next/router";
+import { useRouter } from "next/navigation";
 
 type Line = { itemId: string; qty: string; rate: string; description?: string };
 type BillSundryRow = { id: string; sundryId?: string; name: string; type: "add" | "less"; ratePct: string; manualAmount?: string; isManual?: boolean };
