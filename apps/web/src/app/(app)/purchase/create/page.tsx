@@ -69,6 +69,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
     onChange: (id: string, opt?: T) => void;
     options: T[];
     getLabel?: (opt: T) => string;
+    getDetail?: (opt: T) => string | undefined;
     leftIcon?: React.ReactNode;
     className?: string;
     buttonClassName?: string;
@@ -86,6 +87,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
         onChange,
         options,
         getLabel,
+        getDetail,
         leftIcon,
         className,
         buttonClassName,
@@ -280,7 +282,14 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                                                 selected && !active && "bg-slate-50 dark:bg-slate-800/30"
                                             )}
                                         >
-                                            <span className="min-w-0 flex-1 truncate font-medium">{labelText}</span>
+                                            <div className="flex flex-1 items-center justify-between gap-2 overflow-hidden">
+                                                <span className="truncate font-medium">{labelText}</span>
+                                                {getDetail && getDetail(o) && (
+                                                    <span className={cn("text-xs whitespace-nowrap", selected ? "text-indigo-600/80" : "text-muted-foreground")}>
+                                                        {getDetail(o)}
+                                                    </span>
+                                                )}
+                                            </div>
                                             {selected ? <Check className="h-4 w-4 text-indigo-600" /> : null}
                                         </button>
                                     );
@@ -438,7 +447,15 @@ export default function PurchaseCreatePage() {
                 // Auto-link default sundries if they exist in the options
                 setBillSundries(prev => prev.map(row => {
                     if (row.sundryId) return row;
-                    const match = opts.find(o => o.name.toLowerCase() === row.name.toLowerCase());
+                    // Try exact match first, then partial match
+                    let match = opts.find(o => o.name.toLowerCase() === row.name.toLowerCase());
+                    if (!match && row.id === "vat") {
+                        match = opts.find(o => o.name.toLowerCase().includes("vat") || o.name.toLowerCase().includes("tax"));
+                    }
+                    if (!match && row.id === "discount") {
+                        match = opts.find(o => o.name.toLowerCase().includes("discount"));
+                    }
+
                     if (match) {
                         return {
                             ...row,
@@ -590,12 +607,12 @@ export default function PurchaseCreatePage() {
 
         // Validate and Add Sundry lines
         billSundryComputed.rows.forEach(r => {
+            if (Math.abs(r.amount) < 0.01 && !r.isManual) return; // Skip zero amount rows unless manual
+
             // Validate Sundry Name/Selection
             if (!r.sundryId) {
-                throw new Error(`Bill Sundry '${r.name || "Unknown"}': Name is required.`);
+                throw new Error(`Bill Sundry '${r.name || "Unknown"}' is not linked to a generic ledger account. Please select a valid sundry from the dropdown.`);
             }
-
-            if (Math.abs(r.amount) < 0.01 && !r.isManual) return; // Skip zero amount rows unless manual? Actually usually skip 0 effect. 
             // Wait, if validation is mandatory "if column is added", we should throw error even if amount is 0?
             // User requirement: "make ... sundry name mandatory if column is added"
             // So if checking sundryId above handles it.
@@ -917,8 +934,12 @@ export default function PurchaseCreatePage() {
                                                             }}
                                                             options={items}
                                                             getLabel={(it) => {
-                                                                const code = it.hsCode ? ` (${it.hsCode})` : "";
-                                                                return `${it.name ?? "Item"}${code}`;
+                                                                const sku = it.sku ? ` (${it.sku})` : "";
+                                                                return `${it.name}${sku}`;
+                                                            }}
+                                                            getDetail={(it) => {
+                                                                if (it.type === "services") return "Service";
+                                                                return `${it.stock ?? 0} ${it.unit ?? "Units"}`;
                                                             }}
                                                             onEnterNext={() => safeFocus(rowRefs.current.qty[idx])}
                                                             onKeyDownCustom={(e) => {
@@ -1226,7 +1247,6 @@ export default function PurchaseCreatePage() {
                                                         getLabel={(s) => s.name}
                                                         buttonClassName="h-10 rounded-xl pr-[110px]"
                                                         emptyText="No sundries found"
-                                                        disabled={r.id === "vat" || r.id === "discount"}
                                                     />
                                                     {!r.sundryId && r.id !== "discount" && r.id !== "vat" && (
                                                         <Button

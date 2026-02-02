@@ -116,19 +116,28 @@ export default function VouchersListPage() {
       <PageHeader
         title="Vouchers"
         description="View and manage all financial transactions and vouchers."
-        actions={
-          <div className="flex items-center gap-2">
-            <Button onClick={() => router.push("/journals/create")} variant="outline" className="rounded-2xl border-2 hover:bg-slate-50">
-              <Plus className="mr-2 h-4 w-4" />
-              New Journal
-            </Button>
-            <Button onClick={() => router.push("/receipts/create")} className="rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20">
-              <Plus className="mr-2 h-4 w-4" />
-              Receipt
-            </Button>
-          </div>
-        }
       />
+
+      {/* System Navigation/Actions Bar */}
+      <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-100/50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800">
+        <Button onClick={() => router.push("/journals/create")} variant="ghost" className="rounded-xl hover:bg-white dark:hover:bg-slate-700 h-9 font-medium text-xs">
+          <Plus className="mr-2 h-3.5 w-3.5" />
+          New Journal
+        </Button>
+        <div className="h-4 w-px bg-slate-300 dark:bg-slate-700 mx-1" />
+        <Button onClick={() => router.push("/sales/create")} variant="ghost" className="rounded-xl hover:bg-white dark:hover:bg-slate-700 h-9 font-medium text-xs text-slate-600 dark:text-slate-300">
+          Sales Invoice
+        </Button>
+        <Button onClick={() => router.push("/purchases/create")} variant="ghost" className="rounded-xl hover:bg-white dark:hover:bg-slate-700 h-9 font-medium text-xs text-slate-600 dark:text-slate-300">
+          Purchase Bill
+        </Button>
+        <Button onClick={() => router.push("/receipts/create")} variant="ghost" className="rounded-xl hover:bg-white dark:hover:bg-slate-700 h-9 font-medium text-xs text-slate-600 dark:text-slate-300">
+          Receipt
+        </Button>
+        <Button onClick={() => router.push("/payments/create")} variant="ghost" className="rounded-xl hover:bg-white dark:hover:bg-slate-700 h-9 font-medium text-xs text-slate-600 dark:text-slate-300">
+          Payment
+        </Button>
+      </div>
 
       <AdvancedFilterBar
         onSearch={(q) => setFilters(prev => ({ ...prev, q }))}
