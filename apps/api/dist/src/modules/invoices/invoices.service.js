@@ -333,55 +333,60 @@ let InvoicesService = class InvoicesService {
         };
     }
     async createDraft(user, input) {
-        const preview = await this.preview(user, input);
-        const totals = preview.totals;
-        return this.prisma.invoice.create({
-            data: {
-                companyId: user.companyId,
-                type: input.type,
-                partyId: input.partyId,
-                date: preview.date,
-                dateBs: preview.dateBs || null,
-                dueDate: preview.dueDate,
-                dueDateBs: preview.dueDateBs || null,
-                referenceNo: preview.referenceNo,
-                receivableAccountId: input.receivableAccountId,
-                subtotal: totals.subtotal,
-                vatAmount: totals.vatAmount,
-                total: totals.total,
-                status: "draft",
-                items: {
-                    create: preview.items.map((item) => ({
-                        itemId: item.itemId,
-                        description: item.description,
-                        qty: new client_1.Prisma.Decimal(item.qty),
-                        rate: new client_1.Prisma.Decimal(item.rate),
-                        amount: item.amount,
-                        taxCodeId: item.taxCodeId,
-                        taxAmount: item.taxAmount,
-                        taxes: item.taxBreakdown?.length
-                            ? {
-                                create: item.taxBreakdown.map((t) => ({
-                                    taxCodeId: t.taxCodeId,
-                                    taxAmount: t.taxAmount
-                                }))
-                            }
-                            : undefined
-                    }))
+        try {
+            const preview = await this.preview(user, input);
+            const totals = preview.totals;
+            return await this.prisma.invoice.create({
+                data: {
+                    companyId: user.companyId,
+                    type: input.type,
+                    partyId: input.partyId,
+                    date: preview.date,
+                    dateBs: preview.dateBs || null,
+                    dueDate: preview.dueDate,
+                    dueDateBs: preview.dueDateBs || null,
+                    referenceNo: preview.referenceNo,
+                    receivableAccountId: input.receivableAccountId,
+                    subtotal: totals.subtotal,
+                    vatAmount: totals.vatAmount,
+                    total: totals.total,
+                    status: "draft",
+                    items: {
+                        create: preview.items.map((item) => ({
+                            itemId: item.itemId,
+                            description: item.description,
+                            qty: new client_1.Prisma.Decimal(item.qty),
+                            rate: new client_1.Prisma.Decimal(item.rate),
+                            amount: item.amount,
+                            taxCodeId: item.taxCodeId,
+                            taxAmount: item.taxAmount,
+                            taxes: item.taxBreakdown?.length
+                                ? {
+                                    create: item.taxBreakdown.map((t) => ({
+                                        taxCodeId: t.taxCodeId,
+                                        taxAmount: t.taxAmount
+                                    }))
+                                }
+                                : undefined
+                        }))
+                    },
+                    sundries: {
+                        create: preview.sundries.map((s) => ({
+                            billSundryId: s.billSundryId,
+                            name: s.name,
+                            type: s.type,
+                            rate: s.rate ? new client_1.Prisma.Decimal(s.rate) : null,
+                            amount: s.amount,
+                            accountId: s.accountId
+                        }))
+                    }
                 },
-                sundries: {
-                    create: preview.sundries.map((s) => ({
-                        billSundryId: s.billSundryId,
-                        name: s.name,
-                        type: s.type,
-                        rate: s.rate ? new client_1.Prisma.Decimal(s.rate) : null,
-                        amount: s.amount,
-                        accountId: s.accountId
-                    }))
-                }
-            },
-            include: { items: true, sundries: true }
-        });
+                include: { items: true, sundries: true }
+            });
+        }
+        catch (e) {
+            throw new common_1.BadRequestException(e.message ?? "Failed to save draft");
+        }
     }
     async post(user, invoiceId) {
         const invoice = await this.prisma.invoice.findFirst({

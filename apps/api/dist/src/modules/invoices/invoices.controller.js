@@ -65,7 +65,6 @@ __decorate([
 __decorate([
     (0, common_1.Post)(":id/post"),
     (0, auth_decorator_1.RequirePerm)("voucher.post"),
-    (0, auth_decorator_1.RequireStep)("sensitive"),
     __param(0, (0, auth_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Param)("id")),
     __metadata("design:type", Function),
@@ -75,7 +74,6 @@ __decorate([
 __decorate([
     (0, common_1.Post)(":id/void"),
     (0, auth_decorator_1.RequirePerm)("voucher.void"),
-    (0, auth_decorator_1.RequireStep)("sensitive"),
     __param(0, (0, auth_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Param)("id")),
     __metadata("design:type", Function),

@@ -17,6 +17,7 @@ export declare const CreateInvoiceDraftSchema: z.ZodObject<{
     dateBs: z.ZodOptional<z.ZodString>;
     dueDate: z.ZodOptional<z.ZodCoercedDate<unknown>>;
     dueDateBs: z.ZodOptional<z.ZodString>;
+    referenceNo: z.ZodOptional<z.ZodString>;
     receivableAccountId: z.ZodString;
     items: z.ZodArray<z.ZodObject<{
         itemId: z.ZodOptional<z.ZodString>;

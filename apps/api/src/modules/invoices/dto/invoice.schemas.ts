@@ -16,6 +16,7 @@ export const CreateInvoiceDraftSchema = z.object({
   dateBs: z.string().trim().max(20).optional(),
   dueDate: z.coerce.date().optional(),
   dueDateBs: z.string().trim().max(20).optional(),
+  referenceNo: z.string().trim().max(100).optional(),
   receivableAccountId: z.string().uuid(),
   items: z.array(InvoiceItemSchema).min(1),
   sundries: z.array(z.object({

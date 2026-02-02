@@ -7,20 +7,20 @@ export declare class InvoicesController {
         items: {
             id: string;
             createdAt: Date;
-            description: string | null;
             rate: import("@prisma/client/runtime/client").Decimal;
-            taxCodeId: string | null;
             itemId: string | null;
-            taxAmount: import("@prisma/client/runtime/client").Decimal;
+            taxCodeId: string | null;
+            description: string | null;
             qty: import("@prisma/client/runtime/client").Decimal;
             amount: import("@prisma/client/runtime/client").Decimal;
+            taxAmount: import("@prisma/client/runtime/client").Decimal;
             invoiceId: string;
         }[];
         sundries: {
             id: string;
-            name: string;
-            createdAt: Date;
             type: string;
+            createdAt: Date;
+            name: string;
             rate: import("@prisma/client/runtime/client").Decimal | null;
             accountId: string | null;
             amount: import("@prisma/client/runtime/client").Decimal;
@@ -29,23 +29,23 @@ export declare class InvoicesController {
         }[];
     } & {
         id: string;
-        companyId: string;
-        status: string;
-        createdAt: Date;
-        updatedAt: Date;
-        type: string;
+        invoiceNo: string | null;
         referenceNo: string | null;
-        partyId: string;
-        voucherId: string | null;
+        type: string;
         date: Date;
         dateBs: string | null;
         dueDate: Date | null;
         dueDateBs: string | null;
-        receivableAccountId: string;
-        invoiceNo: string | null;
         subtotal: import("@prisma/client/runtime/client").Decimal;
         vatAmount: import("@prisma/client/runtime/client").Decimal;
         total: import("@prisma/client/runtime/client").Decimal;
+        status: string;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+        voucherId: string | null;
+        partyId: string;
+        receivableAccountId: string;
     }>;
     preview(user: AuthUser, body: any): Promise<{
         totals: {
@@ -53,7 +53,7 @@ export declare class InvoicesController {
             vatAmount: import("@prisma/client/runtime/client").Decimal;
             total: import("@prisma/client/runtime/client").Decimal;
         };
-        voucherType: "sales_invoice" | "sales_return";
+        voucherType: "sales_return" | "sales_invoice";
         voucherLines: {
             accountId: string;
             debit: import("@prisma/client/runtime/client").Decimal;
@@ -93,45 +93,55 @@ export declare class InvoicesController {
     }>;
     post(user: AuthUser, id: string): Promise<{
         id: string;
-        companyId: string;
-        status: string;
-        createdAt: Date;
-        updatedAt: Date;
-        type: string;
+        invoiceNo: string | null;
         referenceNo: string | null;
-        partyId: string;
-        voucherId: string | null;
+        type: string;
         date: Date;
         dateBs: string | null;
         dueDate: Date | null;
         dueDateBs: string | null;
-        receivableAccountId: string;
-        invoiceNo: string | null;
         subtotal: import("@prisma/client/runtime/client").Decimal;
         vatAmount: import("@prisma/client/runtime/client").Decimal;
         total: import("@prisma/client/runtime/client").Decimal;
+        status: string;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+        voucherId: string | null;
+        partyId: string;
+        receivableAccountId: string;
     }>;
     void(user: AuthUser, id: string): Promise<{
         id: string;
-        companyId: string;
-        status: string;
-        createdAt: Date;
-        updatedAt: Date;
-        type: string;
+        invoiceNo: string | null;
         referenceNo: string | null;
-        partyId: string;
-        voucherId: string | null;
+        type: string;
         date: Date;
         dateBs: string | null;
         dueDate: Date | null;
         dueDateBs: string | null;
-        receivableAccountId: string;
-        invoiceNo: string | null;
         subtotal: import("@prisma/client/runtime/client").Decimal;
         vatAmount: import("@prisma/client/runtime/client").Decimal;
         total: import("@prisma/client/runtime/client").Decimal;
+        status: string;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+        voucherId: string | null;
+        partyId: string;
+        receivableAccountId: string;
     }>;
     list(user: AuthUser, query: any): Promise<({
+        voucher: {
+            referenceNo: string | null;
+            memo: string | null;
+        } | null;
+        party: {
+            id: string;
+            name: string;
+            panNumber: string | null;
+            vatNumber: string | null;
+        };
         items: ({
             item: {
                 id: string;
@@ -140,52 +150,42 @@ export declare class InvoicesController {
         } & {
             id: string;
             createdAt: Date;
-            description: string | null;
             rate: import("@prisma/client/runtime/client").Decimal;
-            taxCodeId: string | null;
             itemId: string | null;
-            taxAmount: import("@prisma/client/runtime/client").Decimal;
+            taxCodeId: string | null;
+            description: string | null;
             qty: import("@prisma/client/runtime/client").Decimal;
             amount: import("@prisma/client/runtime/client").Decimal;
+            taxAmount: import("@prisma/client/runtime/client").Decimal;
             invoiceId: string;
         })[];
-        party: {
-            id: string;
-            name: string;
-            panNumber: string | null;
-            vatNumber: string | null;
-        };
-        voucher: {
-            referenceNo: string | null;
-            memo: string | null;
-        } | null;
     } & {
         id: string;
-        companyId: string;
-        status: string;
-        createdAt: Date;
-        updatedAt: Date;
-        type: string;
+        invoiceNo: string | null;
         referenceNo: string | null;
-        partyId: string;
-        voucherId: string | null;
+        type: string;
         date: Date;
         dateBs: string | null;
         dueDate: Date | null;
         dueDateBs: string | null;
-        receivableAccountId: string;
-        invoiceNo: string | null;
         subtotal: import("@prisma/client/runtime/client").Decimal;
         vatAmount: import("@prisma/client/runtime/client").Decimal;
         total: import("@prisma/client/runtime/client").Decimal;
+        status: string;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+        voucherId: string | null;
+        partyId: string;
+        receivableAccountId: string;
     })[]>;
     getById(user: AuthUser, id: string): Promise<{
         items: any[];
         sundries: {
             id: string;
-            name: string;
-            createdAt: Date;
             type: string;
+            createdAt: Date;
+            name: string;
             rate: import("@prisma/client/runtime/client").Decimal | null;
             accountId: string | null;
             amount: import("@prisma/client/runtime/client").Decimal;
@@ -193,22 +193,22 @@ export declare class InvoicesController {
             invoiceId: string;
         }[];
         id: string;
-        companyId: string;
-        status: string;
-        createdAt: Date;
-        updatedAt: Date;
-        type: string;
+        invoiceNo: string | null;
         referenceNo: string | null;
-        partyId: string;
-        voucherId: string | null;
+        type: string;
         date: Date;
         dateBs: string | null;
         dueDate: Date | null;
         dueDateBs: string | null;
-        receivableAccountId: string;
-        invoiceNo: string | null;
         subtotal: import("@prisma/client/runtime/client").Decimal;
         vatAmount: import("@prisma/client/runtime/client").Decimal;
         total: import("@prisma/client/runtime/client").Decimal;
+        status: string;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+        voucherId: string | null;
+        partyId: string;
+        receivableAccountId: string;
     }>;
 }

@@ -9,7 +9,7 @@ import { InvoicesService } from "./invoices.service";
 @Controller("invoices")
 @Audit({ entityType: "invoice", idParam: "id" })
 export class InvoicesController {
-  constructor(private invoices: InvoicesService) {}
+  constructor(private invoices: InvoicesService) { }
 
   @Post("draft")
   @RequirePerm("voucher.draft.create")
@@ -31,14 +31,12 @@ export class InvoicesController {
 
   @Post(":id/post")
   @RequirePerm("voucher.post")
-  @RequireStep("sensitive")
   post(@CurrentUser() user: AuthUser, @Param("id") id: string) {
     return this.invoices.post(user, id);
   }
 
   @Post(":id/void")
   @RequirePerm("voucher.void")
-  @RequireStep("sensitive")
   void(@CurrentUser() user: AuthUser, @Param("id") id: string) {
     return this.invoices.void(user, id);
   }
