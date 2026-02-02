@@ -3,11 +3,28 @@ import { VouchersService } from "./vouchers.service";
 export declare class VouchersController {
     private vouchers;
     constructor(vouchers: VouchersService);
-    createDraft(user: AuthUser, body: any, idempotencyKey?: string): Promise<import("@prisma/client/runtime/client").JsonValue | {
+    createDraft(user: AuthUser, body: any, idempotencyKey?: string): Promise<import("@prisma/client/runtime/client").JsonValue | ({
+        lines: {
+            id: string;
+            createdAt: Date;
+            companyId: string;
+            partyId: string | null;
+            lineNo: number;
+            description: string | null;
+            debit: import("@prisma/client/runtime/client").Decimal;
+            credit: import("@prisma/client/runtime/client").Decimal;
+            taxAmount: import("@prisma/client/runtime/client").Decimal;
+            accountId: string;
+            itemId: string | null;
+            taxCodeId: string | null;
+            voucherId: string;
+        }[];
+    } & {
         id: string;
         voucherType: import("@prisma/client").$Enums.VoucherType;
         status: import("@prisma/client").$Enums.VoucherStatus;
         voucherNumber: string | null;
+        referenceNo: string | null;
         voucherDate: Date;
         voucherDateBs: string | null;
         memo: string | null;
@@ -23,7 +40,7 @@ export declare class VouchersController {
         voidedByUserId: string | null;
         reversalOfVoucherId: string | null;
         revisionOfVoucherId: string | null;
-    }>;
+    })>;
     updateDraft(user: AuthUser, id: string, body: any): Promise<({
         lines: {
             id: string;
@@ -45,6 +62,7 @@ export declare class VouchersController {
         voucherType: import("@prisma/client").$Enums.VoucherType;
         status: import("@prisma/client").$Enums.VoucherStatus;
         voucherNumber: string | null;
+        referenceNo: string | null;
         voucherDate: Date;
         voucherDateBs: string | null;
         memo: string | null;
@@ -82,6 +100,7 @@ export declare class VouchersController {
         voucherType: import("@prisma/client").$Enums.VoucherType;
         status: import("@prisma/client").$Enums.VoucherStatus;
         voucherNumber: string | null;
+        referenceNo: string | null;
         voucherDate: Date;
         voucherDateBs: string | null;
         memo: string | null;
@@ -105,11 +124,40 @@ export declare class VouchersController {
         totalCredit: import("@prisma/client/runtime/client").Decimal;
         balanced: boolean;
     }>;
-    list(user: AuthUser, query: any): Promise<{
+    list(user: AuthUser, query: any): Promise<({
+        party: {
+            id: string;
+            name: string;
+            panNumber: string | null;
+            vatNumber: string | null;
+        } | null;
+        lines: ({
+            item: {
+                id: string;
+                name: string;
+                sku: string | null;
+            } | null;
+        } & {
+            id: string;
+            createdAt: Date;
+            companyId: string;
+            partyId: string | null;
+            lineNo: number;
+            description: string | null;
+            debit: import("@prisma/client/runtime/client").Decimal;
+            credit: import("@prisma/client/runtime/client").Decimal;
+            taxAmount: import("@prisma/client/runtime/client").Decimal;
+            accountId: string;
+            itemId: string | null;
+            taxCodeId: string | null;
+            voucherId: string;
+        })[];
+    } & {
         id: string;
         voucherType: import("@prisma/client").$Enums.VoucherType;
         status: import("@prisma/client").$Enums.VoucherStatus;
         voucherNumber: string | null;
+        referenceNo: string | null;
         voucherDate: Date;
         voucherDateBs: string | null;
         memo: string | null;
@@ -125,7 +173,7 @@ export declare class VouchersController {
         voidedByUserId: string | null;
         reversalOfVoucherId: string | null;
         revisionOfVoucherId: string | null;
-    }[]>;
+    })[]>;
     listAttachments(user: AuthUser, id: string): Promise<({
         uploadedByUser: {
             id: string;
@@ -186,6 +234,7 @@ export declare class VouchersController {
         voucherType: import("@prisma/client").$Enums.VoucherType;
         status: import("@prisma/client").$Enums.VoucherStatus;
         voucherNumber: string | null;
+        referenceNo: string | null;
         voucherDate: Date;
         voucherDateBs: string | null;
         memo: string | null;

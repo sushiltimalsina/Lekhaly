@@ -672,7 +672,7 @@ export class VouchersService {
         party: { select: { id: true, name: true, panNumber: true, vatNumber: true } },
         lines: {
           include: {
-            item: { select: { id: true, name: true, code: true } }
+            item: { select: { id: true, name: true, sku: true } }
           }
         }
       }
