@@ -151,16 +151,38 @@ let ItemsService = class ItemsService {
         const where = { companyId: user.companyId };
         if (filters.isActive !== undefined)
             where.isActive = filters.isActive;
-        if (filters.q)
-            where.name = { contains: filters.q, mode: "insensitive" };
+        if (filters.q) {
+            where.OR = [
+                { name: { contains: filters.q, mode: "insensitive" } },
+                { sku: { contains: filters.q, mode: "insensitive" } }
+            ];
+        }
         if (filters.type)
             where.type = filters.type;
-        return this.prisma.item.findMany({
+        const items = await this.prisma.item.findMany({
             where,
             orderBy: { name: "asc" },
             skip: filters.skip || 0,
             take: filters.take || 1000
         });
+        const ledger = await this.prisma.stockLedger.groupBy({
+            by: ["itemId"],
+            where: { companyId: user.companyId },
+            _sum: {
+                qtyIn: true,
+                qtyOut: true
+            }
+        });
+        const stockMap = new Map();
+        for (const group of ledger) {
+            const inQty = Number(group._sum.qtyIn || 0);
+            const outQty = Number(group._sum.qtyOut || 0);
+            stockMap.set(group.itemId, inQty - outQty);
+        }
+        return items.map((item) => ({
+            ...item,
+            stock: item.type === "services" ? 0 : (stockMap.get(item.id) || 0)
+        }));
     }
     async remove(user, id) {
         const item = await this.prisma.item.findFirst({ where: { id, companyId: user.companyId } });

@@ -69,6 +69,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
   onChange: (id: string, opt?: T) => void;
   options: T[];
   getLabel?: (opt: T) => string;
+  getDetail?: (opt: T) => string | undefined;
   leftIcon?: React.ReactNode;
   className?: string;
   buttonClassName?: string;
@@ -86,6 +87,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
     onChange,
     options,
     getLabel,
+    getDetail,
     leftIcon,
     className,
     buttonClassName,
@@ -274,6 +276,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
               {filtered.length ? (
                 filtered.map((o, idx) => {
                   const labelText = getLabel ? getLabel(o) : o.name ?? o.id;
+                  const detailText = getDetail ? getDetail(o) : undefined;
                   const isSelected = o.id === valueId;
                   const isActive = idx === activeIndex;
                   return (
@@ -296,7 +299,14 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                         isSelected && "text-primary font-medium"
                       )}
                     >
-                      <span className="min-w-0 flex-1 truncate">{labelText}</span>
+                      <div className="flex flex-1 items-center justify-between gap-2 overflow-hidden">
+                        <span className="truncate">{labelText}</span>
+                        {detailText ? (
+                          <span className={cn("text-xs whitespace-nowrap", isSelected ? "text-primary/80" : "text-muted-foreground")}>
+                            {detailText}
+                          </span>
+                        ) : null}
+                      </div>
                       {isSelected ? <Check className="h-4 w-4 text-primary" /> : null}
                     </button>
                   );
@@ -591,6 +601,11 @@ export default function SalesCreatePage() {
         }
         if (isNaN(rate) || rate <= 0) {
           throw new Error(`Line ${idx + 1}: Rate is required and must be greater than zero.`);
+        }
+
+        const item = items.find(i => i.id === l.itemId);
+        if (item && item.type !== 'services' && (item.stock !== undefined) && qty > item.stock) {
+          throw new Error(`Line ${idx + 1}: Quantity exceeds available stock (${item.stock}).`);
         }
 
         return {
@@ -917,8 +932,12 @@ export default function SalesCreatePage() {
                               onChange={(id) => updateLine(idx, { itemId: id })}
                               options={items}
                               getLabel={(it) => {
-                                const code = it.hsCode ? ` (${it.hsCode})` : "";
-                                return `${it.name ?? "Item"}${code}`;
+                                const sku = it.sku ? ` (${it.sku})` : "";
+                                return `${it.name}${sku}`;
+                              }}
+                              getDetail={(it) => {
+                                if (it.type === "services") return "Service";
+                                return `${it.stock ?? 0} ${it.unit ?? "Units"}`;
                               }}
                               onEnterNext={() => safeFocus(rowRefs.current.qty[idx])}
                               onKeyDownCustom={(e) => {
@@ -977,8 +996,14 @@ export default function SalesCreatePage() {
                             step="0.01"
                             value={line.qty}
                             onChange={(e) => {
-                              updateLine(idx, { qty: e.target.value });
-                              setLineErrors(prev => ({ ...prev, [idx]: { ...prev[idx], qty: undefined } }));
+                              const val = e.target.value;
+                              const currentItem = items.find(i => i.id === line.itemId);
+                              if (currentItem && currentItem.type !== "services" && Number(val) > (currentItem.stock ?? 0)) {
+                                setLineErrors(prev => ({ ...prev, [idx]: { ...prev[idx], qty: "Exceeds stock" } }));
+                              } else {
+                                setLineErrors(prev => ({ ...prev, [idx]: { ...prev[idx], qty: undefined } }));
+                              }
+                              updateLine(idx, { qty: val });
                             }}
                             onKeyDown={(e) => {
                               if (e.key === "ArrowRight") {

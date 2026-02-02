@@ -34,6 +34,7 @@ export type ItemRecord = {
   expenseAccountId?: string | null;
   taxCodeId?: string | null;
   isActive?: boolean;
+  stock?: number;
 };
 
 export async function createItem(input: CreateItemInput) {
