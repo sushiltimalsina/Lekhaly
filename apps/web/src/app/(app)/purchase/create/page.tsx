@@ -403,6 +403,8 @@ export default function PurchaseCreatePage() {
     const ui = useUiState();
     const router = useRouter();
     const searchParams = useSearchParams();
+    const [isEditMode, setIsEditMode] = React.useState(true); // false when viewing existing voucher
+    const [voucherStatus, setVoucherStatus] = React.useState<string | null>(null);
 
     React.useEffect(() => {
         const now = new Date();
@@ -471,7 +473,9 @@ export default function PurchaseCreatePage() {
                 // Load Edit ID if present
                 const editId = searchParams.get("id");
                 if (editId) {
+                    setIsEditMode(false); // Start in view mode for existing vouchers
                     getVoucher(editId).then(v => {
+                        setVoucherStatus(v.status || null);
                         // Populate Form
                         setForm(f => ({
                             ...f,
@@ -750,7 +754,27 @@ export default function PurchaseCreatePage() {
     return (
         <div className="space-y-6">
             <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                <PageHeader title="New Purchase Invoice" description="Fill in the details below to record a new purchase." />
+                <PageHeader
+                    title={searchParams.get("id") ? (isEditMode ? "Edit Purchase Invoice" : "View Purchase Invoice") : "New Purchase Invoice"}
+                    description={
+                        searchParams.get("id")
+                            ? `${voucherStatus ? `Status: ${voucherStatus.charAt(0).toUpperCase() + voucherStatus.slice(1)}. ` : ""}${isEditMode ? "Modify the details below." : "Click Edit to modify this invoice."}`
+                            : "Fill in the details below to record a new purchase."
+                    }
+                    actions={
+                        !isEditMode && searchParams.get("id") ? (
+                            <Button
+                                onClick={() => setIsEditMode(true)}
+                                className="rounded-2xl bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-500/20 h-11 px-8 font-black text-xs uppercase tracking-widest transition-all active:scale-95 border-none"
+                            >
+                                <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                                Edit
+                            </Button>
+                        ) : undefined
+                    }
+                />
 
                 {/* Alerts */}
                 <div className="mb-4 grid gap-3">
@@ -1592,12 +1616,13 @@ export default function PurchaseCreatePage() {
                         </div>
                     </div>
                 </section>
-            </div>
+            </div >
 
             {/* Dialogs */}
-            <AddItemDialog
+            < AddItemDialog
                 open={addItemOpen}
-                onClose={() => setAddItemOpen(false)}
+                onClose={() => setAddItemOpen(false)
+                }
                 onSuccess={(newItem) => {
                     setItems(prev => [...prev, newItem]);
                     if (activeLineIdx !== null) {
@@ -1609,7 +1634,7 @@ export default function PurchaseCreatePage() {
                     }
                 }}
             />
-            <AddVendorDialog
+            < AddVendorDialog
                 open={addVendorOpen}
                 onClose={() => setAddVendorOpen(false)}
                 onSuccess={(newVendor) => {
@@ -1618,7 +1643,7 @@ export default function PurchaseCreatePage() {
                     setTimeout(() => safeFocus(rowRefs.current.select[0]), 50);
                 }}
             />
-            <AddBillSundryDialog
+            < AddBillSundryDialog
                 open={addSundryOpen}
                 onClose={() => setAddSundryOpen(false)}
                 onSuccess={(newSundry) => {
@@ -1636,6 +1661,6 @@ export default function PurchaseCreatePage() {
                     }
                 }}
             />
-        </div>
+        </div >
     );
 }
