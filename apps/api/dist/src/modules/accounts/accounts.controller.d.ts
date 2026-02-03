@@ -11,9 +11,9 @@ export declare class AccountsController {
         updatedAt: Date;
         code: string;
         type: import("@prisma/client").$Enums.CoaType;
+        isActive: boolean;
         parentId: string | null;
         isPostable: boolean;
-        isActive: boolean;
     }>;
     update(user: AuthUser, id: string, body: any): Promise<{
         id: string;
@@ -23,9 +23,9 @@ export declare class AccountsController {
         updatedAt: Date;
         code: string;
         type: import("@prisma/client").$Enums.CoaType;
+        isActive: boolean;
         parentId: string | null;
         isPostable: boolean;
-        isActive: boolean;
     }>;
     get(user: AuthUser, id: string): Promise<{
         id: string;
@@ -35,9 +35,9 @@ export declare class AccountsController {
         updatedAt: Date;
         code: string;
         type: import("@prisma/client").$Enums.CoaType;
+        isActive: boolean;
         parentId: string | null;
         isPostable: boolean;
-        isActive: boolean;
     }>;
     list(user: AuthUser, query: any): Promise<{
         id: string;
@@ -47,9 +47,9 @@ export declare class AccountsController {
         updatedAt: Date;
         code: string;
         type: import("@prisma/client").$Enums.CoaType;
+        isActive: boolean;
         parentId: string | null;
         isPostable: boolean;
-        isActive: boolean;
     }[]>;
     remove(user: AuthUser, id: string): Promise<{
         id: string;
@@ -59,9 +59,9 @@ export declare class AccountsController {
         updatedAt: Date;
         code: string;
         type: import("@prisma/client").$Enums.CoaType;
+        isActive: boolean;
         parentId: string | null;
         isPostable: boolean;
-        isActive: boolean;
     }>;
     restore(user: AuthUser, id: string): Promise<{
         id: string;
@@ -71,8 +71,8 @@ export declare class AccountsController {
         updatedAt: Date;
         code: string;
         type: import("@prisma/client").$Enums.CoaType;
+        isActive: boolean;
         parentId: string | null;
         isPostable: boolean;
-        isActive: boolean;
     }>;
 }

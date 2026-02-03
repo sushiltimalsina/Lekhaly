@@ -9,6 +9,7 @@ exports.VoucherLineSchema = zod_1.z.object({
     description: zod_1.z.string().trim().max(255).optional(),
     debit: zod_1.z.number().nonnegative().default(0),
     credit: zod_1.z.number().nonnegative().default(0),
+    qty: zod_1.z.coerce.number().default(0),
     taxCodeId: zod_1.z.string().uuid().optional(),
     taxAmount: zod_1.z.number().nonnegative().default(0)
 }).superRefine((data, ctx) => {

@@ -7,6 +7,7 @@ export const VoucherLineSchema = z.object({
   description: z.string().trim().max(255).optional(),
   debit: z.number().nonnegative().default(0),
   credit: z.number().nonnegative().default(0),
+  qty: z.coerce.number().default(0),
   taxCodeId: z.string().uuid().optional(),
   taxAmount: z.number().nonnegative().default(0)
 }).superRefine((data, ctx) => {

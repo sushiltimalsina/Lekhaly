@@ -6,6 +6,7 @@ export declare const VoucherLineSchema: z.ZodObject<{
     description: z.ZodOptional<z.ZodString>;
     debit: z.ZodDefault<z.ZodNumber>;
     credit: z.ZodDefault<z.ZodNumber>;
+    qty: z.ZodDefault<z.ZodCoercedNumber<unknown>>;
     taxCodeId: z.ZodOptional<z.ZodString>;
     taxAmount: z.ZodDefault<z.ZodNumber>;
 }, z.core.$strip>;
@@ -32,6 +33,7 @@ export declare const CreateVoucherDraftSchema: z.ZodObject<{
         description: z.ZodOptional<z.ZodString>;
         debit: z.ZodDefault<z.ZodNumber>;
         credit: z.ZodDefault<z.ZodNumber>;
+        qty: z.ZodDefault<z.ZodCoercedNumber<unknown>>;
         taxCodeId: z.ZodOptional<z.ZodString>;
         taxAmount: z.ZodDefault<z.ZodNumber>;
     }, z.core.$strip>>;
@@ -59,6 +61,7 @@ export declare const UpdateVoucherDraftSchema: z.ZodObject<{
         description: z.ZodOptional<z.ZodString>;
         debit: z.ZodDefault<z.ZodNumber>;
         credit: z.ZodDefault<z.ZodNumber>;
+        qty: z.ZodDefault<z.ZodCoercedNumber<unknown>>;
         taxCodeId: z.ZodOptional<z.ZodString>;
         taxAmount: z.ZodDefault<z.ZodNumber>;
     }, z.core.$strip>>>;

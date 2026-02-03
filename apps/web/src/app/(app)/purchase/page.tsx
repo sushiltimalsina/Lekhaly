@@ -79,7 +79,6 @@ export default function PurchaseListPage() {
         { key: "panVat", label: "PAN/VAT Number", defaultVisible: false },
         { key: "items", label: "Item Details", defaultVisible: true },
         { key: "qty", label: "Quantity", defaultVisible: true },
-        { key: "rate", label: "Rate", defaultVisible: true },
         { key: "taxable", label: "Taxable Amount", defaultVisible: false },
         { key: "nonTaxable", label: "Non Taxable Amount", defaultVisible: false },
         { key: "amount", label: "Amount", defaultVisible: true },
@@ -150,7 +149,6 @@ export default function PurchaseListPage() {
                                     {isVisible("panVat") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Pan/Vat Number</th>}
                                     {isVisible("items") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Item Details</th>}
                                     {isVisible("qty") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Quantity</th>}
-                                    {isVisible("rate") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Rate</th>}
                                     {isVisible("taxable") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Taxable Amount</th>}
                                     {isVisible("nonTaxable") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Non Taxable Amount</th>}
                                     {isVisible("amount") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Amount</th>}
@@ -185,8 +183,6 @@ export default function PurchaseListPage() {
                                         }, 0);
                                     }
 
-                                    const avgRate = itemLines.length === 1 ? Number(firstLine.debit || firstLine.credit || 0) : null;
-
                                     let taxableAmount = 0;
                                     let nonTaxableAmount = 0;
                                     itemLines.forEach((l: any) => {
@@ -196,9 +192,8 @@ export default function PurchaseListPage() {
                                         else nonTaxableAmount += val;
                                     });
 
-                                    // Total amount is usually the credit to the party for a purchase
-                                    const totalAmount = lines.find((l: any) => l.partyId === item.partyId)?.credit ||
-                                        itemLines.reduce((sum: number, l: any) => sum + Number(l.debit || 0), 0);
+                                    // Total amount: Grand Total is roughly the Vendor Payable (largest Credit line)
+                                    const totalAmount = lines.reduce((max: number, l: any) => Math.max(max, Number(l.credit || 0)), 0);
 
                                     return (
                                         <tr
@@ -240,11 +235,6 @@ export default function PurchaseListPage() {
                                             {isVisible("qty") && (
                                                 <td className="px-6 py-5 text-right font-bold text-slate-700 dark:text-slate-300">
                                                     {totalQty.toLocaleString()}
-                                                </td>
-                                            )}
-                                            {isVisible("rate") && (
-                                                <td className="px-6 py-5 text-right text-slate-500 whitespace-nowrap">
-                                                    {avgRate !== null ? <MoneyText value={avgRate} /> : <span className="text-[10px] italic">Mixed</span>}
                                                 </td>
                                             )}
                                             {isVisible("taxable") && (

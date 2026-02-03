@@ -104,13 +104,13 @@ export declare class InvoicesService {
         items: {
             id: string;
             createdAt: Date;
-            rate: Prisma.Decimal;
-            itemId: string | null;
-            amount: Prisma.Decimal;
+            taxCodeId: string | null;
             description: string | null;
             qty: Prisma.Decimal;
-            taxCodeId: string | null;
             taxAmount: Prisma.Decimal;
+            itemId: string | null;
+            rate: Prisma.Decimal;
+            amount: Prisma.Decimal;
             invoiceId: string;
         }[];
         sundries: {
@@ -118,8 +118,8 @@ export declare class InvoicesService {
             name: string;
             createdAt: Date;
             type: string;
-            rate: Prisma.Decimal | null;
             accountId: string | null;
+            rate: Prisma.Decimal | null;
             amount: Prisma.Decimal;
             billSundryId: string | null;
             invoiceId: string;
@@ -133,9 +133,9 @@ export declare class InvoicesService {
         type: string;
         referenceNo: string | null;
         partyId: string;
+        voucherId: string | null;
         date: Date;
         dateBs: string | null;
-        voucherId: string | null;
         dueDate: Date | null;
         dueDateBs: string | null;
         receivableAccountId: string;
@@ -153,9 +153,9 @@ export declare class InvoicesService {
         type: string;
         referenceNo: string | null;
         partyId: string;
+        voucherId: string | null;
         date: Date;
         dateBs: string | null;
-        voucherId: string | null;
         dueDate: Date | null;
         dueDateBs: string | null;
         receivableAccountId: string;
@@ -173,9 +173,9 @@ export declare class InvoicesService {
         type: string;
         referenceNo: string | null;
         partyId: string;
+        voucherId: string | null;
         date: Date;
         dateBs: string | null;
-        voucherId: string | null;
         dueDate: Date | null;
         dueDateBs: string | null;
         receivableAccountId: string;
@@ -200,25 +200,25 @@ export declare class InvoicesService {
         } & {
             id: string;
             createdAt: Date;
-            rate: Prisma.Decimal;
-            itemId: string | null;
-            amount: Prisma.Decimal;
+            taxCodeId: string | null;
             description: string | null;
             qty: Prisma.Decimal;
-            taxCodeId: string | null;
             taxAmount: Prisma.Decimal;
+            itemId: string | null;
+            rate: Prisma.Decimal;
+            amount: Prisma.Decimal;
             invoiceId: string;
         })[];
-        voucher: {
-            referenceNo: string | null;
-            memo: string | null;
-        } | null;
         party: {
             id: string;
             name: string;
             panNumber: string | null;
             vatNumber: string | null;
         };
+        voucher: {
+            referenceNo: string | null;
+            memo: string | null;
+        } | null;
     } & {
         id: string;
         companyId: string;
@@ -228,9 +228,9 @@ export declare class InvoicesService {
         type: string;
         referenceNo: string | null;
         partyId: string;
+        voucherId: string | null;
         date: Date;
         dateBs: string | null;
-        voucherId: string | null;
         dueDate: Date | null;
         dueDateBs: string | null;
         receivableAccountId: string;
@@ -246,8 +246,8 @@ export declare class InvoicesService {
             name: string;
             createdAt: Date;
             type: string;
-            rate: Prisma.Decimal | null;
             accountId: string | null;
+            rate: Prisma.Decimal | null;
             amount: Prisma.Decimal;
             billSundryId: string | null;
             invoiceId: string;
@@ -260,9 +260,9 @@ export declare class InvoicesService {
         type: string;
         referenceNo: string | null;
         partyId: string;
+        voucherId: string | null;
         date: Date;
         dateBs: string | null;
-        voucherId: string | null;
         dueDate: Date | null;
         dueDateBs: string | null;
         receivableAccountId: string;

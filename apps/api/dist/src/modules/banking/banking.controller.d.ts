@@ -29,10 +29,10 @@ export declare class BankingController {
         id: string;
         companyId: string;
         createdAt: Date;
+        description: string | null;
         date: Date;
         dateBs: string | null;
         amount: import("@prisma/client/runtime/client").Decimal;
-        description: string | null;
         debitCredit: string;
         statementId: string;
         matchedVoucherId: string | null;
@@ -42,10 +42,10 @@ export declare class BankingController {
         id: string;
         companyId: string;
         createdAt: Date;
+        description: string | null;
         date: Date;
         dateBs: string | null;
         amount: import("@prisma/client/runtime/client").Decimal;
-        description: string | null;
         debitCredit: string;
         statementId: string;
         matchedVoucherId: string | null;
@@ -55,10 +55,10 @@ export declare class BankingController {
         id: string;
         companyId: string;
         createdAt: Date;
+        description: string | null;
         date: Date;
         dateBs: string | null;
         amount: import("@prisma/client/runtime/client").Decimal;
-        description: string | null;
         debitCredit: string;
         statementId: string;
         matchedVoucherId: string | null;
@@ -92,10 +92,10 @@ export declare class BankingController {
             id: string;
             companyId: string;
             createdAt: Date;
+            description: string | null;
             date: Date;
             dateBs: string | null;
             amount: import("@prisma/client/runtime/client").Decimal;
-            description: string | null;
             debitCredit: string;
             statementId: string;
             matchedVoucherId: string | null;

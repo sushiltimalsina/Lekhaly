@@ -15,8 +15,8 @@ export declare const PushChangeSchema: z.ZodObject<{
         entityType: z.ZodString;
         entityId: z.ZodString;
         op: z.ZodEnum<{
-            upsert: "upsert";
             delete: "delete";
+            upsert: "upsert";
             command: "command";
         }>;
         payload: z.ZodAny;

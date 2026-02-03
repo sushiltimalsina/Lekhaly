@@ -52,10 +52,10 @@ export declare class BankingService {
             id: string;
             companyId: string;
             createdAt: Date;
+            description: string | null;
             date: Date;
             dateBs: string | null;
             amount: Prisma.Decimal;
-            description: string | null;
             debitCredit: string;
             statementId: string;
             matchedVoucherId: string | null;
@@ -114,10 +114,10 @@ export declare class BankingService {
         id: string;
         companyId: string;
         createdAt: Date;
+        description: string | null;
         date: Date;
         dateBs: string | null;
         amount: Prisma.Decimal;
-        description: string | null;
         debitCredit: string;
         statementId: string;
         matchedVoucherId: string | null;
@@ -131,10 +131,10 @@ export declare class BankingService {
         id: string;
         companyId: string;
         createdAt: Date;
+        description: string | null;
         date: Date;
         dateBs: string | null;
         amount: Prisma.Decimal;
-        description: string | null;
         debitCredit: string;
         statementId: string;
         matchedVoucherId: string | null;
@@ -144,10 +144,10 @@ export declare class BankingService {
         id: string;
         companyId: string;
         createdAt: Date;
+        description: string | null;
         date: Date;
         dateBs: string | null;
         amount: Prisma.Decimal;
-        description: string | null;
         debitCredit: string;
         statementId: string;
         matchedVoucherId: string | null;

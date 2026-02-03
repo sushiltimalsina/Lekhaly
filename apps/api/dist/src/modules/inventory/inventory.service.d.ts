@@ -14,11 +14,11 @@ export declare class InventoryService {
             id: string;
             companyId: string;
             createdAt: Date;
-            rate: Prisma.Decimal;
             itemId: string;
+            voucherId: string | null;
+            rate: Prisma.Decimal;
             date: Date;
             dateBs: string | null;
-            voucherId: string | null;
             qtyIn: Prisma.Decimal;
             qtyOut: Prisma.Decimal;
             amount: Prisma.Decimal;
