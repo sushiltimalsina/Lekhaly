@@ -103,6 +103,8 @@ export class InvoicesService {
       referenceNo?: string;
       items: Array<{ itemId?: string; description?: string; qty: number; rate: number; taxCodeId?: string; taxCodeIds?: string[] }>;
       sundries?: Array<{ billSundryId?: string; name: string; type: "add" | "less"; rate?: number | null; amount: number }>;
+      memo?: string;
+      additionalNote?: string;
     }
   ) {
     await this.validateItems(user.companyId, input.items);
@@ -372,7 +374,10 @@ export class InvoicesService {
       dateBs: resolvedDate.bs || input.dateBs,
       dueDate: resolvedDue?.date,
       dueDateBs: resolvedDue?.bs || input.dueDateBs,
-      referenceNo: input.referenceNo
+      dueDateBs: resolvedDue?.bs || input.dueDateBs,
+      referenceNo: input.referenceNo,
+      memo: input.memo,
+      additionalNote: input.additionalNote
     };
   }
 
@@ -389,6 +394,8 @@ export class InvoicesService {
       referenceNo?: string;
       items: Array<{ itemId?: string; description?: string; qty: number; rate: number; taxCodeId?: string; taxCodeIds?: string[] }>;
       sundries?: Array<{ billSundryId?: string; name: string; type: "add" | "less"; rate?: number | null; amount: number }>;
+      memo?: string;
+      additionalNote?: string;
     }
   ) {
     try {
@@ -410,6 +417,8 @@ export class InvoicesService {
           vatAmount: totals.vatAmount,
           total: totals.total,
           status: "draft",
+          memo: input.memo,
+          additionalNote: input.additionalNote,
           items: {
             create: preview.items.map((item: any) => ({
               itemId: item.itemId,
@@ -480,7 +489,9 @@ export class InvoicesService {
         type: s.type as any,
         rate: s.rate?.toNumber ? s.rate.toNumber() : (s.rate ? Number(s.rate) : null),
         amount: s.amount.toNumber ? s.amount.toNumber() : Number(s.amount)
-      }))
+      })),
+      memo: invoice.memo || undefined,
+      additionalNote: invoice.additionalNote || undefined
     });
 
     if (invoice.type === "sales") {
@@ -503,7 +514,8 @@ export class InvoicesService {
           voucherDate: invoice.date,
           partyId: invoice.partyId,
           referenceNo: invoice.referenceNo,
-          memo: `Invoice ${invoice.id}`,
+          memo: preview.memo || `Invoice ${invoice.id}`,
+          additionalNote: preview.additionalNote,
           postedAt: new Date(),
           postedByUserId: user.sub,
           voucherNumber,
@@ -558,7 +570,7 @@ export class InvoicesService {
     });
   }
 
-  async list(user: AuthUser, filters: { type?: string; status?: string; from?: Date; to?: Date; skip?: number; take?: number }) {
+  async list(user: AuthUser, filters: { type?: string; status?: string; q?: string; from?: Date; to?: Date; skip?: number; take?: number }) {
     const where: Prisma.InvoiceWhereInput = { companyId: user.companyId };
     if (filters.type) where.type = filters.type;
     if (filters.status) where.status = filters.status;
@@ -566,6 +578,16 @@ export class InvoicesService {
       where.date = {};
       if (filters.from) (where.date as Prisma.DateTimeFilter).gte = filters.from;
       if (filters.to) (where.date as Prisma.DateTimeFilter).lte = filters.to;
+    }
+
+    if (filters.q) {
+      where.OR = [
+        { invoiceNo: { contains: filters.q, mode: "insensitive" } },
+        { referenceNo: { contains: filters.q, mode: "insensitive" } },
+        { memo: { contains: filters.q, mode: "insensitive" } },
+        { additionalNote: { contains: filters.q, mode: "insensitive" } },
+        { party: { name: { contains: filters.q, mode: "insensitive" } } }
+      ];
     }
 
     return this.prisma.invoice.findMany({
@@ -580,7 +602,7 @@ export class InvoicesService {
           }
         },
         voucher: {
-          select: { memo: true, referenceNo: true }
+          select: { memo: true, referenceNo: true, additionalNote: true, postedAt: true }
         }
       },
       orderBy: { date: "desc" },
@@ -617,5 +639,85 @@ export class InvoicesService {
         }))
       }))
     };
+  }
+
+  async updateDraft(
+    user: AuthUser,
+    id: string,
+    input: {
+      type: "sales" | "sales_return";
+      partyId: string;
+      date?: Date;
+      dateBs?: string;
+      dueDate?: Date;
+      dueDateBs?: string;
+      receivableAccountId: string;
+      referenceNo?: string;
+      items: Array<{ itemId?: string; description?: string; qty: number; rate: number; taxCodeId?: string; taxCodeIds?: string[] }>;
+      sundries?: Array<{ billSundryId?: string; name: string; type: "add" | "less"; rate?: number | null; amount: number }>;
+      memo?: string;
+      additionalNote?: string;
+    }
+  ) {
+    const existing = await this.prisma.invoice.findFirst({
+      where: { id, companyId: user.companyId }
+    });
+    if (!existing) throw new NotFoundException("Invoice not found");
+    if (existing.status !== "draft") throw new ForbiddenException("Only draft invoices can be updated");
+
+    const preview = await this.preview(user, input);
+    const totals = preview.totals;
+
+    return await this.prisma.$transaction(async (tx) => {
+      // Clear old items and sundries
+      await tx.invoiceItemTax.deleteMany({ where: { invoiceItem: { invoiceId: id } } });
+      await tx.invoiceItem.deleteMany({ where: { invoiceId: id } });
+      await tx.invoiceSundry.deleteMany({ where: { invoiceId: id } });
+
+      return await tx.invoice.update({
+        where: { id },
+        data: {
+          type: input.type,
+          partyId: input.partyId,
+          date: preview.date,
+          dateBs: preview.dateBs || null,
+          dueDate: preview.dueDate,
+          dueDateBs: preview.dueDateBs || null,
+          referenceNo: preview.referenceNo,
+          receivableAccountId: input.receivableAccountId,
+          subtotal: totals.subtotal,
+          vatAmount: totals.vatAmount,
+          total: totals.total,
+          memo: input.memo,
+          additionalNote: input.additionalNote,
+          items: {
+            create: preview.items.map((item: any) => ({
+              itemId: item.itemId,
+              description: item.description,
+              qty: new Prisma.Decimal(item.qty),
+              rate: new Prisma.Decimal(item.rate),
+              amount: item.amount,
+              taxCodeId: item.taxCodeId,
+              taxAmount: item.taxAmount,
+              taxes: {
+                create: (item.taxCodeIds || []).map((tId: string) => ({
+                  taxCodeId: tId,
+                  taxAmount: 0 // Will be computed if needed elsewhere, but following creation pattern
+                }))
+              }
+            }))
+          },
+          sundries: {
+            create: (input.sundries || []).map((s) => ({
+              billSundryId: s.billSundryId,
+              name: s.name,
+              type: s.type,
+              rate: s.rate ? new Prisma.Decimal(s.rate) : null,
+              amount: new Prisma.Decimal(s.amount)
+            }))
+          }
+        }
+      });
+    });
   }
 }

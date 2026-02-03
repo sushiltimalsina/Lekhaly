@@ -18,6 +18,8 @@ export type InvoiceDraftInput = {
   dueDate?: string; // ISO
   dueDateBs?: string; // BS string
   receivableAccountId: string;
+  memo?: string;
+  additionalNote?: string;
   items: InvoiceItemInput[];
   sundries?: Array<{
     billSundryId?: string;
@@ -32,6 +34,14 @@ export async function createInvoiceDraft(input: InvoiceDraftInput) {
   return apiRequest<any>({
     method: "POST",
     path: "/invoices/draft",
+    body: input,
+  });
+}
+
+export async function updateInvoiceDraft(id: string, input: InvoiceDraftInput) {
+  return apiRequest<any>({
+    method: "POST",
+    path: `/invoices/${id}/draft`,
     body: input,
   });
 }

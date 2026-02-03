@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/app/money";
 import { cn } from "@/lib/utils";
 
-import { createVoucherDraft, postVoucher, type VoucherDraftInput } from "@/lib/api/vouchers";
+import { createVoucherDraft, postVoucher, updateVoucherDraft, getVoucher, type VoucherDraftInput } from "@/lib/api/vouchers";
+
 import { listParties, type PartyRecord } from "@/lib/api/parties";
 import { listAccounts, type AccountRecord } from "@/lib/api/accounts";
 import { listItems, type ItemRecord } from "@/lib/api/items";
@@ -31,10 +32,11 @@ import {
     Printer,
     FileText,
     ChevronRight,
+    ArrowLeft,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toBs } from "@/lib/dates/bs";
-import { useRouter } from "next/navigation";
 
 type Line = { itemId: string; qty: string; rate: string; description?: string; expenseAccountId?: string };
 type BillSundryRow = { id: string; sundryId?: string; name: string; type: "add" | "less"; ratePct: string; manualAmount?: string; isManual?: boolean };
@@ -337,7 +339,7 @@ export default function PurchaseReturnCreatePage() {
         amount: (HTMLInputElement | null)[];
     }>({ select: [], rate: [], amount: [] });
 
-    const notesRef = React.useRef<HTMLInputElement>(null);
+    const notesRef = React.useRef<HTMLTextAreaElement>(null);
 
     const [parties, setParties] = React.useState<PartyRecord[]>([]);
     const [accounts, setAccounts] = React.useState<AccountRecord[]>([]);
@@ -370,6 +372,8 @@ export default function PurchaseReturnCreatePage() {
         purchaseType: "vat_13" as any,
         memo: "",
         notes: "",
+        partyName: "",
+        voucherNumber: ""
     });
 
     const [lines, setLines] = React.useState<Line[]>([{ itemId: "", qty: "", rate: "" }]);
@@ -392,8 +396,12 @@ export default function PurchaseReturnCreatePage() {
 
     const ui = useUiState();
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const [isEditMode, setIsEditMode] = React.useState(true);
+    const [voucherStatus, setVoucherStatus] = React.useState<string | null>(null);
 
     React.useEffect(() => {
+        if (searchParams.get("id")) return;
         const now = new Date();
         const ad = now.toISOString().slice(0, 10);
         const bs = toBs(ad);
@@ -403,7 +411,7 @@ export default function PurchaseReturnCreatePage() {
             purchaseDate: { bs, ad },
             vendorInvoiceDate: { bs, ad },
         }));
-    }, []);
+    }, [searchParams]);
 
     React.useEffect(() => {
         if (!form.payableAccountId && defaultPayable) {
@@ -448,6 +456,68 @@ export default function PurchaseReturnCreatePage() {
                     }
                     return row;
                 }));
+
+                // Load Edit ID if present
+                const editId = searchParams.get("id");
+                if (editId) {
+                    setIsEditMode(false);
+                    getVoucher(editId).then(v => {
+                        setVoucherStatus(v.status || null);
+                        const parseDate = (d: any) => {
+                            if (!d) return "";
+                            if (typeof d === "string") return d.split("T")[0];
+                            if (d instanceof Date) return d.toISOString().split("T")[0];
+                            return String(d).split("T")[0];
+                        };
+
+                        setForm(f => ({
+                            ...f,
+                            partyId: v.partyId || "",
+                            payableAccountId: v.lines?.[0]?.accountId || "",
+                            purchaseDate: { ad: parseDate(v.voucherDate), bs: v.voucherDateBs || "" },
+                            vendorInvoiceDate: {
+                                ad: parseDate(v.vendorInvoiceDate),
+                                bs: v.vendorInvoiceDate ? toBs(parseDate(v.vendorInvoiceDate)) : ""
+                            },
+                            vendorInvoiceNo: v.vendorInvoiceNo || "",
+                            memo: v.memo || "",
+                            notes: v.additionalNote || "",
+                            referenceNo: v.referenceNo || "",
+                            partyName: v.party?.name || "",
+                            voucherNumber: v.voucherNumber || ""
+                        }));
+
+                        // Items
+                        const itemLines = (v.lines || []).filter((l: any) => l.itemId).map((l: any) => ({
+                            itemId: l.itemId,
+                            qty: String(Number(l.qty || 0)),
+                            rate: l.qty && Number(l.qty) !== 0 ? String(Number(l.debit || l.credit) / Number(l.qty)) : "0",
+                            description: l.description,
+                            expenseAccountId: l.accountId
+                        }));
+                        if (itemLines.length > 0) setLines(itemLines);
+
+                        // Sundries (this is a bit complex for vouchers, but let's try)
+                        const sundryLines = (v.lines || []).filter((l: any) => !l.itemId && l.accountId);
+                        const mappedSundries: BillSundryRow[] = [];
+                        sundryLines.forEach((l: any) => {
+                            const matchingOpt = opts.find(o => o.accountId === l.accountId);
+                            if (matchingOpt) {
+                                mappedSundries.push({
+                                    id: Math.random().toString(36).substr(2, 9),
+                                    sundryId: matchingOpt.id,
+                                    name: matchingOpt.name,
+                                    type: (l.debit > 0) ? "add" : "less",
+                                    ratePct: "",
+                                    manualAmount: String(Number(l.debit || l.credit || 0)),
+                                    isManual: true
+                                });
+                            }
+                        });
+                        if (mappedSundries.length > 0) setBillSundries(mappedSundries);
+
+                    }).catch(err => console.error("Failed to load voucher", err));
+                }
             })
             .catch((e: any) => {
                 if (!alive) return;
@@ -632,6 +702,7 @@ export default function PurchaseReturnCreatePage() {
             voucherDateBs: form.purchaseDate.bs || undefined,
             partyId: form.partyId,
             memo: form.memo || "Purchase from vendor",
+            additionalNote: form.notes || undefined,
             referenceNo: form.referenceNo || undefined,
             vendorInvoiceNo: form.vendorInvoiceNo || undefined,
             vendorInvoiceDate: form.vendorInvoiceDate.ad || undefined,
@@ -644,9 +715,18 @@ export default function PurchaseReturnCreatePage() {
         setSuccess(null);
         setLoading(true);
         try {
-            const res: any = await createVoucherDraft(buildPayload());
+            const editId = searchParams.get("id");
+            let res: any;
+            if (editId) {
+                res = await updateVoucherDraft(editId, buildPayload());
+            } else {
+                res = await createVoucherDraft(buildPayload());
+            }
             const id = res?.id ?? res?.voucherId ?? res?.data?.id;
             setSuccess(id ? `Saved draft: ${id}` : "Saved draft.");
+            if (!editId && id) {
+                router.replace(`/purchase-return/create?id=${id}`);
+            }
         } catch (e: any) {
             setError(e?.message ?? "Something went wrong.");
         } finally {
@@ -659,9 +739,15 @@ export default function PurchaseReturnCreatePage() {
         setSuccess(null);
         setSending(true);
         try {
-            const res: any = await createVoucherDraft(buildPayload());
-            const id = res?.id ?? res?.voucherId ?? res?.data?.id;
-            if (!id) throw new Error("Failed to create draft.");
+            const editId = searchParams.get("id");
+            let res: any;
+            if (editId) {
+                res = await updateVoucherDraft(editId, buildPayload());
+            } else {
+                res = await createVoucherDraft(buildPayload());
+            }
+            const id = res?.id ?? res?.voucherId ?? res?.data?.id ?? editId;
+            if (!id) throw new Error("Failed to save draft before posting.");
 
             await postVoucher(id);
             setSuccess(`Purchase return posted successfully: ${id}`);
@@ -682,6 +768,16 @@ export default function PurchaseReturnCreatePage() {
     return (
         <div className="space-y-6">
             <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                <div className="mb-4">
+                    <Button
+                        variant="ghost"
+                        onClick={() => router.push("/purchase-return")}
+                        className="rounded-full h-10 px-4 text-slate-500 hover:text-slate-900 transition-colors"
+                    >
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Back to Registry
+                    </Button>
+                </div>
                 <PageHeader title="New Purchase Return" description="Fill in the details below to record a new purchase return (debit note)." />
 
                 {/* Alerts */}
@@ -731,8 +827,9 @@ export default function PurchaseReturnCreatePage() {
                                             safeFocus(vendorInvoiceNoRef.current);
                                         }
                                     }}
-                                    placeholder="Reference No."
+                                    placeholder="System generated"
                                     className="h-11 rounded-2xl bg-slate-50/60 dark:bg-slate-900/60"
+                                    disabled={true}
                                 />
                             </label>
 
@@ -751,6 +848,7 @@ export default function PurchaseReturnCreatePage() {
                                     }}
                                     placeholder="Enter physical invoice number"
                                     className="h-11 rounded-2xl bg-slate-50/60 dark:bg-slate-900/60"
+                                    disabled={!isEditMode}
                                 />
                             </label>
 
@@ -1460,7 +1558,7 @@ export default function PurchaseReturnCreatePage() {
                             </div>
                         </div>
 
-                        <Input
+                        <textarea
                             ref={notesRef}
                             value={form.notes}
                             onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
@@ -1472,45 +1570,57 @@ export default function PurchaseReturnCreatePage() {
                                 }
                             }}
                             placeholder="Internal record notes..."
-                            className="h-11 rounded-2xl bg-slate-50/60"
+                            className="min-h-[120px] w-full rounded-2xl border-2 border-slate-100 bg-slate-50/30 p-5 text-sm outline-none ring-indigo-500/10 focus:border-indigo-500 focus:bg-white focus:ring-4 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 transition-all font-medium leading-relaxed"
+                            disabled={!isEditMode}
                         />
 
-                        <div className="mt-8 flex flex-wrap items-center justify-end gap-2">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={onSave}
-                                disabled={loading || sending}
-                                className="flex-1 md:flex-none rounded-2xl h-12 px-6 font-bold text-xs uppercase tracking-widest border-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
-                            >
-                                <Save className="mr-2 h-4 w-4" />
-                                {loading ? "Saving..." : "Save Draft"}
-                            </Button>
+                        <div className="mt-8 flex flex-wrap items-center justify-end gap-3">
+                            {!voucherStatus || voucherStatus === "draft" ? (
+                                <>
+                                    {isEditMode ? (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={onSave}
+                                            disabled={loading || sending}
+                                            className="flex-1 md:flex-none rounded-2xl h-14 px-8 font-black text-xs uppercase tracking-widest transition-all active:scale-95 bg-white hover:bg-slate-50 border-2"
+                                        >
+                                            <Save className="mr-2 h-4 w-4" />
+                                            {loading ? "..." : "Save Draft"}
+                                        </Button>
+                                    ) : null}
 
-                            <Button
-                                type="button"
-                                onClick={onPost}
-                                disabled={loading || sending}
-                                className="flex-1 md:flex-none rounded-2xl h-12 px-10 font-black text-xs uppercase tracking-widest shadow-xl transition-all bg-indigo-600 text-white hover:bg-indigo-700 hover:scale-105 active:scale-95 shadow-indigo-500/25"
-                            >
-                                <Send className="mr-2 h-4 w-4" />
-                                {sending ? "Posting..." : "Post & Finalize"}
-                            </Button>
-
-                            <Button type="button" variant="outline" onClick={onPreview} className="rounded-full px-6">
-                                <Eye className="mr-2 h-4 w-4" />
-                                Preview
-                            </Button>
-
-                            <Button type="button" variant="outline" onClick={onPrint} className="rounded-full px-6">
-                                <Printer className="mr-2 h-4 w-4" />
-                                Print
-                            </Button>
-
-                            <Button type="button" variant="outline" onClick={onPrintPreview} className="rounded-full px-6">
-                                <FileText className="mr-2 h-4 w-4" />
-                                Print Preview
-                            </Button>
+                                    <Button
+                                        onClick={onPost}
+                                        disabled={loading || sending || !isEditMode}
+                                        className="flex-1 md:flex-none rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-xl shadow-indigo-500/20 h-14 px-10 font-black text-xs uppercase tracking-widest transition-all active:scale-95 border-none"
+                                    >
+                                        <Send className="mr-2 h-4 w-4" />
+                                        {sending ? "Posting..." : "Post & Finalize"}
+                                    </Button>
+                                </>
+                            ) : (
+                                <div className="flex items-center gap-3">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={onPrint}
+                                        className="rounded-2xl border-2 h-14 px-8 font-black text-xs uppercase tracking-widest transition-all active:scale-95 bg-white hover:bg-slate-50"
+                                    >
+                                        <Printer className="mr-2 h-4 w-4" />
+                                        Print
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={onPreview}
+                                        className="rounded-2xl border-2 h-14 px-8 font-black text-xs uppercase tracking-widest transition-all active:scale-95 bg-white hover:bg-slate-50"
+                                    >
+                                        <Eye className="mr-2 h-4 w-4" />
+                                        Preview
+                                    </Button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </section>

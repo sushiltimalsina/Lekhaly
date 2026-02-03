@@ -31,10 +31,12 @@ import {
   Printer,
   FileText,
   ChevronRight,
+  ArrowLeft,
 } from "lucide-react";
 import Link from "next/link";
 import { toBs } from "@/lib/dates/bs";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { getInvoice, updateInvoiceDraft } from "@/lib/api/invoices";
 
 type Line = { itemId: string; qty: string; rate: string; description?: string };
 type BillSundryRow = { id: string; sundryId?: string; name: string; type: "add" | "less"; ratePct: string; manualAmount?: string; isManual?: boolean };
@@ -401,6 +403,8 @@ export default function SalesCreatePage() {
     notes: "",
     termsOverrideEnabled: false,
     termsText: "",
+    partyName: "",
+    invoiceNo: ""
   });
 
   const [lines, setLines] = React.useState<Line[]>([{ itemId: "", qty: "", rate: "" }]);
@@ -425,7 +429,12 @@ export default function SalesCreatePage() {
 
   const ui = useUiState();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [isEditMode, setIsEditMode] = React.useState(true);
+  const [invoiceStatus, setInvoiceStatus] = React.useState<string | null>(null);
+
   React.useEffect(() => {
+    if (searchParams.get("id")) return;
     const now = new Date();
     const ad = now.toISOString().slice(0, 10);
     const bs = toBs(ad);
@@ -437,7 +446,7 @@ export default function SalesCreatePage() {
       invoiceDate: { bs, ad },
       dueDate: { bs: dueBs, ad: dueAd },
     }));
-  }, []);
+  }, [searchParams]);
 
   React.useEffect(() => {
     if (!form.receivableAccountId && defaultReceivable) {
@@ -483,6 +492,57 @@ export default function SalesCreatePage() {
           }
           return row;
         }));
+
+        // Load Edit ID if present
+        const editId = searchParams.get("id");
+        if (editId) {
+          setIsEditMode(false);
+          getInvoice(editId).then(inv => {
+            setInvoiceStatus(inv.status || null);
+            const parseDate = (d: any) => {
+              if (!d) return "";
+              if (typeof d === "string") return d.split("T")[0];
+              if (d instanceof Date) return d.toISOString().split("T")[0];
+              return String(d).split("T")[0];
+            };
+
+            setForm(f => ({
+              ...f,
+              partyId: inv.partyId || "",
+              receivableAccountId: inv.receivableAccountId || "",
+              invoiceDate: { ad: parseDate(inv.date), bs: inv.dateBs || "" },
+              dueDate: { ad: parseDate(inv.dueDate), bs: inv.dueDateBs || "" },
+              invoiceNoDisplay: inv.invoiceNo || "System generated",
+              invoiceNo: inv.invoiceNo || "",
+              referenceNo: inv.referenceNo || "",
+              memo: inv.memo || "",
+              notes: inv.additionalNote || "",
+              partyName: inv.party?.name || "",
+              salesType: inv.salesType || "vat_13"
+            }));
+
+            if (inv.items && inv.items.length > 0) {
+              setLines(inv.items.map((it: any) => ({
+                itemId: it.itemId,
+                qty: String(Number(it.qty || 0)),
+                rate: String(Number(it.rate || 0)),
+                description: it.description || ""
+              })));
+            }
+
+            if (inv.sundries && inv.sundries.length > 0) {
+              setBillSundries(inv.sundries.map((sn: any) => ({
+                id: Math.random().toString(36).substr(2, 9),
+                sundryId: sn.billSundryId,
+                name: sn.name,
+                type: sn.type,
+                ratePct: String(sn.rate || "0"),
+                manualAmount: String(sn.amount || "0"),
+                isManual: true
+              })));
+            }
+          }).catch(err => console.error("Failed to load invoice", err));
+        }
       })
       .catch((e: any) => {
         if (!alive) return;
@@ -628,6 +688,7 @@ export default function SalesCreatePage() {
       receivableAccountId: form.receivableAccountId,
       salesType: form.salesType,
       memo: form.memo || undefined,
+      additionalNote: form.notes || undefined,
       referenceNo: form.referenceNo || undefined,
       items: payloadItems,
       sundries: billSundryComputed.rows.map(r => ({
@@ -645,9 +706,18 @@ export default function SalesCreatePage() {
     setSuccess(null);
     setLoading(true);
     try {
-      const res: any = await createInvoiceDraft(buildPayload());
+      const editId = searchParams.get("id");
+      let res: any;
+      if (editId) {
+        res = await updateInvoiceDraft(editId, buildPayload());
+      } else {
+        res = await createInvoiceDraft(buildPayload());
+      }
       const id = res?.id ?? res?.invoiceId ?? res?.data?.id;
       setSuccess(id ? `Saved draft: ${id}` : "Saved draft.");
+      if (!editId && id) {
+        router.replace(`/sales/create?id=${id}`);
+      }
     } catch (e: any) {
       setError(e?.message ?? "Something went wrong.");
     } finally {
@@ -660,9 +730,15 @@ export default function SalesCreatePage() {
     setSuccess(null);
     setSending(true);
     try {
-      const res: any = await createInvoiceDraft(buildPayload());
-      const id = res?.id ?? res?.invoiceId ?? res?.data?.id;
-      if (!id) throw new Error("Failed to create draft.");
+      const editId = searchParams.get("id");
+      let res: any;
+      if (editId) {
+        res = await updateInvoiceDraft(editId, buildPayload());
+      } else {
+        res = await createInvoiceDraft(buildPayload());
+      }
+      const id = res?.id ?? res?.invoiceId ?? res?.data?.id ?? editId;
+      if (!id) throw new Error("Failed to save draft before posting.");
 
       await postInvoice(id);
       setSuccess(`Invoice posted successfully: ${id}`);
@@ -684,7 +760,37 @@ export default function SalesCreatePage() {
   return (
     <div className="space-y-6">
       <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-        <PageHeader title="Create New Sales Invoice" description="Fill in the details below to create a new sales invoice." />
+        <div className="mb-4">
+          <Button
+            variant="ghost"
+            onClick={() => router.push("/sales")}
+            className="rounded-full h-10 px-4 text-slate-500 hover:text-slate-900 transition-colors"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Registry
+          </Button>
+        </div>
+        <PageHeader
+          title={searchParams.get("id") ? (isEditMode ? "Edit Sales Invoice" : "View Sales Invoice") : "Create New Sales Invoice"}
+          description={
+            searchParams.get("id")
+              ? `${invoiceStatus ? `Status: ${invoiceStatus.charAt(0).toUpperCase() + invoiceStatus.slice(1)}. ` : ""}${isEditMode ? "Modify the details below." : "Click Edit to modify this invoice."}`
+              : "Fill in the details below to create a new sales invoice."
+          }
+          actions={
+            !isEditMode && searchParams.get("id") ? (
+              <Button
+                onClick={() => setIsEditMode(true)}
+                className="rounded-2xl bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-500/20 h-11 px-8 font-black text-xs uppercase tracking-widest transition-all active:scale-95 border-none"
+              >
+                <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Edit
+              </Button>
+            ) : undefined
+          }
+        />
 
         {/* Alerts */}
         <div className="mb-4 grid gap-3">
@@ -711,6 +817,7 @@ export default function SalesCreatePage() {
               accentColor="bg-blue-600"
               onChange={(next) => setForm((f) => ({ ...f, invoiceDate: next }))}
               onEnterNext={() => safeFocus(dueDateRef.current)}
+              disabled={!isEditMode || !!invoiceStatus && invoiceStatus !== "draft"}
             />
             <DualDateInput
               ref={dueDateRef}
@@ -719,6 +826,7 @@ export default function SalesCreatePage() {
               accentColor="bg-blue-600"
               onChange={(next) => setForm((f) => ({ ...f, dueDate: next }))}
               onEnterNext={() => safeFocus(invoiceNoRef.current)}
+              disabled={!isEditMode}
             />
           </div>
 
@@ -738,6 +846,7 @@ export default function SalesCreatePage() {
                   }}
                   placeholder="System generated"
                   className="h-11 rounded-2xl bg-slate-50/60 dark:bg-slate-900/60"
+                  disabled={true}
                 />
               </label>
 
@@ -755,6 +864,7 @@ export default function SalesCreatePage() {
                   }}
                   placeholder="Enter reference (optional)"
                   className="h-11 rounded-2xl bg-slate-50/60 dark:bg-slate-900/60"
+                  disabled={!isEditMode}
                 />
               </label>
             </div>
@@ -774,6 +884,7 @@ export default function SalesCreatePage() {
                     }
                   }}
                   className="mt-2 h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900"
+                  disabled={!isEditMode}
                 >
                   <option value="">Select payment method…</option>
                   <option value="bank_transfer">Bank Transfer</option>
@@ -797,6 +908,7 @@ export default function SalesCreatePage() {
                     }}
                     placeholder="Brief description of sales"
                     className="mt-2 h-11 rounded-2xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700"
+                    disabled={!isEditMode}
                   />
                 </div>
 
@@ -813,6 +925,7 @@ export default function SalesCreatePage() {
                       }
                     }}
                     className="mt-2 h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900"
+                    disabled={!isEditMode}
                   >
                     <option value="vat_13">VAT 13% Sales</option>
                     <option value="exempt">Exempt Sales</option>
@@ -828,12 +941,14 @@ export default function SalesCreatePage() {
                 value={form.invoiceDate}
                 accentColor="bg-blue-600"
                 onChange={(next) => setForm((f) => ({ ...f, invoiceDate: next }))}
+                disabled={!isEditMode}
               />
               <DualDateInput
                 label="Due Date"
                 value={form.dueDate}
                 accentColor="bg-blue-600"
                 onChange={(next) => setForm((f) => ({ ...f, dueDate: next }))}
+                disabled={!isEditMode}
               />
             </div>
           </div>
@@ -860,9 +975,11 @@ export default function SalesCreatePage() {
                 }
               }}
               buttonClassName="h-12 rounded-2xl bg-white dark:bg-slate-900 pr-[140px]"
+              disabled={!isEditMode}
+              fallbackLabel={form.partyName}
             />
 
-            {!form.partyId && (
+            {!form.partyId && isEditMode && (
               <Button
                 type="button"
                 variant="outline"
@@ -1437,6 +1554,7 @@ export default function SalesCreatePage() {
             type="button"
             onClick={() => setShowTerms(true)}
             className="mt-3 text-sm font-medium text-slate-700 hover:underline dark:text-slate-200"
+            disabled={!isEditMode}
           >
             + Add terms &amp; conditions
           </button>
@@ -1456,7 +1574,7 @@ export default function SalesCreatePage() {
                 ref={termsRef}
                 value={form.termsText}
                 onChange={(e) => setForm((f) => ({ ...f, termsText: e.target.value }))}
-                disabled={!form.termsOverrideEnabled}
+                disabled={!isEditMode || !form.termsOverrideEnabled}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && e.shiftKey) {
                     e.preventDefault();
@@ -1563,6 +1681,7 @@ export default function SalesCreatePage() {
               }}
               placeholder="Add overall remarks or terms for this sale..."
               className="min-h-[120px] w-full rounded-2xl border-2 border-slate-100 bg-slate-50/30 p-5 text-sm outline-none ring-indigo-500/10 focus:border-indigo-500 focus:bg-white focus:ring-4 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 transition-all font-medium leading-relaxed"
+              disabled={!isEditMode}
             />
           </div>
 
@@ -1586,52 +1705,50 @@ export default function SalesCreatePage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 w-full md:w-auto">
-                  <Button
-                    variant="outline"
-                    onClick={onSave}
-                    disabled={loading || sending}
-                    className="flex-1 md:flex-none rounded-2xl h-12 px-6 font-bold text-xs uppercase tracking-widest border-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
-                  >
-                    <Save className="mr-2 h-4 w-4" />
-                    {loading ? "Saving..." : "Save Draft"}
-                  </Button>
+                <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                  {!invoiceStatus || invoiceStatus === "draft" ? (
+                    <>
+                      {isEditMode ? (
+                        <Button
+                          variant="outline"
+                          onClick={onSave}
+                          disabled={loading || sending}
+                          className="flex-1 md:flex-none rounded-2xl h-12 px-6 font-bold text-xs uppercase tracking-widest border-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
+                        >
+                          <Save className="mr-2 h-4 w-4" />
+                          {loading ? "Saving..." : "Save Draft"}
+                        </Button>
+                      ) : null}
 
-                  <Button
-                    onClick={onPost}
-                    disabled={loading || sending}
-                    className="flex-1 md:flex-none rounded-2xl h-12 px-10 font-black text-xs uppercase tracking-widest shadow-xl transition-all bg-indigo-600 text-white hover:bg-indigo-700 hover:scale-105 active:scale-95 shadow-indigo-500/25"
-                  >
-                    <Send className="mr-2 h-4 w-4" />
-                    {sending ? "Posting..." : "Post & Finalize"}
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    onClick={onPreview}
-                    className="flex-1 md:flex-none rounded-2xl h-12 px-6 font-bold text-xs uppercase tracking-widest border-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
-                  >
-                    <Eye className="mr-2 h-4 w-4" />
-                    Preview
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    onClick={onPrint}
-                    className="flex-1 md:flex-none rounded-2xl h-12 px-6 font-bold text-xs uppercase tracking-widest border-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
-                  >
-                    <Printer className="mr-2 h-4 w-4" />
-                    Print
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    onClick={onPrintPreview}
-                    className="flex-1 md:flex-none rounded-2xl h-12 px-6 font-bold text-xs uppercase tracking-widest border-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
-                  >
-                    <FileText className="mr-2 h-4 w-4" />
-                    Print Preview
-                  </Button>
+                      <Button
+                        onClick={onPost}
+                        disabled={loading || sending || !isEditMode}
+                        className="flex-1 md:flex-none rounded-2xl h-12 px-10 font-black text-xs uppercase tracking-widest shadow-xl transition-all bg-indigo-600 text-white hover:bg-indigo-700 hover:scale-105 active:scale-95 shadow-indigo-500/25"
+                      >
+                        <Send className="mr-2 h-4 w-4" />
+                        {sending ? "Posting..." : "Post & Finalize"}
+                      </Button>
+                    </>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <Button
+                        variant="outline"
+                        onClick={onPrint}
+                        className="flex-1 md:flex-none rounded-2xl h-12 px-6 font-bold text-xs uppercase tracking-widest border-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
+                      >
+                        <Printer className="mr-2 h-4 w-4" />
+                        Print
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={onPreview}
+                        className="flex-1 md:flex-none rounded-2xl h-12 px-6 font-bold text-xs uppercase tracking-widest border-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
+                      >
+                        <Eye className="mr-2 h-4 w-4" />
+                        Preview
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

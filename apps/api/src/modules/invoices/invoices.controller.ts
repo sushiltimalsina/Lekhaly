@@ -20,6 +20,16 @@ export class InvoicesController {
     return this.invoices.createDraft(user, body);
   }
 
+  @Post(":id/draft")
+  @RequirePerm("voucher.draft.update")
+  updateDraft(
+    @CurrentUser() user: AuthUser,
+    @Param("id") id: string,
+    @Body(new ZodValidationPipe(CreateInvoiceDraftSchema)) body: any
+  ) {
+    return this.invoices.updateDraft(user, id, body);
+  }
+
   @Post("preview")
   @RequirePerm("voucher.preview")
   preview(

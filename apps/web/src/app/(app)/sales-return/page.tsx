@@ -12,13 +12,12 @@ import { Plus, ChevronRight, RotateCcw, Download } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import AdvancedFilterBar from "@/components/app/advanced-filter-bar";
-import { getSettings } from "@/lib/store/settings";
+import { getSettings, subscribeSettings } from "@/lib/store/settings";
 
 export default function SalesReturnListPage() {
     const router = useRouter();
     const { dateFormat } = useDateFormat();
-    const settings = getSettings();
-
+    const [settings, setSettings] = React.useState(getSettings());
     const [loading, setLoading] = React.useState(true);
     const [data, setData] = React.useState<any[]>([]);
     const [error, setError] = React.useState<string | null>(null);
@@ -29,6 +28,13 @@ export default function SalesReturnListPage() {
         from: null as Date | null,
         to: null as Date | null,
     });
+
+    React.useEffect(() => {
+        const unsubscribe = subscribeSettings((next) => setSettings(next));
+        return () => { unsubscribe(); };
+    }, []);
+
+    const calendarFmt = settings.calendarPreference.toLowerCase() as "ad" | "bs";
 
     const load = async () => {
         setLoading(true);
@@ -71,7 +77,7 @@ export default function SalesReturnListPage() {
     ];
 
     const columnOptions = [
-        { key: "date", label: "Date", defaultVisible: true },
+        { key: "date", label: "Return Date", defaultVisible: true },
         { key: "invoiceNo", label: "Return No", defaultVisible: true },
         { key: "refNo", label: "Reference No", defaultVisible: false },
         { key: "party", label: "Customer Name", defaultVisible: true },
@@ -82,13 +88,17 @@ export default function SalesReturnListPage() {
         { key: "taxable", label: "Taxable Amount", defaultVisible: false },
         { key: "nonTaxable", label: "Non Taxable Amount", defaultVisible: false },
         { key: "amount", label: "Amount", defaultVisible: true },
-        { key: "notes", label: "Notes/Memo", defaultVisible: false },
+        { key: "notes", label: "Memo", defaultVisible: false },
+        { key: "additionalNote", label: "Additional Note", defaultVisible: false },
         { key: "status", label: "Status", defaultVisible: true },
+        { key: "postedAt", label: "Posted Date/Time", defaultVisible: true },
     ];
 
     const [visibleColumns, setVisibleColumns] = React.useState<string[]>(
         columnOptions.filter(c => c.defaultVisible).map(c => c.key)
     );
+
+    const [expandedItems, setExpandedItems] = React.useState<Record<string, boolean>>({});
 
     const handleFilterChange = (newFilters: any) => {
         setFilters(prev => ({
@@ -114,7 +124,7 @@ export default function SalesReturnListPage() {
                         </Button>
                         <Button
                             onClick={() => router.push("/sales-return/create")}
-                            className="rounded-2xl bg-slate-900 text-white hover:bg-slate-800 shadow-xl shadow-slate-200 h-11 px-8 font-black text-xs uppercase tracking-widest transition-all active:scale-95"
+                            className="rounded-2xl bg-rose-600 text-white hover:bg-rose-700 shadow-xl shadow-rose-500/20 h-11 px-8 font-black text-xs uppercase tracking-widest transition-all active:scale-95 border-none"
                         >
                             <Plus className="mr-2 h-4 w-4" />
                             New Return
@@ -130,6 +140,7 @@ export default function SalesReturnListPage() {
                 defaultRange={settings.defaultDateRange}
                 columnOptions={columnOptions}
                 onVisibleColumnsChange={setVisibleColumns}
+                className="border-rose-100 dark:border-rose-900/50"
             />
 
             <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl shadow-slate-200/40 dark:border-slate-800 dark:bg-slate-950 dark:shadow-none">
@@ -137,16 +148,16 @@ export default function SalesReturnListPage() {
                     <div className="flex flex-col items-center justify-center py-24 space-y-4">
                         <div className="relative h-12 w-12">
                             <div className="absolute inset-0 rounded-full border-4 border-slate-100 dark:border-slate-800"></div>
-                            <div className="absolute inset-0 rounded-full border-4 border-red-600 border-t-transparent animate-spin"></div>
+                            <div className="absolute inset-0 rounded-full border-4 border-rose-600 border-t-transparent animate-spin"></div>
                         </div>
-                        <p className="text-sm font-black text-slate-400 animate-pulse uppercase tracking-widest text-[10px]">Filtering returns...</p>
+                        <p className="text-sm font-black text-slate-400 animate-pulse uppercase tracking-widest text-[10px]">Processing returns...</p>
                     </div>
                 ) : data.length > 0 ? (
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left">
                             <thead>
                                 <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30">
-                                    {isVisible("date") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Date</th>}
+                                    {isVisible("date") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Return Date</th>}
                                     {isVisible("invoiceNo") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Return No</th>}
                                     {isVisible("refNo") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Reference No</th>}
                                     {isVisible("party") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Customer Name</th>}
@@ -157,14 +168,16 @@ export default function SalesReturnListPage() {
                                     {isVisible("taxable") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Taxable Amount</th>}
                                     {isVisible("nonTaxable") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Non Taxable Amount</th>}
                                     {isVisible("amount") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Amount</th>}
-                                    {isVisible("notes") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Notes/Memo</th>}
+                                    {isVisible("notes") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Memo</th>}
+                                    {isVisible("additionalNote") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Additional Note</th>}
                                     {isVisible("status") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-center">Status</th>}
+                                    {isVisible("postedAt") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Posted Date/Time</th>}
                                     <th className="px-6 py-4 w-10"></th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
                                 {data.map((item) => {
-                                    const dateInfo = getDateDisplay({ ad: item.date, bs: item.dateBs, format: dateFormat });
+                                    const dateInfo = getDateDisplay({ ad: item.date, bs: item.dateBs, format: calendarFmt });
                                     const items = item.items || [];
                                     const firstItem = items[0];
                                     const itemSummary = items.length > 1
@@ -186,8 +199,8 @@ export default function SalesReturnListPage() {
                                     return (
                                         <tr
                                             key={item.id}
-                                            onClick={() => router.push(`/vouchers/${item.voucherId || item.id}`)}
-                                            className="group cursor-pointer hover:bg-slate-50/80 dark:hover:bg-slate-900/40 transition-colors"
+                                            onClick={() => router.push(`/sales-return/create?id=${item.id}`)}
+                                            className="group cursor-pointer hover:bg-rose-50/20 dark:hover:bg-rose-900/10 transition-colors"
                                         >
                                             {isVisible("date") && (
                                                 <td className="px-6 py-5 whitespace-nowrap">
@@ -199,10 +212,10 @@ export default function SalesReturnListPage() {
                                             )}
                                             {isVisible("invoiceNo") && (
                                                 <td className="px-6 py-5 whitespace-nowrap font-black text-slate-900 dark:text-white uppercase tracking-widest text-[11px]">
-                                                    {item.invoiceNo || "SR-" + item.id.slice(0, 6)}
+                                                    {item.invoiceNo || "DRAFT"}
                                                 </td>
                                             )}
-                                            {isVisible("refNo") && <td className="px-6 py-5 whitespace-nowrap text-slate-400 text-xs">{item.voucher?.referenceNo || "—"}</td>}
+                                            {isVisible("refNo") && <td className="px-6 py-5 whitespace-nowrap text-slate-400 text-xs">{item.referenceNo || item.voucher?.referenceNo || "—"}</td>}
                                             {isVisible("party") && (
                                                 <td className="px-6 py-5">
                                                     <span className="font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">{item.partyName || item.party?.name || "Unknown Customer"}</span>
@@ -214,10 +227,26 @@ export default function SalesReturnListPage() {
                                                 </td>
                                             )}
                                             {isVisible("items") && (
-                                                <td className="px-6 py-5">
-                                                    <span className="text-xs font-medium text-slate-600 dark:text-slate-400 truncate max-w-[200px] block" title={itemSummary}>
-                                                        {itemSummary}
-                                                    </span>
+                                                <td
+                                                    className="px-6 py-5 cursor-pointer hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors rounded-lg"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setExpandedItems(prev => ({ ...prev, [item.id]: !prev[item.id] }));
+                                                    }}
+                                                >
+                                                    {expandedItems[item.id] ? (
+                                                        <div className="flex flex-col gap-1 min-w-[200px]">
+                                                            {items.map((i: any, idx: number) => (
+                                                                <span key={idx} className="text-xs font-medium text-slate-700 dark:text-slate-300 break-words whitespace-normal">
+                                                                    • {i.item?.name || i.description} {Number(i.qty || 0) > 0 && <span className="text-slate-400">x{Number(i.qty)}</span>}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-xs font-medium text-slate-600 dark:text-slate-400 truncate max-w-[200px] block" title="Click to expand">
+                                                            {itemSummary}
+                                                        </span>
+                                                    )}
                                                 </td>
                                             )}
                                             {isVisible("qty") && (
@@ -249,8 +278,15 @@ export default function SalesReturnListPage() {
                                             )}
                                             {isVisible("notes") && (
                                                 <td className="px-6 py-5">
-                                                    <span className="text-xs text-slate-400 font-medium truncate max-w-[150px] block" title={item.voucher?.memo || item.memo}>
-                                                        {item.voucher?.memo || item.memo || "—"}
+                                                    <span className="text-xs text-slate-400 font-medium truncate max-w-[150px] block" title={item.memo || item.voucher?.memo}>
+                                                        {item.memo || item.voucher?.memo || "—"}
+                                                    </span>
+                                                </td>
+                                            )}
+                                            {isVisible("additionalNote") && (
+                                                <td className="px-6 py-5">
+                                                    <span className="text-xs text-slate-400 font-medium truncate max-w-[150px] block" title={item.additionalNote || item.voucher?.additionalNote}>
+                                                        {item.additionalNote || item.voucher?.additionalNote || "—"}
                                                     </span>
                                                 </td>
                                             )}
@@ -259,8 +295,27 @@ export default function SalesReturnListPage() {
                                                     <StatusBadge status={item.status as DocStatus} />
                                                 </td>
                                             )}
+                                            {isVisible("postedAt") && (
+                                                <td className="px-6 py-5 whitespace-nowrap">
+                                                    {item.voucher?.postedAt ? (() => {
+                                                        const postedInfo = getDateDisplay({ ad: item.voucher.postedAt, format: calendarFmt });
+                                                        return (
+                                                            <div className="flex flex-col">
+                                                                <span className="font-bold text-slate-800 dark:text-slate-100 text-xs">
+                                                                    {postedInfo.primary}
+                                                                </span>
+                                                                <span className="text-[9px] text-slate-400 font-medium">
+                                                                    {new Date(item.voucher.postedAt).toLocaleTimeString()}
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    })() : (
+                                                        <span className="text-slate-300 text-xs">—</span>
+                                                    )}
+                                                </td>
+                                            )}
                                             <td className="px-6 py-5 text-right">
-                                                <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-red-400 group-hover:translate-x-1 transition-all" />
+                                                <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-rose-400 group-hover:translate-x-1 transition-all" />
                                             </td>
                                         </tr>
                                     );
@@ -274,15 +329,14 @@ export default function SalesReturnListPage() {
                             <RotateCcw className="h-10 w-10 text-slate-200" />
                         </div>
                         <div className="max-w-xs space-y-1">
-                            <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-widest text-sm text-red-600">No Returns Found</h3>
-                            <p className="text-sm text-slate-500 font-medium">All customer returns and credit notes will appear in this registry.</p>
+                            <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-widest text-sm text-rose-600">No Returns Found</h3>
+                            <p className="text-sm text-slate-500 font-medium leading-relaxed">Recorded customer returns and credit notes will appear in this registry.</p>
                         </div>
                         <Button
                             onClick={() => setFilters({ q: "", status: "all", from: null, to: null })}
-                            variant="outline"
-                            className="rounded-2xl h-10 px-8 font-black text-xs uppercase tracking-widest border-2"
+                            className="bg-rose-600 rounded-2xl h-11 px-8 font-black text-xs uppercase tracking-widest shadow-xl shadow-rose-500/20"
                         >
-                            Clear Filters
+                            Reset Audit Filters
                         </Button>
                     </div>
                 )}
@@ -290,9 +344,9 @@ export default function SalesReturnListPage() {
 
             {data.length > 0 && (
                 <div className="flex items-center justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">
-                    <p>Registry Update: {data.length} returns found</p>
-                    <div className="flex items-center gap-1.5 font-bold text-red-600">
-                        <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                    <p>Audit Trail: {data.length} records in view</p>
+                    <div className="flex items-center gap-1.5 font-bold text-rose-600">
+                        <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse"></span>
                         <span>Credit Sync Active</span>
                     </div>
                 </div>

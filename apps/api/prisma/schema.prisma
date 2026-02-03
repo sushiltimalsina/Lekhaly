@@ -561,6 +561,8 @@ model Invoice {
   vatAmount Decimal @db.Decimal(14, 2)
   total     Decimal @db.Decimal(14, 2)
   status    String
+  memo      String?
+  additionalNote String? @db.Text
 
   items     InvoiceItem[]
   sundries  InvoiceSundry[]

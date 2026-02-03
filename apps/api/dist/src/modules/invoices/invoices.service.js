@@ -329,7 +329,10 @@ let InvoicesService = class InvoicesService {
             dateBs: resolvedDate.bs || input.dateBs,
             dueDate: resolvedDue?.date,
             dueDateBs: resolvedDue?.bs || input.dueDateBs,
-            referenceNo: input.referenceNo
+            dueDateBs: resolvedDue?.bs || input.dueDateBs,
+            referenceNo: input.referenceNo,
+            memo: input.memo,
+            additionalNote: input.additionalNote
         };
     }
     async createDraft(user, input) {
@@ -351,6 +354,8 @@ let InvoicesService = class InvoicesService {
                     vatAmount: totals.vatAmount,
                     total: totals.total,
                     status: "draft",
+                    memo: input.memo,
+                    additionalNote: input.additionalNote,
                     items: {
                         create: preview.items.map((item) => ({
                             itemId: item.itemId,
@@ -421,7 +426,9 @@ let InvoicesService = class InvoicesService {
                 type: s.type,
                 rate: s.rate?.toNumber ? s.rate.toNumber() : (s.rate ? Number(s.rate) : null),
                 amount: s.amount.toNumber ? s.amount.toNumber() : Number(s.amount)
-            }))
+            })),
+            memo: invoice.memo || undefined,
+            additionalNote: invoice.additionalNote || undefined
         });
         if (invoice.type === "sales") {
             await this.enforceStockForSales(user, invoice.items.map((i) => ({
@@ -441,7 +448,8 @@ let InvoicesService = class InvoicesService {
                     voucherDate: invoice.date,
                     partyId: invoice.partyId,
                     referenceNo: invoice.referenceNo,
-                    memo: `Invoice ${invoice.id}`,
+                    memo: preview.memo || `Invoice ${invoice.id}`,
+                    additionalNote: preview.additionalNote,
                     postedAt: new Date(),
                     postedByUserId: user.sub,
                     voucherNumber,
@@ -504,6 +512,15 @@ let InvoicesService = class InvoicesService {
             if (filters.to)
                 where.date.lte = filters.to;
         }
+        if (filters.q) {
+            where.OR = [
+                { invoiceNo: { contains: filters.q, mode: "insensitive" } },
+                { referenceNo: { contains: filters.q, mode: "insensitive" } },
+                { memo: { contains: filters.q, mode: "insensitive" } },
+                { additionalNote: { contains: filters.q, mode: "insensitive" } },
+                { party: { name: { contains: filters.q, mode: "insensitive" } } }
+            ];
+        }
         return this.prisma.invoice.findMany({
             where,
             include: {
@@ -516,7 +533,7 @@ let InvoicesService = class InvoicesService {
                     }
                 },
                 voucher: {
-                    select: { memo: true, referenceNo: true }
+                    select: { memo: true, referenceNo: true, additionalNote: true, postedAt: true }
                 }
             },
             orderBy: { date: "desc" },
@@ -553,6 +570,66 @@ let InvoicesService = class InvoicesService {
                 }))
             }))
         };
+    }
+    async updateDraft(user, id, input) {
+        const existing = await this.prisma.invoice.findFirst({
+            where: { id, companyId: user.companyId }
+        });
+        if (!existing)
+            throw new common_1.NotFoundException("Invoice not found");
+        if (existing.status !== "draft")
+            throw new common_1.ForbiddenException("Only draft invoices can be updated");
+        const preview = await this.preview(user, input);
+        const totals = preview.totals;
+        return await this.prisma.$transaction(async (tx) => {
+            await tx.invoiceItemTax.deleteMany({ where: { invoiceItem: { invoiceId: id } } });
+            await tx.invoiceItem.deleteMany({ where: { invoiceId: id } });
+            await tx.invoiceSundry.deleteMany({ where: { invoiceId: id } });
+            return await tx.invoice.update({
+                where: { id },
+                data: {
+                    type: input.type,
+                    partyId: input.partyId,
+                    date: preview.date,
+                    dateBs: preview.dateBs || null,
+                    dueDate: preview.dueDate,
+                    dueDateBs: preview.dueDateBs || null,
+                    referenceNo: preview.referenceNo,
+                    receivableAccountId: input.receivableAccountId,
+                    subtotal: totals.subtotal,
+                    vatAmount: totals.vatAmount,
+                    total: totals.total,
+                    memo: input.memo,
+                    additionalNote: input.additionalNote,
+                    items: {
+                        create: preview.items.map((item) => ({
+                            itemId: item.itemId,
+                            description: item.description,
+                            qty: new client_1.Prisma.Decimal(item.qty),
+                            rate: new client_1.Prisma.Decimal(item.rate),
+                            amount: item.amount,
+                            taxCodeId: item.taxCodeId,
+                            taxAmount: item.taxAmount,
+                            taxes: {
+                                create: (item.taxCodeIds || []).map((tId) => ({
+                                    taxCodeId: tId,
+                                    taxAmount: 0
+                                }))
+                            }
+                        }))
+                    },
+                    sundries: {
+                        create: (input.sundries || []).map((s) => ({
+                            billSundryId: s.billSundryId,
+                            name: s.name,
+                            type: s.type,
+                            rate: s.rate ? new client_1.Prisma.Decimal(s.rate) : null,
+                            amount: new client_1.Prisma.Decimal(s.amount)
+                        }))
+                    }
+                }
+            });
+        });
     }
 };
 exports.InvoicesService = InvoicesService;

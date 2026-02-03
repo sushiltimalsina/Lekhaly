@@ -27,6 +27,9 @@ let InvoicesController = class InvoicesController {
     createDraft(user, body) {
         return this.invoices.createDraft(user, body);
     }
+    updateDraft(user, id, body) {
+        return this.invoices.updateDraft(user, id, body);
+    }
     preview(user, body) {
         return this.invoices.preview(user, body);
     }
@@ -53,6 +56,16 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", void 0)
 ], InvoicesController.prototype, "createDraft", null);
+__decorate([
+    (0, common_1.Post)(":id/draft"),
+    (0, auth_decorator_1.RequirePerm)("voucher.draft.update"),
+    __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)("id")),
+    __param(2, (0, common_1.Body)(new zod_pipe_1.ZodValidationPipe(invoice_schemas_1.CreateInvoiceDraftSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, Object]),
+    __metadata("design:returntype", void 0)
+], InvoicesController.prototype, "updateDraft", null);
 __decorate([
     (0, common_1.Post)("preview"),
     (0, auth_decorator_1.RequirePerm)("voucher.preview"),
