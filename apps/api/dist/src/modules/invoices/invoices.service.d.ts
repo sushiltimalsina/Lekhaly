@@ -104,12 +104,12 @@ export declare class InvoicesService {
         items: {
             id: string;
             createdAt: Date;
-            description: string | null;
             rate: Prisma.Decimal;
+            description: string | null;
             taxCodeId: string | null;
             itemId: string | null;
-            taxAmount: Prisma.Decimal;
             qty: Prisma.Decimal;
+            taxAmount: Prisma.Decimal;
             amount: Prisma.Decimal;
             invoiceId: string;
         }[];
@@ -200,12 +200,12 @@ export declare class InvoicesService {
         } & {
             id: string;
             createdAt: Date;
-            description: string | null;
             rate: Prisma.Decimal;
+            description: string | null;
             taxCodeId: string | null;
             itemId: string | null;
-            taxAmount: Prisma.Decimal;
             qty: Prisma.Decimal;
+            taxAmount: Prisma.Decimal;
             amount: Prisma.Decimal;
             invoiceId: string;
         })[];

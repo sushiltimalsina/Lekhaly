@@ -15,6 +15,7 @@ type DraftInput = {
         description?: string;
         debit?: number;
         credit?: number;
+        qty?: number;
         taxCodeId?: string;
         taxAmount?: number;
     }>;
@@ -37,15 +38,16 @@ export declare class VouchersService {
             id: string;
             companyId: string;
             createdAt: Date;
+            accountId: string;
             description: string | null;
             taxCodeId: string | null;
             partyId: string | null;
             voucherId: string;
             lineNo: number;
-            accountId: string;
             itemId: string | null;
             debit: Prisma.Decimal;
             credit: Prisma.Decimal;
+            qty: Prisma.Decimal;
             taxAmount: Prisma.Decimal;
         }[];
     } & {
@@ -75,15 +77,16 @@ export declare class VouchersService {
             id: string;
             companyId: string;
             createdAt: Date;
+            accountId: string;
             description: string | null;
             taxCodeId: string | null;
             partyId: string | null;
             voucherId: string;
             lineNo: number;
-            accountId: string;
             itemId: string | null;
             debit: Prisma.Decimal;
             credit: Prisma.Decimal;
+            qty: Prisma.Decimal;
             taxAmount: Prisma.Decimal;
         }[];
     } & {
@@ -120,15 +123,16 @@ export declare class VouchersService {
             id: string;
             companyId: string;
             createdAt: Date;
+            accountId: string;
             description: string | null;
             taxCodeId: string | null;
             partyId: string | null;
             voucherId: string;
             lineNo: number;
-            accountId: string;
             itemId: string | null;
             debit: Prisma.Decimal;
             credit: Prisma.Decimal;
+            qty: Prisma.Decimal;
             taxAmount: Prisma.Decimal;
         }[];
     } & {
@@ -162,15 +166,16 @@ export declare class VouchersService {
             id: string;
             companyId: string;
             createdAt: Date;
+            accountId: string;
             description: string | null;
             taxCodeId: string | null;
             partyId: string | null;
             voucherId: string;
             lineNo: number;
-            accountId: string;
             itemId: string | null;
             debit: Prisma.Decimal;
             credit: Prisma.Decimal;
+            qty: Prisma.Decimal;
             taxAmount: Prisma.Decimal;
         }[];
     } & {
@@ -210,6 +215,13 @@ export declare class VouchersService {
         skip?: number;
         take?: number;
     }): Promise<({
+        stockLedger: {
+            id: string;
+            rate: Prisma.Decimal;
+            itemId: string;
+            qtyIn: Prisma.Decimal;
+            qtyOut: Prisma.Decimal;
+        }[];
         party: {
             id: string;
             name: string;
@@ -226,15 +238,16 @@ export declare class VouchersService {
             id: string;
             companyId: string;
             createdAt: Date;
+            accountId: string;
             description: string | null;
             taxCodeId: string | null;
             partyId: string | null;
             voucherId: string;
             lineNo: number;
-            accountId: string;
             itemId: string | null;
             debit: Prisma.Decimal;
             credit: Prisma.Decimal;
+            qty: Prisma.Decimal;
             taxAmount: Prisma.Decimal;
         })[];
     } & {

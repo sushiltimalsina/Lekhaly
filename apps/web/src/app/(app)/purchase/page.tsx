@@ -85,6 +85,7 @@ export default function PurchaseListPage() {
         { key: "amount", label: "Amount", defaultVisible: true },
         { key: "notes", label: "Notes/Memo", defaultVisible: false },
         { key: "status", label: "Status", defaultVisible: true },
+        { key: "postedAt", label: "Posted Date/Time", defaultVisible: true },
     ];
 
     const [visibleColumns, setVisibleColumns] = React.useState<string[]>(
@@ -155,6 +156,7 @@ export default function PurchaseListPage() {
                                     {isVisible("amount") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Amount</th>}
                                     {isVisible("notes") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Notes/Memo</th>}
                                     {isVisible("status") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-center">Status</th>}
+                                    {isVisible("postedAt") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Posted Date/Time</th>}
                                     <th className="px-6 py-4 w-10"></th>
                                 </tr>
                             </thead>
@@ -169,10 +171,15 @@ export default function PurchaseListPage() {
                                         ? `${firstLine?.item?.name || firstLine?.description || "Mixed"} (+${itemLines.length - 1})`
                                         : (firstLine?.item?.name || firstLine?.description || "—");
 
-                                    // For purchases, typically quantity is in stock ledger, but if not we can use debit/credit as price
-                                    // Actually, we should probably have qty in lines too if it's a purchase bill.
-                                    // Since it's a generic voucher, we'll try to get data from lines.
-                                    const totalQty = itemLines.reduce((sum: number, l: any) => sum + Number(l.qty || 1), 0);
+                                    // Calculate total quantity from stock ledger entries
+                                    // For purchases, we look at qtyIn (incoming stock)
+                                    const stockEntries = item.stockLedger || [];
+                                    const totalQty = stockEntries.reduce((sum: number, entry: any) => {
+                                        const qtyIn = Number(entry.qtyIn || 0);
+                                        const qtyOut = Number(entry.qtyOut || 0);
+                                        // Net quantity for this entry
+                                        return sum + qtyIn - qtyOut;
+                                    }, 0);
                                     const avgRate = itemLines.length === 1 ? Number(firstLine.debit || firstLine.credit || 0) : null;
 
                                     let taxableAmount = 0;
@@ -262,6 +269,22 @@ export default function PurchaseListPage() {
                                             {isVisible("status") && (
                                                 <td className="px-6 py-5 whitespace-nowrap text-center">
                                                     <StatusBadge status={item.status as DocStatus} />
+                                                </td>
+                                            )}
+                                            {isVisible("postedAt") && (
+                                                <td className="px-6 py-5 whitespace-nowrap">
+                                                    {item.postedAt ? (
+                                                        <div className="flex flex-col">
+                                                            <span className="font-bold text-slate-800 dark:text-slate-100 text-xs">
+                                                                {new Date(item.postedAt).toLocaleDateString()}
+                                                            </span>
+                                                            <span className="text-[9px] text-slate-400 font-medium">
+                                                                {new Date(item.postedAt).toLocaleTimeString()}
+                                                            </span>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-slate-300 text-xs">—</span>
+                                                    )}
                                                 </td>
                                             )}
                                             <td className="px-6 py-5 text-right">

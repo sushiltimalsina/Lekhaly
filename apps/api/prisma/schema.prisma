@@ -666,6 +666,8 @@ model StockLedger {
   debit  Decimal @default(0) @db.Decimal(14, 2)
   credit Decimal @default(0) @db.Decimal(14, 2)
 
+  qty    Decimal @default(0) @db.Decimal(14, 2)
+
   taxCodeId String?
   taxCode   TaxCode? @relation(fields: [taxCodeId], references: [id])
 

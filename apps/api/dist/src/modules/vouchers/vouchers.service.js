@@ -255,7 +255,8 @@ let VouchersService = class VouchersService {
                 description: line.description,
                 debit: new client_1.Prisma.Decimal(debit),
                 credit: new client_1.Prisma.Decimal(credit),
-                taxCodeId: line.taxCodeId,
+                qty: new client_1.Prisma.Decimal(Number(line.qty || 0)),
+                taxCodeId: line.taxCodeId || null,
                 taxAmount: new client_1.Prisma.Decimal(line.taxAmount || 0)
             };
         });
@@ -404,6 +405,7 @@ let VouchersService = class VouchersService {
                 accountId: l.accountId,
                 debit: l.debit,
                 credit: l.credit,
+                qty: l.qty,
                 taxCodeId: l.taxCodeId || undefined,
                 taxAmount: l.taxAmount
             }));
@@ -452,9 +454,47 @@ let VouchersService = class VouchersService {
                         description: l.description,
                         debit: l.debit,
                         credit: l.credit,
+                        qty: l.qty || new client_1.Prisma.Decimal(0),
                         taxCodeId: l.taxCodeId,
                         taxAmount: l.taxAmount
                     }))
+                });
+            }
+            const itemLines = voucher.lines.filter(l => l.itemId);
+            if (itemLines.length > 0) {
+                const stockEntries = itemLines.map(line => {
+                    const l = line;
+                    const isPurchase = voucher.voucherType === client_1.VoucherType.purchase || voucher.voucherType === client_1.VoucherType.purchase_return;
+                    const isSale = voucher.voucherType === client_1.VoucherType.sales_invoice || voucher.voucherType === client_1.VoucherType.sales_return;
+                    let qtyIn = new client_1.Prisma.Decimal(0);
+                    let qtyOut = new client_1.Prisma.Decimal(0);
+                    let amount = new client_1.Prisma.Decimal(0);
+                    let rate = new client_1.Prisma.Decimal(0);
+                    const quantity = (l.qty && l.qty.equals(0) === false) ? l.qty : new client_1.Prisma.Decimal(1);
+                    if (isPurchase) {
+                        amount = l.debit;
+                        qtyIn = quantity;
+                        rate = quantity.equals(0) ? new client_1.Prisma.Decimal(0) : l.debit.div(quantity);
+                    }
+                    else if (isSale) {
+                        amount = l.credit;
+                        qtyOut = quantity;
+                        rate = quantity.equals(0) ? new client_1.Prisma.Decimal(0) : l.credit.div(quantity);
+                    }
+                    return {
+                        companyId: user.companyId,
+                        itemId: l.itemId,
+                        date: voucher.voucherDate,
+                        dateBs: voucher.voucherDateBs || undefined,
+                        voucherId: voucher.id,
+                        qtyIn,
+                        qtyOut,
+                        rate,
+                        amount
+                    };
+                });
+                await tx.stockLedger.createMany({
+                    data: stockEntries
                 });
             }
             const result = await tx.voucher.findUnique({ where: { id: posted.id }, include: { lines: true } });
@@ -589,6 +629,15 @@ let VouchersService = class VouchersService {
                 lines: {
                     include: {
                         item: { select: { id: true, name: true, sku: true } }
+                    }
+                },
+                stockLedger: {
+                    select: {
+                        id: true,
+                        itemId: true,
+                        qtyIn: true,
+                        qtyOut: true,
+                        rate: true
                     }
                 }
             }

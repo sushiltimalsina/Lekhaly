@@ -20,6 +20,7 @@ type DraftInput = {
     description?: string;
     debit?: number;
     credit?: number;
+    qty?: number;
     taxCodeId?: string;
     taxAmount?: number;
   }>;
@@ -31,6 +32,7 @@ type TaxLineInput = {
   description?: string;
   debit: Prisma.Decimal;
   credit: Prisma.Decimal;
+  qty?: Prisma.Decimal;
   taxCodeId?: string;
   taxAmount?: Prisma.Decimal;
 };
@@ -300,7 +302,8 @@ export class VouchersService {
         description: line.description,
         debit: new Prisma.Decimal(debit),
         credit: new Prisma.Decimal(credit),
-        taxCodeId: line.taxCodeId,
+        qty: new Prisma.Decimal(Number(line.qty || 0)),
+        taxCodeId: line.taxCodeId || null,
         taxAmount: new Prisma.Decimal(line.taxAmount || 0)
       };
     });
@@ -468,6 +471,7 @@ export class VouchersService {
         accountId: l.accountId,
         debit: l.debit,
         credit: l.credit,
+        qty: (l as any).qty,
         taxCodeId: l.taxCodeId || undefined,
         taxAmount: l.taxAmount
       }));
@@ -523,11 +527,61 @@ export class VouchersService {
             description: l.description,
             debit: l.debit,
             credit: l.credit,
+            qty: l.qty || new Prisma.Decimal(0),
             taxCodeId: l.taxCodeId,
             taxAmount: l.taxAmount
           }))
         });
       }
+
+      // Create stock ledger entries for item-related lines
+      const itemLines = voucher.lines.filter(l => l.itemId);
+      if (itemLines.length > 0) {
+        const stockEntries = itemLines.map(line => {
+          const l = line as any; // Cast to access qty
+          const isPurchase = voucher.voucherType === VoucherType.purchase || voucher.voucherType === VoucherType.purchase_return;
+          const isSale = voucher.voucherType === VoucherType.sales_invoice || voucher.voucherType === VoucherType.sales_return;
+
+          // Determine quantity based on voucher type
+          let qtyIn = new Prisma.Decimal(0);
+          let qtyOut = new Prisma.Decimal(0);
+          let amount = new Prisma.Decimal(0);
+          let rate = new Prisma.Decimal(0);
+
+          // Use the stored quantity from the line, or default to 1 if 0/null (fallback)
+          const quantity = (l.qty && l.qty.equals(0) === false) ? l.qty : new Prisma.Decimal(1);
+
+          if (isPurchase) {
+            // Purchase: debit amount / qty
+            amount = l.debit;
+            qtyIn = quantity; // Use stored qty
+            // Prevent division by zero if quantity is somehow 0
+            rate = quantity.equals(0) ? new Prisma.Decimal(0) : l.debit.div(quantity);
+          } else if (isSale) {
+            // Sale: credit amount
+            amount = l.credit;
+            qtyOut = quantity; // Use stored qty
+            rate = quantity.equals(0) ? new Prisma.Decimal(0) : l.credit.div(quantity);
+          }
+
+          return {
+            companyId: user.companyId,
+            itemId: l.itemId!,
+            date: voucher.voucherDate,
+            dateBs: voucher.voucherDateBs || undefined,
+            voucherId: voucher.id,
+            qtyIn,
+            qtyOut,
+            rate,
+            amount
+          };
+        });
+
+        await tx.stockLedger.createMany({
+          data: stockEntries
+        });
+      }
+
 
       const result = await tx.voucher.findUnique({ where: { id: posted.id }, include: { lines: true } });
       if (idempotencyKey && guard?.kind === "new" && result) {
@@ -673,6 +727,15 @@ export class VouchersService {
         lines: {
           include: {
             item: { select: { id: true, name: true, sku: true } }
+          }
+        },
+        stockLedger: {
+          select: {
+            id: true,
+            itemId: true,
+            qtyIn: true,
+            qtyOut: true,
+            rate: true
           }
         }
       }

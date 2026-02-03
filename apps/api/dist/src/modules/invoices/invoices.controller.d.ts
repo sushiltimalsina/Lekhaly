@@ -7,12 +7,12 @@ export declare class InvoicesController {
         items: {
             id: string;
             createdAt: Date;
-            description: string | null;
             rate: import("@prisma/client/runtime/client").Decimal;
+            description: string | null;
             taxCodeId: string | null;
             itemId: string | null;
-            taxAmount: import("@prisma/client/runtime/client").Decimal;
             qty: import("@prisma/client/runtime/client").Decimal;
+            taxAmount: import("@prisma/client/runtime/client").Decimal;
             amount: import("@prisma/client/runtime/client").Decimal;
             invoiceId: string;
         }[];
@@ -140,12 +140,12 @@ export declare class InvoicesController {
         } & {
             id: string;
             createdAt: Date;
-            description: string | null;
             rate: import("@prisma/client/runtime/client").Decimal;
+            description: string | null;
             taxCodeId: string | null;
             itemId: string | null;
-            taxAmount: import("@prisma/client/runtime/client").Decimal;
             qty: import("@prisma/client/runtime/client").Decimal;
+            taxAmount: import("@prisma/client/runtime/client").Decimal;
             amount: import("@prisma/client/runtime/client").Decimal;
             invoiceId: string;
         })[];

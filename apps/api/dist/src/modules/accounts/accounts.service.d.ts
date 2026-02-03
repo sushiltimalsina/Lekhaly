@@ -13,9 +13,9 @@ export declare class AccountsService {
         updatedAt: Date;
         code: string;
         type: import("@prisma/client").$Enums.CoaType;
+        parentId: string | null;
         isPostable: boolean;
         isActive: boolean;
-        parentId: string | null;
     }>;
     update(user: AuthUser, id: string, input: Prisma.ChartOfAccountUpdateInput): Promise<{
         id: string;
@@ -25,9 +25,9 @@ export declare class AccountsService {
         updatedAt: Date;
         code: string;
         type: import("@prisma/client").$Enums.CoaType;
+        parentId: string | null;
         isPostable: boolean;
         isActive: boolean;
-        parentId: string | null;
     }>;
     get(user: AuthUser, id: string): Promise<{
         id: string;
@@ -37,9 +37,9 @@ export declare class AccountsService {
         updatedAt: Date;
         code: string;
         type: import("@prisma/client").$Enums.CoaType;
+        parentId: string | null;
         isPostable: boolean;
         isActive: boolean;
-        parentId: string | null;
     }>;
     list(user: AuthUser, filters: {
         type?: string;
@@ -55,9 +55,9 @@ export declare class AccountsService {
         updatedAt: Date;
         code: string;
         type: import("@prisma/client").$Enums.CoaType;
+        parentId: string | null;
         isPostable: boolean;
         isActive: boolean;
-        parentId: string | null;
     }[]>;
     remove(user: AuthUser, id: string): Promise<{
         id: string;
@@ -67,9 +67,9 @@ export declare class AccountsService {
         updatedAt: Date;
         code: string;
         type: import("@prisma/client").$Enums.CoaType;
+        parentId: string | null;
         isPostable: boolean;
         isActive: boolean;
-        parentId: string | null;
     }>;
     restore(user: AuthUser, id: string): Promise<{
         id: string;
@@ -79,8 +79,8 @@ export declare class AccountsService {
         updatedAt: Date;
         code: string;
         type: import("@prisma/client").$Enums.CoaType;
+        parentId: string | null;
         isPostable: boolean;
         isActive: boolean;
-        parentId: string | null;
     }>;
 }
