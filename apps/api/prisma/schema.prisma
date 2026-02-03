@@ -495,6 +495,7 @@ model Voucher {
   party   Party?  @relation(fields: [partyId], references: [id])
 
   memo String?
+  additionalNote String? @db.Text
 
   source String @default("api") // web|desktop|sync|ai_client later
 

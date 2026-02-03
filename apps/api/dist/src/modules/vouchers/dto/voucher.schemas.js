@@ -36,6 +36,7 @@ const VoucherDraftBaseSchema = zod_1.z.object({
     vendorInvoiceDate: zod_1.z.coerce.date().optional(),
     partyId: zod_1.z.string().uuid().optional(),
     memo: zod_1.z.string().trim().max(500).optional(),
+    additionalNote: zod_1.z.string().trim().max(2000).optional(),
     lines: zod_1.z.array(exports.VoucherLineSchema).min(1)
 });
 exports.CreateVoucherDraftSchema = VoucherDraftBaseSchema.superRefine((data, ctx) => {

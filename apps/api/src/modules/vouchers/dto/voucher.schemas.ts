@@ -35,6 +35,7 @@ const VoucherDraftBaseSchema = z.object({
   vendorInvoiceDate: z.coerce.date().optional(),
   partyId: z.string().uuid().optional(),
   memo: z.string().trim().max(500).optional(),
+  additionalNote: z.string().trim().max(2000).optional(),
   lines: z.array(VoucherLineSchema).min(1)
 });
 

@@ -13,23 +13,28 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import AdvancedFilterBar from "@/components/app/advanced-filter-bar";
-import { getSettings } from "@/lib/store/settings";
+import { getSettings, subscribeSettings } from "@/lib/store/settings";
 
 export default function PurchaseListPage() {
     const router = useRouter();
     const { dateFormat } = useDateFormat();
-    const settings = getSettings();
-
+    const [settings, setSettings] = React.useState(getSettings());
     const [loading, setLoading] = React.useState(true);
     const [data, setData] = React.useState<any[]>([]);
     const [error, setError] = React.useState<string | null>(null);
-
     const [filters, setFilters] = React.useState({
         q: "",
         status: "all",
         from: null as Date | null,
         to: null as Date | null,
     });
+
+    React.useEffect(() => {
+        const unsubscribe = subscribeSettings((next) => setSettings(next));
+        return () => { unsubscribe(); };
+    }, []);
+
+    const calendarFmt = settings.calendarPreference.toLowerCase() as "ad" | "bs";
 
     const load = async () => {
         setLoading(true);
@@ -72,8 +77,8 @@ export default function PurchaseListPage() {
     ];
 
     const columnOptions = [
-        { key: "date", label: "Date", defaultVisible: true },
-        { key: "voucherNo", label: "Voucher No", defaultVisible: true },
+        { key: "date", label: "Vendor Invoice Date", defaultVisible: true },
+        { key: "voucherNo", label: "Vendor Invoice No", defaultVisible: true },
         { key: "refNo", label: "Reference No", defaultVisible: false },
         { key: "party", label: "Vendor Name", defaultVisible: true },
         { key: "panVat", label: "PAN/VAT Number", defaultVisible: false },
@@ -82,7 +87,8 @@ export default function PurchaseListPage() {
         { key: "taxable", label: "Taxable Amount", defaultVisible: false },
         { key: "nonTaxable", label: "Non Taxable Amount", defaultVisible: false },
         { key: "amount", label: "Amount", defaultVisible: true },
-        { key: "notes", label: "Notes/Memo", defaultVisible: false },
+        { key: "notes", label: "Memo", defaultVisible: false },
+        { key: "additionalNote", label: "Additional Note", defaultVisible: false },
         { key: "status", label: "Status", defaultVisible: true },
         { key: "postedAt", label: "Posted Date/Time", defaultVisible: true },
     ];
@@ -143,8 +149,8 @@ export default function PurchaseListPage() {
                         <table className="w-full text-sm text-left">
                             <thead>
                                 <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30">
-                                    {isVisible("date") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Date</th>}
-                                    {isVisible("voucherNo") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Voucher No</th>}
+                                    {isVisible("date") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Vendor Invoice Date</th>}
+                                    {isVisible("voucherNo") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Vendor Invoice No</th>}
                                     {isVisible("refNo") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Reference No</th>}
                                     {isVisible("party") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Vendor Name</th>}
                                     {isVisible("panVat") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Pan/Vat Number</th>}
@@ -153,7 +159,8 @@ export default function PurchaseListPage() {
                                     {isVisible("taxable") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Taxable Amount</th>}
                                     {isVisible("nonTaxable") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Non Taxable Amount</th>}
                                     {isVisible("amount") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Amount</th>}
-                                    {isVisible("notes") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Notes/Memo</th>}
+                                    {isVisible("notes") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Memo</th>}
+                                    {isVisible("additionalNote") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Additional Note</th>}
                                     {isVisible("status") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-center">Status</th>}
                                     {isVisible("postedAt") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Posted Date/Time</th>}
                                     <th className="px-6 py-4 w-10"></th>
@@ -161,7 +168,7 @@ export default function PurchaseListPage() {
                             </thead>
                             <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
                                 {data.map((item) => {
-                                    const dateInfo = getDateDisplay({ ad: item.voucherDate, bs: item.voucherDateBs, format: dateFormat });
+                                    const dateInfo = getDateDisplay({ ad: item.voucherDate, bs: item.voucherDateBs, format: calendarFmt });
                                     const lines = item.lines || [];
                                     const itemLines = lines.filter((l: any) => l.itemId);
 
@@ -212,7 +219,7 @@ export default function PurchaseListPage() {
                                             )}
                                             {isVisible("voucherNo") && (
                                                 <td className="px-6 py-5 whitespace-nowrap font-black text-slate-900 dark:text-white uppercase tracking-widest text-[11px]">
-                                                    {item.voucherNumber || "DRAFT"}
+                                                    {item.vendorInvoiceNo || item.voucherNumber || "DRAFT"}
                                                 </td>
                                             )}
                                             {isVisible("refNo") && <td className="px-6 py-5 whitespace-nowrap text-slate-400 text-xs">{item.referenceNo || "—"}</td>}
@@ -278,6 +285,13 @@ export default function PurchaseListPage() {
                                                     </span>
                                                 </td>
                                             )}
+                                            {isVisible("additionalNote") && (
+                                                <td className="px-6 py-5">
+                                                    <span className="text-xs text-slate-400 font-medium truncate max-w-[150px] block" title={item.additionalNote}>
+                                                        {item.additionalNote || "—"}
+                                                    </span>
+                                                </td>
+                                            )}
                                             {isVisible("status") && (
                                                 <td className="px-6 py-5 whitespace-nowrap text-center">
                                                     <StatusBadge status={item.status as DocStatus} />
@@ -285,16 +299,19 @@ export default function PurchaseListPage() {
                                             )}
                                             {isVisible("postedAt") && (
                                                 <td className="px-6 py-5 whitespace-nowrap">
-                                                    {item.postedAt ? (
-                                                        <div className="flex flex-col">
-                                                            <span className="font-bold text-slate-800 dark:text-slate-100 text-xs">
-                                                                {new Date(item.postedAt).toLocaleDateString()}
-                                                            </span>
-                                                            <span className="text-[9px] text-slate-400 font-medium">
-                                                                {new Date(item.postedAt).toLocaleTimeString()}
-                                                            </span>
-                                                        </div>
-                                                    ) : (
+                                                    {item.postedAt ? (() => {
+                                                        const postedInfo = getDateDisplay({ ad: item.postedAt, format: calendarFmt });
+                                                        return (
+                                                            <div className="flex flex-col">
+                                                                <span className="font-bold text-slate-800 dark:text-slate-100 text-xs">
+                                                                    {postedInfo.primary}
+                                                                </span>
+                                                                <span className="text-[9px] text-slate-400 font-medium">
+                                                                    {new Date(item.postedAt).toLocaleTimeString()}
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    })() : (
                                                         <span className="text-slate-300 text-xs">—</span>
                                                     )}
                                                 </td>

@@ -20,6 +20,7 @@ export type VoucherRecord = {
   voucherDateBs: string;
   partyId?: string;
   memo?: string;
+  additionalNote?: string;
   amount: number;
   status: string;
 };
@@ -41,6 +42,7 @@ export type VoucherDraftInput = {
   voucherDateBs?: string; // BS
   partyId?: string;
   memo?: string;
+  additionalNote?: string;
   referenceNo?: string;
   vendorInvoiceNo?: string;
   vendorInvoiceDate?: string; // ISO

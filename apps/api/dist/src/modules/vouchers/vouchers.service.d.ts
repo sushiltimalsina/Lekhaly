@@ -10,6 +10,7 @@ type DraftInput = {
     vendorInvoiceNo?: string;
     vendorInvoiceDate?: Date;
     memo?: string;
+    additionalNote?: string;
     lines?: Array<{
         accountId?: string;
         partyId?: string;

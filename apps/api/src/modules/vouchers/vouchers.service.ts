@@ -15,6 +15,7 @@ type DraftInput = {
   vendorInvoiceNo?: string;
   vendorInvoiceDate?: Date;
   memo?: string;
+  additionalNote?: string;
   lines?: Array<{
     accountId?: string;
     partyId?: string;
@@ -353,6 +354,7 @@ export class VouchersService {
         vendorInvoiceNo: input.vendorInvoiceNo,
         vendorInvoiceDate: input.vendorInvoiceDate,
         memo: input.memo,
+        additionalNote: input.additionalNote,
         createdByUserId: user.sub,
         lines: {
           create: lines.map((l) => ({ ...l, accountId: l.accountId!, companyId: user.companyId }))
@@ -398,6 +400,7 @@ export class VouchersService {
     if (input.vendorInvoiceNo !== undefined) data.vendorInvoiceNo = input.vendorInvoiceNo;
     if (input.vendorInvoiceDate !== undefined) data.vendorInvoiceDate = input.vendorInvoiceDate;
     if (input.memo !== undefined) data.memo = input.memo;
+    if (input.additionalNote !== undefined) data.additionalNote = input.additionalNote;
 
     return this.prisma.$transaction(async (tx) => {
       const company = await this.getCompanyOrThrow(user.companyId);
@@ -724,6 +727,7 @@ export class VouchersService {
       where.OR = [
         { voucherNumber: { contains: filters.q, mode: "insensitive" } },
         { memo: { contains: filters.q, mode: "insensitive" } },
+        { additionalNote: { contains: filters.q, mode: "insensitive" } },
         { party: { name: { contains: filters.q, mode: "insensitive" } } }
       ];
     }

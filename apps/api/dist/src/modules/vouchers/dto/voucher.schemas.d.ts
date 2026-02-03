@@ -29,6 +29,7 @@ export declare const CreateVoucherDraftSchema: z.ZodObject<{
     vendorInvoiceDate: z.ZodOptional<z.ZodCoercedDate<unknown>>;
     partyId: z.ZodOptional<z.ZodString>;
     memo: z.ZodOptional<z.ZodString>;
+    additionalNote: z.ZodOptional<z.ZodString>;
     lines: z.ZodArray<z.ZodObject<{
         accountId: z.ZodOptional<z.ZodString>;
         partyId: z.ZodOptional<z.ZodString>;
@@ -60,6 +61,7 @@ export declare const UpdateVoucherDraftSchema: z.ZodObject<{
     vendorInvoiceDate: z.ZodOptional<z.ZodOptional<z.ZodCoercedDate<unknown>>>;
     partyId: z.ZodOptional<z.ZodOptional<z.ZodString>>;
     memo: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    additionalNote: z.ZodOptional<z.ZodOptional<z.ZodString>>;
     lines: z.ZodOptional<z.ZodArray<z.ZodObject<{
         accountId: z.ZodOptional<z.ZodString>;
         partyId: z.ZodOptional<z.ZodString>;

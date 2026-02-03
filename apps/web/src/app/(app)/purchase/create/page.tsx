@@ -31,6 +31,7 @@ import {
     Printer,
     FileText,
     ChevronRight,
+    ArrowLeft,
 } from "lucide-react";
 import Link from "next/link";
 import { toBs } from "@/lib/dates/bs";
@@ -361,7 +362,7 @@ export default function PurchaseCreatePage() {
 
     React.useEffect(() => {
         if (mounted) {
-            setTimeout(() => safeFocus(purchaseDateRef.current), 100);
+            setTimeout(() => safeFocus(vendorInvoiceDateRef.current), 100);
         }
     }, [mounted]);
 
@@ -407,16 +408,19 @@ export default function PurchaseCreatePage() {
     const [voucherStatus, setVoucherStatus] = React.useState<string | null>(null);
 
     React.useEffect(() => {
+        if (searchParams.get("id")) return; // Don't set default dates if editing/viewing existing
         const now = new Date();
         const ad = now.toISOString().slice(0, 10);
         const bs = toBs(ad);
+        const refNo = Math.floor(100000 + Math.random() * 900000).toString();
 
         setForm((f) => ({
             ...f,
             purchaseDate: { bs, ad },
             vendorInvoiceDate: { bs, ad },
+            referenceNo: refNo,
         }));
-    }, []);
+    }, [searchParams]);
 
     React.useEffect(() => {
         if (!form.payableAccountId && defaultPayable) {
@@ -477,18 +481,26 @@ export default function PurchaseCreatePage() {
                     getVoucher(editId).then(v => {
                         setVoucherStatus(v.status || null);
                         // Populate Form
+                        const parseDate = (d: any) => {
+                            if (!d) return "";
+                            if (typeof d === "string") return d.split("T")[0];
+                            if (d instanceof Date) return d.toISOString().split("T")[0];
+                            return String(d).split("T")[0];
+                        };
+
                         setForm(f => ({
                             ...f,
                             partyId: v.partyId || "",
                             voucherNumber: v.voucherNumber,
                             referenceNo: v.referenceNo || "",
-                            purchaseDate: { ad: v.voucherDate?.split("T")[0], bs: v.voucherDateBs || "" },
+                            purchaseDate: { ad: parseDate(v.voucherDate), bs: v.voucherDateBs || "" },
                             vendorInvoiceNo: v.vendorInvoiceNo || "",
                             vendorInvoiceDate: {
-                                ad: v.vendorInvoiceDate?.split("T")[0] || "",
-                                bs: v.vendorInvoiceDate ? toBs(v.vendorInvoiceDate.split("T")[0]) : ""
+                                ad: parseDate(v.vendorInvoiceDate),
+                                bs: v.vendorInvoiceDate ? toBs(parseDate(v.vendorInvoiceDate)) : ""
                             },
                             memo: v.memo || "",
+                            notes: v.additionalNote || "",
                             partyName: v.party?.name || ""
                         }));
 
@@ -708,6 +720,7 @@ export default function PurchaseCreatePage() {
             voucherDateBs: form.purchaseDate.bs || undefined,
             partyId: form.partyId,
             memo: form.memo || "Purchase from vendor",
+            additionalNote: form.notes || undefined,
             referenceNo: form.referenceNo || undefined,
             vendorInvoiceNo: form.vendorInvoiceNo || undefined,
             vendorInvoiceDate: form.vendorInvoiceDate.ad || undefined,
@@ -772,6 +785,17 @@ export default function PurchaseCreatePage() {
     return (
         <div className="space-y-6">
             <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                <div className="mb-4">
+                    <Button
+                        variant="ghost"
+                        onClick={() => router.push("/purchase")}
+                        className="rounded-full h-10 px-4 text-slate-500 hover:text-slate-900 transition-colors"
+                    >
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Back to Registry
+                    </Button>
+                </div>
+
                 <PageHeader
                     title={searchParams.get("id") ? (isEditMode ? "Edit Purchase Invoice" : "View Purchase Invoice") : "New Purchase Invoice"}
                     description={
@@ -818,7 +842,7 @@ export default function PurchaseCreatePage() {
                             accentColor="bg-orange-600"
                             onChange={(next) => setForm((f) => ({ ...f, purchaseDate: next }))}
                             onEnterNext={() => safeFocus(vendorInvoiceDateRef.current)}
-                            disabled={!isEditMode}
+                            disabled={true} // Purchase date is entry date, non-editable
                         />
                         <DualDateInput
                             ref={vendorInvoiceDateRef}
@@ -847,7 +871,7 @@ export default function PurchaseCreatePage() {
                                     }}
                                     placeholder="Reference No."
                                     className="h-11 rounded-2xl bg-slate-50/60 dark:bg-slate-900/60"
-                                    disabled={!isEditMode}
+                                    disabled={true} // Auto-generated reference number
                                 />
                             </label>
 
@@ -922,7 +946,7 @@ export default function PurchaseCreatePage() {
                                 value={form.purchaseDate}
                                 accentColor="bg-orange-600"
                                 onChange={(next) => setForm((f) => ({ ...f, purchaseDate: next }))}
-                                disabled={!isEditMode}
+                                disabled={true}
                             />
                             <DualDateInput
                                 label="Vendor Invoice Date"
@@ -1239,18 +1263,20 @@ export default function PurchaseCreatePage() {
                                                 </td>
 
                                                 <td className="px-4 py-3 text-right">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => removeLine(idx)}
-                                                        disabled={!isEditMode}
-                                                        className={cn(
-                                                            "inline-flex h-10 w-10 items-center justify-center rounded-xl border text-red-600 hover:bg-red-50",
-                                                            (lines.length === 1 || !isEditMode) && "pointer-events-none opacity-50"
-                                                        )}
-                                                        title="Remove line"
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </button>
+                                                    {isEditMode && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removeLine(idx)}
+                                                            disabled={!isEditMode}
+                                                            className={cn(
+                                                                "inline-flex h-10 w-10 items-center justify-center rounded-xl border text-red-600 hover:bg-red-50",
+                                                                (lines.length === 1 || !isEditMode) && "pointer-events-none opacity-50"
+                                                            )}
+                                                            title="Remove line"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </button>
+                                                    )}
                                                 </td>
                                             </tr>
                                         );
