@@ -24,6 +24,8 @@ export declare const CreateVoucherDraftSchema: z.ZodObject<{
     }>;
     voucherDate: z.ZodOptional<z.ZodCoercedDate<unknown>>;
     voucherDateBs: z.ZodOptional<z.ZodString>;
+    vendorInvoiceNo: z.ZodOptional<z.ZodString>;
+    vendorInvoiceDate: z.ZodOptional<z.ZodCoercedDate<unknown>>;
     partyId: z.ZodOptional<z.ZodString>;
     memo: z.ZodOptional<z.ZodString>;
     lines: z.ZodArray<z.ZodObject<{
@@ -52,6 +54,8 @@ export declare const UpdateVoucherDraftSchema: z.ZodObject<{
     }>>;
     voucherDate: z.ZodOptional<z.ZodOptional<z.ZodCoercedDate<unknown>>>;
     voucherDateBs: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    vendorInvoiceNo: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    vendorInvoiceDate: z.ZodOptional<z.ZodOptional<z.ZodCoercedDate<unknown>>>;
     partyId: z.ZodOptional<z.ZodOptional<z.ZodString>>;
     memo: z.ZodOptional<z.ZodOptional<z.ZodString>>;
     lines: z.ZodOptional<z.ZodArray<z.ZodObject<{
@@ -68,9 +72,9 @@ export declare const UpdateVoucherDraftSchema: z.ZodObject<{
 }, z.core.$strip>;
 export declare const ListVoucherQuerySchema: z.ZodObject<{
     status: z.ZodOptional<z.ZodEnum<{
+        void: "void";
         draft: "draft";
         posted: "posted";
-        void: "void";
     }>>;
     voucherType: z.ZodOptional<z.ZodEnum<{
         sales_invoice: "sales_invoice";

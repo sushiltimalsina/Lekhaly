@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/app/money";
 import { cn } from "@/lib/utils";
 
-import { createVoucherDraft, postVoucher, type VoucherDraftInput } from "@/lib/api/vouchers";
+import { createVoucherDraft, postVoucher, getVoucher, updateVoucherDraft, type VoucherDraftInput } from "@/lib/api/vouchers";
 import { listParties, type PartyRecord } from "@/lib/api/parties";
 import { listAccounts, type AccountRecord } from "@/lib/api/accounts";
 import { listItems, type ItemRecord } from "@/lib/api/items";
@@ -34,7 +34,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { toBs } from "@/lib/dates/bs";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 type Line = { itemId: string; qty: string; rate: string; description?: string; expenseAccountId?: string };
 type BillSundryRow = { id: string; sundryId?: string; name: string; type: "add" | "less"; ratePct: string; manualAmount?: string; isManual?: boolean };
@@ -402,6 +402,7 @@ export default function PurchaseCreatePage() {
 
     const ui = useUiState();
     const router = useRouter();
+    const searchParams = useSearchParams();
 
     React.useEffect(() => {
         const now = new Date();
@@ -466,6 +467,55 @@ export default function PurchaseCreatePage() {
                     }
                     return row;
                 }));
+
+                // Load Edit ID if present
+                const editId = searchParams.get("id");
+                if (editId) {
+                    getVoucher(editId).then(v => {
+                        // Populate Form
+                        setForm(f => ({
+                            ...f,
+                            vendorId: v.partyId || "",
+                            voucherNumber: v.voucherNumber,
+                            refNumber: v.referenceNo || "",
+                            purchaseDate: { ad: v.voucherDate?.split("T")[0], bs: v.voucherDateBs },
+                            vendorInvoiceNo: v.vendorInvoiceNo || "",
+                            vendorInvoiceDate: { ad: v.vendorInvoiceDate?.split("T")[0] || "", bs: "" },
+                            memo: v.memo || "",
+                        }));
+
+                        // Populate Lines (Items)
+                        const vLines = v.lines || [];
+                        const itemLines = vLines.filter((l: any) => l.itemId).map((l: any) => ({
+                            itemId: l.itemId,
+                            qty: String(Number(l.qty || 0)),
+                            rate: l.qty && Number(l.qty) !== 0 ? String(Number(l.debit) / Number(l.qty)) : "0",
+                            description: l.description,
+                            expenseAccountId: l.accountId
+                        }));
+                        if (itemLines.length > 0) setLines(itemLines);
+
+                        // Populate Sundries
+                        const sundryLines = vLines.filter((l: any) => !l.itemId && l.accountId);
+                        const mappedSundries: BillSundryRow[] = [];
+                        sundryLines.forEach((l: any) => {
+                            const matchingOpt = opts.find(o => o.accountId === l.accountId);
+                            if (matchingOpt) {
+                                mappedSundries.push({
+                                    id: Math.random().toString(36).substr(2, 9),
+                                    sundryId: matchingOpt.id,
+                                    name: matchingOpt.name,
+                                    type: l.debit > 0 ? "add" : "less",
+                                    ratePct: "",
+                                    manualAmount: String(Number(l.debit || l.credit || 0)),
+                                    isManual: true
+                                });
+                            }
+                        });
+                        if (mappedSundries.length > 0) setBillSundries(mappedSundries);
+
+                    }).catch(e => console.error("Failed to load voucher", e));
+                }
             })
             .catch((e: any) => {
                 if (!alive) return;

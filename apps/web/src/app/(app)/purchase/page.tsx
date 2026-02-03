@@ -199,7 +199,7 @@ export default function PurchaseListPage() {
                                     return (
                                         <tr
                                             key={item.id}
-                                            onClick={() => router.push(`/vouchers/${item.id}`)}
+                                            onClick={() => router.push(`/purchase/create?id=${item.id}`)}
                                             className="group cursor-pointer hover:bg-orange-50/20 dark:hover:bg-orange-900/10 transition-colors"
                                         >
                                             {isVisible("date") && (
