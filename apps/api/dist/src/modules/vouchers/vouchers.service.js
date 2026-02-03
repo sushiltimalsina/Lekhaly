@@ -587,7 +587,12 @@ let VouchersService = class VouchersService {
     async getById(user, voucherId) {
         const voucher = await this.prisma.voucher.findFirst({
             where: { id: voucherId, companyId: user.companyId },
-            include: { lines: true }
+            include: {
+                lines: true,
+                party: {
+                    select: { id: true, name: true }
+                }
+            }
         });
         if (!voucher)
             throw new common_1.NotFoundException("Voucher not found");

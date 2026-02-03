@@ -479,13 +479,17 @@ export default function PurchaseCreatePage() {
                         // Populate Form
                         setForm(f => ({
                             ...f,
-                            vendorId: v.partyId || "",
+                            partyId: v.partyId || "",
                             voucherNumber: v.voucherNumber,
-                            refNumber: v.referenceNo || "",
-                            purchaseDate: { ad: v.voucherDate?.split("T")[0], bs: v.voucherDateBs },
+                            referenceNo: v.referenceNo || "",
+                            purchaseDate: { ad: v.voucherDate?.split("T")[0], bs: v.voucherDateBs || "" },
                             vendorInvoiceNo: v.vendorInvoiceNo || "",
-                            vendorInvoiceDate: { ad: v.vendorInvoiceDate?.split("T")[0] || "", bs: "" },
+                            vendorInvoiceDate: {
+                                ad: v.vendorInvoiceDate?.split("T")[0] || "",
+                                bs: v.vendorInvoiceDate ? toBs(v.vendorInvoiceDate.split("T")[0]) : ""
+                            },
                             memo: v.memo || "",
+                            partyName: v.party?.name || ""
                         }));
 
                         // Populate Lines (Items)
@@ -716,9 +720,15 @@ export default function PurchaseCreatePage() {
         setSuccess(null);
         setLoading(true);
         try {
-            const res: any = await createVoucherDraft(buildPayload());
-            const id = res?.id ?? res?.voucherId ?? res?.data?.id;
-            setSuccess(id ? `Saved draft: ${id}` : "Saved draft.");
+            const editId = searchParams.get("id");
+            let res: any;
+            if (editId) {
+                res = await updateVoucherDraft(editId, buildPayload());
+            } else {
+                res = await createVoucherDraft(buildPayload());
+            }
+            const id = editId ?? res?.id ?? res?.voucherId ?? res?.data?.id;
+            setSuccess(id ? `Saved draft successfully.` : "Saved draft.");
         } catch (e: any) {
             setError(e?.message ?? "Something went wrong.");
         } finally {
@@ -731,12 +741,20 @@ export default function PurchaseCreatePage() {
         setSuccess(null);
         setSending(true);
         try {
-            const res: any = await createVoucherDraft(buildPayload());
-            const id = res?.id ?? res?.voucherId ?? res?.data?.id;
-            if (!id) throw new Error("Failed to create draft.");
+            const editId = searchParams.get("id");
+            let id = editId;
+
+            if (editId) {
+                await updateVoucherDraft(editId, buildPayload());
+            } else {
+                const res = await createVoucherDraft(buildPayload());
+                id = res?.id ?? res?.voucherId ?? res?.data?.id;
+            }
+
+            if (!id) throw new Error("Failed to identify draft ID.");
 
             await postVoucher(id);
-            setSuccess(`Purchase posted successfully: ${id}`);
+            setSuccess(`Purchase posted successfully.`);
             setTimeout(() => router.push("/purchase"), 1500);
         } catch (e: any) {
             setError(e?.message ?? "Something went wrong.");
@@ -800,6 +818,7 @@ export default function PurchaseCreatePage() {
                             accentColor="bg-orange-600"
                             onChange={(next) => setForm((f) => ({ ...f, purchaseDate: next }))}
                             onEnterNext={() => safeFocus(vendorInvoiceDateRef.current)}
+                            disabled={!isEditMode}
                         />
                         <DualDateInput
                             ref={vendorInvoiceDateRef}
@@ -808,6 +827,7 @@ export default function PurchaseCreatePage() {
                             accentColor="bg-orange-600"
                             onChange={(next) => setForm((f) => ({ ...f, vendorInvoiceDate: next }))}
                             onEnterNext={() => safeFocus(invoiceNoRef.current)}
+                            disabled={!isEditMode}
                         />
                     </div>
 
@@ -827,6 +847,7 @@ export default function PurchaseCreatePage() {
                                     }}
                                     placeholder="Reference No."
                                     className="h-11 rounded-2xl bg-slate-50/60 dark:bg-slate-900/60"
+                                    disabled={!isEditMode}
                                 />
                             </label>
 
@@ -845,6 +866,7 @@ export default function PurchaseCreatePage() {
                                     }}
                                     placeholder="Enter physical invoice number"
                                     className="h-11 rounded-2xl bg-slate-50/60 dark:bg-slate-900/60"
+                                    disabled={!isEditMode}
                                 />
                             </label>
 
@@ -867,6 +889,7 @@ export default function PurchaseCreatePage() {
                                         }}
                                         placeholder="Brief description of purchase"
                                         className="h-11 rounded-2xl bg-slate-50/60 dark:bg-slate-900/60"
+                                        disabled={!isEditMode}
                                     />
                                 </label>
 
@@ -883,6 +906,7 @@ export default function PurchaseCreatePage() {
                                             }
                                         }}
                                         className="mt-2 h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900"
+                                        disabled={!isEditMode}
                                     >
                                         <option value="vat_13">VAT 13% Purchase</option>
                                         <option value="exempt">Exempt Purchase</option>
@@ -898,12 +922,14 @@ export default function PurchaseCreatePage() {
                                 value={form.purchaseDate}
                                 accentColor="bg-orange-600"
                                 onChange={(next) => setForm((f) => ({ ...f, purchaseDate: next }))}
+                                disabled={!isEditMode}
                             />
                             <DualDateInput
                                 label="Vendor Invoice Date"
                                 value={form.vendorInvoiceDate}
                                 accentColor="bg-orange-600"
                                 onChange={(next) => setForm((f) => ({ ...f, vendorInvoiceDate: next }))}
+                                disabled={!isEditMode}
                             />
                         </div>
                     </div>
@@ -918,10 +944,12 @@ export default function PurchaseCreatePage() {
                             buttonRef={vendorSelectRef}
                             placeholder="Search vendor…"
                             valueId={form.partyId}
+                            fallbackLabel={(form as any).partyName}
                             onChange={(id) => setForm((f) => ({ ...f, partyId: id }))}
                             options={parties}
                             getLabel={(p) => p.name}
                             leftIcon={<Search className="h-4 w-4" />}
+                            disabled={!isEditMode}
                             onEnterNext={() => safeFocus(rowRefs.current.select[0])}
                             onKeyDownCustom={(e: React.KeyboardEvent<HTMLInputElement>) => {
                                 if (e.key === "Enter" && e.shiftKey) {
@@ -932,12 +960,13 @@ export default function PurchaseCreatePage() {
                             buttonClassName="h-12 rounded-2xl bg-white dark:bg-slate-900 pr-[140px]"
                         />
 
-                        {!form.partyId && (
+                        {!form.partyId && isEditMode && (
                             <Button
                                 type="button"
                                 variant="outline"
                                 onClick={() => setAddVendorOpen(true)}
                                 className="absolute right-2 top-1/2 -translate-y-1/2 h-9 rounded-full px-4 text-xs"
+                                disabled={!isEditMode}
                             >
                                 <Plus className="mr-2 h-3.5 w-3.5" />
                                 New Vendor
@@ -947,20 +976,22 @@ export default function PurchaseCreatePage() {
                 </section>
 
                 {/* Add Column */}
-                <div className="mb-3 flex flex-col items-end gap-1.5">
-                    <Button
-                        ref={addLineButtonRef}
-                        type="button"
-                        onClick={addLine}
-                        className="rounded-full bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm transition-all active:scale-95"
-                    >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Column
-                    </Button>
-                    <div className="text-[10px] text-muted-foreground italic pr-2">
-                        Tip: Press <kbd className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border text-[9px] not-italic font-sans">Shift + Enter</kbd> to jump sundry column
+                {isEditMode && (
+                    <div className="mb-3 flex flex-col items-end gap-1.5">
+                        <Button
+                            ref={addLineButtonRef}
+                            type="button"
+                            onClick={addLine}
+                            className="rounded-full bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm transition-all active:scale-95"
+                        >
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add Column
+                        </Button>
+                        <div className="text-[10px] text-muted-foreground italic pr-2">
+                            Tip: Press <kbd className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border text-[9px] not-italic font-sans">Shift + Enter</kbd> to jump sundry column
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* Items Details */}
                 <section className="mb-8 rounded-3xl border bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
@@ -1046,8 +1077,9 @@ export default function PurchaseCreatePage() {
                                                             leftIcon={<Search className="h-4 w-4" />}
                                                             buttonClassName="h-11 rounded-2xl bg-white dark:bg-slate-900 pr-[100px]"
                                                             emptyText="No items found"
+                                                            disabled={!isEditMode}
                                                         />
-                                                        {!line.itemId && (
+                                                        {!line.itemId && isEditMode && (
                                                             <Button
                                                                 type="button"
                                                                 variant="outline"
@@ -1056,6 +1088,7 @@ export default function PurchaseCreatePage() {
                                                                     setAddItemOpen(true);
                                                                 }}
                                                                 className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 rounded-xl px-3 text-[10px] font-medium bg-slate-50 dark:bg-slate-800"
+                                                                disabled={!isEditMode}
                                                             >
                                                                 <Plus className="mr-1 h-3 w-3" />
                                                                 Add item
@@ -1075,6 +1108,7 @@ export default function PurchaseCreatePage() {
                                                             updateLine(idx, { qty: e.target.value });
                                                             setLineErrors(prev => ({ ...prev, [idx]: { ...prev[idx], qty: undefined } }));
                                                         }}
+                                                        disabled={!isEditMode}
                                                         onKeyDown={(e) => {
                                                             if (e.key === "ArrowRight") {
                                                                 e.preventDefault();
@@ -1142,6 +1176,7 @@ export default function PurchaseCreatePage() {
                                                             updateLine(idx, { rate: e.target.value });
                                                             setLineErrors(prev => ({ ...prev, [idx]: { ...prev[idx], rate: undefined } }));
                                                         }}
+                                                        disabled={!isEditMode}
                                                         onKeyDown={(e) => {
                                                             if (e.key === "ArrowLeft") {
                                                                 e.preventDefault();
@@ -1207,9 +1242,10 @@ export default function PurchaseCreatePage() {
                                                     <button
                                                         type="button"
                                                         onClick={() => removeLine(idx)}
+                                                        disabled={!isEditMode}
                                                         className={cn(
                                                             "inline-flex h-10 w-10 items-center justify-center rounded-xl border text-red-600 hover:bg-red-50",
-                                                            lines.length === 1 && "pointer-events-none opacity-50"
+                                                            (lines.length === 1 || !isEditMode) && "pointer-events-none opacity-50"
                                                         )}
                                                         title="Remove line"
                                                     >
@@ -1243,10 +1279,12 @@ export default function PurchaseCreatePage() {
                 </section>
 
                 <div className="mb-4 flex flex-col items-end gap-2 text-right">
-                    <Button ref={addSundryButtonRef} type="button" variant="outline" onClick={addSundry} className="rounded-full bg-indigo-600 text-white hover:bg-indigo-700">
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Sundry Column
-                    </Button>
+                    {isEditMode && (
+                        <Button ref={addSundryButtonRef} type="button" variant="outline" onClick={addSundry} className="rounded-full bg-indigo-600 text-white hover:bg-indigo-700">
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add Sundry Column
+                        </Button>
+                    )}
                 </div>
 
                 {/* BILL SUNDRY */}
@@ -1391,7 +1429,7 @@ export default function PurchaseCreatePage() {
                                                                 }
                                                             }
                                                         }}
-                                                        disabled={r.id === "vat"}
+                                                        disabled={r.id === "vat" || !isEditMode}
                                                         className="h-10 w-[110px] rounded-xl bg-white text-right dark:bg-slate-900"
                                                     />
                                                     <span className="text-muted-foreground">%</span>
@@ -1452,7 +1490,7 @@ export default function PurchaseCreatePage() {
                                                                 }
                                                             }}
                                                             placeholder="0.00"
-                                                            disabled={r.id === "vat"}
+                                                            disabled={!isEditMode || r.id === "vat"}
                                                             className="h-8 w-24 rounded-lg border-slate-200 bg-white px-2 text-right text-sm dark:border-slate-800 dark:bg-slate-900"
                                                         />
                                                     </div>
@@ -1463,10 +1501,10 @@ export default function PurchaseCreatePage() {
                                                 <button
                                                     type="button"
                                                     onClick={() => removeSundry(r.id)}
-                                                    disabled={r.id === "vat" || r.id === "discount"}
+                                                    disabled={r.id === "vat" || r.id === "discount" || !isEditMode}
                                                     className={cn(
                                                         "inline-flex h-9 w-9 items-center justify-center rounded-xl border text-red-600 hover:bg-red-50",
-                                                        (billSundries.length <= 1 || r.id === "vat" || r.id === "discount") && "pointer-events-none opacity-50"
+                                                        (billSundries.length <= 1 || r.id === "vat" || r.id === "discount" || !isEditMode) && "pointer-events-none opacity-50"
                                                     )}
                                                     title="Remove"
                                                 >
@@ -1576,6 +1614,7 @@ export default function PurchaseCreatePage() {
                             }}
                             placeholder="Internal record notes..."
                             className="h-11 rounded-2xl bg-slate-50/60"
+                            disabled={!isEditMode}
                         />
 
                         <div className="mt-8 flex flex-wrap items-center justify-end gap-2">
@@ -1583,7 +1622,7 @@ export default function PurchaseCreatePage() {
                                 type="button"
                                 variant="outline"
                                 onClick={onSave}
-                                disabled={loading || sending}
+                                disabled={loading || sending || !isEditMode}
                                 className="rounded-full px-6"
                             >
                                 <Save className="mr-2 h-4 w-4" />
@@ -1592,7 +1631,7 @@ export default function PurchaseCreatePage() {
 
                             <Button
                                 onClick={onPost}
-                                disabled={loading || sending}
+                                disabled={loading || sending || !isEditMode}
                                 className="flex-1 md:flex-none rounded-2xl h-12 px-10 font-black text-xs uppercase tracking-widest shadow-xl transition-all bg-indigo-600 text-white hover:bg-indigo-700 hover:scale-105 active:scale-95 shadow-indigo-500/25"
                             >
                                 <Send className="mr-2 h-4 w-4" />

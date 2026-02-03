@@ -31,6 +31,7 @@ const VoucherDraftBaseSchema = zod_1.z.object({
     ]),
     voucherDate: zod_1.z.coerce.date().optional(),
     voucherDateBs: zod_1.z.string().trim().max(20).optional(),
+    referenceNo: zod_1.z.string().trim().max(100).optional(),
     vendorInvoiceNo: zod_1.z.string().trim().max(100).optional(),
     vendorInvoiceDate: zod_1.z.coerce.date().optional(),
     partyId: zod_1.z.string().uuid().optional(),
