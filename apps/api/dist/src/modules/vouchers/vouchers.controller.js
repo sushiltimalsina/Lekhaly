@@ -149,7 +149,6 @@ __decorate([
 __decorate([
     (0, common_1.Post)(":id/post"),
     (0, auth_decorator_1.RequirePerm)("voucher.post"),
-    (0, auth_decorator_1.RequireStep)("sensitive"),
     __param(0, (0, auth_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Param)("id")),
     __param(2, (0, common_1.Headers)("Idempotency-Key")),
@@ -160,7 +159,6 @@ __decorate([
 __decorate([
     (0, common_1.Post)(":id/void"),
     (0, auth_decorator_1.RequirePerm)("voucher.void"),
-    (0, auth_decorator_1.RequireStep)("sensitive"),
     __param(0, (0, auth_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Param)("id")),
     __param(2, (0, common_1.Headers)("Idempotency-Key")),

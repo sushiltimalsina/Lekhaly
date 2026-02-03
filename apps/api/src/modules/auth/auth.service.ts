@@ -202,6 +202,14 @@ export class AuthService {
         },
         {
           companyId,
+          name: "VAT",
+          type: "add",
+          rate: 13,
+          accountId: vatPayable.id,
+          isActive: true
+        },
+        {
+          companyId,
           name: "Shipping & Handling",
           type: "add",
           rate: 0,

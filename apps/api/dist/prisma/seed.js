@@ -184,6 +184,14 @@ async function createDemoCompany(permAll) {
             },
             {
                 companyId: company.id,
+                name: "VAT",
+                type: "add",
+                rate: 13,
+                accountId: vatPayable.id,
+                isActive: true
+            },
+            {
+                companyId: company.id,
                 name: "Shipping & Handling",
                 type: "add",
                 rate: 0,
