@@ -136,13 +136,13 @@ export declare class InvoicesService {
         voucherId: string | null;
         date: Date;
         dateBs: string | null;
-        invoiceNo: string | null;
         dueDate: Date | null;
         dueDateBs: string | null;
+        receivableAccountId: string;
+        invoiceNo: string | null;
         subtotal: Prisma.Decimal;
         vatAmount: Prisma.Decimal;
         total: Prisma.Decimal;
-        receivableAccountId: string;
     }>;
     post(user: AuthUser, invoiceId: string): Promise<{
         id: string;
@@ -156,13 +156,13 @@ export declare class InvoicesService {
         voucherId: string | null;
         date: Date;
         dateBs: string | null;
-        invoiceNo: string | null;
         dueDate: Date | null;
         dueDateBs: string | null;
+        receivableAccountId: string;
+        invoiceNo: string | null;
         subtotal: Prisma.Decimal;
         vatAmount: Prisma.Decimal;
         total: Prisma.Decimal;
-        receivableAccountId: string;
     }>;
     void(user: AuthUser, invoiceId: string): Promise<{
         id: string;
@@ -176,13 +176,13 @@ export declare class InvoicesService {
         voucherId: string | null;
         date: Date;
         dateBs: string | null;
-        invoiceNo: string | null;
         dueDate: Date | null;
         dueDateBs: string | null;
+        receivableAccountId: string;
+        invoiceNo: string | null;
         subtotal: Prisma.Decimal;
         vatAmount: Prisma.Decimal;
         total: Prisma.Decimal;
-        receivableAccountId: string;
     }>;
     list(user: AuthUser, filters: {
         type?: string;
@@ -231,13 +231,13 @@ export declare class InvoicesService {
         voucherId: string | null;
         date: Date;
         dateBs: string | null;
-        invoiceNo: string | null;
         dueDate: Date | null;
         dueDateBs: string | null;
+        receivableAccountId: string;
+        invoiceNo: string | null;
         subtotal: Prisma.Decimal;
         vatAmount: Prisma.Decimal;
         total: Prisma.Decimal;
-        receivableAccountId: string;
     })[]>;
     getById(user: AuthUser, invoiceId: string): Promise<{
         items: any[];
@@ -263,12 +263,12 @@ export declare class InvoicesService {
         voucherId: string | null;
         date: Date;
         dateBs: string | null;
-        invoiceNo: string | null;
         dueDate: Date | null;
         dueDateBs: string | null;
+        receivableAccountId: string;
+        invoiceNo: string | null;
         subtotal: Prisma.Decimal;
         vatAmount: Prisma.Decimal;
         total: Prisma.Decimal;
-        receivableAccountId: string;
     }>;
 }

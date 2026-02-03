@@ -12,6 +12,8 @@ type DraftInput = {
   voucherDateBs?: string;
   partyId?: string;
   referenceNo?: string;
+  vendorInvoiceNo?: string;
+  vendorInvoiceDate?: Date;
   memo?: string;
   lines?: Array<{
     accountId?: string;
@@ -348,12 +350,14 @@ export class VouchersService {
         voucherDateBs: resolved.bs || null,
         partyId: input.partyId,
         referenceNo: input.referenceNo,
+        vendorInvoiceNo: input.vendorInvoiceNo,
+        vendorInvoiceDate: input.vendorInvoiceDate,
         memo: input.memo,
         createdByUserId: user.sub,
         lines: {
           create: lines.map((l) => ({ ...l, accountId: l.accountId!, companyId: user.companyId }))
         }
-      },
+      } as any,
       include: { lines: true }
     });
 
@@ -384,13 +388,15 @@ export class VouchersService {
       input.partyId !== undefined ? input.partyId : voucher.partyId ? voucher.partyId : undefined;
     this.enforceVoucherRules(nextType, nextParty);
 
-    const data: Prisma.VoucherUpdateInput = {};
+    const data: any = {};
     if (input.voucherType) data.voucherType = input.voucherType;
     // date fields resolved in transaction below
     if (input.partyId !== undefined) {
       data.party = input.partyId ? { connect: { id: input.partyId } } : { disconnect: true };
     }
     if (input.referenceNo !== undefined) data.referenceNo = input.referenceNo;
+    if (input.vendorInvoiceNo !== undefined) data.vendorInvoiceNo = input.vendorInvoiceNo;
+    if (input.vendorInvoiceDate !== undefined) data.vendorInvoiceDate = input.vendorInvoiceDate;
     if (input.memo !== undefined) data.memo = input.memo;
 
     return this.prisma.$transaction(async (tx) => {
@@ -413,7 +419,7 @@ export class VouchersService {
 
       const updated = await tx.voucher.update({
         where: { id: voucher.id },
-        data
+        data: data as any
       });
 
       return tx.voucher.findUnique({ where: { id: updated.id }, include: { lines: true } });

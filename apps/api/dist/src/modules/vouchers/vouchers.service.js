@@ -296,6 +296,8 @@ let VouchersService = class VouchersService {
                 voucherDateBs: resolved.bs || null,
                 partyId: input.partyId,
                 referenceNo: input.referenceNo,
+                vendorInvoiceNo: input.vendorInvoiceNo,
+                vendorInvoiceDate: input.vendorInvoiceDate,
                 memo: input.memo,
                 createdByUserId: user.sub,
                 lines: {
@@ -331,6 +333,10 @@ let VouchersService = class VouchersService {
         }
         if (input.referenceNo !== undefined)
             data.referenceNo = input.referenceNo;
+        if (input.vendorInvoiceNo !== undefined)
+            data.vendorInvoiceNo = input.vendorInvoiceNo;
+        if (input.vendorInvoiceDate !== undefined)
+            data.vendorInvoiceDate = input.vendorInvoiceDate;
         if (input.memo !== undefined)
             data.memo = input.memo;
         return this.prisma.$transaction(async (tx) => {
@@ -352,7 +358,7 @@ let VouchersService = class VouchersService {
             }
             const updated = await tx.voucher.update({
                 where: { id: voucher.id },
-                data
+                data: data
             });
             return tx.voucher.findUnique({ where: { id: updated.id }, include: { lines: true } });
         });
