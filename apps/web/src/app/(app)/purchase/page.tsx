@@ -90,6 +90,7 @@ export default function PurchaseListPage() {
     const [visibleColumns, setVisibleColumns] = React.useState<string[]>(
         columnOptions.filter(c => c.defaultVisible).map(c => c.key)
     );
+    const [expandedItems, setExpandedItems] = React.useState<Record<string, boolean>>({});
 
     const handleFilterChange = (newFilters: any) => {
         setFilters(prev => ({
@@ -226,10 +227,26 @@ export default function PurchaseListPage() {
                                                 </td>
                                             )}
                                             {isVisible("items") && (
-                                                <td className="px-6 py-5">
-                                                    <span className="text-xs font-medium text-slate-600 dark:text-slate-400 truncate max-w-[200px] block" title={itemSummary}>
-                                                        {itemSummary}
-                                                    </span>
+                                                <td
+                                                    className="px-6 py-5 cursor-pointer hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors rounded-lg"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setExpandedItems(prev => ({ ...prev, [item.id]: !prev[item.id] }));
+                                                    }}
+                                                >
+                                                    {expandedItems[item.id] ? (
+                                                        <div className="flex flex-col gap-1 min-w-[200px]">
+                                                            {itemLines.map((l: any, i: number) => (
+                                                                <span key={i} className="text-xs font-medium text-slate-700 dark:text-slate-300 break-words whitespace-normal">
+                                                                    • {l.item?.name || l.description} {Number(l.qty || 0) > 0 && <span className="text-slate-400">x{Number(l.qty)}</span>}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-xs font-medium text-slate-600 dark:text-slate-400 truncate max-w-[200px] block" title="Click to expand">
+                                                            {itemSummary}
+                                                        </span>
+                                                    )}
                                                 </td>
                                             )}
                                             {isVisible("qty") && (
