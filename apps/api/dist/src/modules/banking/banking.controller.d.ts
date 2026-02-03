@@ -29,10 +29,10 @@ export declare class BankingController {
         id: string;
         companyId: string;
         createdAt: Date;
-        description: string | null;
         date: Date;
         dateBs: string | null;
         amount: import("@prisma/client/runtime/client").Decimal;
+        description: string | null;
         debitCredit: string;
         statementId: string;
         matchedVoucherId: string | null;
@@ -42,10 +42,10 @@ export declare class BankingController {
         id: string;
         companyId: string;
         createdAt: Date;
-        description: string | null;
         date: Date;
         dateBs: string | null;
         amount: import("@prisma/client/runtime/client").Decimal;
+        description: string | null;
         debitCredit: string;
         statementId: string;
         matchedVoucherId: string | null;
@@ -55,10 +55,10 @@ export declare class BankingController {
         id: string;
         companyId: string;
         createdAt: Date;
-        description: string | null;
         date: Date;
         dateBs: string | null;
         amount: import("@prisma/client/runtime/client").Decimal;
+        description: string | null;
         debitCredit: string;
         statementId: string;
         matchedVoucherId: string | null;
@@ -88,6 +88,19 @@ export declare class BankingController {
         closingBalance: import("@prisma/client/runtime/client").Decimal;
     })[]>;
     getStatement(user: AuthUser, id: string): Promise<{
+        lines: {
+            id: string;
+            companyId: string;
+            createdAt: Date;
+            date: Date;
+            dateBs: string | null;
+            amount: import("@prisma/client/runtime/client").Decimal;
+            description: string | null;
+            debitCredit: string;
+            statementId: string;
+            matchedVoucherId: string | null;
+            matchedLineId: string | null;
+        }[];
         bankAccount: {
             id: string;
             companyId: string;
@@ -97,19 +110,6 @@ export declare class BankingController {
             bankName: string | null;
             accountNumber: string | null;
         };
-        lines: {
-            id: string;
-            companyId: string;
-            createdAt: Date;
-            description: string | null;
-            date: Date;
-            dateBs: string | null;
-            amount: import("@prisma/client/runtime/client").Decimal;
-            debitCredit: string;
-            statementId: string;
-            matchedVoucherId: string | null;
-            matchedLineId: string | null;
-        }[];
     } & {
         id: string;
         companyId: string;

@@ -13,6 +13,7 @@ export declare class ItemsService {
         updatedAt: Date;
         type: import("@prisma/client").$Enums.ItemType;
         isActive: boolean;
+        taxCodeId: string | null;
         groupId: string | null;
         sku: string | null;
         hsCode: string | null;
@@ -21,7 +22,6 @@ export declare class ItemsService {
         purchasePrice: Prisma.Decimal | null;
         incomeAccountId: string | null;
         expenseAccountId: string | null;
-        taxCodeId: string | null;
     }>;
     update(user: AuthUser, id: string, input: Prisma.ItemUpdateInput): Promise<{
         id: string;
@@ -31,6 +31,7 @@ export declare class ItemsService {
         updatedAt: Date;
         type: import("@prisma/client").$Enums.ItemType;
         isActive: boolean;
+        taxCodeId: string | null;
         groupId: string | null;
         sku: string | null;
         hsCode: string | null;
@@ -39,7 +40,6 @@ export declare class ItemsService {
         purchasePrice: Prisma.Decimal | null;
         incomeAccountId: string | null;
         expenseAccountId: string | null;
-        taxCodeId: string | null;
     }>;
     get(user: AuthUser, id: string): Promise<{
         id: string;
@@ -49,6 +49,7 @@ export declare class ItemsService {
         updatedAt: Date;
         type: import("@prisma/client").$Enums.ItemType;
         isActive: boolean;
+        taxCodeId: string | null;
         groupId: string | null;
         sku: string | null;
         hsCode: string | null;
@@ -57,7 +58,6 @@ export declare class ItemsService {
         purchasePrice: Prisma.Decimal | null;
         incomeAccountId: string | null;
         expenseAccountId: string | null;
-        taxCodeId: string | null;
     }>;
     list(user: AuthUser, filters: {
         isActive?: boolean;
@@ -73,6 +73,7 @@ export declare class ItemsService {
         updatedAt: Date;
         type: import("@prisma/client").$Enums.ItemType;
         isActive: boolean;
+        taxCodeId: string | null;
         groupId: string | null;
         sku: string | null;
         hsCode: string | null;
@@ -81,7 +82,6 @@ export declare class ItemsService {
         purchasePrice: Prisma.Decimal | null;
         incomeAccountId: string | null;
         expenseAccountId: string | null;
-        taxCodeId: string | null;
     }[]>;
     remove(user: AuthUser, id: string): Promise<{
         id: string;
@@ -91,6 +91,7 @@ export declare class ItemsService {
         updatedAt: Date;
         type: import("@prisma/client").$Enums.ItemType;
         isActive: boolean;
+        taxCodeId: string | null;
         groupId: string | null;
         sku: string | null;
         hsCode: string | null;
@@ -99,7 +100,6 @@ export declare class ItemsService {
         purchasePrice: Prisma.Decimal | null;
         incomeAccountId: string | null;
         expenseAccountId: string | null;
-        taxCodeId: string | null;
     }>;
     restore(user: AuthUser, id: string): Promise<{
         id: string;
@@ -109,6 +109,7 @@ export declare class ItemsService {
         updatedAt: Date;
         type: import("@prisma/client").$Enums.ItemType;
         isActive: boolean;
+        taxCodeId: string | null;
         groupId: string | null;
         sku: string | null;
         hsCode: string | null;
@@ -117,6 +118,5 @@ export declare class ItemsService {
         purchasePrice: Prisma.Decimal | null;
         incomeAccountId: string | null;
         expenseAccountId: string | null;
-        taxCodeId: string | null;
     }>;
 }

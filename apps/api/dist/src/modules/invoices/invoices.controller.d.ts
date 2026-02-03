@@ -8,12 +8,12 @@ export declare class InvoicesController {
             id: string;
             createdAt: Date;
             rate: import("@prisma/client/runtime/client").Decimal;
-            description: string | null;
-            taxCodeId: string | null;
             itemId: string | null;
-            qty: import("@prisma/client/runtime/client").Decimal;
-            taxAmount: import("@prisma/client/runtime/client").Decimal;
             amount: import("@prisma/client/runtime/client").Decimal;
+            description: string | null;
+            qty: import("@prisma/client/runtime/client").Decimal;
+            taxCodeId: string | null;
+            taxAmount: import("@prisma/client/runtime/client").Decimal;
             invoiceId: string;
         }[];
         sundries: {
@@ -36,9 +36,9 @@ export declare class InvoicesController {
         type: string;
         referenceNo: string | null;
         partyId: string;
-        voucherId: string | null;
         date: Date;
         dateBs: string | null;
+        voucherId: string | null;
         dueDate: Date | null;
         dueDateBs: string | null;
         receivableAccountId: string;
@@ -100,9 +100,9 @@ export declare class InvoicesController {
         type: string;
         referenceNo: string | null;
         partyId: string;
-        voucherId: string | null;
         date: Date;
         dateBs: string | null;
+        voucherId: string | null;
         dueDate: Date | null;
         dueDateBs: string | null;
         receivableAccountId: string;
@@ -120,9 +120,9 @@ export declare class InvoicesController {
         type: string;
         referenceNo: string | null;
         partyId: string;
-        voucherId: string | null;
         date: Date;
         dateBs: string | null;
+        voucherId: string | null;
         dueDate: Date | null;
         dueDateBs: string | null;
         receivableAccountId: string;
@@ -141,24 +141,24 @@ export declare class InvoicesController {
             id: string;
             createdAt: Date;
             rate: import("@prisma/client/runtime/client").Decimal;
-            description: string | null;
-            taxCodeId: string | null;
             itemId: string | null;
-            qty: import("@prisma/client/runtime/client").Decimal;
-            taxAmount: import("@prisma/client/runtime/client").Decimal;
             amount: import("@prisma/client/runtime/client").Decimal;
+            description: string | null;
+            qty: import("@prisma/client/runtime/client").Decimal;
+            taxCodeId: string | null;
+            taxAmount: import("@prisma/client/runtime/client").Decimal;
             invoiceId: string;
         })[];
+        voucher: {
+            referenceNo: string | null;
+            memo: string | null;
+        } | null;
         party: {
             id: string;
             name: string;
             panNumber: string | null;
             vatNumber: string | null;
         };
-        voucher: {
-            referenceNo: string | null;
-            memo: string | null;
-        } | null;
     } & {
         id: string;
         companyId: string;
@@ -168,9 +168,9 @@ export declare class InvoicesController {
         type: string;
         referenceNo: string | null;
         partyId: string;
-        voucherId: string | null;
         date: Date;
         dateBs: string | null;
+        voucherId: string | null;
         dueDate: Date | null;
         dueDateBs: string | null;
         receivableAccountId: string;
@@ -200,9 +200,9 @@ export declare class InvoicesController {
         type: string;
         referenceNo: string | null;
         partyId: string;
-        voucherId: string | null;
         date: Date;
         dateBs: string | null;
+        voucherId: string | null;
         dueDate: Date | null;
         dueDateBs: string | null;
         receivableAccountId: string;

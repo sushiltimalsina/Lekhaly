@@ -9,15 +9,15 @@ export declare class VouchersController {
             companyId: string;
             createdAt: Date;
             accountId: string;
-            description: string | null;
-            taxCodeId: string | null;
             partyId: string | null;
+            itemId: string | null;
             voucherId: string;
             lineNo: number;
-            itemId: string | null;
+            description: string | null;
             debit: import("@prisma/client/runtime/client").Decimal;
             credit: import("@prisma/client/runtime/client").Decimal;
             qty: import("@prisma/client/runtime/client").Decimal;
+            taxCodeId: string | null;
             taxAmount: import("@prisma/client/runtime/client").Decimal;
         }[];
     } & {
@@ -48,15 +48,15 @@ export declare class VouchersController {
             companyId: string;
             createdAt: Date;
             accountId: string;
-            description: string | null;
-            taxCodeId: string | null;
             partyId: string | null;
+            itemId: string | null;
             voucherId: string;
             lineNo: number;
-            itemId: string | null;
+            description: string | null;
             debit: import("@prisma/client/runtime/client").Decimal;
             credit: import("@prisma/client/runtime/client").Decimal;
             qty: import("@prisma/client/runtime/client").Decimal;
+            taxCodeId: string | null;
             taxAmount: import("@prisma/client/runtime/client").Decimal;
         }[];
     } & {
@@ -87,15 +87,15 @@ export declare class VouchersController {
             companyId: string;
             createdAt: Date;
             accountId: string;
-            description: string | null;
-            taxCodeId: string | null;
             partyId: string | null;
+            itemId: string | null;
             voucherId: string;
             lineNo: number;
-            itemId: string | null;
+            description: string | null;
             debit: import("@prisma/client/runtime/client").Decimal;
             credit: import("@prisma/client/runtime/client").Decimal;
             qty: import("@prisma/client/runtime/client").Decimal;
+            taxCodeId: string | null;
             taxAmount: import("@prisma/client/runtime/client").Decimal;
         }[];
     } & {
@@ -152,15 +152,15 @@ export declare class VouchersController {
             companyId: string;
             createdAt: Date;
             accountId: string;
-            description: string | null;
-            taxCodeId: string | null;
             partyId: string | null;
+            itemId: string | null;
             voucherId: string;
             lineNo: number;
-            itemId: string | null;
+            description: string | null;
             debit: import("@prisma/client/runtime/client").Decimal;
             credit: import("@prisma/client/runtime/client").Decimal;
             qty: import("@prisma/client/runtime/client").Decimal;
+            taxCodeId: string | null;
             taxAmount: import("@prisma/client/runtime/client").Decimal;
         })[];
     } & {
@@ -230,15 +230,15 @@ export declare class VouchersController {
             companyId: string;
             createdAt: Date;
             accountId: string;
-            description: string | null;
-            taxCodeId: string | null;
             partyId: string | null;
+            itemId: string | null;
             voucherId: string;
             lineNo: number;
-            itemId: string | null;
+            description: string | null;
             debit: import("@prisma/client/runtime/client").Decimal;
             credit: import("@prisma/client/runtime/client").Decimal;
             qty: import("@prisma/client/runtime/client").Decimal;
+            taxCodeId: string | null;
             taxAmount: import("@prisma/client/runtime/client").Decimal;
         }[];
     } & {

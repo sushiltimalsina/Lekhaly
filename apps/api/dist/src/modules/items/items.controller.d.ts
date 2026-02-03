@@ -13,6 +13,7 @@ export declare class ItemsController {
         updatedAt: Date;
         type: import("@prisma/client").$Enums.ItemType;
         isActive: boolean;
+        taxCodeId: string | null;
         groupId: string | null;
         sku: string | null;
         hsCode: string | null;
@@ -21,7 +22,6 @@ export declare class ItemsController {
         purchasePrice: import("@prisma/client/runtime/client").Decimal | null;
         incomeAccountId: string | null;
         expenseAccountId: string | null;
-        taxCodeId: string | null;
     }>;
     update(user: AuthUser, id: string, body: any): Promise<{
         id: string;
@@ -31,6 +31,7 @@ export declare class ItemsController {
         updatedAt: Date;
         type: import("@prisma/client").$Enums.ItemType;
         isActive: boolean;
+        taxCodeId: string | null;
         groupId: string | null;
         sku: string | null;
         hsCode: string | null;
@@ -39,7 +40,6 @@ export declare class ItemsController {
         purchasePrice: import("@prisma/client/runtime/client").Decimal | null;
         incomeAccountId: string | null;
         expenseAccountId: string | null;
-        taxCodeId: string | null;
     }>;
     get(user: AuthUser, id: string): Promise<{
         id: string;
@@ -49,6 +49,7 @@ export declare class ItemsController {
         updatedAt: Date;
         type: import("@prisma/client").$Enums.ItemType;
         isActive: boolean;
+        taxCodeId: string | null;
         groupId: string | null;
         sku: string | null;
         hsCode: string | null;
@@ -57,7 +58,6 @@ export declare class ItemsController {
         purchasePrice: import("@prisma/client/runtime/client").Decimal | null;
         incomeAccountId: string | null;
         expenseAccountId: string | null;
-        taxCodeId: string | null;
     }>;
     stock(user: AuthUser, id: string, query: any): Promise<{
         itemId: string;
@@ -67,10 +67,10 @@ export declare class ItemsController {
             companyId: string;
             createdAt: Date;
             rate: import("@prisma/client/runtime/client").Decimal;
-            voucherId: string | null;
             itemId: string;
             date: Date;
             dateBs: string | null;
+            voucherId: string | null;
             qtyIn: import("@prisma/client/runtime/client").Decimal;
             qtyOut: import("@prisma/client/runtime/client").Decimal;
             amount: import("@prisma/client/runtime/client").Decimal;
@@ -85,6 +85,7 @@ export declare class ItemsController {
         updatedAt: Date;
         type: import("@prisma/client").$Enums.ItemType;
         isActive: boolean;
+        taxCodeId: string | null;
         groupId: string | null;
         sku: string | null;
         hsCode: string | null;
@@ -93,7 +94,6 @@ export declare class ItemsController {
         purchasePrice: import("@prisma/client/runtime/client").Decimal | null;
         incomeAccountId: string | null;
         expenseAccountId: string | null;
-        taxCodeId: string | null;
     }[]>;
     remove(user: AuthUser, id: string): Promise<{
         id: string;
@@ -103,6 +103,7 @@ export declare class ItemsController {
         updatedAt: Date;
         type: import("@prisma/client").$Enums.ItemType;
         isActive: boolean;
+        taxCodeId: string | null;
         groupId: string | null;
         sku: string | null;
         hsCode: string | null;
@@ -111,7 +112,6 @@ export declare class ItemsController {
         purchasePrice: import("@prisma/client/runtime/client").Decimal | null;
         incomeAccountId: string | null;
         expenseAccountId: string | null;
-        taxCodeId: string | null;
     }>;
     restore(user: AuthUser, id: string): Promise<{
         id: string;
@@ -121,6 +121,7 @@ export declare class ItemsController {
         updatedAt: Date;
         type: import("@prisma/client").$Enums.ItemType;
         isActive: boolean;
+        taxCodeId: string | null;
         groupId: string | null;
         sku: string | null;
         hsCode: string | null;
@@ -129,6 +130,5 @@ export declare class ItemsController {
         purchasePrice: import("@prisma/client/runtime/client").Decimal | null;
         incomeAccountId: string | null;
         expenseAccountId: string | null;
-        taxCodeId: string | null;
     }>;
 }

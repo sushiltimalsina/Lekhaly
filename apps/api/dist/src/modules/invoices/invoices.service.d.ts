@@ -105,12 +105,12 @@ export declare class InvoicesService {
             id: string;
             createdAt: Date;
             rate: Prisma.Decimal;
-            description: string | null;
-            taxCodeId: string | null;
             itemId: string | null;
-            qty: Prisma.Decimal;
-            taxAmount: Prisma.Decimal;
             amount: Prisma.Decimal;
+            description: string | null;
+            qty: Prisma.Decimal;
+            taxCodeId: string | null;
+            taxAmount: Prisma.Decimal;
             invoiceId: string;
         }[];
         sundries: {
@@ -133,9 +133,9 @@ export declare class InvoicesService {
         type: string;
         referenceNo: string | null;
         partyId: string;
-        voucherId: string | null;
         date: Date;
         dateBs: string | null;
+        voucherId: string | null;
         dueDate: Date | null;
         dueDateBs: string | null;
         receivableAccountId: string;
@@ -153,9 +153,9 @@ export declare class InvoicesService {
         type: string;
         referenceNo: string | null;
         partyId: string;
-        voucherId: string | null;
         date: Date;
         dateBs: string | null;
+        voucherId: string | null;
         dueDate: Date | null;
         dueDateBs: string | null;
         receivableAccountId: string;
@@ -173,9 +173,9 @@ export declare class InvoicesService {
         type: string;
         referenceNo: string | null;
         partyId: string;
-        voucherId: string | null;
         date: Date;
         dateBs: string | null;
+        voucherId: string | null;
         dueDate: Date | null;
         dueDateBs: string | null;
         receivableAccountId: string;
@@ -201,24 +201,24 @@ export declare class InvoicesService {
             id: string;
             createdAt: Date;
             rate: Prisma.Decimal;
-            description: string | null;
-            taxCodeId: string | null;
             itemId: string | null;
-            qty: Prisma.Decimal;
-            taxAmount: Prisma.Decimal;
             amount: Prisma.Decimal;
+            description: string | null;
+            qty: Prisma.Decimal;
+            taxCodeId: string | null;
+            taxAmount: Prisma.Decimal;
             invoiceId: string;
         })[];
+        voucher: {
+            referenceNo: string | null;
+            memo: string | null;
+        } | null;
         party: {
             id: string;
             name: string;
             panNumber: string | null;
             vatNumber: string | null;
         };
-        voucher: {
-            referenceNo: string | null;
-            memo: string | null;
-        } | null;
     } & {
         id: string;
         companyId: string;
@@ -228,9 +228,9 @@ export declare class InvoicesService {
         type: string;
         referenceNo: string | null;
         partyId: string;
-        voucherId: string | null;
         date: Date;
         dateBs: string | null;
+        voucherId: string | null;
         dueDate: Date | null;
         dueDateBs: string | null;
         receivableAccountId: string;
@@ -260,9 +260,9 @@ export declare class InvoicesService {
         type: string;
         referenceNo: string | null;
         partyId: string;
-        voucherId: string | null;
         date: Date;
         dateBs: string | null;
+        voucherId: string | null;
         dueDate: Date | null;
         dueDateBs: string | null;
         receivableAccountId: string;

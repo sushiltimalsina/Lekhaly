@@ -171,15 +171,20 @@ export default function PurchaseListPage() {
                                         ? `${firstLine?.item?.name || firstLine?.description || "Mixed"} (+${itemLines.length - 1})`
                                         : (firstLine?.item?.name || firstLine?.description || "—");
 
-                                    // Calculate total quantity from stock ledger entries
-                                    // For purchases, we look at qtyIn (incoming stock)
-                                    const stockEntries = item.stockLedger || [];
-                                    const totalQty = stockEntries.reduce((sum: number, entry: any) => {
-                                        const qtyIn = Number(entry.qtyIn || 0);
-                                        const qtyOut = Number(entry.qtyOut || 0);
-                                        // Net quantity for this entry
-                                        return sum + qtyIn - qtyOut;
-                                    }, 0);
+                                    // Calculate total quantity
+                                    // 1. Prioritize lines (reflects the document exactly)
+                                    let totalQty = itemLines.reduce((sum: number, l: any) => sum + Number(l.qty || 0), 0);
+
+                                    // 2. Fallback to stock ledger if lines have no qty (legacy data)
+                                    if (totalQty === 0) {
+                                        const stockEntries = item.stockLedger || [];
+                                        totalQty = stockEntries.reduce((sum: number, entry: any) => {
+                                            const qtyIn = Number(entry.qtyIn || 0);
+                                            const qtyOut = Number(entry.qtyOut || 0);
+                                            return sum + qtyIn - qtyOut;
+                                        }, 0);
+                                    }
+
                                     const avgRate = itemLines.length === 1 ? Number(firstLine.debit || firstLine.credit || 0) : null;
 
                                     let taxableAmount = 0;
