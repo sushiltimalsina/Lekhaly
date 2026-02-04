@@ -649,7 +649,9 @@ let VouchersService = class VouchersService {
                     party: { select: { id: true, name: true, panNumber: true, vatNumber: true } },
                     lines: {
                         include: {
-                            item: { select: { id: true, name: true, sku: true } }
+                            item: { select: { id: true, name: true, sku: true } },
+                            account: { select: { id: true, name: true, code: true } },
+                            party: { select: { id: true, name: true } }
                         }
                     },
                     stockLedger: {

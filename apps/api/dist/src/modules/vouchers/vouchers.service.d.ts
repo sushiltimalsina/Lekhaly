@@ -236,6 +236,15 @@ export declare class VouchersService {
     }): Promise<{
         data: ({
             lines: ({
+                party: {
+                    id: string;
+                    name: string;
+                } | null;
+                account: {
+                    id: string;
+                    name: string;
+                    code: string;
+                };
                 item: {
                     id: string;
                     name: string;
