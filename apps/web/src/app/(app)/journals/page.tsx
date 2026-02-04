@@ -8,6 +8,8 @@ import {
     ChevronRight,
     ArrowRightLeft,
     ArrowRight,
+    Wallet,
+    FileText,
 } from "lucide-react";
 import PageHeader from "@/components/app/page-header";
 import StatusBadge, { DocStatus } from "@/components/app/status-badge";
@@ -33,6 +35,22 @@ export default function JournalsListPage() {
     });
     const [error, setError] = React.useState<string | null>(null);
 
+    /* Pagination State */
+    const [page, setPage] = React.useState(1);
+    const [totalPages, setTotalPages] = React.useState(1);
+    const [pageSize, setPageSize] = React.useState(50);
+    const [totalRecords, setTotalRecords] = React.useState(0);
+
+    /* Density State */
+    const [compactMode, setCompactMode] = React.useState(false);
+
+    /* Summary Metrics */
+    const metrics = React.useMemo(() => {
+        const totalAmount = vouchers.reduce((acc, v) => acc + (v.lines?.reduce((s: number, l: any) => s + Number(l.debit || 0), 0) || 0), 0);
+        const draftCount = vouchers.filter(v => v.status === "draft").length;
+        return { totalAmount, draftCount };
+    }, [vouchers]);
+
     async function load() {
         setLoading(true);
         try {
@@ -42,10 +60,20 @@ export default function JournalsListPage() {
                 status: filters.status === "all" ? undefined : (filters.status as any),
                 from: filters.from || undefined,
                 to: filters.to || undefined,
-                take: 50,
+                take: pageSize,
+                skip: (page - 1) * pageSize,
             });
-            const list = Array.isArray(res) ? res : res?.items ?? res?.data ?? [];
-            setVouchers(list);
+
+            if (res && res.data && res.meta) {
+                setVouchers(res.data);
+                setTotalRecords(res.meta.total);
+                setTotalPages(res.meta.lastPage);
+            } else {
+                const list = Array.isArray(res) ? res : res?.items ?? res?.data ?? [];
+                setVouchers(list);
+                setTotalRecords(list.length);
+                setTotalPages(1);
+            }
         } catch (e: any) {
             setError(e?.message ?? "Failed to load journals");
         } finally {
@@ -54,11 +82,17 @@ export default function JournalsListPage() {
     }
 
     React.useEffect(() => {
+        setPage(1);
+    }, [filters, pageSize]);
+
+    React.useEffect(() => {
         const timer = setTimeout(() => {
             load();
         }, 300);
         return () => clearTimeout(timer);
-    }, [filters]);
+    }, [filters, page, pageSize]);
+
+    // ... existing filterOptions ...
 
     const filterOptions = [
         {
@@ -134,7 +168,7 @@ export default function JournalsListPage() {
                                     return (
                                         <tr
                                             key={v.id}
-                                            onClick={() => router.push(`/vouchers/${v.id}`)}
+                                            onClick={() => router.push(`/journals/create?id=${v.id}`)}
                                             className="group cursor-pointer hover:bg-indigo-50/20 dark:hover:bg-indigo-900/10 transition-colors"
                                         >
                                             <td className="px-6 py-5 whitespace-nowrap">

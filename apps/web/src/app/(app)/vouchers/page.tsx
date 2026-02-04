@@ -118,6 +118,7 @@ export default function VouchersListPage() {
     {
       key: "type",
       label: "Category",
+      multiple: false,
       options: [
         { value: "all", label: "All Types" },
         ...Object.entries(VOUCHER_TYPE_METADATA).map(([val, meta]) => ({ value: val, label: meta.label }))
@@ -126,6 +127,7 @@ export default function VouchersListPage() {
     {
       key: "status",
       label: "Status",
+      multiple: false,
       options: [
         { value: "draft", label: "Draft" },
         { value: "posted", label: "Posted" },

@@ -126,9 +126,18 @@ export default function AdvancedFilterBar({
 
     const handleFilterSelect = (key: string, value: string) => {
         const current = selectedFilters[key] || [];
-        const updated = current.includes(value)
-            ? current.filter(v => v !== value)
-            : [...current, value];
+        const filterDef = filterOptions.find(f => f.key === key);
+        const isSingleSelect = filterDef?.multiple === false;
+
+        let updated;
+        if (isSingleSelect) {
+            // If already selected, clear it. If not, replace with new value.
+            updated = current.includes(value) ? [] : [value];
+        } else {
+            updated = current.includes(value)
+                ? current.filter(v => v !== value)
+                : [...current, value];
+        }
 
         const newFilters = { ...selectedFilters, [key]: updated };
         setSelectedFilters(newFilters);
@@ -351,9 +360,20 @@ export default function AdvancedFilterBar({
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <button className="flex items-center gap-1.5 text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest hover:text-indigo-600 transition-colors outline-none max-w-[150px] truncate">
-                                    {selectedFilters[filter.key]?.length
-                                        ? `${selectedFilters[filter.key].length} Selected`
-                                        : "All"}
+                                    {(() => {
+                                        const selection = selectedFilters[filter.key];
+                                        if (!selection || selection.length === 0) return "All";
+                                        // If 'all' is explicitly selected in the list
+                                        if (selection.includes('all')) return "All";
+
+                                        // If single select is enforced or only 1 item selected
+                                        if (selection.length === 1) {
+                                            const option = filter.options.find(o => o.value === selection[0]);
+                                            return option ? option.label : selection[0];
+                                        }
+
+                                        return `${selection.length} Selected`;
+                                    })()}
                                     <ChevronDown className="h-3 w-3" />
                                 </button>
                             </DropdownMenuTrigger>
@@ -519,7 +539,11 @@ export default function AdvancedFilterBar({
                     <button
                         onClick={() => {
                             setSelectedFilters({});
-                            handleDateRangeSelect('this_month');
+                            // Reset to default range but ensure filters are cleared in the callback
+                            const defaultKey = 'this_month';
+                            setActiveDateRange(defaultKey);
+                            const range = getDateRange(defaultKey, dateFormat);
+                            onFilterChange?.({ dateRange: range, compare: compareEnabled });
                         }}
                         className="text-[10px] font-black text-rose-500 hover:text-rose-600 uppercase tracking-widest ml-auto"
                     >
