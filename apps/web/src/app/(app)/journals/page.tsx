@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import {
     Plus,
     ChevronRight,
+    ChevronDown,
     ArrowRightLeft,
     ArrowRight,
     Wallet,
@@ -34,6 +35,7 @@ export default function JournalsListPage() {
         to: null as Date | null,
     });
     const [error, setError] = React.useState<string | null>(null);
+    const [expandedRow, setExpandedRow] = React.useState<string | null>(null);
 
     /* Pagination State */
     const [page, setPage] = React.useState(1);
@@ -91,8 +93,6 @@ export default function JournalsListPage() {
         }, 300);
         return () => clearTimeout(timer);
     }, [filters, page, pageSize]);
-
-    // ... existing filterOptions ...
 
     const filterOptions = [
         {
@@ -198,65 +198,149 @@ export default function JournalsListPage() {
                         <table className="w-full text-sm text-left">
                             <thead>
                                 <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30">
-                                    <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>Date (AD/BS)</th>
-                                    <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>Voucher Identity</th>
-                                    <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>Description</th>
-                                    <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right", compactMode ? "py-3" : "py-4")}>Amount</th>
+                                    <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>S.No</th>
+                                    <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>Date</th>
+                                    <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>Voucher No</th>
+                                    <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>Particulars</th>
+                                    <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right", compactMode ? "py-3" : "py-4")}>Debit</th>
+                                    <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right", compactMode ? "py-3" : "py-4")}>Credit</th>
+                                    <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>Short Notes</th>
+                                    <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>Add. Notes</th>
                                     <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px] text-center", compactMode ? "py-3" : "py-4")}>Status</th>
                                     <th className={cn("px-6 w-10", compactMode ? "py-3" : "py-4")}></th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
-                                {vouchers.map((v) => {
+                                {vouchers.map((v, index) => {
                                     const dateInfo = getDateDisplay({ ad: v.voucherDate, bs: v.voucherDateBs, format: dateFormat });
+                                    const sNo = (page - 1) * pageSize + index + 1;
+                                    const totalDebit = v.lines?.reduce((sum: number, line: any) => sum + Number(line.debit || 0), 0) || 0;
+                                    const totalCredit = v.lines?.reduce((sum: number, line: any) => sum + Number(line.credit || 0), 0) || 0;
 
-                                    const totalAmount = v.lines?.reduce((sum: number, line: any) => sum + Number(line.debit || 0), 0) || 0;
+                                    const particulars = Array.from(new Set(
+                                        v.lines?.map((l: any) => l.account?.name || l.party?.name || "").filter(Boolean)
+                                    )).slice(0, 2).join(", ");
+
                                     const py = compactMode ? "py-2.5" : "py-5";
+                                    const isExpanded = expandedRow === v.id;
 
                                     return (
-                                        <tr
-                                            key={v.id}
-                                            onClick={() => router.push(`/journals/create?id=${v.id}`)}
-                                            className="group cursor-pointer hover:bg-indigo-50/20 dark:hover:bg-indigo-900/10 transition-colors"
-                                        >
-                                            <td className={`px-6 ${py} whitespace-nowrap`}>
-                                                <div className="flex flex-col">
-                                                    <span className="font-bold text-slate-700 dark:text-slate-200">{dateInfo.primary}</span>
-                                                    <span className="text-[10px] text-slate-400 font-black uppercase tracking-tighter">{dateInfo.secondary}</span>
-                                                </div>
-                                            </td>
-                                            <td className={`px-6 ${py} whitespace-nowrap`}>
-                                                <div className="flex items-center gap-3">
-                                                    <div className="h-9 w-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center shrink-0 border border-indigo-100/50 dark:border-indigo-800/50 text-indigo-600">
-                                                        <ArrowRightLeft className="h-4 w-4" />
-                                                    </div>
+                                        <React.Fragment key={v.id}>
+                                            <tr className="group hover:bg-indigo-50/20 dark:hover:bg-indigo-900/10 transition-colors">
+                                                <td className={`px-6 ${py} whitespace-nowrap font-bold text-slate-500`}>
+                                                    {sNo}
+                                                </td>
+                                                <td className={`px-6 ${py} whitespace-nowrap`}>
                                                     <div className="flex flex-col">
-                                                        <span className="font-black text-slate-900 dark:text-white group-hover:text-indigo-600 transition-colors">
+                                                        <span
+                                                            onClick={() => router.push(`/journals/create?id=${v.id}`)}
+                                                            className="font-black text-slate-900 dark:text-white hover:text-indigo-600 transition-colors cursor-pointer"
+                                                        >
                                                             {v.voucherNumber || v.voucherNo || `DRAFT-${v.id.slice(0, 4)}`}
                                                         </span>
-                                                        {v.referenceNo && (
-                                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ref: {v.referenceNo}</span>
+                                                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">{dateInfo.primary}</span>
+                                                    </div>
+                                                </td>
+                                                <td className={`px-6 ${py}`}>
+                                                    <div className="flex flex-col max-w-[200px]">
+                                                        <span className="truncate font-bold text-slate-700 dark:text-slate-200" title={particulars}>
+                                                            {particulars || "General Entry"}
+                                                        </span>
+                                                        {v.lines?.length > 2 && (
+                                                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                                                                +{v.lines.length - 2} more
+                                                            </span>
                                                         )}
                                                     </div>
-                                                </div>
-                                            </td>
-                                            <td className={`px-6 ${py}`}>
-                                                <p className="truncate text-slate-600 dark:text-slate-400 font-medium max-w-[300px]">
-                                                    {v.memo || "No description provided"}
-                                                </p>
-                                            </td>
-                                            <td className={`px-6 ${py} whitespace-nowrap text-right`}>
-                                                <span className="font-black text-slate-900 dark:text-white tabular-nums text-base">
-                                                    <MoneyText value={totalAmount} />
-                                                </span>
-                                            </td>
-                                            <td className={`px-6 ${py} whitespace-nowrap text-center`}>
-                                                <StatusBadge status={v.status as DocStatus} />
-                                            </td>
-                                            <td className={`px-6 ${py} text-right`}>
-                                                <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-indigo-400 group-hover:translate-x-1 transition-all" />
-                                            </td>
-                                        </tr>
+                                                </td>
+                                                <td className={`px-6 ${py} whitespace-nowrap text-right`}>
+                                                    <span className="font-bold text-slate-900 dark:text-white tabular-nums text-sm">
+                                                        <MoneyText value={totalDebit} />
+                                                    </span>
+                                                </td>
+                                                <td className={`px-6 ${py} whitespace-nowrap text-right`}>
+                                                    <span className="font-bold text-slate-900 dark:text-white tabular-nums text-sm">
+                                                        <MoneyText value={totalCredit} />
+                                                    </span>
+                                                </td>
+                                                <td className={`px-6 ${py}`}>
+                                                    <p className="truncate text-slate-500 dark:text-slate-400 font-medium text-xs max-w-[150px]">
+                                                        {v.memo || "-"}
+                                                    </p>
+                                                </td>
+                                                <td className={`px-6 ${py}`}>
+                                                    <p className="truncate text-slate-500 dark:text-slate-400 font-medium text-xs max-w-[150px]">
+                                                        {v.additionalNote || "-"}
+                                                    </p>
+                                                </td>
+                                                <td className={`px-6 ${py} whitespace-nowrap text-center`}>
+                                                    <StatusBadge status={v.status as DocStatus} />
+                                                </td>
+                                                <td className={`px-6 ${py} text-right`}>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setExpandedRow(isExpanded ? null : v.id);
+                                                        }}
+                                                        className="text-slate-300 hover:text-indigo-400 transition-all"
+                                                    >
+                                                        {isExpanded ? (
+                                                            <ChevronDown className="h-4 w-4" />
+                                                        ) : (
+                                                            <ChevronRight className="h-4 w-4" />
+                                                        )}
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            {isExpanded && v.lines && v.lines.length > 0 && (
+                                                <tr className="bg-slate-50/50 dark:bg-slate-900/20">
+                                                    <td colSpan={9} className="px-6 py-4">
+                                                        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+                                                            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Journal Entries</h4>
+                                                            <table className="w-full text-xs">
+                                                                <thead>
+                                                                    <tr className="border-b border-slate-100 dark:border-slate-800">
+                                                                        <th className="text-left py-2 px-3 font-bold text-slate-500 uppercase tracking-wider text-[9px]">Type</th>
+                                                                        <th className="text-left py-2 px-3 font-bold text-slate-500 uppercase tracking-wider text-[9px]">Account/Party</th>
+                                                                        <th className="text-left py-2 px-3 font-bold text-slate-500 uppercase tracking-wider text-[9px]">Description</th>
+                                                                        <th className="text-right py-2 px-3 font-bold text-slate-500 uppercase tracking-wider text-[9px]">Debit</th>
+                                                                        <th className="text-right py-2 px-3 font-bold text-slate-500 uppercase tracking-wider text-[9px]">Credit</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
+                                                                    {v.lines.map((line: any, idx: number) => (
+                                                                        <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                                                            <td className="py-2 px-3">
+                                                                                <span className={cn(
+                                                                                    "px-2 py-0.5 rounded text-[9px] font-bold uppercase",
+                                                                                    line.debit > 0
+                                                                                        ? "bg-blue-50 text-blue-600 dark:bg-blue-900/20"
+                                                                                        : "bg-rose-50 text-rose-600 dark:bg-rose-900/20"
+                                                                                )}>
+                                                                                    {line.debit > 0 ? "DR" : "CR"}
+                                                                                </span>
+                                                                            </td>
+                                                                            <td className="py-2 px-3 font-medium text-slate-700 dark:text-slate-300">
+                                                                                {line.account?.name || line.party?.name || "-"}
+                                                                            </td>
+                                                                            <td className="py-2 px-3 text-slate-500 dark:text-slate-400">
+                                                                                {line.description || "-"}
+                                                                            </td>
+                                                                            <td className="py-2 px-3 text-right font-bold tabular-nums">
+                                                                                {line.debit > 0 ? <MoneyText value={line.debit} /> : "-"}
+                                                                            </td>
+                                                                            <td className="py-2 px-3 text-right font-bold tabular-nums">
+                                                                                {line.credit > 0 ? <MoneyText value={line.credit} /> : "-"}
+                                                                            </td>
+                                                                        </tr>
+                                                                    ))}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </React.Fragment>
                                     );
                                 })}
                             </tbody>
