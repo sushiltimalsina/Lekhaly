@@ -825,7 +825,7 @@ export default function SalesCreatePage() {
               value={form.dueDate}
               accentColor="bg-blue-600"
               onChange={(next) => setForm((f) => ({ ...f, dueDate: next }))}
-              onEnterNext={() => safeFocus(invoiceNoRef.current)}
+              onEnterNext={() => safeFocus(paymentMethodRef.current)}
               disabled={!isEditMode}
             />
           </div>
@@ -941,6 +941,7 @@ export default function SalesCreatePage() {
                 value={form.invoiceDate}
                 accentColor="bg-blue-600"
                 onChange={(next) => setForm((f) => ({ ...f, invoiceDate: next }))}
+                onEnterNext={() => safeFocus(dueDateRef.current)}
                 disabled={!isEditMode}
               />
               <DualDateInput
@@ -948,6 +949,7 @@ export default function SalesCreatePage() {
                 value={form.dueDate}
                 accentColor="bg-blue-600"
                 onChange={(next) => setForm((f) => ({ ...f, dueDate: next }))}
+                onEnterNext={() => safeFocus(paymentMethodRef.current)}
                 disabled={!isEditMode}
               />
             </div>

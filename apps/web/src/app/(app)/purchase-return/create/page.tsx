@@ -809,7 +809,7 @@ export default function PurchaseReturnCreatePage() {
                             label="Original Invoice Date"
                             value={form.vendorInvoiceDate}
                             onChange={(next) => setForm((f) => ({ ...f, vendorInvoiceDate: next }))}
-                            onEnterNext={() => safeFocus(invoiceNoRef.current)}
+                            onEnterNext={() => safeFocus(vendorInvoiceNoRef.current)}
                         />
                     </div>
 
@@ -901,11 +901,13 @@ export default function PurchaseReturnCreatePage() {
                                 label="Return Date"
                                 value={form.purchaseDate}
                                 onChange={(next) => setForm((f) => ({ ...f, purchaseDate: next }))}
+                                onEnterNext={() => safeFocus(vendorInvoiceDateRef.current)}
                             />
                             <DualDateInput
                                 label="Original Invoice Date"
                                 value={form.vendorInvoiceDate}
                                 onChange={(next) => setForm((f) => ({ ...f, vendorInvoiceDate: next }))}
+                                onEnterNext={() => safeFocus(vendorInvoiceNoRef.current)}
                             />
                         </div>
                     </div>

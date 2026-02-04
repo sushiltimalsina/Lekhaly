@@ -809,7 +809,7 @@ export default function SalesReturnCreatePage() {
                             label="Due Date"
                             value={form.dueDate}
                             onChange={(next) => setForm((f) => ({ ...f, dueDate: next }))}
-                            onEnterNext={() => safeFocus(invoiceNoRef.current)}
+                            onEnterNext={() => safeFocus(paymentMethodRef.current)}
                             disabled={!isEditMode}
                         />
                     </div>
@@ -921,11 +921,13 @@ export default function SalesReturnCreatePage() {
                                 label="Return Date"
                                 value={form.invoiceDate}
                                 onChange={(next) => setForm((f) => ({ ...f, invoiceDate: next }))}
+                                onEnterNext={() => safeFocus(dueDateRef.current)}
                             />
                             <DualDateInput
                                 label="Due Date"
                                 value={form.dueDate}
                                 onChange={(next) => setForm((f) => ({ ...f, dueDate: next }))}
+                                onEnterNext={() => safeFocus(paymentMethodRef.current)}
                             />
                         </div>
                     </div>

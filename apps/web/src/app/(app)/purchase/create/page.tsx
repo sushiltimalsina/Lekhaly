@@ -850,7 +850,7 @@ export default function PurchaseCreatePage() {
                             value={form.vendorInvoiceDate}
                             accentColor="bg-orange-600"
                             onChange={(next) => setForm((f) => ({ ...f, vendorInvoiceDate: next }))}
-                            onEnterNext={() => safeFocus(invoiceNoRef.current)}
+                            onEnterNext={() => safeFocus(vendorInvoiceNoRef.current)}
                             disabled={!isEditMode}
                         />
                     </div>
@@ -946,6 +946,7 @@ export default function PurchaseCreatePage() {
                                 value={form.purchaseDate}
                                 accentColor="bg-orange-600"
                                 onChange={(next) => setForm((f) => ({ ...f, purchaseDate: next }))}
+                                onEnterNext={() => safeFocus(vendorInvoiceDateRef.current)}
                                 disabled={true}
                             />
                             <DualDateInput
@@ -953,6 +954,7 @@ export default function PurchaseCreatePage() {
                                 value={form.vendorInvoiceDate}
                                 accentColor="bg-orange-600"
                                 onChange={(next) => setForm((f) => ({ ...f, vendorInvoiceDate: next }))}
+                                onEnterNext={() => safeFocus(vendorInvoiceNoRef.current)}
                                 disabled={!isEditMode}
                             />
                         </div>

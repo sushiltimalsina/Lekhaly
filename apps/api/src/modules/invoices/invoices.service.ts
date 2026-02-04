@@ -374,7 +374,6 @@ export class InvoicesService {
       dateBs: resolvedDate.bs || input.dateBs,
       dueDate: resolvedDue?.date,
       dueDateBs: resolvedDue?.bs || input.dueDateBs,
-      dueDateBs: resolvedDue?.bs || input.dueDateBs,
       referenceNo: input.referenceNo,
       memo: input.memo,
       additionalNote: input.additionalNote
