@@ -16,7 +16,7 @@ import PageHeader from "@/components/app/page-header";
 import StatusBadge, { DocStatus } from "@/components/app/status-badge";
 import { MoneyText } from "@/components/app/money";
 import { listVouchers } from "@/lib/api/vouchers";
-import { useDateFormat } from "@/lib/date-format";
+import { getSettings, subscribeSettings } from "@/lib/store/settings";
 import { getDateDisplay } from "@/lib/dates/display";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,14 @@ import AdvancedFilterBar from "@/components/app/advanced-filter-bar";
 
 export default function JournalsListPage() {
     const router = useRouter();
-    const { dateFormat } = useDateFormat();
+    const [settings, setSettings] = React.useState(getSettings());
+
+    React.useEffect(() => {
+        const unsubscribe = subscribeSettings((next) => setSettings(next));
+        return () => { unsubscribe(); };
+    }, []);
+
+    const calendarFmt = settings.calendarPreference.toLowerCase() as "ad" | "bs";
 
     const [loading, setLoading] = React.useState(true);
     const [vouchers, setVouchers] = React.useState<any[]>([]);
@@ -48,7 +55,7 @@ export default function JournalsListPage() {
 
     /* Column Visibility State */
     const [visibleColumns, setVisibleColumns] = React.useState<string[]>([
-        "sno", "date", "voucherNo", "particulars", "debit", "credit", "status"
+        "sno", "date", "voucherNo", "particulars", "debit", "credit", "memo", "postedAt", "status"
     ]);
 
     const columnOptions = [
@@ -60,6 +67,7 @@ export default function JournalsListPage() {
         { key: "credit", label: "Credit Amount", defaultVisible: true },
         { key: "memo", label: "Short Notes", defaultVisible: false },
         { key: "additionalNote", label: "Additional Notes", defaultVisible: false },
+        { key: "postedAt", label: "Posted Date/Time", defaultVisible: false },
         { key: "status", label: "Status", defaultVisible: true },
     ];
 
@@ -223,20 +231,21 @@ export default function JournalsListPage() {
                             <thead>
                                 <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30">
                                     {visibleColumns.includes("sno") && <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>S.No</th>}
-                                    {visibleColumns.includes("date") && <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>Date</th>}
+                                    {visibleColumns.includes("date") && <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>Date ({calendarFmt.toUpperCase()})</th>}
                                     {visibleColumns.includes("voucherNo") && <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>Voucher No</th>}
                                     {visibleColumns.includes("particulars") && <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>Particulars</th>}
                                     {visibleColumns.includes("debit") && <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right", compactMode ? "py-3" : "py-4")}>Debit</th>}
                                     {visibleColumns.includes("credit") && <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right", compactMode ? "py-3" : "py-4")}>Credit</th>}
                                     {visibleColumns.includes("memo") && <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>Short Notes</th>}
                                     {visibleColumns.includes("additionalNote") && <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>Add. Notes</th>}
+                                    {visibleColumns.includes("postedAt") && <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>Posted Date/Time</th>}
                                     {visibleColumns.includes("status") && <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px] text-center", compactMode ? "py-3" : "py-4")}>Status</th>}
                                     <th className={cn("px-6 w-10", compactMode ? "py-3" : "py-4")}></th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
                                 {filteredVouchers.map((v, index) => {
-                                    const dateInfo = getDateDisplay({ ad: v.voucherDate, bs: v.voucherDateBs, format: dateFormat });
+                                    const dateInfo = getDateDisplay({ ad: v.voucherDate, bs: v.voucherDateBs, format: calendarFmt });
                                     const sNo = (page - 1) * pageSize + index + 1;
                                     const totalDebit = v.lines?.reduce((sum: number, line: any) => sum + Number(line.debit || 0), 0) || 0;
                                     const totalCredit = v.lines?.reduce((sum: number, line: any) => sum + Number(line.credit || 0), 0) || 0;
@@ -266,8 +275,12 @@ export default function JournalsListPage() {
                                                 {visibleColumns.includes("date") && (
                                                     <td className={`px-6 ${py} whitespace-nowrap`}>
                                                         <div className="flex flex-col">
-                                                            <span className="font-bold text-slate-700 dark:text-slate-200">{dateInfo.primary}</span>
-                                                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">{dateInfo.secondary}</span>
+                                                            <span className="font-bold text-slate-700 dark:text-slate-200">
+                                                                {dateInfo.primary}
+                                                            </span>
+                                                            <span className="text-[9px] text-slate-400 font-medium tracking-tight">
+                                                                {dateInfo.secondary}
+                                                            </span>
                                                         </div>
                                                     </td>
                                                 )}
@@ -290,12 +303,12 @@ export default function JournalsListPage() {
                                                         }}
                                                     >
                                                         <div className="flex flex-col max-w-[250px]">
-                                                            <span className="truncate font-bold text-slate-700 dark:text-slate-200 group-hover:text-indigo-600 transition-colors" title={firstAccount}>
+                                                            <span className="truncate font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 transition-colors" title={firstAccount}>
                                                                 {firstAccount}
                                                             </span>
                                                             {totalEntries > 0 && (
-                                                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                                                                    +{totalEntries} {totalEntries === 1 ? 'entry' : 'entries'}
+                                                                <span className="text-[10px] font-medium text-slate-400 mt-0.5">
+                                                                    {totalEntries > 1 ? `+${totalEntries - 1} entries` : 'Total 1 entry'}
                                                                 </span>
                                                             )}
                                                         </div>
@@ -327,6 +340,25 @@ export default function JournalsListPage() {
                                                         <p className="truncate text-slate-500 dark:text-slate-400 font-medium text-xs max-w-[150px]">
                                                             {v.additionalNote || "-"}
                                                         </p>
+                                                    </td>
+                                                )}
+                                                {visibleColumns.includes("postedAt") && (
+                                                    <td className={`px-6 ${py} whitespace-nowrap`}>
+                                                        {v.postedAt ? (() => {
+                                                            const postedInfo = getDateDisplay({ ad: v.postedAt, format: calendarFmt });
+                                                            return (
+                                                                <div className="flex flex-col">
+                                                                    <span className="font-bold text-slate-700 dark:text-slate-200">
+                                                                        {postedInfo.primary}
+                                                                    </span>
+                                                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">
+                                                                        {new Date(v.postedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                    </span>
+                                                                </div>
+                                                            );
+                                                        })() : (
+                                                            <span className="text-slate-300 font-black">—</span>
+                                                        )}
                                                     </td>
                                                 )}
                                                 {visibleColumns.includes("status") && (
