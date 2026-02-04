@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ListVoucherQuerySchema = exports.UpdateVoucherDraftSchema = exports.CreateVoucherDraftSchema = exports.VoucherLineSchema = void 0;
 const zod_1 = require("zod");
 exports.VoucherLineSchema = zod_1.z.object({
-    accountId: zod_1.z.string().uuid().optional(),
+    accountId: zod_1.z.string().uuid(),
     partyId: zod_1.z.string().uuid().optional(),
     itemId: zod_1.z.string().uuid().optional(),
     description: zod_1.z.string().trim().max(255).optional(),

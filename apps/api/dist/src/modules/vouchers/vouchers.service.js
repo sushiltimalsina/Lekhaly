@@ -249,7 +249,11 @@ let VouchersService = class VouchersService {
             }
             return {
                 lineNo: idx + 1,
-                accountId: line.accountId,
+                accountId: (() => {
+                    if (!line.accountId)
+                        throw new common_1.BadRequestException("Line missing accountId");
+                    return line.accountId;
+                })(),
                 partyId: line.partyId,
                 itemId: line.itemId,
                 description: line.description,
@@ -634,29 +638,40 @@ let VouchersService = class VouchersService {
                 { party: { name: { contains: filters.q, mode: "insensitive" } } }
             ];
         }
-        return this.prisma.voucher.findMany({
-            where,
-            orderBy: [{ voucherDate: "desc" }, { createdAt: "desc" }],
-            skip: filters.skip || 0,
-            take: filters.take || 50,
-            include: {
-                party: { select: { id: true, name: true, panNumber: true, vatNumber: true } },
-                lines: {
-                    include: {
-                        item: { select: { id: true, name: true, sku: true } }
-                    }
-                },
-                stockLedger: {
-                    select: {
-                        id: true,
-                        itemId: true,
-                        qtyIn: true,
-                        qtyOut: true,
-                        rate: true
+        const [total, data] = await this.prisma.$transaction([
+            this.prisma.voucher.count({ where }),
+            this.prisma.voucher.findMany({
+                where,
+                orderBy: [{ voucherDate: "desc" }, { createdAt: "desc" }],
+                skip: filters.skip || 0,
+                take: filters.take || 50,
+                include: {
+                    party: { select: { id: true, name: true, panNumber: true, vatNumber: true } },
+                    lines: {
+                        include: {
+                            item: { select: { id: true, name: true, sku: true } }
+                        }
+                    },
+                    stockLedger: {
+                        select: {
+                            id: true,
+                            itemId: true,
+                            qtyIn: true,
+                            qtyOut: true,
+                            rate: true
+                        }
                     }
                 }
+            })
+        ]);
+        return {
+            data,
+            meta: {
+                total,
+                page: Math.floor((filters.skip || 0) / (filters.take || 50)) + 1,
+                lastPage: Math.ceil(total / (filters.take || 50))
             }
-        });
+        };
     }
     async listAttachments(user, voucherId) {
         const voucher = await this.prisma.voucher.findFirst({

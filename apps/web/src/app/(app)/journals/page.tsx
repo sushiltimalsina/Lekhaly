@@ -130,6 +130,7 @@ export default function JournalsListPage() {
                                 {vouchers.map((v) => {
                                     const dateInfo = getDateDisplay({ ad: v.voucherDate, bs: v.voucherDateBs, format: dateFormat });
 
+                                    const totalAmount = v.lines?.reduce((sum: number, line: any) => sum + Number(line.debit || 0), 0) || 0;
                                     return (
                                         <tr
                                             key={v.id}
@@ -164,7 +165,7 @@ export default function JournalsListPage() {
                                             </td>
                                             <td className="px-6 py-5 whitespace-nowrap text-right">
                                                 <span className="font-black text-slate-900 dark:text-white tabular-nums text-base">
-                                                    <MoneyText value={v.amount || 0} />
+                                                    <MoneyText value={totalAmount} />
                                                 </span>
                                             </td>
                                             <td className="px-6 py-5 whitespace-nowrap text-center">

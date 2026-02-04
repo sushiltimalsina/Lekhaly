@@ -184,6 +184,29 @@ export default function JournalCreatePage() {
         window.print();
     };
 
+    const resolveAccountIdForParty = (partyId: string): string => {
+        const party = parties.find(p => p.id === partyId);
+        if (!party) return "";
+
+        // Heuristic: Find specific control accounts
+        // This should ideally be configuration-driven, but we fallback to name matching for now
+        if (party.type === "customer" || !party.type) {
+            const acc = accounts.find(a =>
+                a.name.toLowerCase().includes("accounts receivable") ||
+                a.name.toLowerCase().includes("debtors") ||
+                a.name.toLowerCase().includes("receivable")
+            );
+            return acc?.id || "";
+        } else {
+            const acc = accounts.find(a =>
+                a.name.toLowerCase().includes("accounts payable") ||
+                a.name.toLowerCase().includes("creditors") ||
+                a.name.toLowerCase().includes("payable")
+            );
+            return acc?.id || "";
+        }
+    };
+
     return (
         <div className="flex flex-col gap-6 p-4 md:p-8 font-sans transition-colors duration-300 relative min-h-full pb-12">
             <div className="flex flex-col gap-6">
@@ -328,12 +351,13 @@ export default function JournalCreatePage() {
                                                 <td className="px-2 py-3">
                                                     <SearchableSelect<LedgerOption>
                                                         buttonRef={(el) => { rowRefs.current.select[idx] = el; }}
-                                                        valueId={line.accountId || line.partyId}
+                                                        valueId={line.partyId || line.accountId}
                                                         onChange={(id, opt) => {
                                                             if (opt?.type === "account") {
                                                                 updateLine(line.id, { accountId: id, partyId: "" });
                                                             } else {
-                                                                updateLine(line.id, { partyId: id, accountId: "" });
+                                                                const accId = resolveAccountIdForParty(id);
+                                                                updateLine(line.id, { partyId: id, accountId: accId });
                                                             }
                                                         }}
                                                         onEnterNext={() => safeFocus(rowRefs.current.amount[idx])}

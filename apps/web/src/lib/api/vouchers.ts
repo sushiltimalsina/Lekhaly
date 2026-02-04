@@ -81,10 +81,15 @@ export async function listVouchers(params?: {
   skip?: number;
   take?: number
 }) {
+  const query: any = { ...params };
+  if (query.type) {
+    query.voucherType = query.type;
+    delete query.type;
+  }
   return apiRequest<any>({
     method: "GET",
     path: "/vouchers",
-    query: params as any,
+    query,
   });
 }
 

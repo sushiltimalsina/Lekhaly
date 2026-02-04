@@ -25,15 +25,7 @@ const groups: ActionGroup[] = [
       { label: "Record Payment", href: "/payments" },
     ],
   },
-  {
-    title: "Vouchers",
-    match: (path) => path.startsWith("/vouchers"),
-    actions: [
-      { label: "New Voucher", href: "/vouchers", helper: "Create or post vouchers" },
-      { label: "Export PDF", href: "/coming-soon" },
-      { label: "View Reports", href: "/reports" },
-    ],
-  },
+
   {
     title: "Invoices",
     match: (path) => path.startsWith("/invoices"),

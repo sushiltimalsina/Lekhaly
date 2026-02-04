@@ -54,6 +54,22 @@ export default function VouchersListPage() {
     to: null as Date | null,
   });
 
+  /* Pagination State */
+  const [page, setPage] = React.useState(1);
+  const [totalPages, setTotalPages] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(50);
+  const [totalRecords, setTotalRecords] = React.useState(0);
+
+  /* Density State */
+  const [compactMode, setCompactMode] = React.useState(false);
+
+  /* Summary Metrics */
+  const metrics = React.useMemo(() => {
+    const totalDebit = vouchers.reduce((acc, v) => acc + (v.lines?.reduce((s: number, l: any) => s + Number(l.debit || 0), 0) || 0), 0);
+    const draftCount = vouchers.filter(v => v.status === "draft").length;
+    return { totalDebit, draftCount };
+  }, [vouchers]);
+
   async function load() {
     setLoading(true);
     try {
@@ -63,10 +79,21 @@ export default function VouchersListPage() {
         status: filters.status === "all" ? undefined : (filters.status as any),
         from: filters.from || undefined,
         to: filters.to || undefined,
-        take: 50,
+        take: pageSize,
+        skip: (page - 1) * pageSize,
       });
-      const list = Array.isArray(res) ? res : res?.items ?? res?.data ?? [];
-      setVouchers(list);
+      // Handle new API format { data, meta }
+      if (res && res.data && res.meta) {
+        setVouchers(res.data);
+        setTotalRecords(res.meta.total);
+        setTotalPages(res.meta.lastPage);
+      } else {
+        // Fallback for old API format or direct array
+        const list = Array.isArray(res) ? res : res?.items ?? res?.data ?? [];
+        setVouchers(list);
+        setTotalRecords(list.length); // Approximate if no meta
+        setTotalPages(1);
+      }
     } catch (e: any) {
       setError(e?.message ?? "Failed to load vouchers");
     } finally {
@@ -75,12 +102,18 @@ export default function VouchersListPage() {
   }
 
   React.useEffect(() => {
+    // Reset to page 1 on filter change
+    setPage(1);
+  }, [filters, pageSize]);
+
+  React.useEffect(() => {
     const timer = setTimeout(() => {
       load();
     }, 300);
     return () => clearTimeout(timer);
-  }, [filters]);
+  }, [filters, page, pageSize]); // Add page to dependency
 
+  // ... (Keep existing filterOptions) ...
   const filterOptions = [
     {
       key: "type",
@@ -104,39 +137,64 @@ export default function VouchersListPage() {
   const handleFilterChange = (newFilters: any) => {
     setFilters(prev => ({
       ...prev,
-      type: newFilters.type?.[0] || prev.type,
-      status: newFilters.status?.[0] || prev.status,
+      type: newFilters.type && newFilters.type.length > 0 ? newFilters.type[0] : "all",
+      status: newFilters.status && newFilters.status.length > 0 ? newFilters.status[0] : "all",
       from: newFilters.dateRange?.from || null,
       to: newFilters.dateRange?.to || null,
     }));
   };
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Vouchers"
-        description="View and manage all financial transactions and vouchers."
-      />
+    <div className="space-y-6 pb-20">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <PageHeader
+          title="Vouchers"
+          description="View and manage all financial transactions and vouchers."
+        />
+        <div className="flex items-center gap-2">
+          <Button
+            variant={compactMode ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => setCompactMode(!compactMode)}
+            className="rounded-xl h-9 px-3 text-xs font-bold uppercase tracking-wider hidden md:flex"
+          >
+            {compactMode ? "Comfortable" : "Compact"}
+          </Button>
+          <div className="h-4 w-px bg-slate-200 dark:bg-slate-800 mx-2 hidden md:block" />
+          <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-2">Total Records:</span>
+            <span className="text-xs font-bold text-slate-900 dark:text-white bg-white dark:bg-slate-700 px-2 py-0.5 rounded-lg shadow-sm">{totalRecords}</span>
+          </div>
+        </div>
+      </div>
 
-      {/* System Navigation/Actions Bar */}
-      <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-100/50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800">
-        <Button onClick={() => router.push("/journals/create")} variant="ghost" className="rounded-xl hover:bg-white dark:hover:bg-slate-700 h-9 font-medium text-xs">
-          <Plus className="mr-2 h-3.5 w-3.5" />
-          New Journal
-        </Button>
-        <div className="h-4 w-px bg-slate-300 dark:bg-slate-700 mx-1" />
-        <Button onClick={() => router.push("/sales/create")} variant="ghost" className="rounded-xl hover:bg-white dark:hover:bg-slate-700 h-9 font-medium text-xs text-slate-600 dark:text-slate-300">
-          Sales Invoice
-        </Button>
-        <Button onClick={() => router.push("/purchases/create")} variant="ghost" className="rounded-xl hover:bg-white dark:hover:bg-slate-700 h-9 font-medium text-xs text-slate-600 dark:text-slate-300">
-          Purchase Bill
-        </Button>
-        <Button onClick={() => router.push("/receipts/create")} variant="ghost" className="rounded-xl hover:bg-white dark:hover:bg-slate-700 h-9 font-medium text-xs text-slate-600 dark:text-slate-300">
-          Receipt
-        </Button>
-        <Button onClick={() => router.push("/payments/create")} variant="ghost" className="rounded-xl hover:bg-white dark:hover:bg-slate-700 h-9 font-medium text-xs text-slate-600 dark:text-slate-300">
-          Payment
-        </Button>
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center justify-between">
+          <div className="flex flex-col">
+            <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">Total Volume (View)</span>
+            <span className="text-xl font-black text-slate-900 dark:text-white mt-1"><MoneyText value={metrics.totalDebit} /></span>
+          </div>
+          <div className="h-10 w-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600">
+            <Wallet className="h-5 w-5" />
+          </div>
+        </div>
+        <div className="bg-white dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center justify-between">
+          <div className="flex flex-col">
+            <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">Pending Drafts</span>
+            <span className="text-xl font-black text-slate-900 dark:text-white mt-1">{metrics.draftCount}</span>
+          </div>
+          <div className="h-10 w-10 rounded-xl bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center text-orange-600">
+            <FileText className="h-5 w-5" />
+          </div>
+        </div>
+        <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 text-white p-5 rounded-2xl shadow-lg shadow-indigo-500/20 flex flex-col justify-center">
+          <span className="text-[10px] uppercase font-black tracking-widest text-indigo-200">System Status</span>
+          <div className="flex items-center gap-2 mt-2">
+            <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="font-bold text-sm">Ledger Synced</span>
+          </div>
+        </div>
       </div>
 
       <AdvancedFilterBar
@@ -147,92 +205,152 @@ export default function VouchersListPage() {
       />
 
       {/* Content */}
-      <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl shadow-slate-200/40 dark:border-slate-800 dark:bg-slate-950 dark:shadow-none">
+      <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl shadow-slate-200/40 dark:border-slate-800 dark:bg-slate-950 dark:shadow-none flex flex-col">
         {loading && vouchers.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 space-y-4">
+            {/* ... Spinner ... */}
             <div className="relative h-12 w-12">
               <div className="absolute inset-0 rounded-full border-4 border-indigo-100 dark:border-indigo-900/30"></div>
               <div className="absolute inset-0 rounded-full border-4 border-indigo-600 border-t-transparent animate-spin"></div>
             </div>
-            <p className="text-sm font-medium text-slate-500 animate-pulse uppercase tracking-widest text-[10px]">Filtering Records...</p>
+            <p className="text-sm font-medium text-slate-500 animate-pulse uppercase tracking-widest text-[10px]">Loading Ledger...</p>
           </div>
         ) : vouchers.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead>
-                <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30">
-                  <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Date Identity</th>
-                  <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Voucher Reference</th>
-                  <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Category</th>
-                  <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Party Context</th>
-                  <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Debit/Credit</th>
-                  <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-center">Status</th>
-                  <th className="px-6 py-4 w-10"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
-                {vouchers.map((v) => {
-                  const meta = VOUCHER_TYPE_METADATA[v.voucherType] || { label: v.voucherType, icon: FileText, color: "text-slate-600 bg-slate-50" };
-                  const dateInfo = getDateDisplay({ ad: v.voucherDate, bs: v.voucherDateBs, format: dateFormat });
-                  const Icon = meta.icon;
+          <>
+            <div className="overflow-x-auto min-h-[400px]">
+              {/* Adjusted padding based on compactMode */}
+              <table className="w-full text-sm text-left">
+                <thead>
+                  <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30">
+                    <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>Date Identity</th>
+                    <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>Voucher Reference</th>
+                    <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>Category</th>
+                    <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>Party Context</th>
+                    <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right", compactMode ? "py-3" : "py-4")}>Amount</th>
+                    <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px] text-center", compactMode ? "py-3" : "py-4")}>Status</th>
+                    <th className={cn("px-6 w-10", compactMode ? "py-3" : "py-4")}></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
+                  {vouchers.map((v) => {
+                    const meta = VOUCHER_TYPE_METADATA[v.voucherType] || { label: v.voucherType, icon: FileText, color: "text-slate-600 bg-slate-50" };
+                    const dateInfo = getDateDisplay({ ad: v.voucherDate, bs: v.voucherDateBs, format: dateFormat });
+                    const Icon = meta.icon;
 
-                  return (
-                    <tr
-                      key={v.id}
-                      onClick={() => router.push(`/vouchers/${v.id}`)}
-                      className="group cursor-pointer hover:bg-indigo-50/20 dark:hover:bg-indigo-900/10 transition-colors"
-                    >
-                      <td className="px-6 py-5 whitespace-nowrap">
-                        <div className="flex flex-col">
-                          <span className="font-bold text-slate-700 dark:text-slate-200">{dateInfo.primary}</span>
-                          <span className="text-[10px] text-slate-400 font-black uppercase tracking-tighter">{dateInfo.secondary}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-5 whitespace-nowrap">
-                        <div className="flex flex-col">
-                          <span className="font-black text-slate-900 dark:text-white group-hover:text-indigo-600 transition-colors">
-                            {v.voucherNumber || v.voucherNo || "DRAFT-" + v.id.slice(0, 4)}
-                          </span>
-                          {v.referenceNo && (
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ref: {v.referenceNo}</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-5 whitespace-nowrap">
-                        <div className={cn("inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm", meta.color)}>
-                          <Icon className="h-3 w-3" />
-                          {meta.label}
-                        </div>
-                      </td>
-                      <td className="px-6 py-5">
-                        <div className="flex flex-col max-w-[200px]">
-                          <span className="truncate font-bold text-slate-700 dark:text-slate-200">
-                            {v.party?.name || v.partyName || "General Entry"}
-                          </span>
-                          <span className="truncate text-[11px] text-slate-400 italic font-medium">
-                            {v.memo || "No memo linked"}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-5 whitespace-nowrap text-right">
-                        <span className="font-black text-slate-900 dark:text-white tabular-nums text-sm">
-                          <MoneyText value={v.amount || 0} />
-                        </span>
-                      </td>
-                      <td className="px-6 py-5 whitespace-nowrap text-center">
-                        <StatusBadge status={v.status as DocStatus} />
-                      </td>
-                      <td className="px-6 py-5 text-right">
-                        <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-indigo-400 group-hover:translate-x-1 transition-all" />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                    const totalDebit = v.lines?.reduce((sum: number, line: any) => sum + Number(line.debit || 0), 0) || 0;
+                    const totalCredit = v.lines?.reduce((sum: number, line: any) => sum + Number(line.credit || 0), 0) || 0;
+
+                    const py = compactMode ? "py-2.5" : "py-5";
+
+                    return (
+                      <tr
+                        key={v.id}
+                        onClick={() => router.push(`/vouchers/${v.id}`)}
+                        className="group cursor-pointer hover:bg-indigo-50/20 dark:hover:bg-indigo-900/10 transition-colors"
+                      >
+                        <td className={`px-6 ${py} whitespace-nowrap`}>
+                          <div className="flex flex-col">
+                            <span className="font-bold text-slate-700 dark:text-slate-200">{dateInfo.primary}</span>
+                            <span className="text-[10px] text-slate-400 font-black uppercase tracking-tighter">{dateInfo.secondary}</span>
+                          </div>
+                        </td>
+                        <td className={`px-6 ${py} whitespace-nowrap`}>
+                          <div className="flex flex-col">
+                            <span className="font-black text-slate-900 dark:text-white group-hover:text-indigo-600 transition-colors">
+                              {v.voucherNumber || v.voucherNo || "DRAFT-" + v.id.slice(0, 4)}
+                            </span>
+                            {v.referenceNo && (
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ref: {v.referenceNo}</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className={`px-6 ${py} whitespace-nowrap`}>
+                          <div className={cn("inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm", meta.color)}>
+                            <Icon className="h-3 w-3" />
+                            {meta.label}
+                          </div>
+                        </td>
+                        <td className={`px-6 ${py}`}>
+                          <div className="flex flex-col max-w-[200px]">
+                            <span className="truncate font-bold text-slate-700 dark:text-slate-200">
+                              {v.party?.name || v.partyName || "General Entry"}
+                            </span>
+                            <span className="truncate text-[11px] text-slate-400 italic font-medium">
+                              {v.memo || "No memo linked"}
+                            </span>
+                          </div>
+                        </td>
+                        <td className={`px-6 ${py} whitespace-nowrap text-right`}>
+                          <div className="flex flex-col items-end">
+                            <span className="font-black text-slate-900 dark:text-white tabular-nums text-sm">
+                              <MoneyText value={totalDebit} />
+                            </span>
+                            {totalDebit !== totalCredit && (
+                              <span className="text-[9px] font-bold text-red-500 bg-red-50 dark:bg-red-900/20 px-1.5 py-0.5 rounded flex items-center gap-1 mt-0.5">
+                                Unbalanced
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className={`px-6 ${py} whitespace-nowrap text-center`}>
+                          <StatusBadge status={v.status as DocStatus} />
+                        </td>
+                        <td className={`px-6 ${py} text-right`}>
+                          <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-indigo-400 group-hover:translate-x-1 transition-all" />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Footer */}
+            <div className="border-t border-slate-100 dark:border-slate-800 p-4 bg-slate-50/50 dark:bg-slate-900/30 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">Rows per page:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => setPageSize(Number(e.target.value))}
+                  className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold px-2 py-1 outline-none focus:ring-2 ring-indigo-500/50"
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <span className="text-[10px] uppercase font-bold tracking-widest text-slate-500">
+                  Page {page} of {totalPages}
+                </span>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    className="h-8 w-8 p-0 rounded-lg"
+                  >
+                    <ChevronRight className="h-4 w-4 rotate-180" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                    className="h-8 w-8 p-0 rounded-lg"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </>
         ) : (
           <div className="flex flex-col items-center justify-center py-24 px-6 text-center space-y-4">
+            {/* ... Empty State ... */}
             <div className="h-20 w-20 rounded-full bg-slate-50 dark:bg-slate-900 flex items-center justify-center border-2 border-dashed border-slate-200 dark:border-slate-800">
               <FileText className="h-8 w-8 text-slate-300" />
             </div>
@@ -250,16 +368,6 @@ export default function VouchersListPage() {
           </div>
         )}
       </div>
-
-      {vouchers.length > 0 && (
-        <div className="flex items-center justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">
-          <p>Audit Log: {vouchers.length} transactions in view</p>
-          <div className="flex items-center gap-1.5 font-bold text-indigo-600">
-            <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
-            <span>Synced with General Ledger</span>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

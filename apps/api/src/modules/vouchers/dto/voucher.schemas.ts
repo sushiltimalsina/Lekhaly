@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const VoucherLineSchema = z.object({
-  accountId: z.string().uuid().optional(),
+  accountId: z.string().uuid(),
   partyId: z.string().uuid().optional(),
   itemId: z.string().uuid().optional(),
   description: z.string().trim().max(255).optional(),
