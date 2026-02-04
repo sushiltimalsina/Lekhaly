@@ -318,7 +318,7 @@ export default function JournalsListPage() {
                                                 {visibleColumns.includes("memo") && (
                                                     <td className={`px-6 ${py}`}>
                                                         <p className="truncate text-slate-500 dark:text-slate-400 font-medium text-xs max-w-[150px]">
-                                                            {v.memo || "-"}
+                                                            {v.lines?.[0]?.description || v.memo || "-"}
                                                         </p>
                                                     </td>
                                                 )}
