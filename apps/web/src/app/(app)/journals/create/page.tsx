@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/app/money";
 import { cn } from "@/lib/utils";
-import { createVoucherDraft, listVouchers, type VoucherRecord } from "@/lib/api/vouchers";
+import { createVoucherDraft, updateVoucherDraft, listVouchers, getVoucher, type VoucherRecord } from "@/lib/api/vouchers";
 import { listAccounts, type AccountRecord } from "@/lib/api/accounts";
 import { listParties, type PartyRecord } from "@/lib/api/parties";
 import {
@@ -27,7 +27,7 @@ import {
     Printer
 } from "lucide-react";
 import SearchableSelect from "@/components/app/searchable-select";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 type JournalLine = {
     id: string;
@@ -47,6 +47,9 @@ type LedgerOption = {
 
 export default function JournalCreatePage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const id = searchParams.get("id");
+
     const [loading, setLoading] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
 
@@ -101,8 +104,39 @@ export default function JournalCreatePage() {
     React.useEffect(() => {
         listAccounts().then(setAccounts).catch(console.error);
         listParties().then(setParties).catch(console.error);
-        listVouchers({ type: "journal", take: 5 }).then(setRecentVouchers).catch(console.error);
+        listVouchers({ type: "journal", take: 5 }).then((res: any) => {
+            const list = Array.isArray(res) ? res : res?.items ?? res?.data ?? [];
+            setRecentVouchers(list);
+        }).catch(console.error);
     }, []);
+
+    React.useEffect(() => {
+        if (!id) return;
+        setLoading(true);
+        getVoucher(id).then((v) => {
+            setForm({
+                date: { ad: v.voucherDate, bs: v.voucherDateBs },
+                memo: v.memo || "",
+                referenceNo: v.referenceNo || "",
+                voucherNo: v.voucherNumber || v.voucherNo || "DRAFT",
+            });
+            if (v.lines && v.lines.length > 0) {
+                setLines(v.lines.map((l: any) => ({
+                    id: Math.random().toString(),
+                    type: l.debit > 0 ? "dr" : "cr",
+                    accountId: l.accountId || "",
+                    partyId: l.partyId || "",
+                    description: l.description || "",
+                    amount: String(l.debit > 0 ? l.debit : l.credit || 0),
+                })));
+            }
+        }).catch((e) => {
+            setError("Failed to load voucher");
+            console.error(e);
+        }).finally(() => {
+            setLoading(false);
+        });
+    }, [id]);
 
     const ledgerOptions = React.useMemo<LedgerOption[]>(() => {
         const accs = accounts.map(a => ({
@@ -156,8 +190,8 @@ export default function JournalCreatePage() {
         setLoading(true);
         setError(null);
         try {
-            const res = await createVoucherDraft({
-                voucherType: "journal",
+            const payload = {
+                voucherType: "journal" as const,
                 voucherDate: form.date.ad,
                 voucherDateBs: form.date.bs,
                 memo: form.memo,
@@ -171,8 +205,15 @@ export default function JournalCreatePage() {
                         debit: l.type === "dr" ? parseFloat(l.amount) : 0,
                         credit: l.type === "cr" ? parseFloat(l.amount) : 0,
                     }))
-            });
-            router.push(`/vouchers/${res.id}`);
+            };
+
+            if (id) {
+                await updateVoucherDraft(id, payload);
+            } else {
+                await createVoucherDraft(payload);
+            }
+
+            router.push("/journals");
         } catch (e: any) {
             setError(e?.message ?? "Failed to save journal");
         } finally {
