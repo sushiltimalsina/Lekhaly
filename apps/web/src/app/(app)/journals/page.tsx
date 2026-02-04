@@ -393,6 +393,27 @@ export default function JournalsListPage() {
                                                                     })}
                                                                 </tbody>
                                                             </table>
+
+                                                            {(v.memo || v.additionalNote) && (
+                                                                <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                                    {v.memo && (
+                                                                        <div className="space-y-1.5">
+                                                                            <h5 className="text-[9px] font-black uppercase tracking-widest text-slate-400">Short Note</h5>
+                                                                            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-medium bg-slate-50/50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700/50">
+                                                                                {v.memo}
+                                                                            </p>
+                                                                        </div>
+                                                                    )}
+                                                                    {v.additionalNote && (
+                                                                        <div className="space-y-1.5">
+                                                                            <h5 className="text-[9px] font-black uppercase tracking-widest text-slate-400">Additional Note</h5>
+                                                                            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-medium bg-slate-50/50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700/50">
+                                                                                {v.additionalNote}
+                                                                            </p>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </td>
                                                 </tr>

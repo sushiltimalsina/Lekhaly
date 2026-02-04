@@ -61,6 +61,7 @@ export default function JournalCreatePage() {
     const [form, setForm] = React.useState({
         date: { bs: "", ad: "" },
         memo: "",
+        additionalNote: "",
         referenceNo: "",
         voucherNo: "NEW",
     });
@@ -117,6 +118,7 @@ export default function JournalCreatePage() {
             setForm({
                 date: { ad: v.voucherDate, bs: v.voucherDateBs },
                 memo: v.memo || "",
+                additionalNote: v.additionalNote || "",
                 referenceNo: v.referenceNo || "",
                 voucherNo: v.voucherNumber || v.voucherNo || "DRAFT",
             });
@@ -195,6 +197,7 @@ export default function JournalCreatePage() {
                 voucherDate: form.date.ad,
                 voucherDateBs: form.date.bs,
                 memo: form.memo,
+                additionalNote: form.additionalNote,
                 referenceNo: form.referenceNo,
                 lines: lines
                     .filter(l => (l.accountId || l.partyId) && parseFloat(l.amount))
@@ -532,29 +535,43 @@ export default function JournalCreatePage() {
 
                         {/* Narration Panel */}
                         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/50 mb-12">
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between mb-4">
-                                    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500">
-                                        <ArrowRightCircle className="h-3.5 w-3.5" />
-                                        General Memo / Long Narration
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500">
+                                            <ArrowRightCircle className="h-3.5 w-3.5" />
+                                            General Memo / Short Notes
+                                        </div>
                                     </div>
-                                    <div className="text-[9px] text-slate-400 italic">
-                                        Press <kbd className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border text-[8px] not-italic font-sans">Shift + Enter</kbd> to jump to Save
-                                    </div>
+                                    <textarea
+                                        ref={memoRef}
+                                        value={form.memo}
+                                        onChange={(e) => setForm(f => ({ ...f, memo: e.target.value }))}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter" && (e.shiftKey || e.ctrlKey || e.metaKey)) {
+                                                e.preventDefault();
+                                                safeFocus(saveButtonRef.current);
+                                            }
+                                        }}
+                                        placeholder="Add a detailed description for this voucher entry..."
+                                        className="min-h-[120px] w-full rounded-2xl border-2 border-slate-100 bg-slate-50/30 p-5 text-sm outline-none ring-indigo-500/10 focus:border-indigo-500 focus:bg-white focus:ring-4 dark:border-slate-800 dark:bg-slate-950 dark:focus:bg-slate-950 dark:text-slate-300 transition-all font-medium leading-relaxed resize-none"
+                                    />
                                 </div>
-                                <textarea
-                                    ref={memoRef}
-                                    value={form.memo}
-                                    onChange={(e) => setForm(f => ({ ...f, memo: e.target.value }))}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter" && (e.shiftKey || e.ctrlKey || e.metaKey)) {
-                                            e.preventDefault();
-                                            safeFocus(saveButtonRef.current);
-                                        }
-                                    }}
-                                    placeholder="Add a detailed description for this voucher entry..."
-                                    className="min-h-[120px] w-full rounded-2xl border-2 border-slate-100 bg-slate-50/30 p-5 text-sm outline-none ring-indigo-500/10 focus:border-indigo-500 focus:bg-white focus:ring-4 dark:border-slate-800 dark:bg-slate-950 dark:focus:bg-slate-950 dark:text-slate-300 transition-all font-medium leading-relaxed"
-                                />
+
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500">
+                                            <ArrowRightCircle className="h-3.5 w-3.5" />
+                                            Additional Notes / Audit Trails
+                                        </div>
+                                    </div>
+                                    <textarea
+                                        value={form.additionalNote}
+                                        onChange={(e) => setForm(f => ({ ...f, additionalNote: e.target.value }))}
+                                        placeholder="Internal notes, references, or audit details..."
+                                        className="min-h-[120px] w-full rounded-2xl border-2 border-slate-100 bg-slate-50/30 p-5 text-sm outline-none ring-indigo-500/10 focus:border-indigo-500 focus:bg-white focus:ring-4 dark:border-slate-800 dark:bg-slate-950 dark:focus:bg-slate-950 dark:text-slate-300 transition-all font-medium leading-relaxed resize-none"
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>
