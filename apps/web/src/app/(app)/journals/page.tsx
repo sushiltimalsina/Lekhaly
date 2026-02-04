@@ -33,8 +33,6 @@ export default function JournalsListPage() {
         status: "all",
         from: null as Date | null,
         to: null as Date | null,
-        amountRange: null as string | null,
-        entryCount: null as string | null,
     });
     const [error, setError] = React.useState<string | null>(null);
     const [expandedRow, setExpandedRow] = React.useState<string | null>(null);
@@ -60,36 +58,15 @@ export default function JournalsListPage() {
         { key: "particulars", label: "Particulars", defaultVisible: true },
         { key: "debit", label: "Debit Amount", defaultVisible: true },
         { key: "credit", label: "Credit Amount", defaultVisible: true },
+        { key: "memo", label: "Short Notes", defaultVisible: false },
+        { key: "additionalNote", label: "Additional Notes", defaultVisible: false },
         { key: "status", label: "Status", defaultVisible: true },
     ];
 
-    /* Client-side filtering for amount and entry count */
+    /* Client-side filtering for search and status */
     const filteredVouchers = React.useMemo(() => {
-        let filtered = [...vouchers];
-
-        // Apply amount range filter
-        if (filters.amountRange) {
-            const [min, max] = filters.amountRange.split('-').map(Number);
-            filtered = filtered.filter(v => {
-                const totalDebit = v.lines?.reduce((sum: number, line: any) => sum + Number(line.debit || 0), 0) || 0;
-                return totalDebit >= min && totalDebit <= max;
-            });
-        }
-
-        // Apply entry count filter
-        if (filters.entryCount) {
-            filtered = filtered.filter(v => {
-                const count = v.lines?.length || 0;
-                if (filters.entryCount === '2') return count === 2;
-                if (filters.entryCount === '3-5') return count >= 3 && count <= 5;
-                if (filters.entryCount === '6-10') return count >= 6 && count <= 10;
-                if (filters.entryCount === '10+') return count > 10;
-                return true;
-            });
-        }
-
-        return filtered;
-    }, [vouchers, filters.amountRange, filters.entryCount]);
+        return vouchers;
+    }, [vouchers]);
 
     /* Summary Metrics */
     const metrics = React.useMemo(() => {
@@ -148,28 +125,6 @@ export default function JournalsListPage() {
                 { value: "posted", label: "Posted" },
                 { value: "void", label: "Void" },
             ]
-        },
-        {
-            key: "amountRange",
-            label: "Amount Range",
-            options: [
-                { value: "0-1000", label: "Under ₹1,000" },
-                { value: "1000-5000", label: "₹1,000 - ₹5,000" },
-                { value: "5000-10000", label: "₹5,000 - ₹10,000" },
-                { value: "10000-50000", label: "₹10,000 - ₹50,000" },
-                { value: "50000-100000", label: "₹50,000 - ₹1,00,000" },
-                { value: "100000-999999999", label: "Above ₹1,00,000" },
-            ]
-        },
-        {
-            key: "entryCount",
-            label: "Entry Count",
-            options: [
-                { value: "2", label: "2 Entries" },
-                { value: "3-5", label: "3-5 Entries" },
-                { value: "6-10", label: "6-10 Entries" },
-                { value: "10+", label: "More than 10" },
-            ]
         }
     ];
 
@@ -179,8 +134,6 @@ export default function JournalsListPage() {
             status: newFilters.status?.[0] || prev.status,
             from: newFilters.dateRange?.from || null,
             to: newFilters.dateRange?.to || null,
-            amountRange: newFilters.amountRange?.[0] || null,
-            entryCount: newFilters.entryCount?.[0] || null,
         }));
     };
 
@@ -269,13 +222,15 @@ export default function JournalsListPage() {
                         <table className="w-full text-sm text-left">
                             <thead>
                                 <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30">
-                                    <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>S.No</th>
-                                    <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>Date</th>
-                                    <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>Voucher No</th>
-                                    <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>Particulars</th>
-                                    <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right", compactMode ? "py-3" : "py-4")}>Debit</th>
-                                    <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right", compactMode ? "py-3" : "py-4")}>Credit</th>
-                                    <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px] text-center", compactMode ? "py-3" : "py-4")}>Status</th>
+                                    {visibleColumns.includes("sno") && <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>S.No</th>}
+                                    {visibleColumns.includes("date") && <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>Date</th>}
+                                    {visibleColumns.includes("voucherNo") && <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>Voucher No</th>}
+                                    {visibleColumns.includes("particulars") && <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>Particulars</th>}
+                                    {visibleColumns.includes("debit") && <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right", compactMode ? "py-3" : "py-4")}>Debit</th>}
+                                    {visibleColumns.includes("credit") && <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right", compactMode ? "py-3" : "py-4")}>Credit</th>}
+                                    {visibleColumns.includes("memo") && <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>Short Notes</th>}
+                                    {visibleColumns.includes("additionalNote") && <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>Add. Notes</th>}
+                                    {visibleColumns.includes("status") && <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px] text-center", compactMode ? "py-3" : "py-4")}>Status</th>}
                                     <th className={cn("px-6 w-10", compactMode ? "py-3" : "py-4")}></th>
                                 </tr>
                             </thead>
@@ -303,54 +258,82 @@ export default function JournalsListPage() {
                                     return (
                                         <React.Fragment key={v.id}>
                                             <tr className="group hover:bg-indigo-50/20 dark:hover:bg-indigo-900/10 transition-colors">
-                                                <td className={`px-6 ${py} whitespace-nowrap font-bold text-slate-500`}>
-                                                    {sNo}
-                                                </td>
-                                                <td className={`px-6 ${py} whitespace-nowrap`}>
-                                                    <div className="flex flex-col">
-                                                        <span className="font-bold text-slate-700 dark:text-slate-200">{dateInfo.primary}</span>
-                                                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">{dateInfo.secondary}</span>
-                                                    </div>
-                                                </td>
-                                                <td className={`px-6 ${py} whitespace-nowrap`}>
-                                                    <span
-                                                        onClick={() => router.push(`/journals/create?id=${v.id}`)}
-                                                        className="font-black text-slate-900 dark:text-white hover:text-indigo-600 transition-colors cursor-pointer"
-                                                    >
-                                                        {v.voucherNumber || v.voucherNo || `DRAFT-${v.id.slice(0, 4)}`}
-                                                    </span>
-                                                </td>
-                                                <td
-                                                    className={`px-6 ${py} cursor-pointer`}
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setExpandedRow(isExpanded ? null : v.id);
-                                                    }}
-                                                >
-                                                    <div className="flex flex-col max-w-[250px]">
-                                                        <span className="truncate font-bold text-slate-700 dark:text-slate-200 group-hover:text-indigo-600 transition-colors" title={firstAccount}>
-                                                            {firstAccount}
+                                                {visibleColumns.includes("sno") && (
+                                                    <td className={`px-6 ${py} whitespace-nowrap font-bold text-slate-500`}>
+                                                        {sNo}
+                                                    </td>
+                                                )}
+                                                {visibleColumns.includes("date") && (
+                                                    <td className={`px-6 ${py} whitespace-nowrap`}>
+                                                        <div className="flex flex-col">
+                                                            <span className="font-bold text-slate-700 dark:text-slate-200">{dateInfo.primary}</span>
+                                                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">{dateInfo.secondary}</span>
+                                                        </div>
+                                                    </td>
+                                                )}
+                                                {visibleColumns.includes("voucherNo") && (
+                                                    <td className={`px-6 ${py} whitespace-nowrap`}>
+                                                        <span
+                                                            onClick={() => router.push(`/journals/create?id=${v.id}`)}
+                                                            className="font-black text-slate-900 dark:text-white hover:text-indigo-600 transition-colors cursor-pointer"
+                                                        >
+                                                            {v.voucherNumber || v.voucherNo || `DRAFT-${v.id.slice(0, 4)}`}
                                                         </span>
-                                                        {totalEntries > 0 && (
-                                                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                                                                +{totalEntries} {totalEntries === 1 ? 'entry' : 'entries'}
+                                                    </td>
+                                                )}
+                                                {visibleColumns.includes("particulars") && (
+                                                    <td
+                                                        className={`px-6 ${py} cursor-pointer`}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setExpandedRow(isExpanded ? null : v.id);
+                                                        }}
+                                                    >
+                                                        <div className="flex flex-col max-w-[250px]">
+                                                            <span className="truncate font-bold text-slate-700 dark:text-slate-200 group-hover:text-indigo-600 transition-colors" title={firstAccount}>
+                                                                {firstAccount}
                                                             </span>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                                <td className={`px-6 ${py} whitespace-nowrap text-right`}>
-                                                    <span className="font-bold text-slate-900 dark:text-white tabular-nums text-sm">
-                                                        <MoneyText value={totalDebit} />
-                                                    </span>
-                                                </td>
-                                                <td className={`px-6 ${py} whitespace-nowrap text-right`}>
-                                                    <span className="font-bold text-slate-900 dark:text-white tabular-nums text-sm">
-                                                        <MoneyText value={totalCredit} />
-                                                    </span>
-                                                </td>
-                                                <td className={`px-6 ${py} whitespace-nowrap text-center`}>
-                                                    <StatusBadge status={v.status as DocStatus} />
-                                                </td>
+                                                            {totalEntries > 0 && (
+                                                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                                                                    +{totalEntries} {totalEntries === 1 ? 'entry' : 'entries'}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                )}
+                                                {visibleColumns.includes("debit") && (
+                                                    <td className={`px-6 ${py} whitespace-nowrap text-right`}>
+                                                        <span className="font-bold text-slate-900 dark:text-white tabular-nums text-sm">
+                                                            <MoneyText value={totalDebit} />
+                                                        </span>
+                                                    </td>
+                                                )}
+                                                {visibleColumns.includes("credit") && (
+                                                    <td className={`px-6 ${py} whitespace-nowrap text-right`}>
+                                                        <span className="font-bold text-slate-900 dark:text-white tabular-nums text-sm">
+                                                            <MoneyText value={totalCredit} />
+                                                        </span>
+                                                    </td>
+                                                )}
+                                                {visibleColumns.includes("memo") && (
+                                                    <td className={`px-6 ${py}`}>
+                                                        <p className="truncate text-slate-500 dark:text-slate-400 font-medium text-xs max-w-[150px]">
+                                                            {v.memo || "-"}
+                                                        </p>
+                                                    </td>
+                                                )}
+                                                {visibleColumns.includes("additionalNote") && (
+                                                    <td className={`px-6 ${py}`}>
+                                                        <p className="truncate text-slate-500 dark:text-slate-400 font-medium text-xs max-w-[150px]">
+                                                            {v.additionalNote || "-"}
+                                                        </p>
+                                                    </td>
+                                                )}
+                                                {visibleColumns.includes("status") && (
+                                                    <td className={`px-6 ${py} whitespace-nowrap text-center`}>
+                                                        <StatusBadge status={v.status as DocStatus} />
+                                                    </td>
+                                                )}
                                                 <td className={`px-6 ${py} text-right`}>
                                                     <div className="text-slate-300 group-hover:text-indigo-400 transition-all">
                                                         {isExpanded ? (
@@ -363,7 +346,7 @@ export default function JournalsListPage() {
                                             </tr>
                                             {isExpanded && v.lines && v.lines.length > 0 && (
                                                 <tr className="bg-slate-50/50 dark:bg-slate-900/20">
-                                                    <td colSpan={8} className="px-6 py-4">
+                                                    <td colSpan={visibleColumns.length + 1} className="px-6 py-4">
                                                         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
                                                             <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Journal Entries</h4>
                                                             <table className="w-full text-xs">
@@ -430,7 +413,7 @@ export default function JournalsListPage() {
                             <p className="text-sm text-slate-500 font-medium leading-relaxed">Adjust your filters or create your first journal entry to start tracking transactions.</p>
                         </div>
                         <Button
-                            onClick={() => setFilters({ q: "", status: "all", from: null, to: null, amountRange: null, entryCount: null })}
+                            onClick={() => setFilters({ q: "", status: "all", from: null, to: null })}
                             className="bg-indigo-600 rounded-2xl h-11 px-8 font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-500/20"
                         >
                             Reset Audit Filters
