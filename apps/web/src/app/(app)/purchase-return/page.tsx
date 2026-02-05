@@ -1,33 +1,28 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
+import {
+    Plus,
+    ChevronRight,
+    ChevronDown,
+    RotateCw,
+    FileText,
+    History
+} from "lucide-react";
 import PageHeader from "@/components/app/page-header";
-import { Button } from "@/components/ui/button";
+import StatusBadge, { DocStatus } from "@/components/app/status-badge";
 import { MoneyText } from "@/components/app/money";
 import { listVouchers } from "@/lib/api/vouchers";
-import StatusBadge, { DocStatus } from "@/components/app/status-badge";
-import { useDateFormat } from "@/lib/date-format";
-import { getDateDisplay } from "@/lib/dates/display";
-import { Plus, ChevronRight, RotateCw, Download } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { cn } from "@/lib/utils";
-import AdvancedFilterBar from "@/components/app/advanced-filter-bar";
 import { getSettings, subscribeSettings } from "@/lib/store/settings";
+import { getDateDisplay } from "@/lib/dates/display";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import AdvancedFilterBar from "@/components/app/advanced-filter-bar";
 
 export default function PurchaseReturnListPage() {
     const router = useRouter();
-    const { dateFormat } = useDateFormat();
     const [settings, setSettings] = React.useState(getSettings());
-    const [loading, setLoading] = React.useState(true);
-    const [data, setData] = React.useState<any[]>([]);
-    const [error, setError] = React.useState<string | null>(null);
-
-    const [filters, setFilters] = React.useState({
-        q: "",
-        status: "all",
-        from: null as Date | null,
-        to: null as Date | null,
-    });
 
     React.useEffect(() => {
         const unsubscribe = subscribeSettings((next) => setSettings(next));
@@ -36,9 +31,56 @@ export default function PurchaseReturnListPage() {
 
     const calendarFmt = settings.calendarPreference.toLowerCase() as "ad" | "bs";
 
-    const load = async () => {
+    const [loading, setLoading] = React.useState(true);
+    const [data, setData] = React.useState<any[]>([]);
+    const [filters, setFilters] = React.useState({
+        q: "",
+        status: "all",
+        from: null as Date | null,
+        to: null as Date | null,
+    });
+    const [error, setError] = React.useState<string | null>(null);
+    const [expandedRow, setExpandedRow] = React.useState<string | null>(null);
+
+    /* Pagination State */
+    const [page, setPage] = React.useState(1);
+    const [totalPages, setTotalPages] = React.useState(1);
+    const [pageSize, setPageSize] = React.useState(50);
+    const [totalRecords, setTotalRecords] = React.useState(0);
+
+    /* Density State */
+    const [compactMode, setCompactMode] = React.useState(false);
+
+    /* Column Visibility State */
+    const [visibleColumns, setVisibleColumns] = React.useState<string[]>([
+        "sno", "date", "returnNo", "vendor", "amount", "status", "postedAt"
+    ]);
+
+    const columnOptions = [
+        { key: "sno", label: "S.No", defaultVisible: true },
+        { key: "date", label: "Return Date", defaultVisible: true },
+        { key: "returnNo", label: "Return No", defaultVisible: true },
+        { key: "vendor", label: "Vendor / Supplier", defaultVisible: true },
+        { key: "amount", label: "Return Value", defaultVisible: true },
+        { key: "memo", label: "Short Notes", defaultVisible: false },
+        { key: "status", label: "Status", defaultVisible: true },
+        { key: "postedAt", label: "Posted Date/Time", defaultVisible: true },
+    ];
+
+    /* Summary Metrics */
+    const metrics = React.useMemo(() => {
+        let totalReturn = 0;
+        data.forEach(item => {
+            const lines = item.lines || [];
+            const amt = lines.reduce((max: number, l: any) => Math.max(max, Number(l.debit || 0)), 0);
+            totalReturn += amt;
+        });
+        const draftsCount = data.filter(q => q.status === "draft").length;
+        return { totalReturn, draftsCount };
+    }, [data]);
+
+    async function load() {
         setLoading(true);
-        setError(null);
         try {
             const res = await listVouchers({
                 type: "purchase_return",
@@ -46,23 +88,37 @@ export default function PurchaseReturnListPage() {
                 status: filters.status === "all" ? undefined : (filters.status as any),
                 from: filters.from || undefined,
                 to: filters.to || undefined,
-                take: 100
+                take: pageSize,
+                skip: (page - 1) * pageSize,
             });
-            const list = Array.isArray(res) ? res : res?.items ?? res?.data ?? [];
-            setData(list);
+
+            if (res && res.data && res.meta) {
+                setData(res.data);
+                setTotalRecords(res.meta.total);
+                setTotalPages(res.meta.lastPage);
+            } else {
+                const list = Array.isArray(res) ? res : res?.items ?? res?.data ?? [];
+                setData(list);
+                setTotalRecords(list.length);
+                setTotalPages(1);
+            }
         } catch (e: any) {
             setError(e?.message ?? "Failed to load purchase returns");
         } finally {
             setLoading(false);
         }
-    };
+    }
+
+    React.useEffect(() => {
+        setPage(1);
+    }, [filters, pageSize]);
 
     React.useEffect(() => {
         const timer = setTimeout(() => {
             load();
         }, 300);
         return () => clearTimeout(timer);
-    }, [filters]);
+    }, [filters, page, pageSize]);
 
     const filterOptions = [
         {
@@ -76,30 +132,6 @@ export default function PurchaseReturnListPage() {
         }
     ];
 
-    const columnOptions = [
-        { key: "date", label: "Return Date", defaultVisible: true },
-        { key: "voucherNo", label: "Return No", defaultVisible: true },
-        { key: "refNo", label: "Reference No", defaultVisible: false },
-        { key: "party", label: "Vendor Name", defaultVisible: true },
-        { key: "panVat", label: "PAN/VAT Number", defaultVisible: false },
-        { key: "items", label: "Item Details", defaultVisible: true },
-        { key: "qty", label: "Quantity", defaultVisible: true },
-        { key: "rate", label: "Rate", defaultVisible: true },
-        { key: "taxable", label: "Taxable Amount", defaultVisible: false },
-        { key: "nonTaxable", label: "Non Taxable Amount", defaultVisible: false },
-        { key: "amount", label: "Amount", defaultVisible: true },
-        { key: "notes", label: "Memo", defaultVisible: false },
-        { key: "additionalNote", label: "Additional Note", defaultVisible: false },
-        { key: "status", label: "Status", defaultVisible: true },
-        { key: "postedAt", label: "Posted Date/Time", defaultVisible: true },
-    ];
-
-    const [visibleColumns, setVisibleColumns] = React.useState<string[]>(
-        columnOptions.filter(c => c.defaultVisible).map(c => c.key)
-    );
-
-    const [expandedItems, setExpandedItems] = React.useState<Record<string, boolean>>({});
-
     const handleFilterChange = (newFilters: any) => {
         setFilters(prev => ({
             ...prev,
@@ -109,35 +141,72 @@ export default function PurchaseReturnListPage() {
         }));
     };
 
-    const isVisible = (key: string) => visibleColumns.includes(key);
-
     return (
-        <div className="space-y-6">
-            <PageHeader
-                title="Purchase Returns"
-                description="Monitor vendor returns and debit notes."
-                actions={
-                    <div className="flex items-center gap-3">
-                        <Button variant="outline" className="rounded-2xl border-2 h-11 px-6 font-black text-[10px] uppercase tracking-widest hidden sm:flex">
-                            <Download className="mr-2 h-4 w-4" />
-                            Export Data
-                        </Button>
+        <div className="space-y-6 pb-20">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <PageHeader
+                    title="Purchase Returns"
+                    description="Monitor vendor returns and debit notes accurately."
+                    actions={
                         <Button
                             onClick={() => router.push("/purchase-return/create")}
-                            className="rounded-2xl bg-orange-600 text-white hover:bg-orange-700 shadow-xl shadow-orange-500/20 h-11 px-8 font-black text-xs uppercase tracking-widest transition-all active:scale-95 border-none"
+                            className="rounded-2xl bg-orange-600 hover:bg-orange-700 text-white shadow-lg shadow-orange-500/20 px-8 h-11 transition-all active:scale-95 border-none"
                         >
                             <Plus className="mr-2 h-4 w-4" />
                             New Return
                         </Button>
+                    }
+                />
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant={compactMode ? "secondary" : "ghost"}
+                        size="sm"
+                        onClick={() => setCompactMode(!compactMode)}
+                        className="rounded-xl h-9 px-3 text-xs font-bold uppercase tracking-wider hidden md:flex"
+                    >
+                        {compactMode ? "Comfortable" : "Compact"}
+                    </Button>
+                    <div className="h-4 w-px bg-slate-200 dark:bg-slate-800 mx-2 hidden md:block" />
+                    <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-2">Total Registry:</span>
+                        <span className="text-xs font-bold text-slate-900 dark:text-white bg-white dark:bg-slate-700 px-2 py-0.5 rounded-lg shadow-sm">{totalRecords}</span>
                     </div>
-                }
-            />
+                </div>
+            </div>
+
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-white dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center justify-between">
+                    <div className="flex flex-col">
+                        <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">Total Return Value</span>
+                        <span className="text-xl font-black text-slate-900 dark:text-white mt-1"><MoneyText value={metrics.totalReturn} /></span>
+                    </div>
+                    <div className="h-10 w-10 rounded-xl bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center text-orange-600">
+                        <RotateCw className="h-5 w-5" />
+                    </div>
+                </div>
+                <div className="bg-white dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center justify-between">
+                    <div className="flex flex-col">
+                        <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">Pending Drafts</span>
+                        <span className="text-xl font-black text-slate-900 dark:text-white mt-1">{metrics.draftsCount}</span>
+                    </div>
+                    <div className="h-10 w-10 rounded-xl bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center text-amber-600">
+                        <FileText className="h-5 w-5" />
+                    </div>
+                </div>
+                <div className="bg-gradient-to-br from-orange-600 to-orange-700 text-white p-5 rounded-2xl shadow-lg shadow-orange-500/20 flex flex-col justify-center">
+                    <span className="text-[10px] uppercase font-black tracking-widest text-orange-200">Return Ledger</span>
+                    <div className="flex items-center gap-2 mt-2">
+                        <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                        <span className="font-bold text-sm">Vendor Sync Active</span>
+                    </div>
+                </div>
+            </div>
 
             <AdvancedFilterBar
                 onSearch={(q) => setFilters(prev => ({ ...prev, q }))}
                 onFilterChange={handleFilterChange}
                 filterOptions={filterOptions}
-                defaultRange={settings.defaultDateRange}
                 columnOptions={columnOptions}
                 onVisibleColumnsChange={setVisibleColumns}
                 className="border-orange-100 dark:border-orange-900/50"
@@ -157,172 +226,167 @@ export default function PurchaseReturnListPage() {
                         <table className="w-full text-sm text-left">
                             <thead>
                                 <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30">
-                                    {isVisible("date") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Return Date</th>}
-                                    {isVisible("voucherNo") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Return No</th>}
-                                    {isVisible("refNo") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Reference No</th>}
-                                    {isVisible("party") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Vendor Name</th>}
-                                    {isVisible("panVat") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Pan/Vat Number</th>}
-                                    {isVisible("items") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Item Details</th>}
-                                    {isVisible("qty") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Quantity</th>}
-                                    {isVisible("rate") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Rate</th>}
-                                    {isVisible("taxable") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Taxable Amount</th>}
-                                    {isVisible("nonTaxable") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Non Taxable Amount</th>}
-                                    {isVisible("amount") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Amount</th>}
-                                    {isVisible("notes") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Memo</th>}
-                                    {isVisible("additionalNote") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Additional Note</th>}
-                                    {isVisible("status") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-center">Status</th>}
-                                    {isVisible("postedAt") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Posted Date/Time</th>}
-                                    <th className="px-6 py-4 w-10"></th>
+                                    {visibleColumns.includes("sno") && <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>S.No</th>}
+                                    {visibleColumns.includes("date") && <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>Date ({calendarFmt.toUpperCase()})</th>}
+                                    {visibleColumns.includes("returnNo") && <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>Return No</th>}
+                                    {visibleColumns.includes("vendor") && <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>Vendor / Supplier</th>}
+                                    {visibleColumns.includes("amount") && <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right", compactMode ? "py-3" : "py-4")}>Amount</th>}
+                                    {visibleColumns.includes("memo") && <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>Memo</th>}
+                                    {visibleColumns.includes("status") && <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px] text-center", compactMode ? "py-3" : "py-4")}>Status</th>}
+                                    {visibleColumns.includes("postedAt") && <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>Posted Date/Time</th>}
+                                    <th className={cn("px-6 w-10", compactMode ? "py-3" : "py-4")}></th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
-                                {data.map((item) => {
+                                {data.map((item, index) => {
                                     const dateInfo = getDateDisplay({ ad: item.voucherDate, bs: item.voucherDateBs, format: calendarFmt });
+                                    const sNo = (page - 1) * pageSize + index + 1;
                                     const lines = item.lines || [];
                                     const itemLines = lines.filter((l: any) => l.itemId);
 
-                                    const firstLine = itemLines[0];
-                                    const itemSummary = itemLines.length > 1
-                                        ? `${firstLine?.item?.name || firstLine?.description || "Mixed"} (+${itemLines.length - 1})`
-                                        : (firstLine?.item?.name || firstLine?.description || "—");
+                                    // Calculate Total Amount (Debit for Vendor in Return)
+                                    const totalAmount = lines.reduce((max: number, l: any) => Math.max(max, Number(l.debit || 0)), 0);
 
-                                    const totalQty = itemLines.reduce((sum: number, l: any) => sum + Number(l.qty || 0), 0);
-                                    const avgRate = itemLines.length === 1 ? Number(firstLine.credit || firstLine.debit || 0) : null;
-
-                                    let taxableAmount = 0;
-                                    let nonTaxableAmount = 0;
-                                    itemLines.forEach((l: any) => {
-                                        const val = Number(l.credit || l.debit || 0);
-                                        const hasTax = Number(l.taxAmount || 0) > 0 || !!l.taxCodeId;
-                                        if (hasTax) taxableAmount += val;
-                                        else nonTaxableAmount += val;
-                                    });
-
-                                    const totalAmount = lines.find((l: any) => l.partyId === item.partyId)?.debit ||
-                                        itemLines.reduce((sum: number, l: any) => sum + Number(l.credit || 0), 0);
+                                    const py = compactMode ? "py-2.5" : "py-5";
+                                    const isExpanded = expandedRow === item.id;
 
                                     return (
-                                        <tr
-                                            key={item.id}
-                                            onClick={() => router.push(`/purchase-return/create?id=${item.id}`)}
-                                            className="group cursor-pointer hover:bg-orange-50/20 dark:hover:bg-orange-900/10 transition-colors"
-                                        >
-                                            {isVisible("date") && (
-                                                <td className="px-6 py-5 whitespace-nowrap">
-                                                    <div className="flex flex-col">
-                                                        <span className="font-bold text-slate-800 dark:text-slate-100">{dateInfo.primary}</span>
-                                                        <span className="text-[9px] text-slate-400 font-medium">{dateInfo.secondary}</span>
+                                        <React.Fragment key={item.id}>
+                                            <tr className="group hover:bg-orange-50/20 dark:hover:bg-orange-900/10 transition-colors">
+                                                {visibleColumns.includes("sno") && (
+                                                    <td className={`px-6 ${py} whitespace-nowrap font-bold text-slate-500`}>
+                                                        {sNo}
+                                                    </td>
+                                                )}
+                                                {visibleColumns.includes("date") && (
+                                                    <td className={`px-6 ${py} whitespace-nowrap`}>
+                                                        <div className="flex flex-col">
+                                                            <span className="font-bold text-slate-700 dark:text-slate-200">
+                                                                {dateInfo.primary}
+                                                            </span>
+                                                            <span className="text-[9px] text-slate-400 font-medium tracking-tight">
+                                                                {dateInfo.secondary}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                )}
+                                                {visibleColumns.includes("returnNo") && (
+                                                    <td className={`px-6 ${py} whitespace-nowrap`}>
+                                                        <span
+                                                            onClick={() => router.push(`/purchase-return/create?id=${item.id}`)}
+                                                            className="font-black text-slate-900 dark:text-white hover:text-orange-600 transition-colors cursor-pointer"
+                                                        >
+                                                            {item.voucherNumber || `DRAFT-${item.id.slice(0, 4)}`}
+                                                        </span>
+                                                    </td>
+                                                )}
+                                                {visibleColumns.includes("vendor") && (
+                                                    <td
+                                                        className={`px-6 ${py} cursor-pointer`}
+                                                        onClick={() => setExpandedRow(isExpanded ? null : item.id)}
+                                                    >
+                                                        <div className="flex flex-col max-w-[250px]">
+                                                            <span className="truncate font-bold text-slate-900 dark:text-white group-hover:text-orange-600 transition-colors">
+                                                                {item.party?.name || "Unknown Vendor"}
+                                                            </span>
+                                                            {itemLines.length > 0 && (
+                                                                <span className="text-[10px] font-medium text-slate-400 mt-0.5">
+                                                                    {itemLines.length} item{itemLines.length > 1 ? 's' : ''} returned
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                )}
+                                                {visibleColumns.includes("amount") && (
+                                                    <td className={`px-6 ${py} whitespace-nowrap text-right`}>
+                                                        <span className="font-bold text-slate-900 dark:text-white tabular-nums text-sm">
+                                                            <MoneyText value={totalAmount} />
+                                                        </span>
+                                                    </td>
+                                                )}
+                                                {visibleColumns.includes("memo") && (
+                                                    <td className={`px-6 ${py}`}>
+                                                        <p className="truncate text-slate-500 dark:text-slate-400 font-medium text-xs max-w-[150px]">
+                                                            {item.memo || "—"}
+                                                        </p>
+                                                    </td>
+                                                )}
+                                                {visibleColumns.includes("status") && (
+                                                    <td className={`px-6 ${py} whitespace-nowrap text-center`}>
+                                                        <StatusBadge status={item.status as DocStatus} />
+                                                    </td>
+                                                )}
+                                                {visibleColumns.includes("postedAt") && (
+                                                    <td className={`px-6 ${py} whitespace-nowrap`}>
+                                                        {item.postedAt ? (() => {
+                                                            const postedInfo = getDateDisplay({ ad: item.postedAt, format: calendarFmt });
+                                                            return (
+                                                                <div className="flex flex-col">
+                                                                    <span className="font-bold text-slate-800 dark:text-slate-100 text-xs text-orange-600 dark:text-orange-400 uppercase tracking-tighter">
+                                                                        {postedInfo.primary}
+                                                                    </span>
+                                                                    <span className="text-[10px] text-slate-400 font-black tracking-widest">
+                                                                        {new Date(item.postedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                    </span>
+                                                                </div>
+                                                            );
+                                                        })() : (
+                                                            <span className="text-slate-300 font-black">—</span>
+                                                        )}
+                                                    </td>
+                                                )}
+                                                <td className={`px-6 ${py} text-right`}>
+                                                    <div className="text-slate-300 group-hover:text-orange-400 transition-all">
+                                                        {isExpanded ? (
+                                                            <ChevronDown className="h-4 w-4" />
+                                                        ) : (
+                                                            <ChevronRight className="h-4 w-4" />
+                                                        )}
                                                     </div>
                                                 </td>
-                                            )}
-                                            {isVisible("voucherNo") && (
-                                                <td className="px-6 py-5 whitespace-nowrap font-black text-slate-900 dark:text-white uppercase tracking-widest text-[11px]">
-                                                    {item.voucherNumber || "DRAFT"}
-                                                </td>
-                                            )}
-                                            {isVisible("refNo") && <td className="px-6 py-5 whitespace-nowrap text-slate-400 text-xs">{item.referenceNo || "—"}</td>}
-                                            {isVisible("party") && (
-                                                <td className="px-6 py-5">
-                                                    <span className="font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">{item.party?.name || "Unknown Vendor"}</span>
-                                                </td>
-                                            )}
-                                            {isVisible("panVat") && (
-                                                <td className="px-6 py-5 whitespace-nowrap text-xs text-slate-500 font-medium">
-                                                    {item.party?.panNumber || item.party?.vatNumber || "—"}
-                                                </td>
-                                            )}
-                                            {isVisible("items") && (
-                                                <td
-                                                    className="px-6 py-5 cursor-pointer hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors rounded-lg"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setExpandedItems(prev => ({ ...prev, [item.id]: !prev[item.id] }));
-                                                    }}
-                                                >
-                                                    {expandedItems[item.id] ? (
-                                                        <div className="flex flex-col gap-1 min-w-[200px]">
-                                                            {itemLines.map((l: any, idx: number) => (
-                                                                <span key={idx} className="text-xs font-medium text-slate-700 dark:text-slate-300 break-words whitespace-normal">
-                                                                    • {l.item?.name || l.description} {Number(l.qty || 0) > 0 && <span className="text-slate-400">x{Number(l.qty)}</span>}
-                                                                </span>
-                                                            ))}
+                                            </tr>
+                                            {isExpanded && itemLines.length > 0 && (
+                                                <tr className="bg-slate-50/50 dark:bg-slate-900/20">
+                                                    <td colSpan={visibleColumns.length + 1} className="px-6 py-4">
+                                                        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+                                                            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Itemized Return Breakdown</h4>
+                                                            <table className="w-full text-xs">
+                                                                <thead>
+                                                                    <tr className="border-b border-slate-100 dark:border-slate-800">
+                                                                        <th className="text-left py-2 px-3 font-bold text-slate-500 uppercase tracking-wider text-[9px]">Item Name</th>
+                                                                        <th className="text-center py-2 px-3 font-bold text-slate-500 uppercase tracking-wider text-[9px]">Qty</th>
+                                                                        <th className="text-right py-2 px-3 font-bold text-slate-500 uppercase tracking-wider text-[9px]">Rate</th>
+                                                                        <th className="text-right py-2 px-3 font-bold text-slate-500 uppercase tracking-wider text-[9px]">Taxable</th>
+                                                                        <th className="text-right py-2 px-3 font-bold text-slate-500 uppercase tracking-wider text-[9px]">Total Cost</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
+                                                                    {itemLines.map((it: any, idx: number) => (
+                                                                        <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                                                            <td className="py-2 px-3 font-medium text-slate-700 dark:text-slate-300">
+                                                                                {it.item?.name || it.description}
+                                                                            </td>
+                                                                            <td className="py-2 px-3 text-center font-bold text-slate-600 dark:text-slate-400 tabular-nums">
+                                                                                {it.qty}
+                                                                            </td>
+                                                                            <td className="py-2 px-3 text-right font-medium text-slate-600 dark:text-slate-400 tabular-nums">
+                                                                                <MoneyText value={Number(it.credit || it.debit || 0) / (it.qty || 1)} />
+                                                                            </td>
+                                                                            <td className="py-2 px-3 text-right text-slate-500 font-medium tabular-nums">
+                                                                                <MoneyText value={it.credit || it.debit} />
+                                                                            </td>
+                                                                            <td className="py-2 px-3 text-right font-bold tabular-nums text-slate-900 dark:text-white">
+                                                                                <MoneyText value={Number(it.credit || it.debit || 0) + Number(it.taxAmount || 0)} />
+                                                                            </td>
+                                                                        </tr>
+                                                                    ))}
+                                                                </tbody>
+                                                            </table>
                                                         </div>
-                                                    ) : (
-                                                        <span className="text-xs font-medium text-slate-600 dark:text-slate-400 truncate max-w-[200px] block" title="Click to expand">
-                                                            {itemSummary}
-                                                        </span>
-                                                    )}
-                                                </td>
+                                                    </td>
+                                                </tr>
                                             )}
-                                            {isVisible("qty") && (
-                                                <td className="px-6 py-5 text-right font-bold text-slate-700 dark:text-slate-300">
-                                                    {totalQty.toLocaleString()}
-                                                </td>
-                                            )}
-                                            {isVisible("rate") && (
-                                                <td className="px-6 py-5 text-right text-slate-500 whitespace-nowrap">
-                                                    {avgRate !== null ? <MoneyText value={avgRate} /> : <span className="text-[10px] italic">Mixed</span>}
-                                                </td>
-                                            )}
-                                            {isVisible("taxable") && (
-                                                <td className="px-6 py-5 text-right font-medium text-slate-900 dark:text-white">
-                                                    <MoneyText value={taxableAmount} />
-                                                </td>
-                                            )}
-                                            {isVisible("nonTaxable") && (
-                                                <td className="px-6 py-5 text-right text-slate-400">
-                                                    <MoneyText value={nonTaxableAmount} />
-                                                </td>
-                                            )}
-                                            {isVisible("amount") && (
-                                                <td className="px-6 py-5 text-right whitespace-nowrap">
-                                                    <span className="font-black text-orange-600 dark:text-orange-400 text-base tabular-nums">
-                                                        <MoneyText value={Number(totalAmount)} />
-                                                    </span>
-                                                </td>
-                                            )}
-                                            {isVisible("notes") && (
-                                                <td className="px-6 py-5">
-                                                    <span className="text-xs text-slate-400 font-medium truncate max-w-[150px] block" title={item.memo}>
-                                                        {item.memo || "—"}
-                                                    </span>
-                                                </td>
-                                            )}
-                                            {isVisible("additionalNote") && (
-                                                <td className="px-6 py-5">
-                                                    <span className="text-xs text-slate-400 font-medium truncate max-w-[150px] block" title={item.additionalNote}>
-                                                        {item.additionalNote || "—"}
-                                                    </span>
-                                                </td>
-                                            )}
-                                            {isVisible("status") && (
-                                                <td className="px-6 py-5 whitespace-nowrap text-center">
-                                                    <StatusBadge status={item.status as DocStatus} />
-                                                </td>
-                                            )}
-                                            {isVisible("postedAt") && (
-                                                <td className="px-6 py-5 whitespace-nowrap">
-                                                    {item.postedAt ? (() => {
-                                                        const postedInfo = getDateDisplay({ ad: item.postedAt, format: calendarFmt });
-                                                        return (
-                                                            <div className="flex flex-col">
-                                                                <span className="font-bold text-slate-800 dark:text-slate-100 text-xs">
-                                                                    {postedInfo.primary}
-                                                                </span>
-                                                                <span className="text-[9px] text-slate-400 font-medium">
-                                                                    {new Date(item.postedAt).toLocaleTimeString()}
-                                                                </span>
-                                                            </div>
-                                                        );
-                                                    })() : (
-                                                        <span className="text-slate-300 text-xs">—</span>
-                                                    )}
-                                                </td>
-                                            )}
-                                            <td className="px-6 py-5 text-right">
-                                                <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-orange-400 group-hover:translate-x-1 transition-all" />
-                                            </td>
-                                        </tr>
+                                        </React.Fragment>
                                     );
                                 })}
                             </tbody>
@@ -331,11 +395,11 @@ export default function PurchaseReturnListPage() {
                 ) : (
                     <div className="flex flex-col items-center justify-center py-32 px-6 text-center space-y-4">
                         <div className="h-24 w-24 rounded-full bg-slate-50 dark:bg-slate-900 flex items-center justify-center border-4 border-dotted border-slate-200 dark:border-slate-800">
-                            <RotateCw className="h-10 w-10 text-slate-200" />
+                            <History className="h-10 w-10 text-slate-300" />
                         </div>
                         <div className="max-w-xs space-y-1">
-                            <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-widest text-sm text-orange-600">No Returns Found</h3>
-                            <p className="text-sm text-slate-500 font-medium leading-relaxed">Vendor returns and debit notes will appear here once processed.</p>
+                            <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-widest text-sm text-orange-600">No Purchase Returns Found</h3>
+                            <p className="text-sm text-slate-500 font-medium leading-relaxed">Recorded vendor returns and debit notes will appear in this registry.</p>
                         </div>
                         <Button
                             onClick={() => setFilters({ q: "", status: "all", from: null, to: null })}
@@ -348,11 +412,45 @@ export default function PurchaseReturnListPage() {
             </div>
 
             {data.length > 0 && (
-                <div className="flex items-center justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">
-                    <p>Audit Trail: {data.length} records available</p>
-                    <div className="flex items-center gap-1.5 font-bold text-orange-600">
-                        <span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse"></span>
-                        <span>Debit Tracker Active</span>
+                <div className="border-t border-slate-100 dark:border-slate-800 p-4 bg-slate-50/50 dark:bg-slate-900/30 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">Page Size:</span>
+                        <select
+                            value={pageSize}
+                            onChange={(e) => setPageSize(Number(e.target.value))}
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold px-2 py-1 outline-none"
+                        >
+                            <option value={10}>10</option>
+                            <option value={20}>20</option>
+                            <option value={50}>50</option>
+                            <option value={100}>100</option>
+                        </select>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                        <span className="text-[10px] uppercase font-bold tracking-widest text-slate-500">
+                            registry {page} / {totalPages}
+                        </span>
+                        <div className="flex gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                disabled={page === 1}
+                                className="h-8 w-8 p-0 rounded-lg"
+                            >
+                                <ChevronRight className="h-4 w-4 rotate-180" />
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                disabled={page === totalPages}
+                                className="h-8 w-8 p-0 rounded-lg"
+                            >
+                                <ChevronRight className="h-4 w-4" />
+                            </Button>
+                        </div>
                     </div>
                 </div>
             )}
