@@ -87,6 +87,8 @@ model Company {
   // numbering + lock settings
   invoicePrefix     String    @default("INV")
   nextInvoiceNumber Int       @default(1)
+  nextOrderNumber   Int       @default(1)
+  nextQuotationNumber Int     @default(1)
   lockDate          DateTime?
 
   createdAt DateTime @default(now())
@@ -118,6 +120,9 @@ model Company {
   outboxEvents       OutboxEvent[]
   pdfJobs            PdfJob[]
   billSundries       BillSundry[]
+  quotations         Quotation[]
+  salesOrders        SalesOrder[]
+  purchaseOrders     PurchaseOrder[]
 
   changeLog ChangeLog[]
 }
@@ -248,6 +253,9 @@ model Party {
   expenses     Expense[]
   vatRegisterLines VatRegisterLine[]
   invoices     Invoice[]
+  quotations   Quotation[]
+  salesOrders  SalesOrder[]
+  purchaseOrders PurchaseOrder[]
 
   @@index([companyId, type, isActive])
   @@index([companyId, name])
@@ -281,6 +289,9 @@ model ChartOfAccount {
     invoices       Invoice[]     @relation("InvoiceReceivableAccount")
     billSundries   BillSundry[]
     invoiceSundries InvoiceSundry[]
+    quotationSundries QuotationSundry[]
+    salesOrderSundries SalesOrderSundry[]
+    purchaseOrderSundries PurchaseOrderSundry[]
 
   @@unique([companyId, code])
   @@index([companyId, type])
@@ -310,6 +321,9 @@ model TaxCode {
   itemTaxCodes     ItemTaxCode[]
   invoiceItems     InvoiceItem[]
   invoiceItemTaxes InvoiceItemTax[]
+  quotationItems   QuotationItem[]
+  salesOrderItems  SalesOrderItem[]
+  purchaseOrderItems PurchaseOrderItem[]
   expenses         Expense[]
   vatRegisterLines VatRegisterLine[]
 
@@ -330,6 +344,9 @@ model BillSundry {
   updatedAt DateTime @updatedAt
 
   invoiceSundries InvoiceSundry[]
+  quotationSundries QuotationSundry[]
+  salesOrderSundries SalesOrderSundry[]
+  purchaseOrderSundries PurchaseOrderSundry[]
 
   @@unique([companyId, name])
   @@index([companyId, isActive])
@@ -431,6 +448,9 @@ model Item {
   itemTaxCodes ItemTaxCode[]
   voucherLines VoucherLine[]
   invoiceItems InvoiceItem[]
+  quotationItems QuotationItem[]
+  salesOrderItems SalesOrderItem[]
+  purchaseOrderItems PurchaseOrderItem[]
 
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -926,4 +946,256 @@ model PdfJob {
   updatedAt DateTime @updatedAt
 
   @@index([companyId, status, createdAt])
+}
+
+enum QuotationStatus {
+  draft
+  sent
+  accepted
+  declined
+  expired
+}
+
+enum SalesOrderStatus {
+  draft
+  open
+  fulfilled
+  cancelled
+}
+
+enum PurchaseOrderStatus {
+  draft
+  open
+  received
+  cancelled
+}
+
+model Quotation {
+  id        String @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  quotationNo String?
+  referenceNo String?
+  status      QuotationStatus @default(draft)
+
+  partyId String
+  party   Party @relation(fields: [partyId], references: [id])
+
+  date    DateTime
+  dateBs  String?
+  expiryDate DateTime?
+  expiryDateBs String?
+
+  subtotal  Decimal @db.Decimal(14, 2)
+  vatAmount Decimal @db.Decimal(14, 2)
+  total     Decimal @db.Decimal(14, 2)
+
+  memo      String?
+  additionalNote String? @db.Text
+  terms      String? @db.Text
+
+  items     QuotationItem[]
+  sundries  QuotationSundry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  salesOrders SalesOrder[]
+
+  @@unique([companyId, quotationNo])
+  @@index([companyId, date])
+}
+
+model QuotationItem {
+  id          String    @id @default(uuid())
+  quotationId String
+  quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+
+  itemId      String?
+  item        Item?     @relation(fields: [itemId], references: [id])
+
+  description String?
+  qty         Decimal   @db.Decimal(14, 2)
+  rate        Decimal   @db.Decimal(14, 2)
+  amount      Decimal   @db.Decimal(14, 2)
+
+  taxCodeId   String?
+  taxCode     TaxCode?  @relation(fields: [taxCodeId], references: [id])
+  taxAmount   Decimal   @db.Decimal(14, 2)
+
+  createdAt   DateTime  @default(now())
+}
+
+model QuotationSundry {
+  id          String    @id @default(uuid())
+  quotationId String
+  quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+
+  billSundryId String?
+  billSundry   BillSundry? @relation(fields: [billSundryId], references: [id])
+
+  name        String
+  type        String   // add | less
+  rate        Decimal? @db.Decimal(10, 2)
+  amount      Decimal  @db.Decimal(14, 2)
+
+  accountId   String?
+  account     ChartOfAccount? @relation(fields: [accountId], references: [id])
+
+  createdAt   DateTime  @default(now())
+}
+
+model SalesOrder {
+  id        String @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  orderNo     String?
+  customerPoRef String?
+  status      SalesOrderStatus @default(draft)
+
+  partyId String
+  party   Party @relation(fields: [partyId], references: [id])
+
+  date    DateTime
+  dateBs  String?
+  expectedDelivery DateTime?
+  expectedDeliveryBs String?
+
+  subtotal  Decimal @db.Decimal(14, 2)
+  vatAmount Decimal @db.Decimal(14, 2)
+  total     Decimal @db.Decimal(14, 2)
+
+  memo      String?
+  additionalNote String? @db.Text
+  terms      String? @db.Text
+
+  items     SalesOrderItem[]
+  sundries  SalesOrderSundry[]
+
+  quotationId String?
+  quotation   Quotation? @relation(fields: [quotationId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([companyId, orderNo])
+  @@index([companyId, date])
+}
+
+model SalesOrderItem {
+  id          String     @id @default(uuid())
+  orderId     String
+  order       SalesOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  itemId      String?
+  item        Item?      @relation(fields: [itemId], references: [id])
+
+  description String?
+  qty         Decimal    @db.Decimal(14, 2)
+  rate        Decimal    @db.Decimal(14, 2)
+  amount      Decimal    @db.Decimal(14, 2)
+
+  fulfilledQty Decimal   @default(0) @db.Decimal(14, 2)
+
+  taxCodeId   String?
+  taxCode     TaxCode?   @relation(fields: [taxCodeId], references: [id])
+  taxAmount   Decimal    @db.Decimal(14, 2)
+
+  createdAt   DateTime   @default(now())
+}
+
+model SalesOrderSundry {
+  id          String     @id @default(uuid())
+  orderId     String
+  order       SalesOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  billSundryId String?
+  billSundry   BillSundry? @relation(fields: [billSundryId], references: [id])
+
+  name        String
+  type        String   // add | less
+  rate        Decimal? @db.Decimal(10, 2)
+  amount      Decimal  @db.Decimal(14, 2)
+
+  accountId   String?
+  account     ChartOfAccount? @relation(fields: [accountId], references: [id])
+
+  createdAt   DateTime   @default(now())
+}
+
+model PurchaseOrder {
+  id        String @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  orderNo     String?
+  status      PurchaseOrderStatus @default(draft)
+
+  partyId String
+  party   Party @relation(fields: [partyId], references: [id])
+
+  date    DateTime
+  dateBs  String?
+  expectedDelivery DateTime?
+  expectedDeliveryBs String?
+
+  subtotal  Decimal @db.Decimal(14, 2)
+  vatAmount Decimal @db.Decimal(14, 2)
+  total     Decimal @db.Decimal(14, 2)
+
+  memo      String?
+  additionalNote String? @db.Text
+  terms      String? @db.Text
+
+  items     PurchaseOrderItem[]
+  sundries  PurchaseOrderSundry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([companyId, orderNo])
+  @@index([companyId, date])
+}
+
+model PurchaseOrderItem {
+  id          String        @id @default(uuid())
+  orderId     String
+  order       PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  itemId      String?
+  item        Item?         @relation(fields: [itemId], references: [id])
+
+  description String?
+  qty         Decimal       @db.Decimal(14, 2)
+  rate        Decimal       @db.Decimal(14, 2)
+  amount      Decimal       @db.Decimal(14, 2)
+
+  receivedQty Decimal       @default(0) @db.Decimal(14, 2)
+
+  taxCodeId   String?
+  taxCode     TaxCode?      @relation(fields: [taxCodeId], references: [id])
+  taxAmount   Decimal       @db.Decimal(14, 2)
+
+  createdAt   DateTime      @default(now())
+}
+
+model PurchaseOrderSundry {
+  id          String        @id @default(uuid())
+  orderId     String
+  order       PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  billSundryId String?
+  billSundry   BillSundry? @relation(fields: [billSundryId], references: [id])
+
+  name        String
+  type        String   // add | less
+  rate        Decimal? @db.Decimal(10, 2)
+  amount      Decimal  @db.Decimal(14, 2)
+
+  accountId   String?
+  account     ChartOfAccount? @relation(fields: [accountId], references: [id])
+
+  createdAt   DateTime      @default(now())
 }

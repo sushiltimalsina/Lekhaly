@@ -4,6 +4,7 @@ import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
 import { AuditInterceptor } from "./common/audit/audit.interceptor";
 import { PrismaModule } from "./common/prisma/prisma.module";
+import { HealthModule } from "./moduls/health/health.module";
 import { AccountsModule } from "./modules/accounts/accounts.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { AuditModule } from "./modules/audit/audit.module";
@@ -22,14 +23,15 @@ import { InventoryModule } from "./modules/inventory/inventory.module";
 import { ExpensesModule } from "./modules/expenses/expenses.module";
 import { TaxesModule } from "./modules/taxes/taxes.module";
 import { PdfModule } from "./modules/pdf/pdf.module";
-import { HealthModule } from "./moduls/health/health.module";
 import { UnitsModule } from "./modules/units/units.module";
 import { ItemGroupsModule } from "./modules/item-groups/item-groups.module";
 import { BillSundriesModule } from "./modules/bill-sundries/bill-sundries.module";
+import { SalesOrdersModule } from "./modules/sales-orders/sales-orders.module";
 
 @Module({
   imports: [
     PrismaModule,
+    SalesOrdersModule,
     HealthModule,
     AuthModule,
     ReportsModule,

@@ -322,10 +322,10 @@ export declare class VouchersService {
         createdAt: Date;
         voucherId: string;
         fileName: string;
+        uploadedByUserId: string | null;
         mimeType: string;
         sizeBytes: number;
         storageKey: string;
-        uploadedByUserId: string | null;
     })[]>;
     getAttachmentUrl(user: AuthUser, voucherId: string, attachmentId: string): Promise<{
         attachmentId: string;
@@ -345,10 +345,10 @@ export declare class VouchersService {
         createdAt: Date;
         voucherId: string;
         fileName: string;
+        uploadedByUserId: string | null;
         mimeType: string;
         sizeBytes: number;
         storageKey: string;
-        uploadedByUserId: string | null;
     }>;
     removeAttachment(user: AuthUser, voucherId: string, attachmentId: string): Promise<{
         id: string;

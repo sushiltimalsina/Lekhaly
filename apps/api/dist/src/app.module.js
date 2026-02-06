@@ -13,6 +13,7 @@ const app_controller_1 = require("./app.controller");
 const app_service_1 = require("./app.service");
 const audit_interceptor_1 = require("./common/audit/audit.interceptor");
 const prisma_module_1 = require("./common/prisma/prisma.module");
+const health_module_1 = require("./moduls/health/health.module");
 const accounts_module_1 = require("./modules/accounts/accounts.module");
 const auth_module_1 = require("./modules/auth/auth.module");
 const audit_module_1 = require("./modules/audit/audit.module");
@@ -31,10 +32,10 @@ const inventory_module_1 = require("./modules/inventory/inventory.module");
 const expenses_module_1 = require("./modules/expenses/expenses.module");
 const taxes_module_1 = require("./modules/taxes/taxes.module");
 const pdf_module_1 = require("./modules/pdf/pdf.module");
-const health_module_1 = require("./moduls/health/health.module");
 const units_module_1 = require("./modules/units/units.module");
 const item_groups_module_1 = require("./modules/item-groups/item-groups.module");
 const bill_sundries_module_1 = require("./modules/bill-sundries/bill-sundries.module");
+const sales_orders_module_1 = require("./modules/sales-orders/sales-orders.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -42,6 +43,7 @@ exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
             prisma_module_1.PrismaModule,
+            sales_orders_module_1.SalesOrdersModule,
             health_module_1.HealthModule,
             auth_module_1.AuthModule,
             reports_module_1.ReportsModule,
