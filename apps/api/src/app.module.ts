@@ -28,10 +28,16 @@ import { ItemGroupsModule } from "./modules/item-groups/item-groups.module";
 import { BillSundriesModule } from "./modules/bill-sundries/bill-sundries.module";
 import { SalesOrdersModule } from "./modules/sales-orders/sales-orders.module";
 
+import { QuotationsModule } from "./modules/quotations/quotations.module";
+
+import { PurchaseOrdersModule } from "./modules/purchase-orders/purchase-orders.module";
+
 @Module({
   imports: [
     PrismaModule,
     SalesOrdersModule,
+    QuotationsModule,
+    PurchaseOrdersModule,
     HealthModule,
     AuthModule,
     ReportsModule,

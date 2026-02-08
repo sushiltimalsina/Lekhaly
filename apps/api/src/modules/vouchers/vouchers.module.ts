@@ -4,6 +4,7 @@ import { VouchersService } from "./vouchers.service";
 
 @Module({
   controllers: [VouchersController],
-  providers: [VouchersService]
+  providers: [VouchersService],
+  exports: [VouchersService]
 })
-export class VouchersModule {}
+export class VouchersModule { }

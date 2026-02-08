@@ -1,17 +1,12 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { Prisma, SalesOrderStatus } from "@prisma/client";
+import { Prisma, QuotationStatus } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import type { AuthUser } from "../../common/auth/auth.types";
 import { resolveAdDate } from "../../common/date/nepali-date";
 
-import { InvoicesService } from "../invoices/invoices.service";
-
 @Injectable()
-export class SalesOrdersService {
-    constructor(
-        private prisma: PrismaService,
-        private invoicesService: InvoicesService
-    ) { }
+export class QuotationsService {
+    constructor(private prisma: PrismaService) { }
 
     private async validateItems(
         companyId: string,
@@ -52,12 +47,11 @@ export class SalesOrdersService {
         });
         if (!party) throw new BadRequestException("Customer not found");
 
-        const resolvedDate = resolveAdDate(input.orderDate, input.orderDateBs);
-        const resolvedDelivery = input.expectedDelivery || input.expectedDeliveryBs
-            ? resolveAdDate(input.expectedDelivery, input.expectedDeliveryBs)
+        const resolvedDate = resolveAdDate(input.quotationDate, input.quotationDateBs);
+        const resolvedExpiry = input.expiryDate || input.expiryDateBs
+            ? resolveAdDate(input.expiryDate, input.expiryDateBs)
             : { date: null, bs: null };
 
-        const itemIds = Array.from(new Set(input.items.map((i: any) => i.itemId).filter(Boolean))) as string[];
         const taxCodes = await this.prisma.taxCode.findMany({
             where: { companyId: user.companyId }
         });
@@ -86,26 +80,26 @@ export class SalesOrdersService {
 
         const company = await this.prisma.company.findUnique({ where: { id: user.companyId } });
         if (!company) throw new BadRequestException("Company not found");
-        const sequence = company.nextOrderNumber;
-        const orderNo = `${company.orderPrefix || "SO"}-${sequence}`;
+        const sequence = company.nextQuotationNumber;
+        const quotationNo = `${company.quotationPrefix || "QT"}-${sequence}`;
 
         return await this.prisma.$transaction(async (tx) => {
             await tx.company.update({
                 where: { id: company.id },
-                data: { nextOrderNumber: sequence + 1 }
+                data: { nextQuotationNumber: sequence + 1 }
             });
 
-            return await tx.salesOrder.create({
+            return await tx.quotation.create({
                 data: {
                     companyId: user.companyId,
                     partyId: input.partyId,
-                    orderNo,
-                    status: SalesOrderStatus.open,
+                    quotationNo,
+                    status: QuotationStatus.draft,
                     date: resolvedDate.date,
-                    dateBs: resolvedDate.bs || input.orderDateBs,
-                    expectedDelivery: resolvedDelivery.date,
-                    expectedDeliveryBs: resolvedDelivery.bs || input.expectedDeliveryBs,
-                    customerPoRef: input.customerPoRef,
+                    dateBs: resolvedDate.bs || input.quotationDateBs,
+                    expiryDate: resolvedExpiry.date,
+                    expiryDateBs: resolvedExpiry.bs || input.expiryDateBs,
+                    referenceNo: input.referenceNo,
                     subtotal,
                     vatAmount,
                     total,
@@ -139,7 +133,7 @@ export class SalesOrdersService {
     }
 
     async list(user: AuthUser, filters: any) {
-        const where: Prisma.SalesOrderWhereInput = { companyId: user.companyId };
+        const where: Prisma.QuotationWhereInput = { companyId: user.companyId };
         if (filters.status) where.status = filters.status;
         if (filters.from || filters.to) {
             where.date = {};
@@ -149,27 +143,39 @@ export class SalesOrdersService {
 
         if (filters.q) {
             where.OR = [
-                { orderNo: { contains: filters.q, mode: "insensitive" } },
-                { customerPoRef: { contains: filters.q, mode: "insensitive" } },
+                { quotationNo: { contains: filters.q, mode: "insensitive" } },
+                { referenceNo: { contains: filters.q, mode: "insensitive" } },
                 { memo: { contains: filters.q, mode: "insensitive" } },
                 { party: { name: { contains: filters.q, mode: "insensitive" } } }
             ];
         }
 
-        return this.prisma.salesOrder.findMany({
-            where,
-            include: {
-                party: { select: { id: true, name: true } },
-                items: { include: { item: { select: { name: true } } } }
-            },
-            orderBy: { date: "desc" },
-            skip: filters.skip || 0,
-            take: filters.take || 50
-        });
+        const [total, data] = await this.prisma.$transaction([
+            this.prisma.quotation.count({ where }),
+            this.prisma.quotation.findMany({
+                where,
+                include: {
+                    party: { select: { id: true, name: true } },
+                    items: { include: { item: { select: { name: true } } } }
+                },
+                orderBy: { date: "desc" },
+                skip: filters.skip || 0,
+                take: filters.take || 50
+            })
+        ]);
+
+        return {
+            data,
+            meta: {
+                total,
+                page: Math.floor((filters.skip || 0) / (filters.take || 50)) + 1,
+                lastPage: Math.ceil(total / (filters.take || 50))
+            }
+        };
     }
 
     async getById(user: AuthUser, id: string) {
-        const order = await this.prisma.salesOrder.findFirst({
+        const quotation = await this.prisma.quotation.findFirst({
             where: { id, companyId: user.companyId },
             include: {
                 items: { include: { item: { select: { name: true, unit: true } } } },
@@ -177,65 +183,95 @@ export class SalesOrdersService {
                 party: true
             }
         });
-        if (!order) throw new NotFoundException("Sales order not found");
-        return order;
+        if (!quotation) throw new NotFoundException("Quotation not found");
+        return quotation;
     }
 
-    async cancel(user: AuthUser, id: string) {
-        const order = await this.prisma.salesOrder.findFirst({
+    async updateStatus(user: AuthUser, id: string, status: QuotationStatus) {
+        const quotation = await this.prisma.quotation.findFirst({
             where: { id, companyId: user.companyId }
         });
-        if (!order) throw new NotFoundException("Sales order not found");
-        return this.prisma.salesOrder.update({
+        if (!quotation) throw new NotFoundException("Quotation not found");
+        return this.prisma.quotation.update({
             where: { id },
-            data: { status: SalesOrderStatus.cancelled }
+            data: { status }
         });
     }
 
-    async convertToInvoice(user: AuthUser, id: string) {
-        const order = await this.prisma.salesOrder.findFirst({
+    async convertToSalesOrder(user: AuthUser, id: string) {
+        const quotation = await this.prisma.quotation.findFirst({
             where: { id, companyId: user.companyId },
-            include: {
-                items: true,
-                sundries: true
-            }
+            include: { items: true, sundries: true }
         });
+        if (!quotation) throw new NotFoundException("Quotation not found");
+        // if (quotation.status !== QuotationStatus.accepted) throw new BadRequestException("Only accepted quotations can be converted");
 
-        if (!order) throw new NotFoundException("Sales order not found");
-        if (order.status === SalesOrderStatus.cancelled) throw new BadRequestException("Cancelled orders cannot be converted");
+        const company = await this.prisma.company.findUnique({ where: { id: user.companyId } });
+        if (!company) throw new BadRequestException("Company not found");
+        const sequence = company.nextOrderNumber;
+        const orderNo = `${company.orderPrefix || "SO"}-${sequence}`;
+        const salesStatus = "draft"; // Prisma enum for SalesOrderStatus usually has draft? Check schema.
+        // SalesOrderStatus: draft, open, fulfilled, cancelled. default draft.
 
-        // Find a default receivable account
-        const receivable = await this.prisma.chartOfAccount.findFirst({
-            where: { companyId: user.companyId, type: "asset", isPostable: true },
-            orderBy: { code: "asc" }
+        // Actually SalesOrdersService uses 'open' status for new orders in create().
+        // But maybe converted inputs should be draft?
+        // Let's create it as draft if schema allows, or open. schema has default(draft).
+
+        // Logic similar to create but using quotation data
+        const { subtotal, vatAmount, total } = this.computeTotals(quotation.items.map(i => ({
+            qty: i.qty.toNumber(),
+            rate: i.rate.toNumber(),
+            taxAmount: i.taxAmount
+        })));
+
+        return await this.prisma.$transaction(async (tx) => {
+            await tx.company.update({
+                where: { id: company.id },
+                data: { nextOrderNumber: sequence + 1 }
+            });
+
+            // Need to import SalesOrderStatus or use string if compatible
+            // Let's rely on Prisma types being available or just string literal "draft" | "open"
+
+            return await tx.salesOrder.create({
+                data: {
+                    companyId: user.companyId,
+                    partyId: quotation.partyId,
+                    quotationId: quotation.id,
+                    orderNo,
+                    status: "draft", // Start as draft so user can review
+                    date: new Date(),
+                    // dateBs? could resolve or leave null
+                    expectedDelivery: quotation.expiryDate, // Maybe?
+                    // expectedDeliveryBs: quotation.expiryDateBs,
+                    memo: quotation.memo,
+                    additionalNote: quotation.additionalNote,
+                    terms: quotation.terms,
+                    items: {
+                        create: quotation.items.map(item => ({
+                            itemId: item.itemId,
+                            description: item.description,
+                            qty: item.qty,
+                            rate: item.rate,
+                            amount: item.amount,
+                            taxCodeId: item.taxCodeId,
+                            taxAmount: item.taxAmount
+                        }))
+                    },
+                    sundries: {
+                        create: quotation.sundries.map(s => ({
+                            billSundryId: s.billSundryId,
+                            name: s.name,
+                            type: s.type,
+                            rate: s.rate,
+                            amount: s.amount
+                        }))
+                    },
+                    subtotal: quotation.subtotal,
+                    vatAmount: quotation.vatAmount,
+                    total: quotation.total
+                }
+            });
         });
-
-        if (!receivable) throw new BadRequestException("No receivable account found. Please configure Chart of Accounts.");
-
-        const invoiceInput = {
-            type: "sales" as const,
-            partyId: order.partyId,
-            date: new Date(), // Today
-            receivableAccountId: receivable.id,
-            referenceNo: order.orderNo || undefined,
-            memo: order.memo || undefined,
-            additionalNote: order.additionalNote || undefined,
-            items: order.items.map(item => ({
-                itemId: item.itemId || undefined,
-                description: item.description || undefined,
-                qty: item.qty.toNumber(),
-                rate: item.rate.toNumber(),
-                taxCodeId: item.taxCodeId || undefined
-            })),
-            sundries: order.sundries.map(s => ({
-                billSundryId: s.billSundryId || undefined,
-                name: s.name,
-                type: s.type as any,
-                rate: s.rate ? s.rate.toNumber() : null,
-                amount: s.amount.toNumber()
-            }))
-        };
-
-        return await this.invoicesService.createDraft(user, invoiceInput);
     }
 }

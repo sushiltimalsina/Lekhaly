@@ -6,6 +6,7 @@ import { InvoicesService } from "./invoices.service";
 @Module({
   imports: [PrismaModule],
   controllers: [InvoicesController],
-  providers: [InvoicesService]
+  providers: [InvoicesService],
+  exports: [InvoicesService]
 })
-export class InvoicesModule {}
+export class InvoicesModule { }

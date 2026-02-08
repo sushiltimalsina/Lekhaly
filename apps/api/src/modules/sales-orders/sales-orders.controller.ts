@@ -40,4 +40,10 @@ export class SalesOrdersController {
     cancel(@CurrentUser() user: AuthUser, @Param("id") id: string) {
         return this.salesOrders.cancel(user, id);
     }
+
+    @Post(":id/convert-to-invoice")
+    @RequirePerm("voucher.draft.create")
+    convertToInvoice(@CurrentUser() user: AuthUser, @Param("id") id: string) {
+        return this.salesOrders.convertToInvoice(user, id);
+    }
 }

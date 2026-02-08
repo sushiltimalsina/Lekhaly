@@ -85,9 +85,13 @@ model Company {
   fiscalYearStartMonth Int @default(4) // Nepal common FY start is mid-April; UI can configure.
 
   // numbering + lock settings
-  invoicePrefix     String    @default("INV")
+  invoicePrefix       String    @default("INV")
+  orderPrefix         String    @default("SO")
+  quotationPrefix     String    @default("QT")
+  purchaseOrderPrefix String    @default("PO")
   nextInvoiceNumber Int       @default(1)
   nextOrderNumber   Int       @default(1)
+  nextPurchaseOrderNumber Int @default(1)
   nextQuotationNumber Int     @default(1)
   lockDate          DateTime?
 
