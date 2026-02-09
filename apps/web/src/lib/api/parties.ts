@@ -8,6 +8,9 @@ export type PartyRecord = {
   type?: "customer" | "supplier" | "both";
   email?: string | null;
   phone?: string | null;
+  mobile?: string | null;
+  address?: string | null;
+  pan?: string | null;
   isActive?: boolean;
 };
 

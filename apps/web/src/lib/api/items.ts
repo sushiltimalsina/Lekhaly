@@ -25,6 +25,7 @@ export type ItemRecord = {
   id: string;
   name: string;
   sku?: string | null;
+  code?: string | null; // Alias for SKU or separate field if needed. Using SKU as code in UI often.
   hsCode?: string | null;
   unit?: string | null;
   type?: ItemType;

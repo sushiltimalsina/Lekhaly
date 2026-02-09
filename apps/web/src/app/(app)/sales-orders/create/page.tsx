@@ -3,13 +3,19 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import PageHeader from "@/components/app/page-header";
-import DualDateInput from "@/components/app/dual-date-input";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/app/money";
 import { cn } from "@/lib/utils";
 
-import { createSalesOrder } from "@/lib/api/sales-orders";
+import {
+    createSalesOrder,
+    updateSalesOrder,
+    getSalesOrder,
+    convertToInvoice,
+    type SalesOrderInput
+} from "@/lib/api/sales-orders";
+
 import { listParties, type PartyRecord } from "@/lib/api/parties";
 import { listItems, type ItemRecord } from "@/lib/api/items";
 import AddItemDialog from "@/components/app/add-item-dialog";
@@ -22,23 +28,25 @@ import {
     Plus,
     Trash2,
     Save,
-    Send,
     Search,
     ChevronDown,
-    ChevronRight,
     Check,
-    Package,
-    ArrowLeft,
-    Eye,
     Printer,
     FileText,
+    ChevronRight,
+    ArrowLeft,
+    RefreshCw,
 } from "lucide-react";
-import Link from "next/link";
 import { toBs } from "@/lib/dates/bs";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
-type Line = { itemId: string; qty: string; rate: string; description?: string };
-type BillSundryRow = { id: string; sundryId?: string; name: string; type: "add" | "less"; ratePct: string; manualAmount?: string; isManual?: boolean };
+// --- Components (SearchableSelect, isoAddDays) - Reused ---
+
+const isoAddDays = (iso: string, days: number) => {
+    const d = new Date(iso + "T00:00:00");
+    d.setDate(d.getDate() + days);
+    return d.toISOString().slice(0, 10);
+};
 
 function useOutsideClick<T extends HTMLElement>(
     onOutside: () => void,
@@ -70,6 +78,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
     onChange: (id: string, opt?: T) => void;
     options: T[];
     getLabel?: (opt: T) => string;
+    getDetail?: (opt: T) => string | undefined;
     leftIcon?: React.ReactNode;
     className?: string;
     buttonClassName?: string;
@@ -87,6 +96,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
         onChange,
         options,
         getLabel,
+        getDetail,
         leftIcon,
         className,
         buttonClassName,
@@ -185,7 +195,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
 
     return (
         <div className={cn("relative space-y-1", className)} ref={wrapRef}>
-            {label ? <div className="text-xs text-muted-foreground">{label}</div> : null}
+            {label ? <div className="text-xs text-muted-foreground ml-1">{label}</div> : null}
 
             <button
                 type="button"
@@ -232,37 +242,26 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                                     onChange={(e) => setQuery(e.target.value)}
                                     onKeyDown={(e) => {
                                         if (e.key === "Escape") {
-                                            e.preventDefault();
                                             setOpen(false);
                                             setQuery("");
                                             buttonRef.current?.focus();
-                                            return;
-                                        }
-                                        if (e.key === "ArrowDown") {
+                                        } else if (e.key === "ArrowDown") {
                                             e.preventDefault();
-                                            setActiveIndex((prev) => (prev + 1) % Math.max(1, filtered.length));
-                                        }
-                                        if (e.key === "ArrowUp") {
+                                            setActiveIndex((v) => (v + 1) % filtered.length);
+                                        } else if (e.key === "ArrowUp") {
                                             e.preventDefault();
-                                            setActiveIndex((prev) => (prev - 1 + filtered.length) % Math.max(1, filtered.length));
-                                        }
-                                        if (e.key === "Enter") {
-                                            if (props.onKeyDownCustom) {
-                                                props.onKeyDownCustom(e);
-                                                if (e.defaultPrevented) return;
-                                            }
+                                            setActiveIndex((v) => (v - 1 + filtered.length) % filtered.length);
+                                        } else if (e.key === "Enter") {
                                             e.preventDefault();
-                                            const item = filtered[activeIndex];
-                                            if (item) {
-                                                onChange(item.id, item);
+                                            const opt = filtered[activeIndex];
+                                            if (opt) {
+                                                onChange(opt.id, opt);
                                                 setOpen(false);
                                                 setQuery("");
-                                                setTimeout(() => {
-                                                    if (props.onEnterNext) props.onEnterNext();
-                                                    else buttonRef.current?.focus({ preventScroll: true });
-                                                }, 10);
+                                                props.onEnterNext?.();
                                             }
                                         }
+                                        props.onKeyDownCustom?.(e);
                                     }}
                                     placeholder="Type to search…"
                                     className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-8 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-950"
@@ -274,6 +273,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                             {filtered.length ? (
                                 filtered.map((o, idx) => {
                                     const labelText = getLabel ? getLabel(o) : o.name ?? o.id;
+                                    const detailText = getDetail ? getDetail(o) : undefined;
                                     const isSelected = o.id === valueId;
                                     const isActive = idx === activeIndex;
                                     return (
@@ -285,10 +285,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                                                 onChange(o.id, o);
                                                 setOpen(false);
                                                 setQuery("");
-                                                setTimeout(() => {
-                                                    if (props.onEnterNext) props.onEnterNext();
-                                                    else buttonRef.current?.focus({ preventScroll: true });
-                                                }, 10);
+                                                props.onEnterNext?.();
                                             }}
                                             className={cn(
                                                 "flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition",
@@ -296,7 +293,14 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                                                 isSelected && "text-primary font-medium"
                                             )}
                                         >
-                                            <span className="min-w-0 flex-1 truncate">{labelText}</span>
+                                            <div className="flex flex-1 items-center justify-between gap-2 overflow-hidden">
+                                                <span className="truncate">{labelText}</span>
+                                                {detailText ? (
+                                                    <span className={cn("text-xs whitespace-nowrap", isSelected ? "text-primary/80" : "text-muted-foreground")}>
+                                                        {detailText}
+                                                    </span>
+                                                ) : null}
+                                            </div>
                                             {isSelected ? <Check className="h-4 w-4 text-primary" /> : null}
                                         </button>
                                     );
@@ -313,47 +317,32 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
     );
 }
 
-function isoAddDays(iso: string, days: number) {
-    const d = new Date(iso + "T00:00:00");
-    d.setDate(d.getDate() + days);
-    return d.toISOString().slice(0, 10);
-}
+// --- Main Page Component ---
 
-export default function CreateSalesOrderPage() {
-    const ui = useUiState();
-    const router = useRouter();
+type Line = { itemId: string; qty: string; rate: string; description?: string };
+type BillSundryRow = { id: string; sundryId?: string; name: string; type: "add" | "less"; ratePct: string; manualAmount?: string; isManual?: boolean };
+
+export default function SalesOrderCreatePage() {
     const [mounted, setMounted] = React.useState(false);
 
-    const orderDateRef = React.useRef<HTMLInputElement>(null);
-    const deliveryDateRef = React.useRef<HTMLInputElement>(null);
+    const dateRef = React.useRef<HTMLInputElement>(null);
+    const expectedDeliveryRef = React.useRef<HTMLInputElement>(null);
+    const customerSelectRef = React.useRef<HTMLButtonElement>(null);
     const orderNoRef = React.useRef<HTMLInputElement>(null);
-    const customerPoRef = React.useRef<HTMLInputElement>(null);
     const salesTypeRef = React.useRef<HTMLSelectElement>(null);
     const memoRef = React.useRef<HTMLInputElement>(null);
-    const customerSelectRef = React.useRef<HTMLButtonElement>(null);
-    const addLineButtonRef = React.useRef<HTMLButtonElement>(null);
+    const customerPoRef = React.useRef<HTMLInputElement>(null);
     const [lineErrors, setLineErrors] = React.useState<Record<number, { qty?: string; rate?: string }>>({});
     const [addItemOpen, setAddItemOpen] = React.useState(false);
-    const [activeLineIdx, setActiveLineIdx] = React.useState<number | null>(null);
     const [addCustomerOpen, setAddCustomerOpen] = React.useState(false);
     const [addSundryOpen, setAddSundryOpen] = React.useState(false);
-    const [activeSundryIdx, setActiveSundryIdx] = React.useState<number | null>(null);
 
+    // For item table navigation
     const rowRefs = React.useRef<{
         select: (HTMLButtonElement | null)[];
         qty: (HTMLInputElement | null)[];
         rate: (HTMLInputElement | null)[];
     }>({ select: [], qty: [], rate: [] });
-
-    const sundryRefs = React.useRef<{
-        select: (HTMLButtonElement | null)[];
-        rate: (HTMLInputElement | null)[];
-        amount: (HTMLInputElement | null)[];
-    }>({ select: [], rate: [], amount: [] });
-
-    const addSundryButtonRef = React.useRef<HTMLButtonElement>(null);
-    const termsRef = React.useRef<HTMLTextAreaElement>(null);
-    const notesRef = React.useRef<HTMLTextAreaElement>(null);
 
     const [parties, setParties] = React.useState<PartyRecord[]>([]);
     const [items, setItems] = React.useState<ItemRecord[]>([]);
@@ -366,7 +355,7 @@ export default function CreateSalesOrderPage() {
 
     React.useEffect(() => {
         if (mounted) {
-            setTimeout(() => safeFocus(orderDateRef.current), 100);
+            setTimeout(() => safeFocus(dateRef.current), 100);
         }
     }, [mounted]);
 
@@ -375,22 +364,22 @@ export default function CreateSalesOrderPage() {
     const [success, setSuccess] = React.useState<string | null>(null);
 
     const [form, setForm] = React.useState({
-        orderNoDisplay: "",
         partyId: "",
         orderDate: { bs: "", ad: "" },
         expectedDelivery: { bs: "", ad: "" },
+        orderNoDisplay: "System generated",
         customerPoRef: "",
         salesType: "vat_13" as any,
         memo: "",
         notes: "",
-        termsOverrideEnabled: false,
-        termsText: "",
+        terms: "",
+        partyName: "",
+        orderNo: ""
     });
-
-    const [showTerms, setShowTerms] = React.useState(false);
 
     const [lines, setLines] = React.useState<Line[]>([{ itemId: "", qty: "", rate: "" }]);
 
+    // Clean up refs when lines change
     React.useEffect(() => {
         rowRefs.current.select = rowRefs.current.select.slice(0, lines.length);
         rowRefs.current.qty = rowRefs.current.qty.slice(0, lines.length);
@@ -404,19 +393,25 @@ export default function CreateSalesOrderPage() {
 
     React.useEffect(() => setMounted(true), []);
 
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const [isEditMode, setIsEditMode] = React.useState(true);
+    const [orderStatus, setOrderStatus] = React.useState<string | null>(null);
+
     React.useEffect(() => {
+        if (searchParams.get("id")) return;
         const now = new Date();
         const ad = now.toISOString().slice(0, 10);
         const bs = toBs(ad);
-        const deliveryAd = isoAddDays(ad, 7);
-        const deliveryBs = toBs(deliveryAd);
+        const expAd = isoAddDays(ad, 7);
+        const expBs = toBs(expAd);
 
         setForm((f) => ({
             ...f,
             orderDate: { bs, ad },
-            expectedDelivery: { bs: deliveryBs, ad: deliveryAd },
+            expectedDelivery: { bs: expBs, ad: expAd },
         }));
-    }, []);
+    }, [searchParams]);
 
     React.useEffect(() => {
         let alive = true;
@@ -439,6 +434,7 @@ export default function CreateSalesOrderPage() {
                 const opts = normalizeList<BillSundryRecord>(s);
                 setSundryOptions(opts);
 
+                // Auto-link default sundries if they exist in the options
                 setBillSundries(prev => prev.map(row => {
                     if (row.sundryId) return row;
                     const match = opts.find(o => o.name.toLowerCase() === row.name.toLowerCase());
@@ -452,6 +448,55 @@ export default function CreateSalesOrderPage() {
                     }
                     return row;
                 }));
+
+                // Load Edit ID if present
+                const editId = searchParams.get("id");
+                if (editId) {
+                    setIsEditMode(false);
+                    getSalesOrder(editId).then(so => {
+                        setOrderStatus(so.status || null);
+                        const parseDate = (d: any) => {
+                            if (!d) return "";
+                            if (typeof d === "string") return d.split("T")[0];
+                            if (d instanceof Date) return d.toISOString().split("T")[0];
+                            return String(d).split("T")[0];
+                        };
+
+                        setForm(f => ({
+                            ...f,
+                            partyId: so.partyId || "",
+                            orderDate: { ad: parseDate(so.orderDate), bs: so.orderDateBs || "" },
+                            expectedDelivery: { ad: parseDate(so.expectedDelivery), bs: so.expectedDeliveryBs || "" },
+                            orderNoDisplay: so.orderNo || "System generated",
+                            customerPoRef: so.customerPoRef || "",
+                            memo: so.memo || "",
+                            notes: so.additionalNote || "",
+                            partyName: so.party?.name || "",
+                            terms: so.terms || "",
+                        }));
+
+                        if (so.items && so.items.length > 0) {
+                            setLines(so.items.map((it: any) => ({
+                                itemId: it.itemId,
+                                qty: String(Number(it.qty || 0)),
+                                rate: String(Number(it.rate || 0)),
+                                description: it.description || ""
+                            })));
+                        }
+
+                        if (so.sundries && so.sundries.length > 0) {
+                            setBillSundries(so.sundries.map((sn: any) => ({
+                                id: Math.random().toString(36).substr(2, 9),
+                                sundryId: sn.billSundryId,
+                                name: sn.name,
+                                type: sn.type,
+                                ratePct: String(sn.rate || "0"),
+                                manualAmount: String(sn.amount || "0"),
+                                isManual: true
+                            })));
+                        }
+                    }).catch(err => console.error("Failed to load sales order", err));
+                }
             })
             .catch((e: any) => {
                 if (!alive) return;
@@ -520,7 +565,7 @@ export default function CreateSalesOrderPage() {
 
     const removeSundry = (id: string) => setBillSundries((prev) => prev.filter((r) => r.id !== id));
 
-    const buildPayload = () => {
+    const buildPayload = (): SalesOrderInput => {
         if (!form.partyId) {
             throw new Error("Customer is required.");
         }
@@ -554,11 +599,10 @@ export default function CreateSalesOrderPage() {
             orderDateBs: form.orderDate.bs || undefined,
             expectedDelivery: form.expectedDelivery.ad || undefined,
             expectedDeliveryBs: form.expectedDelivery.bs || undefined,
-            customerPoRef: form.customerPoRef || undefined,
-            salesType: form.salesType,
             memo: form.memo || undefined,
             notes: form.notes || undefined,
-            terms: (form.termsOverrideEnabled ? form.termsText : undefined) || undefined,
+            customerPoRef: form.customerPoRef || undefined,
+            terms: form.terms || undefined,
             items: payloadItems,
             sundries: billSundryComputed.rows.map(r => ({
                 billSundryId: r.sundryId,
@@ -575,10 +619,18 @@ export default function CreateSalesOrderPage() {
         setSuccess(null);
         setLoading(true);
         try {
-            const res: any = await createSalesOrder(buildPayload());
-            const id = res?.id ?? res?.orderId ?? res?.data?.id;
-            setSuccess(id ? `Sales order created: ${id}` : "Sales order created successfully.");
-            setTimeout(() => router.push("/sales-orders"), 1500);
+            const editId = searchParams.get("id");
+            let res: any;
+            if (editId) {
+                res = await updateSalesOrder(editId, buildPayload());
+            } else {
+                res = await createSalesOrder(buildPayload());
+            }
+            const id = res?.id ?? res?.data?.id;
+            setSuccess(id ? `Saved sales order: ${res?.orderNo || id}` : "Saved sales order.");
+            if (!editId && id) {
+                router.replace(`/sales-orders/create?id=${id}`);
+            }
         } catch (e: any) {
             setError(e?.message ?? "Something went wrong.");
         } finally {
@@ -586,27 +638,71 @@ export default function CreateSalesOrderPage() {
         }
     };
 
-    const onPreview = () => setSuccess("Preview: connect to your invoice preview route/API.");
-    const onPrint = () => setSuccess("Print: connect to your PDF + print flow.");
-    const onPrintPreview = () => setSuccess("Print Preview: PDF version loading...");
+    const onConvertToInvoice = async () => {
+        if (!searchParams.get("id")) return;
+        setLoading(true);
+        try {
+            const res = await convertToInvoice(searchParams.get("id")!);
+            const newInvoiceId = res?.id || res?.data?.id;
+            if (newInvoiceId) {
+                setSuccess("Converted to Invoice successfully.");
+                setTimeout(() => router.push(`/sales/create?id=${newInvoiceId}`), 1000);
+            } else {
+                setSuccess("Converted to Invoice.");
+            }
+        } catch (e: any) {
+            setError(e?.message ?? "Failed to convert.");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     if (!mounted) return <div className="min-h-screen" />;
 
     return (
         <div className="space-y-6">
             <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                <div className="flex items-center justify-between mb-6">
-                    <PageHeader
-                        title="Create Sales Order"
-                        description="Create a new sales order for customer confirmation and fulfillment tracking."
-                    />
-                    <Link href="/sales-orders">
-                        <Button variant="outline" className="rounded-2xl">
-                            <ArrowLeft className="mr-2 h-4 w-4" />
-                            Back to Orders
-                        </Button>
-                    </Link>
+                <div className="mb-4">
+                    <Button
+                        variant="ghost"
+                        onClick={() => router.push("/sales-orders")}
+                        className="rounded-full h-10 px-4 text-slate-500 hover:text-slate-900 transition-colors"
+                    >
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Back to List
+                    </Button>
                 </div>
+                <PageHeader
+                    title={searchParams.get("id") ? (isEditMode ? "Edit Sales Order" : "View Sales Order") : "Create New Sales Order"}
+                    description={
+                        searchParams.get("id")
+                            ? `${orderStatus ? `Status: ${orderStatus.charAt(0).toUpperCase() + orderStatus.slice(1)}. ` : ""}${isEditMode ? "Modify the details below." : "Click Edit to modify this order."}`
+                            : "Fill in the details below to create a new sales order."
+                    }
+                    actions={
+                        <div className="flex gap-2">
+                            {/* Convert Action */}
+                            {!isEditMode && searchParams.get("id") && (
+                                <Button
+                                    onClick={onConvertToInvoice}
+                                    className="rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg h-10 px-4"
+                                >
+                                    <RefreshCw className="mr-2 h-4 w-4" />
+                                    Convert to Invoice
+                                </Button>
+                            )}
+
+                            {!isEditMode && searchParams.get("id") ? (
+                                <Button
+                                    onClick={() => setIsEditMode(true)}
+                                    className="rounded-2xl bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-500/20 h-10 px-6 font-black text-xs uppercase tracking-widest transition-all active:scale-95 border-none"
+                                >
+                                    Edit
+                                </Button>
+                            ) : undefined}
+                        </div>
+                    }
+                />
 
                 {/* Alerts */}
                 <div className="mb-4 grid gap-3">
@@ -616,874 +712,384 @@ export default function CreateSalesOrderPage() {
                         </div>
                     ) : null}
                     {success ? (
-                        <div className="rounded-xl border border-emerald-600/30 bg-emerald-600/10 px-3 py-2 text-sm text-emerald-700">
+                        <div className="rounded-xl border border-green-600/30 bg-green-600/10 px-3 py-2 text-sm text-green-700">
                             {success}
                         </div>
                     ) : null}
                 </div>
 
-                {/* Top area */}
-                <section className="relative mb-6">
-                    <div className="absolute right-0 top-0 hidden w-[260px] flex-col gap-3 lg:flex">
-                        <DualDateInput
-                            ref={orderDateRef}
-                            label="Order Date"
-                            value={form.orderDate}
-                            accentColor="bg-indigo-600"
-                            onChange={(next) => setForm((f) => ({ ...f, orderDate: next }))}
-                            onEnterNext={() => safeFocus(deliveryDateRef.current)}
-                        />
-                        <DualDateInput
-                            ref={deliveryDateRef}
-                            label="Expected Delivery"
-                            value={form.expectedDelivery}
-                            accentColor="bg-indigo-600"
-                            onChange={(next) => setForm((f) => ({ ...f, expectedDelivery: next }))}
-                            onEnterNext={() => safeFocus(orderNoRef.current)}
-                        />
-                    </div>
-
-                    <div className="grid gap-6 lg:grid-cols-12 lg:pr-[300px]">
-                        <div className="lg:col-span-4 space-y-4">
-                            <label className="space-y-1 text-sm block">
-                                <span className="text-xs text-muted-foreground">Order No.</span>
-                                <Input
-                                    ref={orderNoRef}
-                                    value={form.orderNoDisplay}
-                                    onChange={(e) => setForm((f) => ({ ...f, orderNoDisplay: e.target.value }))}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter") {
-                                            e.preventDefault();
-                                            safeFocus(customerPoRef.current);
-                                        }
-                                    }}
-                                    placeholder="System generated"
-                                    className="h-11 rounded-2xl bg-slate-50/60 dark:bg-slate-900/60 font-medium"
-                                />
-                            </label>
-
-                            <label className="space-y-1 text-sm block">
-                                <span className="text-xs text-muted-foreground">Customer PO Reference</span>
-                                <Input
-                                    ref={customerPoRef}
-                                    value={form.customerPoRef}
-                                    onChange={(e) => setForm((f) => ({ ...f, customerPoRef: e.target.value }))}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter") {
-                                            e.preventDefault();
-                                            safeFocus(salesTypeRef.current);
-                                        }
-                                    }}
-                                    placeholder="Customer's PO number (optional)"
-                                    className="h-11 rounded-2xl bg-slate-50/60 dark:bg-slate-900/60"
-                                />
-                            </label>
+                {/* Form Body */}
+                <div className={cn("grid gap-8", !isEditMode && "pointer-events-none opacity-90")}>
+                    {/* Top Row: Customer & Meta */}
+                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                        {/* Customer */}
+                        <div className="space-y-4 rounded-2xl bg-slate-50 p-4 dark:bg-slate-900/50">
+                            <div className="flex items-center justify-between">
+                                <label className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                                    Customer
+                                </label>
+                                {isEditMode && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setAddCustomerOpen(true)}
+                                        className="h-7 rounded-lg px-2 text-xs"
+                                    >
+                                        <Plus className="mr-1 h-3 w-3" /> New
+                                    </Button>
+                                )}
+                            </div>
+                            <SearchableSelect
+                                placeholder="Select Customer"
+                                valueId={form.partyId}
+                                onChange={(id, opt) => setForm((f) => ({ ...f, partyId: id, partyName: opt?.name || "" }))}
+                                options={parties}
+                                getLabel={(p) => p.name}
+                                getDetail={(p) => p.pan ? `PAN: ${p.pan}` : p.mobile || ""}
+                                buttonRef={customerSelectRef}
+                            />
                         </div>
 
-                        <div className="lg:col-span-8 flex items-start lg:justify-center">
-                            <div className="w-full max-w-[520px]">
-                                <div className="text-xs text-muted-foreground">Sales Type <span className="text-red-500">*</span></div>
-                                <select
-                                    ref={salesTypeRef}
-                                    value={form.salesType}
-                                    onChange={(e) => setForm((f) => ({ ...f, salesType: e.target.value as any }))}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter") {
-                                            e.preventDefault();
-                                            safeFocus(memoRef.current);
-                                        }
-                                    }}
-                                    className="mt-2 h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900"
-                                >
-                                    <option value="vat_13">VAT 13% Sales</option>
-                                    <option value="exempt">Exempt Sales</option>
-                                    <option value="export">Export Sales</option>
-                                </select>
+                        {/* Dates & No */}
+                        <div className="col-span-1 space-y-4 rounded-2xl bg-slate-50 p-4 dark:bg-slate-900/50 lg:col-span-2">
+                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                <div className="space-y-1">
+                                    <label className="text-xs font-medium text-slate-500">Order Date</label>
+                                    <div className="flex bg-white dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden">
+                                        <input
+                                            ref={dateRef}
+                                            type="date"
+                                            className="w-full border-none bg-transparent px-3 py-2 text-sm outline-none"
+                                            value={form.orderDate.ad}
+                                            onChange={(e) => {
+                                                const ad = e.target.value;
+                                                setForm(f => ({ ...f, orderDate: { ad, bs: toBs(ad) } }));
+                                            }}
+                                            onKeyDown={(e) => {
+                                                if (e.key === "Enter") expectedDeliveryRef.current?.focus();
+                                            }}
+                                        />
+                                    </div>
+                                    <div className="text-[10px] text-slate-400 px-1">
+                                        BS: {form.orderDate.bs || "-"}
+                                    </div>
+                                </div>
 
-                                <div className="mt-4">
-                                    <div className="text-xs text-muted-foreground">Memo / Remarks</div>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-medium text-slate-500">Exp. Delivery</label>
+                                    <div className="flex bg-white dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden">
+                                        <input
+                                            ref={expectedDeliveryRef}
+                                            type="date"
+                                            className="w-full border-none bg-transparent px-3 py-2 text-sm outline-none"
+                                            value={form.expectedDelivery.ad}
+                                            onChange={(e) => {
+                                                const ad = e.target.value;
+                                                setForm(f => ({ ...f, expectedDelivery: { ad, bs: toBs(ad) } }));
+                                            }}
+                                            onKeyDown={(e) => {
+                                                if (e.key === "Enter") customerPoRef.current?.focus();
+                                            }}
+                                        />
+                                    </div>
+                                    <div className="text-[10px] text-slate-400 px-1">
+                                        BS: {form.expectedDelivery.bs || "-"}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-1">
+                                    <label className="text-xs font-medium text-slate-500">Order No.</label>
+                                    <Input
+                                        ref={orderNoRef}
+                                        value={form.orderNoDisplay}
+                                        readOnly
+                                        className="bg-slate-100 text-slate-500"
+                                        tabIndex={-1}
+                                    />
+                                </div>
+
+                                <div className="space-y-1">
+                                    <label className="text-xs font-medium text-slate-500">Customer PO Ref</label>
+                                    <Input
+                                        ref={customerPoRef}
+                                        value={form.customerPoRef}
+                                        onChange={(e) => setForm(f => ({ ...f, customerPoRef: e.target.value }))}
+                                        placeholder="PO#"
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter") memoRef.current?.focus();
+                                        }}
+                                    />
+                                </div>
+
+                                <div className="space-y-1">
+                                    <label className="text-xs font-medium text-slate-500">Memo / Subject</label>
                                     <Input
                                         ref={memoRef}
                                         value={form.memo}
-                                        onChange={(e) => setForm((f) => ({ ...f, memo: e.target.value }))}
-                                        onKeyDown={(e) => {
-                                            if (e.key === "Enter") {
-                                                e.preventDefault();
-                                                safeFocus(customerSelectRef.current);
-                                            }
-                                        }}
-                                        placeholder="Brief description of order"
-                                        className="mt-2 h-11 rounded-2xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700"
+                                        onChange={(e) => setForm(f => ({ ...f, memo: e.target.value }))}
+                                        placeholder="Order details..."
                                     />
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <div className="grid gap-3 lg:hidden sm:grid-cols-2">
-                            <DualDateInput
-                                label="Order Date"
-                                value={form.orderDate}
-                                accentColor="bg-indigo-600"
-                                onChange={(next) => setForm((f) => ({ ...f, orderDate: next }))}
-                            />
-                            <DualDateInput
-                                label="Expected Delivery"
-                                value={form.expectedDelivery}
-                                accentColor="bg-indigo-600"
-                                onChange={(next) => setForm((f) => ({ ...f, expectedDelivery: next }))}
-                            />
+                    {/* Items Table */}
+                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                        <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/50 px-4 py-2 dark:border-slate-800 dark:bg-slate-900/20">
+                            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Items</h3>
+                            {isEditMode && (
+                                <div className="flex gap-2">
+                                    <Button size="sm" variant="outline" onClick={() => setAddItemOpen(true)} className="h-8">
+                                        <Plus className="mr-2 h-3.5 w-3.5" />
+                                        New Item
+                                    </Button>
+                                    <Button size="sm" onClick={addLine} className="h-8">
+                                        Add Line (Alt+A)
+                                    </Button>
+                                </div>
+                            )}
                         </div>
-                    </div>
-                </section>
-
-                {/* Customer */}
-                <section className="mb-6">
-                    <div className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-200">Customer</div>
-
-                    <div className="relative max-w-[980px]">
-                        <SearchableSelect<PartyRecord>
-                            buttonRef={customerSelectRef}
-                            placeholder="Search customer…"
-                            valueId={form.partyId}
-                            onChange={(id) => setForm((f) => ({ ...f, partyId: id }))}
-                            options={parties}
-                            getLabel={(p) => p.name}
-                            leftIcon={<Search className="h-4 w-4" />}
-                            onEnterNext={() => safeFocus(rowRefs.current.select[0])}
-                            onKeyDownCustom={(e) => {
-                                if (e.key === "Enter" && e.shiftKey) {
-                                    e.preventDefault();
-                                    safeFocus(sundryRefs.current.select[0]);
-                                }
-                            }}
-                            buttonClassName="h-12 rounded-2xl bg-white dark:bg-slate-900 pr-[140px]"
-                        />
-
-                        {!form.partyId && (
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => setAddCustomerOpen(true)}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 h-9 rounded-full px-4 text-xs"
-                            >
-                                <Plus className="mr-2 h-3.5 w-3.5" />
-                                New Customer
-                            </Button>
-                        )}
-                    </div>
-                </section>
-
-                {/* Add Line Button */}
-                <div className="mb-3 flex flex-col items-end gap-1.5">
-                    <Button
-                        ref={addLineButtonRef}
-                        type="button"
-                        onClick={addLine}
-                        className="rounded-full bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm transition-all active:scale-95"
-                    >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Item Line
-                    </Button>
-                    <div className="text-[10px] text-muted-foreground italic pr-2">
-                        Tip: Press <kbd className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border text-[9px] not-italic font-sans">Shift + Enter</kbd> to jump sundry column
-                    </div>
-                </div>
-
-                {/* Items Table */}
-                <section className="mb-8 rounded-3xl border bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                    <div className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-100">Order Items</div>
-
-                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/30">
                         <div className="overflow-x-auto">
-                            <table className="min-w-full text-sm">
-                                <thead className="bg-slate-100/70 dark:bg-slate-900/40">
+                            <table className="w-full text-left text-sm">
+                                <thead className="bg-slate-50 text-xs font-medium text-slate-500 dark:bg-slate-900/50">
                                     <tr>
-                                        <th className="w-[60px] px-4 py-3 text-left text-xs text-muted-foreground">S.No.</th>
-                                        <th className="w-[520px] min-w-[420px] px-4 py-3 text-left text-xs text-muted-foreground">Item</th>
-                                        <th className="w-[140px] px-4 py-3 text-left text-xs text-muted-foreground">
-                                            Qty <span className="text-red-500">*</span>
-                                        </th>
-                                        <th className="w-[180px] px-4 py-3 text-left text-xs text-muted-foreground">
-                                            Rate <span className="text-red-500">*</span>
-                                        </th>
-                                        <th className="w-[180px] px-4 py-3 text-right text-xs text-muted-foreground">Amount</th>
-                                        <th className="w-[70px] px-4 py-3 text-right text-xs text-muted-foreground" />
+                                        <th className="px-4 py-3 w-16">#</th>
+                                        <th className="px-4 py-3 min-w-[200px]">Item Description</th>
+                                        <th className="px-4 py-3 w-24 text-right">Qty</th>
+                                        <th className="px-4 py-3 w-32 text-right">Rate</th>
+                                        <th className="px-4 py-3 w-32 text-right">Amount</th>
+                                        {isEditMode && <th className="px-4 py-3 w-12"></th>}
                                     </tr>
                                 </thead>
-
-                                <tbody>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                                     {lines.map((line, idx) => {
-                                        const qty = Number(line.qty || 0);
-                                        const rate = Number(line.rate || 0);
-                                        const amt = qty * rate;
-
+                                        const amount = Number(line.qty || 0) * Number(line.rate || 0);
                                         return (
-                                            <tr key={idx} className="border-t border-slate-200/70 dark:border-slate-800/60">
-                                                <td className="px-4 py-3 text-muted-foreground font-medium">{idx + 1}</td>
-                                                <td className="px-4 py-3">
-                                                    <div className="relative">
-                                                        <SearchableSelect<ItemRecord>
-                                                            buttonRef={(el) => { rowRefs.current.select[idx] = el; }}
-                                                            placeholder="Search item…"
-                                                            valueId={line.itemId}
-                                                            onChange={(id) => updateLine(idx, { itemId: id })}
-                                                            options={items}
-                                                            getLabel={(it) => {
-                                                                const code = it.hsCode ? ` (${it.hsCode})` : "";
-                                                                return `${it.name ?? "Item"}${code}`;
-                                                            }}
-                                                            onEnterNext={() => safeFocus(rowRefs.current.qty[idx])}
-                                                            onKeyDownCustom={(e) => {
-                                                                if (e.key === "Enter" && e.shiftKey) {
-                                                                    e.preventDefault();
-                                                                    safeFocus(sundryRefs.current.rate[0]);
-                                                                    return;
-                                                                }
-                                                                if (e.key === "ArrowRight") {
-                                                                    e.preventDefault();
-                                                                    safeFocus(rowRefs.current.qty[idx]);
-                                                                }
-                                                                if (e.key === "ArrowDown") {
-                                                                    e.preventDefault();
-                                                                    if (rowRefs.current.select[idx + 1]) {
-                                                                        safeFocus(rowRefs.current.select[idx + 1]);
-                                                                    } else {
-                                                                        safeFocus(sundryRefs.current.rate[0]);
-                                                                    }
-                                                                }
-                                                                if (e.key === "ArrowUp") {
-                                                                    e.preventDefault();
-                                                                    if (rowRefs.current.select[idx - 1]) {
-                                                                        safeFocus(rowRefs.current.select[idx - 1]);
-                                                                    } else {
-                                                                        safeFocus(customerSelectRef.current);
-                                                                    }
-                                                                }
-                                                            }}
-                                                            leftIcon={<Search className="h-4 w-4" />}
-                                                            buttonClassName="h-11 rounded-2xl bg-white dark:bg-slate-900 pr-[100px]"
-                                                            emptyText="No items found"
+                                            <tr key={idx} className="group hover:bg-slate-50/50">
+                                                <td className="px-4 py-2 text-xs text-slate-400 font-mono">{idx + 1}</td>
+                                                <td className="px-4 py-2">
+                                                    <SearchableSelect
+                                                        valueId={line.itemId}
+                                                        onChange={(id, opt) => {
+                                                            updateLine(idx, {
+                                                                itemId: id,
+                                                                rate: opt?.salesPrice ? String(opt.salesPrice) : line.rate,
+                                                                description: opt?.name
+                                                            });
+                                                        }}
+                                                        options={items}
+                                                        getLabel={(i) => i.name}
+                                                        getDetail={(i) => i.sku ? `Code: ${i.sku}` : `Stock: ${i.stock ?? 0}`}
+                                                        placeholder="Select Item..."
+                                                        className="w-full min-w-[200px]"
+                                                        buttonClassName="h-9 border-transparent bg-transparent hover:bg-white focus:bg-white focus:ring-2 px-2 shadow-none"
+                                                        buttonRef={(el) => { rowRefs.current.select[idx] = el; }}
+                                                        onEnterNext={() => rowRefs.current.qty[idx]?.focus()}
+                                                    />
+                                                    {line.description && (
+                                                        <input
+                                                            className="mt-1 w-full bg-transparent text-xs text-slate-500 placeholder:text-slate-300 outline-none"
+                                                            placeholder="Custom description..."
+                                                            value={line.description}
+                                                            onChange={(e) => updateLine(idx, { description: e.target.value })}
                                                         />
-                                                        {!line.itemId && (
-                                                            <Button
-                                                                type="button"
-                                                                variant="outline"
-                                                                onClick={() => {
-                                                                    setActiveLineIdx(idx);
-                                                                    setAddItemOpen(true);
-                                                                }}
-                                                                className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 rounded-xl px-3 text-[10px] font-medium bg-slate-50 dark:bg-slate-800"
-                                                            >
-                                                                <Plus className="mr-1 h-3 w-3" />
-                                                                Add item
-                                                            </Button>
-                                                        )}
-                                                    </div>
+                                                    )}
                                                 </td>
-
-                                                <td className="px-4 py-3 align-top">
-                                                    <Input
+                                                <td className="px-4 py-2">
+                                                    <input
                                                         ref={(el) => { rowRefs.current.qty[idx] = el; }}
-                                                        type="number"
-                                                        min="0"
-                                                        step="0.01"
+                                                        className="w-full text-right bg-transparent p-1 outline-none focus:bg-slate-100 rounded"
                                                         value={line.qty}
-                                                        onChange={(e) => {
-                                                            updateLine(idx, { qty: e.target.value });
-                                                            setLineErrors(prev => ({ ...prev, [idx]: { ...prev[idx], qty: undefined } }));
-                                                        }}
+                                                        onChange={(e) => updateLine(idx, { qty: e.target.value })}
                                                         onKeyDown={(e) => {
-                                                            if (e.key === "ArrowRight") {
-                                                                e.preventDefault();
-                                                                safeFocus(rowRefs.current.rate[idx]);
-                                                            }
-                                                            if (e.key === "ArrowLeft") {
-                                                                e.preventDefault();
-                                                                safeFocus(rowRefs.current.select[idx]);
-                                                            }
-                                                            if (e.key === "ArrowDown") {
-                                                                e.preventDefault();
-                                                                if (rowRefs.current.qty[idx + 1]) {
-                                                                    safeFocus(rowRefs.current.qty[idx + 1]);
-                                                                } else {
-                                                                    safeFocus(sundryRefs.current.rate[0]);
-                                                                }
-                                                            }
-                                                            if (e.key === "ArrowUp") {
-                                                                e.preventDefault();
-                                                                if (rowRefs.current.qty[idx - 1]) {
-                                                                    safeFocus(rowRefs.current.qty[idx - 1]);
-                                                                } else {
-                                                                    safeFocus(rowRefs.current.select[idx]);
-                                                                }
-                                                            }
-                                                            if (e.key === "Enter") {
-                                                                if (e.shiftKey) {
-                                                                    e.preventDefault();
-                                                                    safeFocus(sundryRefs.current.rate[0]);
-                                                                    return;
-                                                                }
-                                                                if (!line.qty || Number(line.qty) <= 0) {
-                                                                    setLineErrors(prev => ({ ...prev, [idx]: { ...prev[idx], qty: "Required" } }));
-                                                                    return;
-                                                                }
-                                                                e.preventDefault();
-                                                                safeFocus(rowRefs.current.rate[idx]);
-                                                            }
+                                                            if (e.key === "Enter") rowRefs.current.rate[idx]?.focus();
                                                         }}
-                                                        onBlur={() => {
-                                                            if (line.itemId && (!line.qty || Number(line.qty) <= 0)) {
-                                                                setLineErrors(prev => ({ ...prev, [idx]: { ...prev[idx], qty: "Required" } }));
-                                                            }
-                                                        }}
-                                                        className={cn(
-                                                            "h-11 rounded-2xl bg-white text-center dark:bg-slate-900 transition-colors",
-                                                            lineErrors[idx]?.qty && "border-red-500 focus:ring-red-200"
-                                                        )}
+                                                        placeholder="0"
                                                     />
-                                                    {lineErrors[idx]?.qty && (
-                                                        <div className="mt-1 text-[10px] text-red-500 font-medium text-center">
-                                                            {lineErrors[idx].qty}
-                                                        </div>
-                                                    )}
                                                 </td>
-
-                                                <td className="px-4 py-3 align-top">
-                                                    <Input
+                                                <td className="px-4 py-2">
+                                                    <input
                                                         ref={(el) => { rowRefs.current.rate[idx] = el; }}
-                                                        type="number"
-                                                        min="0"
-                                                        step="0.01"
+                                                        className="w-full text-right bg-transparent p-1 outline-none focus:bg-slate-100 rounded"
                                                         value={line.rate}
-                                                        onChange={(e) => {
-                                                            updateLine(idx, { rate: e.target.value });
-                                                            setLineErrors(prev => ({ ...prev, [idx]: { ...prev[idx], rate: undefined } }));
-                                                        }}
+                                                        onChange={(e) => updateLine(idx, { rate: e.target.value })}
                                                         onKeyDown={(e) => {
-                                                            if (e.key === "ArrowLeft") {
-                                                                e.preventDefault();
-                                                                safeFocus(rowRefs.current.qty[idx]);
-                                                            }
-                                                            if (e.key === "ArrowDown") {
-                                                                e.preventDefault();
-                                                                if (rowRefs.current.rate[idx + 1]) {
-                                                                    safeFocus(rowRefs.current.rate[idx + 1]);
-                                                                } else {
-                                                                    safeFocus(sundryRefs.current.rate[0]);
-                                                                }
-                                                            }
-                                                            if (e.key === "ArrowUp") {
-                                                                e.preventDefault();
-                                                                if (rowRefs.current.rate[idx - 1]) {
-                                                                    safeFocus(rowRefs.current.rate[idx - 1]);
-                                                                } else {
-                                                                    safeFocus(rowRefs.current.qty[idx]);
-                                                                }
-                                                            }
                                                             if (e.key === "Enter") {
-                                                                if (e.shiftKey) {
-                                                                    e.preventDefault();
-                                                                    safeFocus(sundryRefs.current.rate[0]);
-                                                                    return;
-                                                                }
-                                                                if (!line.rate || Number(line.rate) <= 0) {
-                                                                    setLineErrors(prev => ({ ...prev, [idx]: { ...prev[idx], rate: "Required" } }));
-                                                                    return;
-                                                                }
-                                                                e.preventDefault();
-                                                                if (rowRefs.current.select[idx + 1]) {
-                                                                    safeFocus(rowRefs.current.select[idx + 1]);
-                                                                } else {
-                                                                    safeFocus(addLineButtonRef.current);
-                                                                }
+                                                                if (idx === lines.length - 1) addLine();
+                                                                else rowRefs.current.select[idx + 1]?.focus();
                                                             }
                                                         }}
-                                                        onBlur={() => {
-                                                            if (line.itemId && (!line.rate || Number(line.rate) <= 0)) {
-                                                                setLineErrors(prev => ({ ...prev, [idx]: { ...prev[idx], rate: "Required" } }));
-                                                            }
-                                                        }}
-                                                        className={cn(
-                                                            "h-11 rounded-2xl bg-white text-center dark:bg-slate-900 transition-colors",
-                                                            lineErrors[idx]?.rate && "border-red-500 focus:ring-red-200"
-                                                        )}
+                                                        placeholder="0.00"
                                                     />
-                                                    {lineErrors[idx]?.rate && (
-                                                        <div className="mt-1 text-[10px] text-red-500 font-medium text-center">
-                                                            {lineErrors[idx].rate}
-                                                        </div>
-                                                    )}
                                                 </td>
-
-                                                <td className="px-4 py-3 text-right font-semibold tabular-nums">
-                                                    <MoneyText value={amt} />
+                                                <td className="px-4 py-2 text-right font-medium tabular-nums">
+                                                    {amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                                 </td>
-
-                                                <td className="px-4 py-3 text-right">
-                                                    {lines.length > 1 && (
-                                                        <button
-                                                            type="button"
+                                                {isEditMode && (
+                                                    <td className="px-4 py-2 text-center">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-7 w-7 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100"
                                                             onClick={() => removeLine(idx)}
-                                                            className="rounded-lg p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                                                         >
                                                             <Trash2 className="h-4 w-4" />
-                                                        </button>
-                                                    )}
-                                                </td>
+                                                        </Button>
+                                                    </td>
+                                                )}
                                             </tr>
                                         );
                                     })}
                                 </tbody>
+                                <tfoot className="bg-slate-50/50 font-medium">
+                                    <tr>
+                                        <td colSpan={2} className="px-4 py-3 text-right text-slate-500">Total Items:</td>
+                                        <td className="px-4 py-3 text-right">{lines.reduce((s, l) => s + Number(l.qty || 0), 0)}</td>
+                                        <td className="px-4 py-3"></td>
+                                        <td className="px-4 py-3 text-right text-slate-900 dark:text-slate-100">
+                                            {itemsSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                        </td>
+                                        <td></td>
+                                    </tr>
+                                </tfoot>
                             </table>
                         </div>
                     </div>
-                </section>
 
-                {/* Add Sundry Button */}
-                <div className="mb-4 flex flex-col items-end gap-2 text-right">
-                    <Button ref={addSundryButtonRef} type="button" variant="outline" onClick={addSundry} className="rounded-full bg-indigo-600 text-white hover:bg-indigo-700">
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Sundry Column
-                    </Button>
-                </div>
-
-                {/* BILL SUNDRY */}
-                <section className="mb-6">
-                    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                        <div className="mr-4 text-sm font-semibold text-slate-700 dark:text-slate-200">Bill Sundry Details</div>
-                        <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
-                            <table className="min-w-full text-sm">
-                                <thead className="bg-slate-100/70 dark:bg-slate-900/40">
-                                    <tr>
-                                        <th className="w-[70px] px-3 py-2 text-left text-xs text-muted-foreground">S.N.</th>
-                                        <th className="px-3 py-2 text-left text-xs text-muted-foreground">Bill Sundry</th>
-                                        <th className="w-[140px] px-3 py-2 text-right text-xs text-muted-foreground">@</th>
-                                        <th className="w-[200px] px-3 py-2 text-right text-xs text-muted-foreground">Amount (Rs.)</th>
-                                        <th className="w-[60px] px-3 py-2 text-right text-xs text-muted-foreground" />
-                                    </tr>
-                                </thead>
-
-                                <tbody>
-                                    {billSundryComputed.rows.map((r, i) => (
-                                        <tr key={r.id} className="border-t border-slate-200/70 dark:border-slate-800/60">
-                                            <td className="px-3 py-2 text-muted-foreground">{i + 1}</td>
-                                            <td className="px-3 py-2">
-                                                <div className="relative">
-                                                    <SearchableSelect<BillSundryRecord>
-                                                        buttonRef={(el) => { sundryRefs.current.select[i] = el; }}
-                                                        placeholder="Search sundry…"
-                                                        valueId={r.sundryId || ""}
-                                                        fallbackLabel={r.name}
-                                                        onChange={(id, opt) => {
-                                                            if (opt) {
-                                                                updateSundry(r.id, {
-                                                                    sundryId: opt.id,
-                                                                    name: opt.name,
-                                                                    type: opt.type as any,
-                                                                    ratePct: opt.rate?.toString() || "0"
-                                                                });
-                                                            } else {
-                                                                updateSundry(r.id, { sundryId: id, name: "" });
-                                                            }
-                                                        }}
-                                                        onKeyDownCustom={(e) => {
-                                                            if (e.key === "Enter" && e.shiftKey) {
-                                                                e.preventDefault();
-                                                                safeFocus(termsRef.current);
-                                                                return;
-                                                            }
-                                                            if (e.key === "ArrowRight") {
-                                                                e.preventDefault();
-                                                                safeFocus(sundryRefs.current.rate[i]);
-                                                            }
-                                                            if (e.key === "ArrowDown") {
-                                                                e.preventDefault();
-                                                                if (sundryRefs.current.select[i + 1]) {
-                                                                    safeFocus(sundryRefs.current.select[i + 1]);
-                                                                } else {
-                                                                    safeFocus(termsRef.current);
-                                                                }
-                                                            }
-                                                            if (e.key === "ArrowUp") {
-                                                                e.preventDefault();
-                                                                if (sundryRefs.current.select[i - 1]) {
-                                                                    safeFocus(sundryRefs.current.select[i - 1]);
-                                                                } else {
-                                                                    const lastItemIdx = lines.length - 1;
-                                                                    safeFocus(rowRefs.current.select[lastItemIdx]);
-                                                                }
-                                                            }
-                                                        }}
-                                                        onEnterNext={() => safeFocus(sundryRefs.current.rate[i])}
-                                                        options={sundryOptions}
-                                                        getLabel={(s) => s.name}
-                                                        buttonClassName="h-10 rounded-xl pr-[110px]"
-                                                        emptyText="No sundries found"
-                                                        disabled={r.id === "vat" || r.id === "discount"}
-                                                    />
-                                                    {!r.sundryId && r.id !== "discount" && r.id !== "vat" && (
-                                                        <Button
-                                                            type="button"
-                                                            variant="outline"
-                                                            onClick={() => {
-                                                                setActiveSundryIdx(i);
-                                                                setAddSundryOpen(true);
-                                                            }}
-                                                            className="absolute z-10 right-7 top-1/2 -translate-y-1/2 h-7 rounded-lg px-1.5 text-[10px] font-medium bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
-                                                        >
-                                                            <Plus className="h-3 w-3" />
-                                                            Define New
-                                                        </Button>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td className="px-3 py-2 text-right">
-                                                <div className="inline-flex items-center gap-2">
-                                                    <Input
-                                                        ref={(el) => { sundryRefs.current.rate[i] = el; }}
-                                                        value={r.ratePct}
-                                                        onChange={(e) => {
-                                                            const val = e.target.value;
-                                                            updateSundry(r.id, {
-                                                                ratePct: val,
-                                                                isManual: false
-                                                            });
-                                                        }}
-                                                        onKeyDown={(e) => {
-                                                            if (e.key === "ArrowRight") {
-                                                                e.preventDefault();
-                                                                safeFocus(sundryRefs.current.amount[i]);
-                                                            }
-                                                            if (e.key === "ArrowLeft") {
-                                                                e.preventDefault();
-                                                                safeFocus(sundryRefs.current.select[i]);
-                                                            }
-                                                            if (e.key === "ArrowDown") {
-                                                                e.preventDefault();
-                                                                if (sundryRefs.current.rate[i + 1]) {
-                                                                    safeFocus(sundryRefs.current.rate[i + 1]);
-                                                                } else {
-                                                                    safeFocus(termsRef.current);
-                                                                }
-                                                            }
-                                                            if (e.key === "ArrowUp") {
-                                                                e.preventDefault();
-                                                                if (sundryRefs.current.rate[i - 1]) {
-                                                                    safeFocus(sundryRefs.current.rate[i - 1]);
-                                                                } else {
-                                                                    const lastItemIdx = lines.length - 1;
-                                                                    safeFocus(rowRefs.current.rate[lastItemIdx]);
-                                                                }
-                                                            }
-                                                            if (e.key === "Enter") {
-                                                                if (e.shiftKey) {
-                                                                    e.preventDefault();
-                                                                    safeFocus(termsRef.current);
-                                                                    return;
-                                                                }
-                                                                e.preventDefault();
-                                                                if (sundryRefs.current.amount[i]) {
-                                                                    safeFocus(sundryRefs.current.amount[i]);
-                                                                } else if (sundryRefs.current.select[i + 1]) {
-                                                                    safeFocus(sundryRefs.current.select[i + 1]);
-                                                                }
-                                                            }
-                                                        }}
-                                                        disabled={r.id === "vat"}
-                                                        className="h-10 w-[110px] rounded-xl bg-white text-right dark:bg-slate-900"
-                                                    />
-                                                    <span className="text-muted-foreground">%</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-3 py-2 text-right font-semibold">
-                                                <div className="inline-flex items-center justify-end gap-1">
-                                                    {r.type === "less" ? "(" : null}
-                                                    <div className="flex items-center">
-                                                        <span className="mr-1 text-xs text-muted-foreground font-normal">{ui.currencySymbol}</span>
-                                                        <Input
-                                                            ref={(el) => { sundryRefs.current.amount[i] = el; }}
-                                                            value={r.isManual ? (r.manualAmount || "") : (r.ratePct && Number(r.ratePct) !== 0 ? r.amount.toFixed(2) : "")}
-                                                            onChange={(e) => {
-                                                                const val = e.target.value;
-                                                                const amt = Number(val || 0);
-                                                                const pct = itemsSubtotal > 0 ? (amt / itemsSubtotal) * 100 : 0;
-                                                                updateSundry(r.id, {
-                                                                    manualAmount: val,
-                                                                    ratePct: pct % 1 === 0 ? pct.toString() : pct.toFixed(2),
-                                                                    isManual: true
-                                                                });
-                                                            }}
-                                                            onKeyDown={(e) => {
-                                                                if (e.key === "ArrowLeft") {
-                                                                    e.preventDefault();
-                                                                    safeFocus(sundryRefs.current.rate[i]);
-                                                                }
-                                                                if (e.key === "ArrowDown") {
-                                                                    e.preventDefault();
-                                                                    if (sundryRefs.current.amount[i + 1]) {
-                                                                        safeFocus(sundryRefs.current.amount[i + 1]);
-                                                                    } else {
-                                                                        safeFocus(termsRef.current);
-                                                                    }
-                                                                }
-                                                                if (e.key === "ArrowUp") {
-                                                                    e.preventDefault();
-                                                                    if (sundryRefs.current.amount[i - 1]) {
-                                                                        safeFocus(sundryRefs.current.amount[i - 1]);
-                                                                    } else {
-                                                                        const lastItemIdx = lines.length - 1;
-                                                                        safeFocus(rowRefs.current.rate[lastItemIdx]); // Or could go to item amount if it were editable, but rate is safer
-                                                                    }
-                                                                }
-                                                                if (e.key === "Enter") {
-                                                                    if (e.shiftKey) {
-                                                                        e.preventDefault();
-                                                                        safeFocus(termsRef.current);
-                                                                        return;
-                                                                    }
-                                                                    e.preventDefault();
-                                                                    if (sundryRefs.current.select[i + 1]) {
-                                                                        safeFocus(sundryRefs.current.select[i + 1]);
-                                                                    } else {
-                                                                        safeFocus(addSundryButtonRef.current);
-                                                                    }
-                                                                }
-                                                            }}
-                                                            placeholder="0.00"
-                                                            disabled={r.id === "vat"}
-                                                            className="h-8 w-24 rounded-lg border-slate-200 bg-white px-2 text-right text-sm dark:border-slate-800 dark:bg-slate-900"
-                                                        />
-                                                    </div>
-                                                    {r.type === "less" ? ")" : null}
-                                                </div>
-                                            </td>
-                                            <td className="px-3 py-2 text-right">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => removeSundry(r.id)}
-                                                    disabled={r.id === "vat" || r.id === "discount"}
-                                                    className={cn(
-                                                        "inline-flex h-9 w-9 items-center justify-center rounded-xl border text-red-600 hover:bg-red-50",
-                                                        (billSundries.length <= 1 || r.id === "vat" || r.id === "discount") && "pointer-events-none opacity-50"
-                                                    )}
-                                                    title="Remove"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                    {/* Bottom: Totals & Terms */}
+                    <div className="grid gap-8 lg:grid-cols-2">
+                        {/* Terms */}
+                        <div className="space-y-4">
+                            <label className="text-sm font-semibold">Terms & Conditions</label>
+                            <textarea
+                                className="w-full h-32 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-800 dark:bg-slate-900/50"
+                                placeholder="Payment terms, delivery details..."
+                                value={form.terms}
+                                onChange={(e) => setForm(f => ({ ...f, terms: e.target.value }))}
+                            />
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Private Note (Internal)</label>
+                                <Input
+                                    value={form.notes}
+                                    onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))}
+                                    placeholder="Internal use only..."
+                                />
+                            </div>
                         </div>
 
-                        {/* Order Total Summary */}
-                        <div className="mt-6 flex justify-end">
-                            <div className="w-full max-w-md space-y-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-5 dark:border-slate-800 dark:bg-slate-900/30">
-                                <div className="flex items-center justify-between text-sm">
-                                    <span className="text-muted-foreground">Items Subtotal</span>
-                                    <div className="font-medium tabular-nums">
-                                        <MoneyText value={itemsSubtotal} />
+                        {/* Totals */}
+                        <div className="space-y-4 rounded-2xl bg-slate-50 p-6 dark:bg-slate-900/50">
+                            {/* Sundries UI (Reuse) */}
+                            <div className="flex items-center justify-between">
+                                <h3 className="font-semibold">Bill Sundries</h3>
+                                {isEditMode && (
+                                    <div className="flex gap-2">
+                                        <Button size="sm" variant="outline" onClick={() => setAddSundryOpen(true)} className="h-7 text-xs">
+                                            <Plus className="mr-1 h-3 w-3" /> New
+                                        </Button>
+                                        <Button size="sm" variant="ghost" onClick={addSundry} className="h-7 text-xs">
+                                            Add Row
+                                        </Button>
                                     </div>
-                                </div>
+                                )}
+                            </div>
 
-                                {billSundryComputed.rows.map((row) => (
-                                    <div key={row.id} className="flex items-center justify-between text-sm">
-                                        <span className="text-muted-foreground">{row.name}</span>
-                                        <div className="font-medium tabular-nums">
-                                            {row.type === "less" && "- "}
-                                            <MoneyText value={row.amount} />
+                            <div className="space-y-2">
+                                {billSundries.map((row) => (
+                                    <div key={row.id} className="flex items-center gap-2 group">
+                                        <div className="flex-1">
+                                            <Input
+                                                value={row.name}
+                                                onChange={(e) => updateSundry(row.id, { name: e.target.value })}
+                                                className="h-8 bg-white dark:bg-slate-900"
+                                                readOnly={!isEditMode || row.id === "vat"}
+                                            />
                                         </div>
+                                        <div className="w-20">
+                                            <Input
+                                                value={row.ratePct}
+                                                onChange={(e) => updateSundry(row.id, { ratePct: e.target.value, isManual: false })}
+                                                className="h-8 text-right bg-white dark:bg-slate-900"
+                                                placeholder="%"
+                                            />
+                                        </div>
+                                        <div className="w-28 text-right font-mono text-sm">
+                                            {isEditMode ? (
+                                                <Input
+                                                    value={row.isManual ? row.manualAmount : ((Number(row.ratePct || 0) * itemsSubtotal) / 100).toFixed(2)}
+                                                    onChange={(e) => updateSundry(row.id, { manualAmount: e.target.value, isManual: true })}
+                                                    className="h-8 text-right bg-white dark:bg-slate-900"
+                                                />
+                                            ) : (
+                                                ((itemsSubtotal * Number(row.ratePct || 0)) / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })
+                                            )}
+                                        </div>
+                                        {isEditMode && (
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-500" onClick={() => removeSundry(row.id)}>
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        )}
                                     </div>
                                 ))}
+                            </div>
 
-                                <div className="h-px bg-slate-200 dark:bg-slate-800 my-2" />
-
-                                <div className="flex items-center justify-between">
-                                    <span className="font-black text-slate-900 dark:text-white uppercase text-sm">Order Total</span>
-                                    <div className="font-black text-2xl tabular-nums text-indigo-600 dark:text-indigo-400">
-                                        <MoneyText value={total} />
-                                    </div>
+                            <div className="border-t border-slate-200 dark:border-slate-800 pt-4 space-y-2">
+                                <div className="flex justify-between text-base font-bold text-slate-900 dark:text-white">
+                                    <span>Total Amount</span>
+                                    <span>{total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                </div>
+                                <div className="text-right text-xs text-slate-500">
+                                    <MoneyText value={total} />
                                 </div>
                             </div>
                         </div>
                     </div>
-                </section>
-
-                {/* TERMS & CONDITIONS */}
-                <section className="mb-6 rounded-3xl border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                    <button type="button" onClick={() => setShowTerms((v) => !v)} className="flex w-full items-center gap-3">
-                        <ChevronRight className={cn("h-4 w-4 text-muted-foreground transition-transform", showTerms && "rotate-90")} />
-                        <div className="text-sm font-semibold">Terms & Conditions</div>
-                    </button>
-
-                    <div className="mt-2 text-sm text-muted-foreground">Using company default</div>
-
-                    <button
-                        type="button"
-                        onClick={() => setShowTerms(true)}
-                        className="mt-3 text-sm font-medium text-slate-700 hover:underline dark:text-slate-200"
-                    >
-                        + Add terms & conditions
-                    </button>
-
-                    {showTerms ? (
-                        <div className="mt-4 grid gap-3">
-                            <label className="flex items-center gap-2 text-sm">
-                                <input
-                                    type="checkbox"
-                                    checked={form.termsOverrideEnabled}
-                                    onChange={(e) => setForm((f) => ({ ...f, termsOverrideEnabled: e.target.checked }))}
-                                />
-                                <span>Override for this order</span>
-                            </label>
-
-                            <textarea
-                                ref={termsRef}
-                                value={form.termsText}
-                                onChange={(e) => setForm((f) => ({ ...f, termsText: e.target.value }))}
-                                disabled={!form.termsOverrideEnabled}
-                                onKeyDown={(e) => {
-                                    if (e.key === "Enter" && e.shiftKey) {
-                                        e.preventDefault();
-                                        safeFocus(notesRef.current);
-                                    }
-                                    if (e.key === "ArrowDown" && !e.shiftKey) {
-                                        // Only move if cursor is at the end? Or just move.
-                                        // For simplicity, just move.
-                                        e.preventDefault();
-                                        safeFocus(notesRef.current);
-                                    }
-                                    if (e.key === "ArrowUp") {
-                                        e.preventDefault();
-                                        const lastSundryIdx = billSundryComputed.rows.length - 1;
-                                        safeFocus(sundryRefs.current.rate[lastSundryIdx]);
-                                    }
-                                }}
-                                placeholder="Enter custom terms and conditions for this order..."
-                                className={cn(
-                                    "min-h-[110px] w-full rounded-2xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-950",
-                                    !form.termsOverrideEnabled && "opacity-70"
-                                )}
-                            />
-                        </div>
-                    ) : null}
-                </section>
-
-                {/* ADDITIONAL NOTES */}
-                <section className="mb-6 rounded-3xl border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                    <div className="mb-2 flex items-center justify-between">
-                        <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">Additional notes</div>
-                        <div className="text-xs text-muted-foreground">
-                            BS: <span className="font-medium text-foreground">{form.orderDate.bs || "—"}</span>{" "}
-                            <span className="text-muted-foreground">({form.orderDate.ad || "—"})</span>
-                        </div>
-                    </div>
-
-                    <textarea
-                        ref={notesRef}
-                        value={form.notes}
-                        onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                        onKeyDown={(e) => {
-                            if (e.key === "ArrowUp") {
-                                e.preventDefault();
-                                safeFocus(termsRef.current);
-                            }
-                        }}
-                        placeholder="Add overall remarks or notes for this order..."
-                        className="min-h-[120px] w-full rounded-2xl border-2 border-slate-100 bg-slate-50/30 p-5 text-sm outline-none ring-indigo-500/10 focus:border-indigo-500 focus:bg-white focus:ring-4 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 transition-all font-medium leading-relaxed"
-                    />
-                </section>
-
-                {/* Action Buttons */}
-                <div className="flex flex-wrap items-center justify-end gap-3 pt-6 border-t">
-                    <Button
-                        type="button"
-                        onClick={onSave}
-                        disabled={loading}
-                        className="rounded-2xl bg-indigo-600 text-white hover:bg-indigo-700 shadow-xl shadow-indigo-200 dark:shadow-none h-11 px-10 font-bold text-xs uppercase tracking-widest transition-all active:scale-95"
-                    >
-                        <Save className="mr-2 h-4 w-4" />
-                        {loading ? "Saving..." : "Create Order"}
-                    </Button>
-
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={onPreview}
-                        className="rounded-2xl h-11 px-8 font-bold text-xs uppercase tracking-widest"
-                    >
-                        <Eye className="mr-2 h-4 w-4" />
-                        Preview
-                    </Button>
-
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={onPrint}
-                        className="rounded-2xl h-11 px-8 font-bold text-xs uppercase tracking-widest"
-                    >
-                        <Printer className="mr-2 h-4 w-4" />
-                        Print
-                    </Button>
-
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={onPrintPreview}
-                        className="rounded-2xl h-11 px-8 font-bold text-xs uppercase tracking-widest"
-                    >
-                        <FileText className="mr-2 h-4 w-4" />
-                        Print Preview
-                    </Button>
-
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => router.push("/sales-orders")}
-                        className="rounded-2xl h-11 px-8 font-bold text-xs uppercase tracking-widest"
-                    >
-                        Cancel
-                    </Button>
                 </div>
+
+                {/* Footer Actions */}
+                {isEditMode && (
+                    <div className="mt-8 flex items-center justify-end gap-4 rounded-2xl bg-slate-50 p-4 dark:bg-slate-900/50">
+                        <Button variant="ghost" onClick={() => router.back()}>Cancel</Button>
+                        <Button onClick={onSave} disabled={loading} className="rounded-xl px-8">
+                            {loading ? "Saving..." : "Save Sales Order"}
+                        </Button>
+                    </div>
+                )}
             </div>
 
+            {/* Dialogs */}
+            <AddCustomerDialog
+                open={addCustomerOpen}
+                onClose={() => setAddCustomerOpen(false)}
+                onSuccess={(party) => {
+                    setParties((prev) => [...prev, party]);
+                    setForm((f) => ({ ...f, partyId: party.id, partyName: party.name }));
+                    setAddCustomerOpen(false);
+                }}
+            />
             <AddItemDialog
                 open={addItemOpen}
                 onClose={() => setAddItemOpen(false)}
                 onSuccess={(item) => {
                     setItems((prev) => [...prev, item]);
-                    if (activeLineIdx !== null) {
-                        updateLine(activeLineIdx, { itemId: item.id });
-                    }
+                    setAddItemOpen(false);
                 }}
             />
-
-            <AddCustomerDialog
-                open={addCustomerOpen}
-                onClose={() => setAddCustomerOpen(false)}
-                onSuccess={(customer) => {
-                    setParties((prev) => [...prev, customer]);
-                    setForm((f) => ({ ...f, partyId: customer.id }));
-                }}
-            />
-
             <AddBillSundryDialog
                 open={addSundryOpen}
                 onClose={() => setAddSundryOpen(false)}
-                onSuccess={(sundry) => {
-                    setSundryOptions((prev) => [...prev, sundry]);
-                    if (activeSundryIdx !== null) {
-                        const row = billSundryComputed.rows[activeSundryIdx];
-                        if (row) {
-                            updateSundry(row.id, {
-                                sundryId: sundry.id,
-                                name: sundry.name,
-                                type: sundry.type as any,
-                                ratePct: sundry.rate?.toString() || "0"
-                            });
-                        }
-                    }
+                onSuccess={(bs) => {
+                    setSundryOptions((prev) => [...prev, bs]);
+                    setAddSundryOpen(false);
+                    // Add directly to rows
+                    setBillSundries(prev => [...prev, {
+                        id: crypto.randomUUID(),
+                        sundryId: bs.id,
+                        name: bs.name,
+                        type: bs.type as any,
+                        ratePct: bs.rate?.toString() || "0"
+                    }]);
                 }}
             />
         </div>
