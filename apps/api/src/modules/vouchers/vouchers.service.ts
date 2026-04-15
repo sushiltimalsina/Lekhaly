@@ -506,12 +506,32 @@ export class VouchersService {
           taxCodeId: l.taxCodeId || undefined
         }))
       }, voucher.voucherType);
+      // Determine correct sequence and prefix based on voucher type
+      let sequence: number;
+      let prefix: string;
+      const seqUpdate: Record<string, number> = {};
 
-      const sequence = company.nextInvoiceNumber;
-      const prefix =
-        voucher.voucherType === VoucherType.sales_invoice
-          ? company.invoicePrefix
-          : voucher.voucherType.replace("_", "-").toUpperCase();
+      switch (voucher.voucherType) {
+        case VoucherType.sales_invoice:
+        case VoucherType.sales_return:
+          sequence = company.nextInvoiceNumber;
+          prefix = company.invoicePrefix;
+          seqUpdate.nextInvoiceNumber = sequence + 1;
+          break;
+        case VoucherType.purchase:
+        case VoucherType.purchase_return:
+          sequence = company.nextPurchaseOrderNumber;
+          prefix = company.purchaseOrderPrefix;
+          seqUpdate.nextPurchaseOrderNumber = sequence + 1;
+          break;
+        default:
+          // For journal, opening, reversal, receipt, payment — use invoice sequence as fallback
+          sequence = company.nextInvoiceNumber;
+          prefix = voucher.voucherType.replace("_", "-").toUpperCase();
+          seqUpdate.nextInvoiceNumber = sequence + 1;
+          break;
+      }
+
       const voucherNumber = `${prefix}-${sequence}`;
 
       const posted = await tx.voucher.update({
@@ -526,7 +546,7 @@ export class VouchersService {
 
       await tx.company.update({
         where: { id: company.id },
-        data: { nextInvoiceNumber: sequence + 1 }
+        data: seqUpdate
       });
 
       if (taxLines.length) {

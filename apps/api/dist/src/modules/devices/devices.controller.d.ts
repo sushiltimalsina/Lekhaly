@@ -24,6 +24,8 @@ export declare class DevicesController {
         label: string;
         platform: string;
         trusted: boolean;
+        proformaPrefix: string | null;
+        proformaSequence: number;
         lastSeenAt: Date | null;
     })[]>;
     setTrust(user: AuthUser, id: string, body: any): Promise<{
@@ -33,6 +35,8 @@ export declare class DevicesController {
         label: string;
         platform: string;
         trusted: boolean;
+        proformaPrefix: string | null;
+        proformaSequence: number;
         lastSeenAt: Date | null;
     }>;
     unlinkUser(user: AuthUser, id: string, userId: string): Promise<{

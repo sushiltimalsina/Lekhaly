@@ -404,16 +404,20 @@ let ReportsService = class ReportsService {
             toBs: filters.toBs
         });
         const voucherDate = this.applyDateFilter(range);
+        const whereClause = {
+            companyId,
+            voucher: {
+                status: "posted",
+                ...(voucherDate ? { voucherDate } : {})
+            }
+        };
+        if (filters.accountId)
+            whereClause.accountId = filters.accountId;
+        if (filters.partyId)
+            whereClause.partyId = filters.partyId;
         const lines = await this.prisma.voucherLine.findMany({
-            where: {
-                companyId,
-                partyId: filters.partyId,
-                voucher: {
-                    status: "posted",
-                    ...(voucherDate ? { voucherDate } : {})
-                }
-            },
-            include: { voucher: true, account: true }
+            where: whereClause,
+            include: { voucher: true, account: true, party: true }
         });
         let running = new client_1.Prisma.Decimal(0);
         const rows = lines
@@ -425,16 +429,14 @@ let ReportsService = class ReportsService {
             return {
                 date: line.voucher.voucherDate,
                 dateBs: line.voucher.voucherDateBs || null,
-                voucherId: line.voucherId,
-                voucherNumber: line.voucher.voucherNumber,
-                accountCode: line.account.code,
-                accountName: line.account.name,
+                ref: line.voucher.voucherNumber,
+                memo: line.account.name + (line.party ? ` — ${line.party.name}` : ""),
                 debit,
                 credit,
                 balance: running
             };
         });
-        return { partyId: filters.partyId, rows, balance: running };
+        return { accountId: filters.accountId, partyId: filters.partyId, rows, balance: running };
     }
     async exportPdf(companyId, input) {
         const filters = { from: input.from, to: input.to };

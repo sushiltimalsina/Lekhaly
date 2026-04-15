@@ -13,8 +13,9 @@ export declare const PartyAgingQuerySchema: z.ZodObject<{
     asOf: z.ZodOptional<z.ZodCoercedDate<unknown>>;
     asOfBs: z.ZodOptional<z.ZodString>;
 }, z.core.$strip>;
-export declare const PartyLedgerQuerySchema: z.ZodObject<{
-    partyId: z.ZodString;
+export declare const LedgerQuerySchema: z.ZodObject<{
+    accountId: z.ZodOptional<z.ZodString>;
+    partyId: z.ZodOptional<z.ZodString>;
     from: z.ZodOptional<z.ZodCoercedDate<unknown>>;
     fromBs: z.ZodOptional<z.ZodString>;
     to: z.ZodOptional<z.ZodCoercedDate<unknown>>;

@@ -27,3 +27,19 @@ export const PullQuerySchema = z.object({
   lastChangeId: z.string().uuid().optional(),
   take: z.coerce.number().int().min(1).max(500).optional()
 });
+
+// Micro-sync: lightweight number reservation
+export const NextNumberSchema = z.object({
+  deviceId: z.string().uuid(),
+  voucherType: z.enum([
+    "sales_invoice",
+    "sales_return",
+    "purchase",
+    "purchase_return",
+    "receipt",
+    "payment",
+    "journal",
+    "opening",
+    "reversal"
+  ])
+});

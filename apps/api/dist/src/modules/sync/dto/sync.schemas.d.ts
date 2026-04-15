@@ -29,3 +29,17 @@ export declare const PullQuerySchema: z.ZodObject<{
     lastChangeId: z.ZodOptional<z.ZodString>;
     take: z.ZodOptional<z.ZodCoercedNumber<unknown>>;
 }, z.core.$strip>;
+export declare const NextNumberSchema: z.ZodObject<{
+    deviceId: z.ZodString;
+    voucherType: z.ZodEnum<{
+        sales_invoice: "sales_invoice";
+        sales_return: "sales_return";
+        purchase: "purchase";
+        purchase_return: "purchase_return";
+        receipt: "receipt";
+        payment: "payment";
+        journal: "journal";
+        opening: "opening";
+        reversal: "reversal";
+    }>;
+}, z.core.$strip>;

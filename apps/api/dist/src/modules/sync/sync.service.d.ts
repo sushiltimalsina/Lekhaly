@@ -3,6 +3,7 @@ import { PrismaService } from "../../common/prisma/prisma.service";
 import type { AuthUser } from "../../common/auth/auth.types";
 export declare class SyncService {
     private prisma;
+    private readonly logger;
     constructor(prisma: PrismaService);
     private requireDeviceAccess;
     registerDevice(user: AuthUser, dto: {
@@ -10,7 +11,20 @@ export declare class SyncService {
         platform: string;
     }): Promise<{
         deviceId: string;
+        proformaPrefix: string;
     }>;
+    reserveNextNumber(user: AuthUser, dto: {
+        deviceId: string;
+        voucherType: string;
+    }): Promise<{
+        prefix: string;
+        number: number;
+        voucherNumber: string;
+    }>;
+    ping(): {
+        ok: boolean;
+        ts: number;
+    };
     pushChanges(user: AuthUser, dto: {
         deviceId: string;
         entries: Array<{

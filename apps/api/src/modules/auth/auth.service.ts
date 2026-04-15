@@ -1,4 +1,4 @@
-﻿import { ForbiddenException, Injectable, UnauthorizedException, InternalServerErrorException } from "@nestjs/common";
+import { ForbiddenException, Injectable, Logger, UnauthorizedException, InternalServerErrorException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import type { JwtSignOptions } from "@nestjs/jwt";
 import { PrismaService } from "../../common/prisma/prisma.service";
@@ -7,6 +7,7 @@ import argon2 from "argon2";
 import * as speakeasy from "speakeasy";
 import * as qrcode from "qrcode";
 import crypto from "crypto";
+import { encryptTotpSecret, decryptTotpSecret } from "../../common/auth/totp-crypto";
 
 type JwtAccessPayload = {
   sub: string; // userId
@@ -25,6 +26,7 @@ type JwtRefreshPayload = {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   constructor(private prisma: PrismaService, private jwt: JwtService) { }
 
   private async getUserWithPerms(companyId: string, email: string) {
@@ -450,33 +452,33 @@ export class AuthService {
     deviceLabel?: string;
     rememberDevice?: boolean;
   }) {
-    console.log('LOGIN_START', { email: dto.email, companyCode: dto.companyCode });
+    this.logger.debug(`Login attempt for ${dto.email}@${dto.companyCode}`);
     try {
-      console.log('LOGIN_STEP: findUser');
+      this.logger.debug('Finding user...');
       const company = await this.prisma.company.findUnique({ where: { code: dto.companyCode } });
       if (!company) throw new UnauthorizedException("Invalid credentials");
       const found = await this.getUserWithPerms(company.id, dto.email);
       if (!found) {
-        console.log('LOGIN_FAILED: User not found');
+        this.logger.warn(`Login failed: user not found for ${dto.email}`);
         throw new UnauthorizedException("Invalid credentials");
       }
 
       const { user, perms } = found;
-      console.log('LOGIN_STEP: userFound', { userId: user.id, status: user.status });
+      this.logger.debug(`User found: ${user.id}, status: ${user.status}`);
 
       if (user.status !== "active") {
-        console.log('LOGIN_FAILED: User disabled');
+        this.logger.warn(`Login failed: user ${user.id} is disabled`);
         throw new ForbiddenException("User disabled");
       }
 
-      console.log('LOGIN_STEP: verifyPassword');
+      this.logger.debug('Verifying password...');
       const ok = await argon2.verify(user.passwordHash, dto.password);
       if (!ok) {
-        console.log('LOGIN_FAILED: Password mismatch');
+        this.logger.warn(`Login failed: password mismatch for ${user.id}`);
         throw new UnauthorizedException("Invalid credentials");
       }
 
-      console.log('LOGIN_STEP: totpCheck');
+      this.logger.debug('Checking TOTP...');
       let trustedDevice: { id: string; trusted: boolean } | null = null;
       if (dto.deviceId) {
         const link = await this.prisma.deviceUserLink.findFirst({
@@ -495,8 +497,9 @@ export class AuthService {
       // If TOTP enabled, allow trusted devices to skip the code.
       if (user.totpEnabled && !trustedDevice?.trusted) {
         if (!dto.totpCode) throw new UnauthorizedException("TOTP required");
-        const secret = user.totpSecretEnc; // for MVP store plain; later encrypt-at-rest
-        if (!secret) throw new UnauthorizedException("TOTP secret missing");
+        const encSecret = user.totpSecretEnc;
+        if (!encSecret) throw new UnauthorizedException("TOTP secret missing");
+        const secret = decryptTotpSecret(encSecret);
 
         const valid = speakeasy.totp.verify({
           secret,
@@ -505,7 +508,7 @@ export class AuthService {
           window: 1
         });
         if (!valid) {
-          console.log('LOGIN_FAILED: Invalid TOTP');
+          this.logger.warn(`Login failed: invalid TOTP for ${user.id}`);
           throw new UnauthorizedException("Invalid TOTP");
         }
       }
@@ -513,7 +516,7 @@ export class AuthService {
       // Device registration (minimal)
       let deviceId: string | null = trustedDevice?.id || null;
       if (dto.deviceLabel) {
-        console.log('LOGIN_STEP: deviceRegistration');
+        this.logger.debug('Registering device...');
         const device = await this.prisma.device.create({
           data: {
             companyId: user.companyId,
@@ -531,7 +534,7 @@ export class AuthService {
         });
       }
 
-      console.log('LOGIN_STEP: signTokens');
+      this.logger.debug('Signing tokens...');
       const access = this.signAccessToken({
         sub: user.id,
         companyId: user.companyId,
@@ -542,7 +545,7 @@ export class AuthService {
 
       const refresh = this.signRefreshToken(user.id, user.companyId, user.trustedDeviceVersion);
 
-      console.log('LOGIN_STEP: createSession');
+      this.logger.debug('Creating session...');
       await this.prisma.authSession.create({
         data: {
           userId: user.id,
@@ -552,13 +555,13 @@ export class AuthService {
         }
       });
 
-      console.log('LOGIN_STEP: updateLastLogin');
+      this.logger.debug('Updating last login...');
       await this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
 
-      console.log('LOGIN_SUCCESS');
+      this.logger.log(`Login successful for user ${user.id}`);
       return { accessToken: access, refreshToken: refresh, userId: user.id, companyId: user.companyId, perms, deviceId };
     } catch (e: any) {
-      console.error('LOGIN_ERROR_CAUGHT', e);
+      this.logger.error(`Login error: ${e.message || e}`, e.stack);
       if (e instanceof UnauthorizedException || e instanceof ForbiddenException) throw e;
       throw new InternalServerErrorException(`Login failed: ${e.message || e}`);
     }
@@ -630,10 +633,11 @@ export class AuthService {
       length: 20
     });
 
-    // MVP: store base32 secret (later: encrypt using KMS/KeyVault)
+    // Encrypt the TOTP secret before storing at rest
+    const encrypted = encryptTotpSecret(secret.base32);
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { totpSecretEnc: secret.base32 }
+      data: { totpSecretEnc: encrypted }
     });
 
     const qrDataUrl = await qrcode.toDataURL(secret.otpauth_url!);
@@ -644,8 +648,9 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user?.totpSecretEnc) throw new ForbiddenException("Setup TOTP first");
 
+    const decryptedSecret = decryptTotpSecret(user.totpSecretEnc);
     const valid = speakeasy.totp.verify({
-      secret: user.totpSecretEnc,
+      secret: decryptedSecret,
       encoding: "base32",
       token: code,
       window: 1
@@ -667,8 +672,9 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user?.totpEnabled || !user.totpSecretEnc) throw new ForbiddenException("TOTP not enabled");
 
+    const decryptedSecret = decryptTotpSecret(user.totpSecretEnc);
     const valid = speakeasy.totp.verify({
-      secret: user.totpSecretEnc,
+      secret: decryptedSecret,
       encoding: "base32",
       token: code,
       window: 1

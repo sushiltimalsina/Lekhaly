@@ -54,6 +54,7 @@ export async function createVoucherDraft(input: VoucherDraftInput) {
     method: "POST",
     path: "/vouchers/draft",
     body: input,
+    offlineQueue: { enabled: true, resource: "voucher" },
   });
 }
 
@@ -62,6 +63,7 @@ export async function updateVoucherDraft(id: string, input: VoucherDraftInput) {
     method: "PUT",
     path: `/vouchers/${id}/draft`,
     body: input,
+    offlineQueue: { enabled: true, resource: "voucher" },
   });
 }
 

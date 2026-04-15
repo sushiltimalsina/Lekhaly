@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/app/money";
 import { cn } from "@/lib/utils";
 import { createVoucherDraft, listVouchers, type VoucherRecord } from "@/lib/api/vouchers";
+import { isOfflineQueuedResponse } from "@/lib/api/client";
 import { listAccounts, type AccountRecord } from "@/lib/api/accounts";
 import { listParties, type PartyRecord } from "@/lib/api/parties";
 import {
@@ -173,6 +174,10 @@ export default function ReceiptCreatePage() {
                         credit: l.type === "cr" ? parseFloat(l.amount) : 0,
                     }))
             });
+            if (isOfflineQueuedResponse(res)) {
+                setError(res.message);
+                return;
+            }
             router.push(`/vouchers/${res.id}`);
         } catch (e: any) {
             setError(e?.message ?? "Failed to save receipt");

@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.1",
   "scripts": {
+    "dev": "nest start --watch",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "build": "nest build",
@@ -14,6 +15,7 @@
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^10.0.0",
+    "@nestjs/throttler": "^6.0.0",
     "@prisma/adapter-pg": "^7.2.0",
     "@prisma/client": "^7.2.0",
     "argon2": "^0.44.0",

@@ -35,6 +35,7 @@ export async function createInvoiceDraft(input: InvoiceDraftInput) {
     method: "POST",
     path: "/invoices/draft",
     body: input,
+    offlineQueue: { enabled: true, resource: "invoice" },
   });
 }
 
@@ -43,6 +44,7 @@ export async function updateInvoiceDraft(id: string, input: InvoiceDraftInput) {
     method: "POST",
     path: `/invoices/${id}/draft`,
     body: input,
+    offlineQueue: { enabled: true, resource: "invoice" },
   });
 }
 

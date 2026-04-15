@@ -39,6 +39,7 @@ enum VoucherType {
 
 enum VoucherStatus {
   draft
+  pending_post
   posted
   void
 }
@@ -127,6 +128,7 @@ model Company {
   quotations         Quotation[]
   salesOrders        SalesOrder[]
   purchaseOrders     PurchaseOrder[]
+  proformaInvoices   ProformaInvoice[]
 
   changeLog ChangeLog[]
 }
@@ -553,6 +555,7 @@ model Voucher {
   stockLedger StockLedger[]
   expenses Expense[]
   vatRegisterLines VatRegisterLine[]
+  proformas ProformaInvoice[]
 
   @@unique([companyId, voucherNumber])
   @@index([companyId, status, voucherDate])
@@ -841,6 +844,10 @@ model Device {
   platform String // windows|mac|linux|web
   trusted  Boolean @default(false)
 
+  // Proforma (offline) numbering
+  proformaPrefix   String?
+  proformaSequence Int @default(1)
+
   lastSeenAt DateTime?
   createdAt  DateTime   @default(now())
   auditLogs  AuditLog[]
@@ -848,6 +855,7 @@ model Device {
   deviceUsers DeviceUserLink[]
   changeLog   ChangeLog[]
   syncState   SyncState?
+  proformas   ProformaInvoice[]
 }
 
 model DeviceUserLink {
@@ -897,6 +905,29 @@ model SyncState {
 
   lastPulledChangeId String?
   updatedAt          DateTime @updatedAt
+}
+
+model ProformaInvoice {
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  deviceId String
+  device   Device @relation(fields: [deviceId], references: [id])
+
+  localNumber String   // e.g. "PRF-D1-001"
+  voucherId   String?  // linked after conversion to real voucher
+  voucher     Voucher? @relation(fields: [voucherId], references: [id])
+
+  voucherType VoucherType
+  payload     Json          // full voucher draft data for offline print
+  memo        String?
+
+  convertedAt DateTime?     // set when converted to real posted voucher
+  createdAt   DateTime @default(now())
+
+  @@unique([companyId, localNumber])
+  @@index([companyId, convertedAt])
 }
 
 model ApiIdempotency {

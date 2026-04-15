@@ -29,6 +29,8 @@ export declare class DevicesService {
         label: string;
         platform: string;
         trusted: boolean;
+        proformaPrefix: string | null;
+        proformaSequence: number;
         lastSeenAt: Date | null;
     })[]>;
     setTrust(user: AuthUser, deviceId: string, trusted: boolean): Promise<{
@@ -38,6 +40,8 @@ export declare class DevicesService {
         label: string;
         platform: string;
         trusted: boolean;
+        proformaPrefix: string | null;
+        proformaSequence: number;
         lastSeenAt: Date | null;
     }>;
     unlinkUser(user: AuthUser, deviceId: string, targetUserId: string): Promise<{

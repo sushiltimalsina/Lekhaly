@@ -11,8 +11,9 @@ type PartyAgingFilters = ReportFilters & {
     asOf?: Date;
     asOfBs?: string;
 };
-type PartyLedgerFilters = {
-    partyId: string;
+type LedgerFilters = {
+    accountId?: string;
+    partyId?: string;
     from?: Date;
     fromBs?: string;
     to?: Date;
@@ -88,15 +89,14 @@ export declare class ReportsService {
             total: Prisma.Decimal;
         }[];
     }>;
-    partyLedger(companyId: string, filters: PartyLedgerFilters): Promise<{
-        partyId: string;
+    partyLedger(companyId: string, filters: LedgerFilters): Promise<{
+        accountId: string | undefined;
+        partyId: string | undefined;
         rows: {
             date: Date;
             dateBs: string | null;
-            voucherId: string;
-            voucherNumber: string | null;
-            accountCode: string;
-            accountName: string;
+            ref: string | null;
+            memo: string;
             debit: Prisma.Decimal;
             credit: Prisma.Decimal;
             balance: Prisma.Decimal;

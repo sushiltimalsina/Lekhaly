@@ -10,6 +10,7 @@ import { MoneyText } from "@/components/app/money";
 import { cn } from "@/lib/utils";
 
 import { createVoucherDraft, postVoucher, getVoucher, updateVoucherDraft, type VoucherDraftInput } from "@/lib/api/vouchers";
+import { isOfflineQueuedResponse } from "@/lib/api/client";
 import { listParties, type PartyRecord } from "@/lib/api/parties";
 import { listAccounts, type AccountRecord } from "@/lib/api/accounts";
 import { listItems, type ItemRecord } from "@/lib/api/items";
@@ -740,6 +741,10 @@ export default function PurchaseCreatePage() {
             } else {
                 res = await createVoucherDraft(buildPayload());
             }
+            if (isOfflineQueuedResponse(res)) {
+                setSuccess(res.message);
+                return;
+            }
             const id = editId ?? res?.id ?? res?.voucherId ?? res?.data?.id;
             setSuccess(id ? `Saved draft successfully.` : "Saved draft.");
         } catch (e: any) {
@@ -758,9 +763,17 @@ export default function PurchaseCreatePage() {
             let id = editId;
 
             if (editId) {
-                await updateVoucherDraft(editId, buildPayload());
+                const res = await updateVoucherDraft(editId, buildPayload());
+                if (isOfflineQueuedResponse(res)) {
+                    setError("Offline mode: draft saved to local storage. Go online to sync it with the server before posting.");
+                    return;
+                }
             } else {
                 const res = await createVoucherDraft(buildPayload());
+                if (isOfflineQueuedResponse(res)) {
+                    setError("Offline mode: draft saved to local storage. Go online to sync it with the server before posting.");
+                    return;
+                }
                 id = res?.id ?? res?.voucherId ?? res?.data?.id;
             }
 

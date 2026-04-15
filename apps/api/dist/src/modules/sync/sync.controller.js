@@ -26,6 +26,12 @@ let SyncController = class SyncController {
     register(user, body) {
         return this.sync.registerDevice(user, body);
     }
+    nextNumber(user, body) {
+        return this.sync.reserveNextNumber(user, body);
+    }
+    ping() {
+        return this.sync.ping();
+    }
     push(user, body) {
         return this.sync.pushChanges(user, body);
     }
@@ -43,6 +49,22 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", void 0)
 ], SyncController.prototype, "register", null);
+__decorate([
+    (0, common_1.Post)("next-number"),
+    (0, auth_decorator_1.RequirePerm)("voucher.post"),
+    __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Body)(new zod_pipe_1.ZodValidationPipe(sync_schemas_1.NextNumberSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], SyncController.prototype, "nextNumber", null);
+__decorate([
+    (0, common_1.Get)("ping"),
+    (0, auth_decorator_1.Public)(),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], SyncController.prototype, "ping", null);
 __decorate([
     (0, common_1.Post)("push"),
     (0, auth_decorator_1.RequirePerm)("masters.write"),

@@ -44,6 +44,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
+var AuthService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthService = void 0;
 const common_1 = require("@nestjs/common");
@@ -54,9 +55,11 @@ const argon2_1 = __importDefault(require("argon2"));
 const speakeasy = __importStar(require("speakeasy"));
 const qrcode = __importStar(require("qrcode"));
 const crypto_1 = __importDefault(require("crypto"));
-let AuthService = class AuthService {
+const totp_crypto_1 = require("../../common/auth/totp-crypto");
+let AuthService = AuthService_1 = class AuthService {
     prisma;
     jwt;
+    logger = new common_1.Logger(AuthService_1.name);
     constructor(prisma, jwt) {
         this.prisma = prisma;
         this.jwt = jwt;
@@ -434,30 +437,30 @@ let AuthService = class AuthService {
         return { ok: true };
     }
     async login(dto) {
-        console.log('LOGIN_START', { email: dto.email, companyCode: dto.companyCode });
+        this.logger.debug(`Login attempt for ${dto.email}@${dto.companyCode}`);
         try {
-            console.log('LOGIN_STEP: findUser');
+            this.logger.debug('Finding user...');
             const company = await this.prisma.company.findUnique({ where: { code: dto.companyCode } });
             if (!company)
                 throw new common_1.UnauthorizedException("Invalid credentials");
             const found = await this.getUserWithPerms(company.id, dto.email);
             if (!found) {
-                console.log('LOGIN_FAILED: User not found');
+                this.logger.warn(`Login failed: user not found for ${dto.email}`);
                 throw new common_1.UnauthorizedException("Invalid credentials");
             }
             const { user, perms } = found;
-            console.log('LOGIN_STEP: userFound', { userId: user.id, status: user.status });
+            this.logger.debug(`User found: ${user.id}, status: ${user.status}`);
             if (user.status !== "active") {
-                console.log('LOGIN_FAILED: User disabled');
+                this.logger.warn(`Login failed: user ${user.id} is disabled`);
                 throw new common_1.ForbiddenException("User disabled");
             }
-            console.log('LOGIN_STEP: verifyPassword');
+            this.logger.debug('Verifying password...');
             const ok = await argon2_1.default.verify(user.passwordHash, dto.password);
             if (!ok) {
-                console.log('LOGIN_FAILED: Password mismatch');
+                this.logger.warn(`Login failed: password mismatch for ${user.id}`);
                 throw new common_1.UnauthorizedException("Invalid credentials");
             }
-            console.log('LOGIN_STEP: totpCheck');
+            this.logger.debug('Checking TOTP...');
             let trustedDevice = null;
             if (dto.deviceId) {
                 const link = await this.prisma.deviceUserLink.findFirst({
@@ -475,9 +478,10 @@ let AuthService = class AuthService {
             if (user.totpEnabled && !trustedDevice?.trusted) {
                 if (!dto.totpCode)
                     throw new common_1.UnauthorizedException("TOTP required");
-                const secret = user.totpSecretEnc;
-                if (!secret)
+                const encSecret = user.totpSecretEnc;
+                if (!encSecret)
                     throw new common_1.UnauthorizedException("TOTP secret missing");
+                const secret = (0, totp_crypto_1.decryptTotpSecret)(encSecret);
                 const valid = speakeasy.totp.verify({
                     secret,
                     encoding: "base32",
@@ -485,13 +489,13 @@ let AuthService = class AuthService {
                     window: 1
                 });
                 if (!valid) {
-                    console.log('LOGIN_FAILED: Invalid TOTP');
+                    this.logger.warn(`Login failed: invalid TOTP for ${user.id}`);
                     throw new common_1.UnauthorizedException("Invalid TOTP");
                 }
             }
             let deviceId = trustedDevice?.id || null;
             if (dto.deviceLabel) {
-                console.log('LOGIN_STEP: deviceRegistration');
+                this.logger.debug('Registering device...');
                 const device = await this.prisma.device.create({
                     data: {
                         companyId: user.companyId,
@@ -509,7 +513,7 @@ let AuthService = class AuthService {
                     data: { trusted: true }
                 });
             }
-            console.log('LOGIN_STEP: signTokens');
+            this.logger.debug('Signing tokens...');
             const access = this.signAccessToken({
                 sub: user.id,
                 companyId: user.companyId,
@@ -518,7 +522,7 @@ let AuthService = class AuthService {
                 ver: user.trustedDeviceVersion
             });
             const refresh = this.signRefreshToken(user.id, user.companyId, user.trustedDeviceVersion);
-            console.log('LOGIN_STEP: createSession');
+            this.logger.debug('Creating session...');
             await this.prisma.authSession.create({
                 data: {
                     userId: user.id,
@@ -527,13 +531,13 @@ let AuthService = class AuthService {
                     trustedUntil: dto.rememberDevice ? new Date(Date.now() + 30 * 24 * 3600 * 1000) : null
                 }
             });
-            console.log('LOGIN_STEP: updateLastLogin');
+            this.logger.debug('Updating last login...');
             await this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
-            console.log('LOGIN_SUCCESS');
+            this.logger.log(`Login successful for user ${user.id}`);
             return { accessToken: access, refreshToken: refresh, userId: user.id, companyId: user.companyId, perms, deviceId };
         }
         catch (e) {
-            console.error('LOGIN_ERROR_CAUGHT', e);
+            this.logger.error(`Login error: ${e.message || e}`, e.stack);
             if (e instanceof common_1.UnauthorizedException || e instanceof common_1.ForbiddenException)
                 throw e;
             throw new common_1.InternalServerErrorException(`Login failed: ${e.message || e}`);
@@ -606,9 +610,10 @@ let AuthService = class AuthService {
             name: `Lekhaly (${user.email})`,
             length: 20
         });
+        const encrypted = (0, totp_crypto_1.encryptTotpSecret)(secret.base32);
         await this.prisma.user.update({
             where: { id: user.id },
-            data: { totpSecretEnc: secret.base32 }
+            data: { totpSecretEnc: encrypted }
         });
         const qrDataUrl = await qrcode.toDataURL(secret.otpauth_url);
         return { base32: secret.base32, otpauthUrl: secret.otpauth_url, qrDataUrl };
@@ -617,8 +622,9 @@ let AuthService = class AuthService {
         const user = await this.prisma.user.findUnique({ where: { id: userId } });
         if (!user?.totpSecretEnc)
             throw new common_1.ForbiddenException("Setup TOTP first");
+        const decryptedSecret = (0, totp_crypto_1.decryptTotpSecret)(user.totpSecretEnc);
         const valid = speakeasy.totp.verify({
-            secret: user.totpSecretEnc,
+            secret: decryptedSecret,
             encoding: "base32",
             token: code,
             window: 1
@@ -636,8 +642,9 @@ let AuthService = class AuthService {
         const user = await this.prisma.user.findUnique({ where: { id: userId } });
         if (!user?.totpEnabled || !user.totpSecretEnc)
             throw new common_1.ForbiddenException("TOTP not enabled");
+        const decryptedSecret = (0, totp_crypto_1.decryptTotpSecret)(user.totpSecretEnc);
         const valid = speakeasy.totp.verify({
-            secret: user.totpSecretEnc,
+            secret: decryptedSecret,
             encoding: "base32",
             token: code,
             window: 1
@@ -658,7 +665,7 @@ let AuthService = class AuthService {
     }
 };
 exports.AuthService = AuthService;
-exports.AuthService = AuthService = __decorate([
+exports.AuthService = AuthService = AuthService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService, jwt_1.JwtService])
 ], AuthService);

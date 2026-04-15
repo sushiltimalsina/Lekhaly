@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/app/money";
 import { cn } from "@/lib/utils";
 import { createVoucherDraft, updateVoucherDraft, listVouchers, getVoucher, type VoucherRecord } from "@/lib/api/vouchers";
+import { isOfflineQueuedResponse } from "@/lib/api/client";
 import { listAccounts, type AccountRecord } from "@/lib/api/accounts";
 import { listParties, type PartyRecord } from "@/lib/api/parties";
 import {
@@ -211,9 +212,17 @@ export default function JournalCreatePage() {
             };
 
             if (id) {
-                await updateVoucherDraft(id, payload);
+                const result = await updateVoucherDraft(id, payload);
+                if (isOfflineQueuedResponse(result)) {
+                    setError(result.message);
+                    return;
+                }
             } else {
-                await createVoucherDraft(payload);
+                const result = await createVoucherDraft(payload);
+                if (isOfflineQueuedResponse(result)) {
+                    setError(result.message);
+                    return;
+                }
             }
 
             router.push("/journals");

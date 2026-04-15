@@ -4,6 +4,7 @@ import Sidebar from "@/components/app/sidebar";
 import Topbar from "@/components/app/topbar";
 import QuickActionsRail from "@/components/app/quick-actions";
 import CommandPalette from "@/components/app/command-palette";
+import OfflineSyncBanner from "@/components/app/offline-sync-banner";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +27,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Main Content Area */}
       <div className="flex flex-1 flex-col min-w-0 overflow-hidden relative">
         {!isCreationPage && <Topbar />}
+        <OfflineSyncBanner />
         <CommandPalette />
 
         {/* Content Wrapper */}

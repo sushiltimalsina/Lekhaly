@@ -439,10 +439,28 @@ let VouchersService = class VouchersService {
                     taxCodeId: l.taxCodeId || undefined
                 }))
             }, voucher.voucherType);
-            const sequence = company.nextInvoiceNumber;
-            const prefix = voucher.voucherType === client_1.VoucherType.sales_invoice
-                ? company.invoicePrefix
-                : voucher.voucherType.replace("_", "-").toUpperCase();
+            let sequence;
+            let prefix;
+            const seqUpdate = {};
+            switch (voucher.voucherType) {
+                case client_1.VoucherType.sales_invoice:
+                case client_1.VoucherType.sales_return:
+                    sequence = company.nextInvoiceNumber;
+                    prefix = company.invoicePrefix;
+                    seqUpdate.nextInvoiceNumber = sequence + 1;
+                    break;
+                case client_1.VoucherType.purchase:
+                case client_1.VoucherType.purchase_return:
+                    sequence = company.nextPurchaseOrderNumber;
+                    prefix = company.purchaseOrderPrefix;
+                    seqUpdate.nextPurchaseOrderNumber = sequence + 1;
+                    break;
+                default:
+                    sequence = company.nextInvoiceNumber;
+                    prefix = voucher.voucherType.replace("_", "-").toUpperCase();
+                    seqUpdate.nextInvoiceNumber = sequence + 1;
+                    break;
+            }
             const voucherNumber = `${prefix}-${sequence}`;
             const posted = await tx.voucher.update({
                 where: { id: voucher.id },
@@ -455,7 +473,7 @@ let VouchersService = class VouchersService {
             });
             await tx.company.update({
                 where: { id: company.id },
-                data: { nextInvoiceNumber: sequence + 1 }
+                data: seqUpdate
             });
             if (taxLines.length) {
                 await tx.voucherLine.createMany({

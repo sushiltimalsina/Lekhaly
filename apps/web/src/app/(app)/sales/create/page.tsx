@@ -10,6 +10,7 @@ import { MoneyText } from "@/components/app/money";
 import { cn } from "@/lib/utils";
 
 import { createInvoiceDraft, postInvoice } from "@/lib/api/invoices";
+import { isOfflineQueuedResponse } from "@/lib/api/client";
 import { listParties, type PartyRecord } from "@/lib/api/parties";
 import { listAccounts, type AccountRecord } from "@/lib/api/accounts";
 import { listItems, type ItemRecord } from "@/lib/api/items";
@@ -713,6 +714,10 @@ export default function SalesCreatePage() {
       } else {
         res = await createInvoiceDraft(buildPayload());
       }
+      if (isOfflineQueuedResponse(res)) {
+        setSuccess(res.message);
+        return;
+      }
       const id = res?.id ?? res?.invoiceId ?? res?.data?.id;
       setSuccess(id ? `Saved draft: ${id}` : "Saved draft.");
       if (!editId && id) {
@@ -736,6 +741,10 @@ export default function SalesCreatePage() {
         res = await updateInvoiceDraft(editId, buildPayload());
       } else {
         res = await createInvoiceDraft(buildPayload());
+      }
+      if (isOfflineQueuedResponse(res)) {
+        setError("Offline mode: draft saved to local storage. Go online to sync it with the server before posting.");
+        return;
       }
       const id = res?.id ?? res?.invoiceId ?? res?.data?.id ?? editId;
       if (!id) throw new Error("Failed to save draft before posting.");

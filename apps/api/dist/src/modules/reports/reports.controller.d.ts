@@ -57,14 +57,13 @@ export declare class ReportsController {
         }[];
     }>;
     partyLedger(user: AuthUser, query: any): Promise<{
-        partyId: string;
+        accountId: string | undefined;
+        partyId: string | undefined;
         rows: {
             date: Date;
             dateBs: string | null;
-            voucherId: string;
-            voucherNumber: string | null;
-            accountCode: string;
-            accountName: string;
+            ref: string | null;
+            memo: string;
             debit: import("@prisma/client/runtime/client").Decimal;
             credit: import("@prisma/client/runtime/client").Decimal;
             balance: import("@prisma/client/runtime/client").Decimal;

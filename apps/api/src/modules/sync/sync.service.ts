@@ -1,10 +1,11 @@
-import { ForbiddenException, Injectable } from "@nestjs/common";
-import { Prisma } from "@prisma/client";
+import { ForbiddenException, Injectable, Logger } from "@nestjs/common";
+import { Prisma, VoucherType } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import type { AuthUser } from "../../common/auth/auth.types";
 
 @Injectable()
 export class SyncService {
+  private readonly logger = new Logger(SyncService.name);
   constructor(private prisma: PrismaService) {}
 
   private async requireDeviceAccess(user: AuthUser, deviceId: string) {
@@ -19,12 +20,20 @@ export class SyncService {
   }
 
   async registerDevice(user: AuthUser, dto: { label: string; platform: string }) {
+    // Generate a unique proforma prefix for this device
+    const deviceCount = await this.prisma.device.count({
+      where: { companyId: user.companyId }
+    });
+    const proformaPrefix = `PRF-D${deviceCount + 1}`;
+
     const device = await this.prisma.device.create({
       data: {
         companyId: user.companyId,
         label: dto.label,
         platform: dto.platform,
-        trusted: false
+        trusted: false,
+        proformaPrefix,
+        proformaSequence: 1,
       }
     });
 
@@ -39,7 +48,78 @@ export class SyncService {
       }
     });
 
-    return { deviceId: device.id };
+    return { deviceId: device.id, proformaPrefix };
+  }
+
+  /**
+   * Micro-sync: lightweight endpoint to fetch the next voucher number.
+   * Atomically increments the company sequence. Works on 2G (~200 bytes).
+   */
+  async reserveNextNumber(
+    user: AuthUser,
+    dto: { deviceId: string; voucherType: string }
+  ) {
+    await this.requireDeviceAccess(user, dto.deviceId);
+
+    // Update device lastSeenAt
+    await this.prisma.device.update({
+      where: { id: dto.deviceId },
+      data: { lastSeenAt: new Date() }
+    });
+
+    // Atomically get and increment the correct sequence
+    const result = await this.prisma.$transaction(async (tx) => {
+      const company = await tx.company.findUniqueOrThrow({
+        where: { id: user.companyId }
+      });
+
+      let sequence: number;
+      let prefix: string;
+      const update: Record<string, number> = {};
+
+      switch (dto.voucherType) {
+        case "sales_invoice":
+        case "sales_return":
+          sequence = company.nextInvoiceNumber;
+          prefix = company.invoicePrefix;
+          update.nextInvoiceNumber = sequence + 1;
+          break;
+        case "purchase":
+        case "purchase_return":
+          sequence = company.nextPurchaseOrderNumber;
+          prefix = company.purchaseOrderPrefix;
+          update.nextPurchaseOrderNumber = sequence + 1;
+          break;
+        case "receipt":
+        case "payment":
+        case "journal":
+        case "opening":
+        case "reversal":
+          sequence = company.nextInvoiceNumber;
+          prefix = dto.voucherType.replace("_", "-").toUpperCase();
+          update.nextInvoiceNumber = sequence + 1;
+          break;
+        default:
+          sequence = company.nextInvoiceNumber;
+          prefix = "VCH";
+          update.nextInvoiceNumber = sequence + 1;
+      }
+
+      await tx.company.update({
+        where: { id: company.id },
+        data: update
+      });
+
+      return { prefix, number: sequence, voucherNumber: `${prefix}-${sequence}` };
+    });
+
+    this.logger.log(`Number reserved: ${result.voucherNumber} for device ${dto.deviceId}`);
+    return result;
+  }
+
+  /** Health/connectivity ping — ultra-lightweight (~50 bytes response) */
+  ping() {
+    return { ok: true, ts: Date.now() };
   }
 
   async pushChanges(
@@ -57,6 +137,12 @@ export class SyncService {
     }
   ) {
     await this.requireDeviceAccess(user, dto.deviceId);
+
+    // Update device lastSeenAt
+    await this.prisma.device.update({
+      where: { id: dto.deviceId },
+      data: { lastSeenAt: new Date() }
+    });
 
     const seqs = dto.entries.map((e) => e.seq);
     const uniqueSeqs = Array.from(new Set(seqs));

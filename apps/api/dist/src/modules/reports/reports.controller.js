@@ -83,7 +83,7 @@ __decorate([
     (0, common_1.Get)("ledger"),
     (0, auth_decorator_1.RequirePerm)("reports.view"),
     __param(0, (0, auth_decorator_1.CurrentUser)()),
-    __param(1, (0, common_1.Query)(new zod_pipe_1.ZodValidationPipe(report_schemas_1.PartyLedgerQuerySchema))),
+    __param(1, (0, common_1.Query)(new zod_pipe_1.ZodValidationPipe(report_schemas_1.LedgerQuerySchema))),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", void 0)

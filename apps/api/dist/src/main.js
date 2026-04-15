@@ -37,14 +37,21 @@ const dotenv = __importStar(require("dotenv"));
 dotenv.config();
 const core_1 = require("@nestjs/core");
 const app_module_1 = require("./app.module");
+const common_1 = require("@nestjs/common");
 async function bootstrap() {
+    const logger = new common_1.Logger('Bootstrap');
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
+    const origins = process.env.CORS_ORIGINS
+        ? process.env.CORS_ORIGINS.split(",").map((o) => o.trim())
+        : ["http://localhost:3000", "http://localhost:1420"];
     app.enableCors({
-        origin: ["http://localhost:3000"],
+        origin: origins,
         credentials: true,
     });
     app.setGlobalPrefix("v1");
-    await app.listen(process.env.API_PORT ? Number(process.env.API_PORT) : 4000);
+    const port = process.env.API_PORT ? Number(process.env.API_PORT) : 4000;
+    await app.listen(port);
+    logger.log(`API running on http://localhost:${port}`);
 }
 bootstrap();
 //# sourceMappingURL=main.js.map

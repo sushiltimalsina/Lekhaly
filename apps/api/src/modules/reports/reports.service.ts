@@ -6,7 +6,7 @@ import { OutboxService } from "../outbox/outbox.service";
 
 type ReportFilters = { from?: Date; fromBs?: string; to?: Date; toBs?: string };
 type PartyAgingFilters = ReportFilters & { asOf?: Date; asOfBs?: string };
-type PartyLedgerFilters = { partyId: string; from?: Date; fromBs?: string; to?: Date; toBs?: string };
+type LedgerFilters = { accountId?: string; partyId?: string; from?: Date; fromBs?: string; to?: Date; toBs?: string };
 
 @Injectable()
 export class ReportsService {
@@ -470,7 +470,7 @@ export class ReportsService {
     };
   }
 
-  async partyLedger(companyId: string, filters: PartyLedgerFilters) {
+  async partyLedger(companyId: string, filters: LedgerFilters) {
     const range = await this.resolveReportRange(companyId, {
       from: filters.from,
       fromBs: filters.fromBs,
@@ -478,16 +478,20 @@ export class ReportsService {
       toBs: filters.toBs
     });
     const voucherDate = this.applyDateFilter(range);
+
+    const whereClause: any = {
+      companyId,
+      voucher: {
+        status: "posted",
+        ...(voucherDate ? { voucherDate } : {})
+      }
+    };
+    if (filters.accountId) whereClause.accountId = filters.accountId;
+    if (filters.partyId) whereClause.partyId = filters.partyId;
+
     const lines = await this.prisma.voucherLine.findMany({
-      where: {
-        companyId,
-        partyId: filters.partyId,
-        voucher: {
-          status: "posted",
-          ...(voucherDate ? { voucherDate } : {})
-        }
-      },
-      include: { voucher: true, account: true }
+      where: whereClause,
+      include: { voucher: true, account: true, party: true }
     });
 
     let running = new Prisma.Decimal(0);
@@ -500,17 +504,15 @@ export class ReportsService {
         return {
           date: line.voucher.voucherDate,
           dateBs: line.voucher.voucherDateBs || null,
-          voucherId: line.voucherId,
-          voucherNumber: line.voucher.voucherNumber,
-          accountCode: line.account.code,
-          accountName: line.account.name,
+          ref: line.voucher.voucherNumber,
+          memo: line.account.name + (line.party ? ` — ${line.party.name}` : ""),
           debit,
           credit,
           balance: running
         };
       });
 
-    return { partyId: filters.partyId, rows, balance: running };
+    return { accountId: filters.accountId, partyId: filters.partyId, rows, balance: running };
   }
 
   async exportPdf(companyId: string, input: { report: string; format?: string; from?: Date; to?: Date }) {

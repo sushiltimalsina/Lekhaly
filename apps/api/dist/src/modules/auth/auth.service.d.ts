@@ -3,6 +3,7 @@ import { PrismaService } from "../../common/prisma/prisma.service";
 export declare class AuthService {
     private prisma;
     private jwt;
+    private readonly logger;
     constructor(prisma: PrismaService, jwt: JwtService);
     private getUserWithPerms;
     private getUserWithPermsById;

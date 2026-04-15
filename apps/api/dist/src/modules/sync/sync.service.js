@@ -8,12 +8,14 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var SyncService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SyncService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../../common/prisma/prisma.service");
-let SyncService = class SyncService {
+let SyncService = SyncService_1 = class SyncService {
     prisma;
+    logger = new common_1.Logger(SyncService_1.name);
     constructor(prisma) {
         this.prisma = prisma;
     }
@@ -29,12 +31,18 @@ let SyncService = class SyncService {
         return device;
     }
     async registerDevice(user, dto) {
+        const deviceCount = await this.prisma.device.count({
+            where: { companyId: user.companyId }
+        });
+        const proformaPrefix = `PRF-D${deviceCount + 1}`;
         const device = await this.prisma.device.create({
             data: {
                 companyId: user.companyId,
                 label: dto.label,
                 platform: dto.platform,
-                trusted: false
+                trusted: false,
+                proformaPrefix,
+                proformaSequence: 1,
             }
         });
         await this.prisma.deviceUserLink.create({
@@ -46,10 +54,66 @@ let SyncService = class SyncService {
                 deviceId: device.id
             }
         });
-        return { deviceId: device.id };
+        return { deviceId: device.id, proformaPrefix };
+    }
+    async reserveNextNumber(user, dto) {
+        await this.requireDeviceAccess(user, dto.deviceId);
+        await this.prisma.device.update({
+            where: { id: dto.deviceId },
+            data: { lastSeenAt: new Date() }
+        });
+        const result = await this.prisma.$transaction(async (tx) => {
+            const company = await tx.company.findUniqueOrThrow({
+                where: { id: user.companyId }
+            });
+            let sequence;
+            let prefix;
+            const update = {};
+            switch (dto.voucherType) {
+                case "sales_invoice":
+                case "sales_return":
+                    sequence = company.nextInvoiceNumber;
+                    prefix = company.invoicePrefix;
+                    update.nextInvoiceNumber = sequence + 1;
+                    break;
+                case "purchase":
+                case "purchase_return":
+                    sequence = company.nextPurchaseOrderNumber;
+                    prefix = company.purchaseOrderPrefix;
+                    update.nextPurchaseOrderNumber = sequence + 1;
+                    break;
+                case "receipt":
+                case "payment":
+                case "journal":
+                case "opening":
+                case "reversal":
+                    sequence = company.nextInvoiceNumber;
+                    prefix = dto.voucherType.replace("_", "-").toUpperCase();
+                    update.nextInvoiceNumber = sequence + 1;
+                    break;
+                default:
+                    sequence = company.nextInvoiceNumber;
+                    prefix = "VCH";
+                    update.nextInvoiceNumber = sequence + 1;
+            }
+            await tx.company.update({
+                where: { id: company.id },
+                data: update
+            });
+            return { prefix, number: sequence, voucherNumber: `${prefix}-${sequence}` };
+        });
+        this.logger.log(`Number reserved: ${result.voucherNumber} for device ${dto.deviceId}`);
+        return result;
+    }
+    ping() {
+        return { ok: true, ts: Date.now() };
     }
     async pushChanges(user, dto) {
         await this.requireDeviceAccess(user, dto.deviceId);
+        await this.prisma.device.update({
+            where: { id: dto.deviceId },
+            data: { lastSeenAt: new Date() }
+        });
         const seqs = dto.entries.map((e) => e.seq);
         const uniqueSeqs = Array.from(new Set(seqs));
         const duplicateSeqs = seqs.filter((seq, idx) => seqs.indexOf(seq) !== idx);
@@ -131,7 +195,7 @@ let SyncService = class SyncService {
     }
 };
 exports.SyncService = SyncService;
-exports.SyncService = SyncService = __decorate([
+exports.SyncService = SyncService = SyncService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService])
 ], SyncService);

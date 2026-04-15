@@ -18,7 +18,8 @@ exports.InvoicesModule = InvoicesModule = __decorate([
     (0, common_1.Module)({
         imports: [prisma_module_1.PrismaModule],
         controllers: [invoices_controller_1.InvoicesController],
-        providers: [invoices_service_1.InvoicesService]
+        providers: [invoices_service_1.InvoicesService],
+        exports: [invoices_service_1.InvoicesService]
     })
 ], InvoicesModule);
 //# sourceMappingURL=invoices.module.js.map

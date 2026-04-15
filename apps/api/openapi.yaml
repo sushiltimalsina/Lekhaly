@@ -3,7 +3,8 @@ info:
   title: Lekhaly API
   version: 0.1.0
 servers:
-  - url: http://localhost:3000
+  - url: http://localhost:4000/v1
+    description: Local development
 security:
   - bearerAuth: []
 components:
@@ -163,6 +164,7 @@ components:
 paths:
   /auth/login:
     post:
+      summary: Login
       security: []
       requestBody:
         required: true
@@ -183,6 +185,7 @@ paths:
         "200": { description: OK }
   /auth/register:
     post:
+      summary: Register a new company and admin user
       security: []
       requestBody:
         required: true
@@ -201,107 +204,49 @@ paths:
         "200": { description: OK }
   /auth/refresh:
     post:
+      summary: Refresh access token
       security: []
       responses:
         "200": { description: OK }
   /auth/logout:
     post:
+      summary: Logout and revoke session
       security: []
       responses:
         "200": { description: OK }
   /auth/profile:
     get:
+      summary: Get current user profile
       responses: { "200": { description: OK } }
     patch:
+      summary: Update current user profile
       responses: { "200": { description: OK } }
   /auth/company:
     get:
+      summary: Get current company
       responses: { "200": { description: OK } }
     patch:
+      summary: Update company settings
       responses: { "200": { description: OK } }
   /auth/notifications:
     patch:
+      summary: Update notification preferences
       responses: { "200": { description: OK } }
   /auth/billing/portal:
     post:
+      summary: Start billing portal session
       responses: { "200": { description: OK } }
   /auth/totp/setup:
     post:
+      summary: Setup TOTP 2FA
       responses: { "200": { description: OK } }
   /auth/totp/enable:
     post:
+      summary: Enable TOTP after setup
       responses: { "200": { description: OK } }
   /auth/step-up:
     post:
-      responses: { "200": { description: OK } }
-  /v1/auth/login:
-    post:
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [companyCode, email, password]
-              properties:
-                companyCode: { type: string }
-                email: { type: string }
-                password: { type: string }
-                totpCode: { type: string }
-                deviceId: { type: string }
-                deviceLabel: { type: string }
-                rememberDevice: { type: boolean }
-      responses: { "200": { description: OK } }
-  /v1/auth/register:
-    post:
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [companyCode, companyName, name, email, password]
-              properties:
-                companyCode: { type: string }
-                companyName: { type: string }
-                name: { type: string }
-                email: { type: string }
-                password: { type: string }
-      responses: { "200": { description: OK } }
-  /v1/auth/refresh:
-    post:
-      security: []
-      responses: { "200": { description: OK } }
-  /v1/auth/logout:
-    post:
-      security: []
-      responses: { "200": { description: OK } }
-  /v1/auth/profile:
-    get:
-      responses: { "200": { description: OK } }
-    patch:
-      responses: { "200": { description: OK } }
-  /v1/auth/company:
-    get:
-      responses: { "200": { description: OK } }
-    patch:
-      responses: { "200": { description: OK } }
-  /v1/auth/notifications:
-    patch:
-      responses: { "200": { description: OK } }
-  /v1/auth/billing/portal:
-    post:
-      responses: { "200": { description: OK } }
-  /v1/auth/totp/setup:
-    post:
-      responses: { "200": { description: OK } }
-  /v1/auth/totp/enable:
-    post:
-      responses: { "200": { description: OK } }
-  /v1/auth/step-up:
-    post:
+      summary: Step-up authentication for sensitive operations
       responses: { "200": { description: OK } }
   /vouchers/draft:
     post:

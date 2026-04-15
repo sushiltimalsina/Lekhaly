@@ -5,7 +5,17 @@ export declare class SyncController {
     constructor(sync: SyncService);
     register(user: AuthUser, body: any): Promise<{
         deviceId: string;
+        proformaPrefix: string;
     }>;
+    nextNumber(user: AuthUser, body: any): Promise<{
+        prefix: string;
+        number: number;
+        voucherNumber: string;
+    }>;
+    ping(): {
+        ok: boolean;
+        ts: number;
+    };
     push(user: AuthUser, body: any): Promise<{
         accepted: number;
         rejected: number;

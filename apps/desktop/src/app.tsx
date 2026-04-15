@@ -1,0 +1,148 @@
+// apps/desktop/src/app.tsx
+import React from "react";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { getToken } from "@/lib/store/auth";
+
+// Shell Components
+import Sidebar from "@/components/app/sidebar";
+import Topbar from "@/components/app/topbar";
+import QuickActionsRail from "@/components/app/quick-actions";
+import OfflineSyncBanner from "@/components/app/offline-sync-banner";
+
+// Pages
+import LoginPage from "@/pages/login";
+import DashboardPage from "@/pages/dashboard";
+import SalesListPage from "@/pages/sales/index";
+import SalesDetailPage from "@/pages/sales/view";
+import SalesCreatePage from "@/pages/sales/create";
+
+import PurchaseListPage from "@/pages/purchase/index";
+import PurchaseDetailPage from "@/pages/purchase/view";
+import PurchaseCreatePage from "@/pages/purchase/create";
+
+import VouchersListPage from "@/pages/vouchers/index";
+import VoucherDetailPage from "@/pages/vouchers/view";
+import ReceiptCreatePage from "@/pages/vouchers/receipt-create";
+import PaymentCreatePage from "@/pages/vouchers/payment-create";
+import JournalCreatePage from "@/pages/vouchers/journal-create";
+
+import SalesOrdersListPage from "@/pages/sales-orders/index";
+import SalesOrderDetailPage from "@/pages/sales-orders/view";
+import SalesOrderCreatePage from "@/pages/sales-orders/create";
+
+import PurchaseOrderCreatePage from "@/pages/purchase-orders/create";
+
+import ReportsDashboardPage from "@/pages/reports/index";
+import LedgerReportPage from "@/pages/reports/ledger";
+import TrialBalanceReportPage from "@/pages/reports/trial-balance";
+import ProfitLossPage from "@/pages/reports/pl";
+import BalanceSheetPage from "@/pages/reports/balance-sheet";
+import SalesRegisterPage from "@/pages/reports/sales-register";
+import PurchaseRegisterPage from "@/pages/reports/purchase-register";
+import DayBookPage from "@/pages/reports/day-book";
+import PartyAgingReportPage from "@/pages/reports/party-aging";
+import StockSummaryReportPage from "@/pages/reports/stock-summary";
+
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const token = getToken();
+  const location = useLocation();
+
+  if (!token) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return children;
+}
+
+function AppShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen bg-background text-foreground flex overflow-hidden">
+      {/* Desktop sidebar */}
+      <div
+        className="hidden md:block flex-shrink-0"
+        style={{ width: "var(--sidebar-width, 84px)" }}
+      >
+        <Sidebar className="fixed inset-y-0 z-20" />
+      </div>
+
+      {/* Main Content Area */}
+      <div className="flex flex-1 flex-col min-w-0 overflow-hidden relative">
+        <Topbar />
+        <OfflineSyncBanner />
+
+        {/* Content Wrapper */}
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 scroll-smooth custom-scrollbar">
+          <div className="mx-auto max-w-7xl gap-6 flex">
+            <div className="min-w-0 flex-1 h-full">{children}</div>
+            <QuickActionsRail />
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/*"
+        element={
+          <ProtectedRoute>
+            <AppShell>
+              <Routes>
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/dashboard" element={<DashboardPage />} />
+                
+                {/* Sales Module */}
+                <Route path="/sales" element={<SalesListPage />} />
+                <Route path="/sales/view/:id" element={<SalesDetailPage />} />
+                <Route path="/sales/create" element={<SalesCreatePage />} />
+
+                {/* Purchase Module */}
+                <Route path="/purchase" element={<PurchaseListPage />} />
+                <Route path="/purchase/view/:id" element={<PurchaseDetailPage />} />
+                <Route path="/purchase/create" element={<PurchaseCreatePage />} />
+
+                {/* Vouchers Module */}
+                <Route path="/vouchers" element={<VouchersListPage />} />
+                <Route path="/vouchers/view/:id" element={<VoucherDetailPage />} />
+                <Route path="/receipts/create" element={<ReceiptCreatePage />} />
+                <Route path="/payments/create" element={<PaymentCreatePage />} />
+                <Route path="/journals/create" element={<JournalCreatePage />} />
+
+                {/* Sales Orders Module */}
+                <Route path="/sales-orders" element={<SalesOrdersListPage />} />
+                <Route path="/sales-orders/view/:id" element={<SalesOrderDetailPage />} />
+                <Route path="/sales-orders/create" element={<SalesOrderCreatePage />} />
+
+                {/* Purchase Orders Module */}
+                <Route path="/purchase-orders/create" element={<PurchaseOrderCreatePage />} />
+
+                {/* Reports Module */}
+                <Route path="/reports" element={<ReportsDashboardPage />} />
+                <Route path="/reports/ledger" element={<LedgerReportPage />} />
+                <Route path="/reports/trial-balance" element={<TrialBalanceReportPage />} />
+                <Route path="/reports/pl" element={<ProfitLossPage />} />
+                <Route path="/reports/balance-sheet" element={<BalanceSheetPage />} />
+                <Route path="/reports/sales-register" element={<SalesRegisterPage />} />
+                <Route path="/reports/purchase-register" element={<PurchaseRegisterPage />} />
+                <Route path="/reports/day-book" element={<DayBookPage />} />
+                <Route path="/reports/party-aging" element={<PartyAgingReportPage />} />
+                <Route path="/reports/stock-summary" element={<StockSummaryReportPage />} />
+                {/* Fallback */}
+                <Route path="*" element={
+                  <div className="flex flex-col items-center justify-center p-20 text-center space-y-4">
+                    <h1 className="text-4xl font-bold text-muted-foreground/30">404</h1>
+                    <p className="text-muted-foreground">The page you're looking for was not found or is still under construction.</p>
+                  </div>
+                } />
+              </Routes>
+            </AppShell>
+          </ProtectedRoute>
+        }
+      />
+    </Routes>
+  );
+}
