@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import PageHeader from "@/components/app/page-header";
-import { Button } from "@/components/ui/button";
+import { Button } from "@lekhaly/ui";
 import { MoneyText } from "@/components/app/money";
 import { listVouchers, type VoucherType } from "@/lib/api/vouchers";
 import StatusBadge, { DocStatus } from "@/components/app/status-badge";

@@ -1,11 +1,11 @@
-﻿"use client";
+"use client";
 
 import * as React from "react";
 import { createPortal } from "react-dom";
 import PageHeader from "@/components/app/page-header";
-import DualDateInput from "@/components/app/dual-date-input";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { DualDateInput } from "@/components/app/dual-date-input";
+import { Input } from "@lekhaly/ui";
+import { Button } from "@lekhaly/ui";
 import { MoneyText } from "@/components/app/money";
 import { cn } from "@/lib/utils";
 
@@ -34,9 +34,9 @@ import {
   ChevronRight,
   ArrowLeft,
 } from "lucide-react";
-import Link from "next/link";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toBs } from "@/lib/dates/bs";
-import { useRouter, useSearchParams } from "next/navigation";
+
 import { getInvoice, updateInvoiceDraft } from "@/lib/api/invoices";
 
 type Line = { itemId: string; qty: string; rate: string; description?: string };
@@ -429,8 +429,8 @@ export default function SalesCreatePage() {
   React.useEffect(() => setMounted(true), []);
 
   const ui = useUiState();
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [isEditMode, setIsEditMode] = React.useState(true);
   const [invoiceStatus, setInvoiceStatus] = React.useState<string | null>(null);
 
@@ -721,7 +721,7 @@ export default function SalesCreatePage() {
       const id = res?.id ?? res?.invoiceId ?? res?.data?.id;
       setSuccess(id ? `Saved draft: ${id}` : "Saved draft.");
       if (!editId && id) {
-        router.replace(`/sales/create?id=${id}`);
+        navigate(`/sales/create?id=${id}`, { replace: true });
       }
     } catch (e: any) {
       setError(e?.message ?? "Something went wrong.");
@@ -751,7 +751,7 @@ export default function SalesCreatePage() {
 
       await postInvoice(id);
       setSuccess(`Invoice posted successfully: ${id}`);
-      setTimeout(() => router.push("/sales"), 1500);
+      setTimeout(() => navigate("/sales"), 1500);
     } catch (e: any) {
       setError(e?.message ?? "Something went wrong.");
     } finally {
@@ -772,7 +772,7 @@ export default function SalesCreatePage() {
         <div className="mb-4">
           <Button
             variant="ghost"
-            onClick={() => router.push("/sales")}
+            onClick={() => navigate("/sales")}
             className="rounded-full h-10 px-4 text-slate-500 hover:text-slate-900 transition-colors"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />

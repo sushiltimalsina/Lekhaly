@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Input } from "@/components/ui/input";
+import { Input } from "@lekhaly/ui";
 import { createUnit } from "@/lib/api/units";
 import { X, Save, Scale } from "lucide-react";
 import { createPortal } from "react-dom";

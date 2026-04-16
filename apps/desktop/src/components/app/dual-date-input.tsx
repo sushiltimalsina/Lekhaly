@@ -2,7 +2,7 @@
 import * as React from "react";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Input } from "@/components/ui/input";
+import { Input } from "@lekhaly/ui";
 import { adToBs, bsToAd } from "@/lib/dates/convert";
 import { formatDisplayDate } from "@/lib/dates/display";
 import { getSettings, subscribeSettings, type CalendarPreference } from "@/lib/store/settings";
@@ -22,7 +22,7 @@ type DualDateInputProps = {
   accentColor?: string;
 };
 
-export function DualDateInput({
+export const DualDateInput = React.forwardRef<HTMLInputElement, DualDateInputProps>(({
   label,
   value,
   onChange,
@@ -32,7 +32,7 @@ export function DualDateInput({
   onEnterNext,
   className,
   accentColor = "bg-primary",
-}: DualDateInputProps) {
+}, ref) => {
   const [preference, setPreference] = React.useState<CalendarPreference>(
     preferred || getSettings().calendarPreference || "BS"
   );
@@ -100,6 +100,7 @@ export function DualDateInput({
 
       <div className="relative">
         <Input
+          ref={ref}
           type="text"
           value={localMain || display.main || ""}
           onChange={(e) => setLocalMain(e.target.value)}
@@ -156,4 +157,6 @@ export function DualDateInput({
       </div>
     </div>
   );
-}
+});
+
+DualDateInput.displayName = "DualDateInput";

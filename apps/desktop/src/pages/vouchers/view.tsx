@@ -24,7 +24,7 @@ import { getVoucher, postVoucher, voidVoucher } from "@/lib/api/vouchers";
 import { useDateFormat } from "@/lib/date-format";
 import { getDateDisplay } from "@/lib/dates/display";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { Button } from "@lekhaly/ui";
 
 export default function VoucherDetailPage() {
     const { id } = useParams<{ id: string }>();

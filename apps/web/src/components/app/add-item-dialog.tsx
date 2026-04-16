@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Input } from "@/components/ui/input";
+import { Input } from "@lekhaly/ui";
 import { createItem, type ItemType } from "@/lib/api/items";
 import { listUnits, type UnitRecord } from "@/lib/api/units";
 import { listItemGroups, type ItemGroupRecord } from "@/lib/api/item-groups";

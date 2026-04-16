@@ -18,7 +18,7 @@ import { listPurchaseOrders, type PurchaseOrderRecord } from "@/lib/api/purchase
 import { getSettings } from "@/lib/store/settings";
 import { getDateDisplay } from "@/lib/dates/display";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { Button } from "@lekhaly/ui";
 import AdvancedFilterBar from "@/components/app/advanced-filter-bar";
 import DataTable from "@/components/app/data-table";
 

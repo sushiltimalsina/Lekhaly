@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import PageHeader from "@/components/app/page-header";
-import { Input } from "@/components/ui/input";
+import { Input } from "@lekhaly/ui";
 import { createParty } from "@/lib/api/parties";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Save, UserPlus, Mail, Phone, MapPin, Hash, Banknote } from "lucide-react";

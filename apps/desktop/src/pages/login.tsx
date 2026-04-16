@@ -3,9 +3,9 @@ import * as React from "react";
 import { login } from "@/lib/api/auth";
 import { setToken } from "@/lib/store/auth";
 import { useNavigate, Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@lekhaly/ui";
+import { Input } from "@lekhaly/ui";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@lekhaly/ui";
 import { Receipt, Loader2, ArrowRight } from "lucide-react";
 
 export default function LoginPage() {

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Input } from "@/components/ui/input";
+import { Input } from "@lekhaly/ui";
 import { createBillSundry } from "@/lib/api/bill-sundries";
 import { listAccounts, type AccountRecord } from "@/lib/api/accounts";
 import { X, Save, Calculator, Plus, Minus, Search } from "lucide-react";

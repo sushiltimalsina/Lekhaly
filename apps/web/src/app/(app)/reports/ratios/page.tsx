@@ -3,11 +3,11 @@
 import * as React from "react";
 import PageHeader from "@/components/app/page-header";
 import { getProfitLoss, getBalanceSheet } from "@/lib/api/reports";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@lekhaly/ui";
 import { AlertCircle, TrendingUp, TrendingDown, Scale, Zap, DollarSign, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MoneyText } from "@/components/app/money";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@lekhaly/ui";
 
 export default function RatiosPage() {
     const [loading, setLoading] = React.useState(true);

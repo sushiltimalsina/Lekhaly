@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import PageHeader from "@/components/app/page-header";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@lekhaly/ui";
 import {
     FileText,
     BookOpen,
@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { Input } from "@/components/ui/input";
+import { Input } from "@lekhaly/ui";
 
 const reports = [
     {

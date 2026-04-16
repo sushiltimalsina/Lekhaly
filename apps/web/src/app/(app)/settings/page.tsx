@@ -2,9 +2,9 @@
 
 import * as React from "react";
 import PageHeader from "@/components/app/page-header";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@lekhaly/ui";
+import { Button } from "@lekhaly/ui";
+import { Input } from "@lekhaly/ui";
 import { getCompany, updateCompany } from "@/lib/api/auth";
 import { useDateFormat } from "@/lib/date-format";
 import { Sun, Moon, Monitor } from "lucide-react";

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Search, Menu, X, Bell, List, Sun, Moon, LayoutGrid } from "lucide-react";
 import Sidebar from "@/components/app/sidebar";
-import { Input } from "@/components/ui/input";
+import { Input } from "@lekhaly/ui";
 import { getUiState, subscribeUi, toggleDensity } from "@/lib/store/ui";
 
 type TopbarProps = {

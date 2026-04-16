@@ -10,8 +10,8 @@ import {
   ArrowDownRight,
   FileText
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@lekhaly/ui";
+import { Button } from "@lekhaly/ui";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { RevenueChart, ExpenseDistribution } from "@/components/app/dashboard-charts";

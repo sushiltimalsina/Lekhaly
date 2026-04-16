@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Input } from "@/components/ui/input";
+import { Input } from "@lekhaly/ui";
 import { adToBs, bsToAd } from "@/lib/dates/convert";
 import { formatDisplayDate } from "@/lib/dates/display";
 import { getSettings, subscribeSettings, type CalendarPreference } from "@/lib/store/settings";

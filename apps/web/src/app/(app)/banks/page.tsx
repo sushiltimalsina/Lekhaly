@@ -4,8 +4,8 @@ import * as React from "react";
 import PageHeader from "@/components/app/page-header";
 import DataTable, { Column } from "@/components/app/data-table";
 import { MoneyText } from "@/components/app/money";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@lekhaly/ui";
+import { Input } from "@lekhaly/ui";
 import {
     Plus,
     Search,

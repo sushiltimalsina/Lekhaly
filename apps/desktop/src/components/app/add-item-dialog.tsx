@@ -1,8 +1,8 @@
 // apps/desktop/src/components/app/add-item-dialog.tsx
 import * as React from "react";
 import { X, PackagePlus, Barcode, Tag, Calculator } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@lekhaly/ui";
+import { Input } from "@lekhaly/ui";
 import { createItem } from "@/lib/api/items";
 
 export default function AddItemDialog({

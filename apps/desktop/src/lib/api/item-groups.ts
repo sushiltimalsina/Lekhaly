@@ -21,3 +21,10 @@ export async function createItemGroup(input: { name: string }) {
     body: input,
   });
 }
+
+export async function deleteItemGroup(id: string) {
+  return apiRequest<void>({
+    method: "DELETE",
+    path: `/item-groups/${id}`,
+  });
+}

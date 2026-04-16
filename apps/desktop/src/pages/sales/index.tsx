@@ -1,7 +1,7 @@
 // apps/desktop/src/pages/sales/index.tsx
 import * as React from "react";
 import PageHeader from "@/components/app/page-header";
-import { Button } from "@/components/ui/button";
+import { Button } from "@lekhaly/ui";
 import { MoneyText } from "@/components/app/money";
 import { listInvoices } from "@/lib/api/invoices";
 import StatusBadge, { DocStatus } from "@/components/app/status-badge";

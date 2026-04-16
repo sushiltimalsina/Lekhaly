@@ -4,8 +4,8 @@ import * as React from "react";
 import { createPortal } from "react-dom";
 import PageHeader from "@/components/app/page-header";
 import DualDateInput from "@/components/app/dual-date-input";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Input } from "@lekhaly/ui";
+import { Button } from "@lekhaly/ui";
 import { MoneyText } from "@/components/app/money";
 import { cn } from "@/lib/utils";
 

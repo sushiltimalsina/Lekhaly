@@ -35,13 +35,13 @@ import { generateVoucherPdf, getPdfJobUrl } from "@/lib/api/pdf";
 import { useDateFormat } from "@/lib/date-format";
 import { getDateDisplay, getDateLabel } from "@/lib/dates/display";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { Button } from "@lekhaly/ui";
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu";
+} from "@lekhaly/ui";
 
 export default function VoucherDetailPage() {
     const params = useParams<{ id: string }>();

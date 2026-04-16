@@ -1,7 +1,7 @@
 // apps/desktop/src/components/app/confirm-dialog.tsx
 import React from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@lekhaly/ui";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@lekhaly/ui";
 import { Loader2 } from "lucide-react";
 
 type ConfirmDialogProps = {

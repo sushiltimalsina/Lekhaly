@@ -59,6 +59,12 @@ import DayBookPage from "@/pages/reports/day-book";
 import PartyAgingReportPage from "@/pages/reports/party-aging";
 import StockSummaryReportPage from "@/pages/reports/stock-summary";
 
+import UsersPage from "@/pages/users";
+import BanksPage from "@/pages/banks";
+import CoaPage from "@/pages/coa";
+import ConfigurationPage from "@/pages/configuration";
+import SettingsPage from "@/pages/settings";
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = getToken();
   const location = useLocation();
@@ -72,7 +78,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function AppShell({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
-  const isCreationPage = pathname.includes("/create") || pathname.includes("/view/") || pathname.includes("/new");
+  const isCreationPage = false; // Intentionally disabled to match Web App layout
 
   return (
     <div className="min-h-screen bg-background text-foreground flex overflow-hidden">
@@ -172,6 +178,14 @@ export default function App() {
                 <Route path="/reports/day-book" element={<DayBookPage />} />
                 <Route path="/reports/party-aging" element={<PartyAgingReportPage />} />
                 <Route path="/reports/stock-summary" element={<StockSummaryReportPage />} />
+
+                {/* Core Configuration & Settings */}
+                <Route path="/users" element={<ProtectedRoute><UsersPage /></ProtectedRoute>} />
+                <Route path="/banks" element={<ProtectedRoute><BanksPage /></ProtectedRoute>} />
+                <Route path="/coa" element={<ProtectedRoute><CoaPage /></ProtectedRoute>} />
+                <Route path="/configuration" element={<ProtectedRoute><ConfigurationPage /></ProtectedRoute>} />
+                <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+
                 {/* Fallback */}
                 <Route path="*" element={
                   <div className="flex flex-col items-center justify-center p-20 text-center space-y-4">

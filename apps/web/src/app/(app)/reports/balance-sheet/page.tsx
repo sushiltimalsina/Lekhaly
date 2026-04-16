@@ -6,7 +6,7 @@ import AdvancedFilterBar from "@/components/app/advanced-filter-bar";
 import { MoneyText } from "@/components/app/money";
 import { getBalanceSheet } from "@/lib/api/reports";
 import { useDateFormat } from "@/lib/date-format";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@lekhaly/ui";
 import { Printer, FileDown, RefreshCw, AlertCircle, ShieldCheck, Scale, PieChart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getDateRange } from "@/lib/dates/ranges";

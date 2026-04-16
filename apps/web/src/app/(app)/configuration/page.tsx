@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import PageHeader from "@/components/app/page-header";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Input } from "@lekhaly/ui";
+import { Button } from "@lekhaly/ui";
 import { createUnit, deleteUnit, listUnits, type UnitRecord } from "@/lib/api/units";
 import { createItemGroup, deleteItemGroup, listItemGroups, type ItemGroupRecord } from "@/lib/api/item-groups";
 import { Trash2 } from "lucide-react";

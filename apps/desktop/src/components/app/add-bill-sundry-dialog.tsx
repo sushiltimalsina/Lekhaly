@@ -1,8 +1,8 @@
 // apps/desktop/src/components/app/add-bill-sundry-dialog.tsx
 import * as React from "react";
 import { X, Percent, PlusCircle, MinusCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@lekhaly/ui";
+import { Input } from "@lekhaly/ui";
 import { createBillSundry } from "@/lib/api/bill-sundries";
 import { cn } from "@/lib/utils";
 

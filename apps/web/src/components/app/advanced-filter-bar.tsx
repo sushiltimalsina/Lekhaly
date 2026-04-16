@@ -17,8 +17,8 @@ import {
     Check
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@lekhaly/ui";
+import { Input } from "@lekhaly/ui";
 import { DualDateInput } from "@/components/app/dual-date-input";
 import { Calendar } from "@/components/app/calendar";
 import { adToBs } from "@/lib/dates/convert";
@@ -27,7 +27,7 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@lekhaly/ui";
 import { DATE_RANGE_LABELS, DateRangeKey, getDateRange } from "@/lib/dates/ranges";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDateFormat } from "@/lib/date-format";

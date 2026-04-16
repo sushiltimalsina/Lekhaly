@@ -1,8 +1,8 @@
 // apps/desktop/src/pages/reports/index.tsx
 import * as React from "react";
 import PageHeader from "@/components/app/page-header";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@lekhaly/ui";
+import { Button } from "@lekhaly/ui";
 import {
   BarChart3,
   PieChart,

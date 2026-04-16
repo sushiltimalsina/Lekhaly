@@ -1,8 +1,8 @@
 import * as React from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import PageHeader from "@/components/app/page-header";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Input } from "@lekhaly/ui";
+import { Button } from "@lekhaly/ui";
 import { MoneyText } from "@/components/app/money";
 import { cn } from "@/lib/utils";
 import { DualDateInput } from "@/components/app/dual-date-input";

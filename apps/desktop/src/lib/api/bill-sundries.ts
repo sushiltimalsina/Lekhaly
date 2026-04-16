@@ -1,4 +1,3 @@
-// apps/desktop/src/lib/api/bill-sundries.ts - Bill Sundry master data management API
 import { apiRequest } from "./client";
 
 export type BillSundryRecord = {
@@ -8,6 +7,15 @@ export type BillSundryRecord = {
     rate: number | null;
     accountId: string | null;
     isActive: boolean;
+    account?: { id: string; name: string };
+};
+
+export type BillSundryInput = {
+    name: string;
+    type: "add" | "less";
+    rate?: number | null;
+    accountId?: string | null;
+    isActive?: boolean;
 };
 
 export async function listBillSundries(params?: { isActive?: boolean; q?: string; take?: number; skip?: number }) {
@@ -18,30 +26,30 @@ export async function listBillSundries(params?: { isActive?: boolean; q?: string
     });
 }
 
-export async function createBillSundry(body: any) {
-    return apiRequest<any>({
+export async function createBillSundry(input: BillSundryInput) {
+    return apiRequest<BillSundryRecord>({
         method: "POST",
         path: "/bill-sundries",
-        body,
+        body: input,
     });
 }
 
 export async function getBillSundry(id: string) {
-    return apiRequest<any>({
+    return apiRequest<BillSundryRecord>({
         method: "GET",
         path: `/bill-sundries/${id}`,
     });
 }
 
-export async function updateBillSundry(id: string, body: any) {
-    return apiRequest<any>({
+export async function updateBillSundry(id: string, input: BillSundryInput) {
+    return apiRequest<BillSundryRecord>({
         method: "PUT",
         path: `/bill-sundries/${id}`,
-        body,
+        body: input,
     });
 }
 
-export async function removeBillSundry(id: string) {
+export async function deleteBillSundry(id: string) {
     return apiRequest<any>({
         method: "DELETE",
         path: `/bill-sundries/${id}`,

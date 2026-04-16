@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Input } from "@/components/ui/input";
+import { Input } from "@lekhaly/ui";
 import { createParty } from "@/lib/api/parties";
 import { X, Save, UserPlus, Mail, Phone, MapPin, Hash, Banknote } from "lucide-react";
 import { cn } from "@/lib/utils";

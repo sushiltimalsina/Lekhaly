@@ -5,7 +5,7 @@ import PageHeader from "@/components/app/page-header";
 import AdvancedFilterBar from "@/components/app/advanced-filter-bar";
 import { MoneyText } from "@/components/app/money";
 import { getProfitLoss, getBalanceSheet } from "@/lib/api/reports";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@lekhaly/ui";
 import { RefreshCw, TrendingUp, TrendingDown, Landmark } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getDateRange } from "@/lib/dates/ranges";

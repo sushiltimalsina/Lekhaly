@@ -1,8 +1,8 @@
 // apps/desktop/src/components/app/add-vendor-dialog.tsx
 import * as React from "react";
 import { X, UserPlus, Building2, Phone, Mail, MapPin } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@lekhaly/ui";
+import { Input } from "@lekhaly/ui";
 import { createParty } from "@/lib/api/parties";
 
 export default function AddVendorDialog({

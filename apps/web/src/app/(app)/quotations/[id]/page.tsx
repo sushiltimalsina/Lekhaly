@@ -33,13 +33,13 @@ import {
 import { useDateFormat } from "@/lib/date-format";
 import { getDateDisplay } from "@/lib/dates/display";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { Button } from "@lekhaly/ui";
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu";
+} from "@lekhaly/ui";
 
 export default function QuotationDetailPage() {
     const params = useParams<{ id: string }>();

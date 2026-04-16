@@ -17,7 +17,7 @@ import { listInvoices } from "@/lib/api/invoices";
 import { getSettings, subscribeSettings } from "@/lib/store/settings";
 import { getDateDisplay } from "@/lib/dates/display";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { Button } from "@lekhaly/ui";
 import AdvancedFilterBar from "@/components/app/advanced-filter-bar";
 
 export default function SalesReturnListPage() {

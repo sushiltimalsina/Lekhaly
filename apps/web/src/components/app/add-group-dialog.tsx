@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Input } from "@/components/ui/input";
+import { Input } from "@lekhaly/ui";
 import { createItemGroup } from "@/lib/api/item-groups";
 import { X, Save, FolderPlus } from "lucide-react";
 import { createPortal } from "react-dom";

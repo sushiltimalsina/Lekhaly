@@ -2,8 +2,8 @@
 import * as React from "react";
 import PageHeader from "@/components/app/page-header";
 import { DualDateInput } from "@/components/app/dual-date-input";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Input } from "@lekhaly/ui";
+import { Button } from "@lekhaly/ui";
 import { MoneyText } from "@/components/app/money";
 import { cn } from "@/lib/utils";
 import { createVoucherDraft, listVouchers, type VoucherRecord } from "@/lib/api/vouchers";

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import PageHeader from "@/components/app/page-header";
-import { Input } from "@/components/ui/input";
+import { Input } from "@lekhaly/ui";
 import { createItem } from "@/lib/api/items";
 import { listTaxes } from "@/lib/api/taxes";
 import { listUnits, type UnitRecord } from "@/lib/api/units";

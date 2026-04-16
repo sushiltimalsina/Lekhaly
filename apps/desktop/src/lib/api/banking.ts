@@ -1,4 +1,3 @@
-// apps/desktop/src/lib/api/banking.ts
 import { apiRequest } from "./client";
 
 export type BankAccountInput = {
@@ -15,6 +14,20 @@ export type BankStatementInput = {
   periodToBs?: string;
   openingBalance: number;
   closingBalance: number;
+};
+
+export type BankStatementLineInput = {
+  date?: string;
+  dateBs?: string;
+  description?: string;
+  amount: number;
+  debitCredit: "debit" | "credit";
+};
+
+export type ReconcileInput = {
+  statementLineId: string;
+  voucherId: string;
+  voucherLineId?: string;
 };
 
 export async function createBankAccount(input: BankAccountInput) {
@@ -48,7 +61,15 @@ export async function getStatement(id: string) {
   });
 }
 
-export async function reconcile(input: any) {
+export async function addStatementLine(statementId: string, input: BankStatementLineInput) {
+  return apiRequest<any>({
+    method: "POST",
+    path: `/banking/statements/${statementId}/lines`,
+    body: input,
+  });
+}
+
+export async function reconcile(input: ReconcileInput) {
   return apiRequest<any>({
     method: "POST",
     path: "/banking/reconcile",
@@ -56,9 +77,31 @@ export async function reconcile(input: any) {
   });
 }
 
+export async function unmatchReconcile(lineId: string) {
+  return apiRequest<any>({
+    method: "POST",
+    path: `/banking/reconcile/${lineId}/unmatch`,
+  });
+}
+
+/* Banking sync */
+export async function connectBankSync() {
+  return apiRequest<any>({
+    method: "POST",
+    path: "/banking/sync/connect",
+  });
+}
+
 export async function getBankSyncStatus() {
   return apiRequest<any>({
     method: "GET",
     path: "/banking/sync/status",
+  });
+}
+
+export async function refreshBankSync() {
+  return apiRequest<any>({
+    method: "POST",
+    path: "/banking/sync/refresh",
   });
 }

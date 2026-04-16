@@ -10,7 +10,7 @@ import { generateInvoicePdf, getPdfJobUrl } from "@/lib/api/pdf";
 import { useDateFormat } from "@/lib/date-format";
 import { getDateDisplay } from "@/lib/dates/display";
 import { ArrowLeft, Printer, MoreVertical, Trash2, CheckCircle2, Receipt, Building2, Calendar, FileText } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@lekhaly/ui";
 import { cn } from "@/lib/utils";
 
 export default function SalesDetailPage() {

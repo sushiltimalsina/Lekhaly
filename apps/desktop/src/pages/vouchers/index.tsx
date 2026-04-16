@@ -19,7 +19,7 @@ import { listVouchers, VoucherType } from "@/lib/api/vouchers";
 import { useDateFormat } from "@/lib/date-format";
 import { getDateDisplay } from "@/lib/dates/display";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { Button } from "@lekhaly/ui";
 import AdvancedFilterBar from "@/components/app/advanced-filter-bar";
 
 const VOUCHER_TYPE_METADATA: Record<string, { label: string; icon: any; color: string }> = {

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Input } from "@/components/ui/input";
+import { Input } from "@lekhaly/ui";
 import { apiRequest } from "@/lib/api/client";
 import { X, Save, Layers, ChevronDown } from "lucide-react";
 import { createPortal } from "react-dom";

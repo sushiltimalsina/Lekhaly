@@ -6,7 +6,7 @@ import AdvancedFilterBar from "@/components/app/advanced-filter-bar";
 import DataTable, { Column } from "@/components/app/data-table";
 import { MoneyText } from "@/components/app/money";
 import { getVatSummary } from "@/lib/api/taxes";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@lekhaly/ui";
 import { RefreshCw, AlertCircle, Percent, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getDateRange } from "@/lib/dates/ranges";

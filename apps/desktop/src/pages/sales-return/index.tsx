@@ -1,5 +1,5 @@
 import PageHeader from "@/components/app/page-header";
-import { Button } from "@/components/ui/button";
+import { Button } from "@lekhaly/ui";
 import { RotateCcw } from "lucide-react";
 import { Link } from "react-router-dom";
 

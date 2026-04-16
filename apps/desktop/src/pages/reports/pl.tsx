@@ -18,8 +18,8 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import PageHeader from "@/components/app/page-header";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@lekhaly/ui";
+import { Card, CardContent } from "@lekhaly/ui";
 import { MoneyText } from "@/components/app/money";
 import AdvancedFilterBar from "@/components/app/advanced-filter-bar";
 import { getProfitLoss } from "@/lib/api/reports";
