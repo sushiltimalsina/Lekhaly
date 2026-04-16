@@ -16,6 +16,8 @@ export function formatMoney(
   const absValue = Math.abs(value);
   const isNegative = value < 0;
 
+  // Nepal typically uses comma grouping similar to Indian system,
+  // but JS Intl "en-IN" gives a good default for NPR formatting.
   const formatted = new Intl.NumberFormat(format, {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
@@ -36,9 +38,11 @@ export function MoneyText({
   currency?: string;
   decimals?: number;
 }) {
+  const [mounted, setMounted] = React.useState(false);
   const [settings, setSettings] = React.useState(getCurrencySettings());
 
   React.useEffect(() => {
+    setMounted(true);
     return subscribeUi((next) => {
       setSettings({
         currencyCode: next.currencyCode,
@@ -48,13 +52,21 @@ export function MoneyText({
     });
   }, []);
 
+  // For React-desktop/SPA, hydration is less of an issue than Next.js SSR,
+  // but keeping the mounted bridge for architectural parity.
+  const currentSettings = mounted ? settings : {
+    currencyCode: "NPR",
+    currencySymbol: "रु.",
+    numberFormat: "en-IN",
+  };
+
   return (
     <span className={["mono-numbers tabular-nums", className ?? ""].join(" ")}>
       {formatMoney(value, {
         currency,
         decimals,
-        symbol: settings.currencySymbol,
-        format: settings.numberFormat,
+        symbol: currentSettings.currencySymbol,
+        format: currentSettings.numberFormat,
       })}
     </span>
   );

@@ -1,5 +1,4 @@
-// apps/desktop/src/pages/dashboard.tsx
-import React from "react";
+import * as React from "react";
 import { MoneyText } from "@/components/app/money";
 import {
   Activity,
@@ -12,25 +11,25 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RevenueChart, ExpenseDistribution } from "@/components/app/dashboard-charts";
 import { cn } from "@/lib/utils";
+import { RevenueChart, ExpenseDistribution } from "@/components/app/dashboard-charts";
 
 export default function DashboardPage() {
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-8">
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-heading font-bold tracking-tight text-gradient">
+          <h2 className="text-3xl font-heading font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
             Dashboard
           </h2>
-          <p className="text-muted-foreground mt-1 text-sm font-medium">
+          <p className="text-muted-foreground mt-1">
             Overview of your business performance.
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" className="hidden sm:flex border-border/50">Download Report</Button>
-          <Button className="shadow-lg shadow-primary/25 px-6">New Transaction</Button>
+          <Button variant="outline" className="hidden sm:flex">Download Report</Button>
+          <Button className="shadow-lg shadow-primary/25">New Transaction</Button>
         </div>
       </div>
 
@@ -67,10 +66,10 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4 glass-card border-none bg-card/60">
+        <Card className="col-span-4 glass-card">
           <CardHeader>
-            <CardTitle className="text-lg">Financial Overview</CardTitle>
-            <CardDescription className="text-xs">Visualizing your monthly cash flow (Revenue vs Expenses).</CardDescription>
+            <CardTitle>Financial Overview</CardTitle>
+            <CardDescription>Visualizing your monthly cash flow (Revenue vs Expenses).</CardDescription>
           </CardHeader>
           <CardContent>
             <RevenueChart />
@@ -78,10 +77,10 @@ export default function DashboardPage() {
         </Card>
 
         {/* Recent Activity */}
-        <Card className="col-span-3 glass-card border-none bg-card/60">
+        <Card className="col-span-3 glass-card">
           <CardHeader>
-            <CardTitle className="text-lg">Recent Activity</CardTitle>
-            <CardDescription className="text-xs">Latest financial transactions.</CardDescription>
+            <CardTitle>Recent Activity</CardTitle>
+            <CardDescription>Latest financial transactions.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
@@ -115,59 +114,59 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-3 glass-card border-none bg-card/60">
+        <Card className="col-span-3 glass-card">
           <CardHeader>
-            <CardTitle className="text-lg">Expense Distribution</CardTitle>
-            <CardDescription className="text-xs">Breakdown of where your money is going.</CardDescription>
+            <CardTitle>Expense Distribution</CardTitle>
+            <CardDescription>Breakdown of where your money is going.</CardDescription>
           </CardHeader>
           <CardContent>
             <ExpenseDistribution />
             <div className="mt-4 grid grid-cols-2 gap-2">
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-blue-500" />
-                <span className="text-[10px] text-muted-foreground font-medium">Operating</span>
+                <span className="text-xs text-muted-foreground">Operating</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-emerald-500" />
-                <span className="text-[10px] text-muted-foreground font-medium">Marketing</span>
+                <span className="text-xs text-muted-foreground">Marketing</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-indigo-500" />
-                <span className="text-[10px] text-muted-foreground font-medium">Payroll</span>
+                <span className="text-xs text-muted-foreground">Payroll</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-amber-500" />
-                <span className="text-[10px] text-muted-foreground font-medium">Utilities</span>
+                <span className="text-xs text-muted-foreground">Utilities</span>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-4 glass-card border-none bg-card/60">
+        <Card className="col-span-4 glass-card">
           <CardHeader>
-            <CardTitle className="text-lg">Cash Flow Health</CardTitle>
-            <CardDescription className="text-xs">Your current liquidity and financial stability indicators.</CardDescription>
+            <CardTitle>Cash Flow Health</CardTitle>
+            <CardDescription>Your current liquidity and financial stability indicators.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="p-4 rounded-xl bg-primary/5 border border-primary/10 flex items-center justify-between group hover:bg-primary/10 transition-colors">
+              <div className="p-4 rounded-xl bg-primary/5 border border-primary/10 flex items-center justify-between">
                 <div>
-                  <div className="text-sm font-semibold">Quick Ratio</div>
-                  <div className="text-[11px] text-muted-foreground">Liquid assets vs current liabilities</div>
+                  <div className="text-sm font-medium">Quick Ratio</div>
+                  <div className="text-xs text-muted-foreground">Liquid assets vs current liabilities</div>
                 </div>
-                <div className="text-xl font-bold font-mono text-primary">1.8</div>
+                <div className="text-xl font-bold font-mono">1.8</div>
               </div>
-              <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/10 flex items-center justify-between group hover:bg-emerald-500/10 transition-colors">
+              <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/10 flex items-center justify-between">
                 <div>
-                  <div className="text-sm font-semibold">Burn Rate</div>
-                  <div className="text-[11px] text-muted-foreground">Monthly cash outflow average</div>
+                  <div className="text-sm font-medium">Burn Rate</div>
+                  <div className="text-xs text-muted-foreground">Monthly cash outflow average</div>
                 </div>
                 <div className="text-xl font-bold font-mono text-emerald-600"><MoneyText value={12400} /></div>
               </div>
-              <div className="p-4 rounded-xl bg-indigo-500/5 border border-indigo-500/10 flex items-center justify-between group hover:bg-indigo-500/10 transition-colors">
+              <div className="p-4 rounded-xl bg-indigo-500/5 border border-indigo-500/10 flex items-center justify-between">
                 <div>
-                  <div className="text-sm font-semibold">Runway</div>
-                  <div className="text-[11px] text-muted-foreground">Estimated months of operation</div>
+                  <div className="text-sm font-medium">Runway</div>
+                  <div className="text-xs text-muted-foreground">Estimated months of operation</div>
                 </div>
                 <div className="text-xl font-bold font-mono text-indigo-600">14 Months</div>
               </div>
@@ -181,11 +180,11 @@ export default function DashboardPage() {
 
 function MetricCard({ title, value, icon: Icon, trend, trendUp }: any) {
   return (
-    <Card className="overflow-hidden relative glass-card border-none bg-card/60 group hover:-translate-y-1 transition-all duration-300">
+    <Card className="overflow-hidden relative glass-card group hover:-translate-y-1 transition-transform duration-300">
       <div className="absolute right-0 top-0 h-24 w-24 bg-gradient-to-br from-primary/10 to-transparent blur-2xl rounded-bl-full -z-10 group-hover:from-primary/20 transition-colors" />
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/80">{title}</CardTitle>
-        <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shadow-inner">
+        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
+        <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
           <Icon className="h-4 w-4" />
         </div>
       </CardHeader>
@@ -193,7 +192,7 @@ function MetricCard({ title, value, icon: Icon, trend, trendUp }: any) {
         <div className="text-2xl font-bold font-mono tracking-tight">
           <MoneyText value={value} />
         </div>
-        <p className={cn("text-[10px] mt-1.5 flex items-center font-bold px-2 py-0.5 rounded-full w-fit bg-background/50", trendUp ? "text-emerald-500" : "text-rose-500")}>
+        <p className={cn("text-xs mt-1 flex items-center", trendUp ? "text-green-600" : "text-red-500")}>
           {trendUp ? <ArrowUpRight className="mr-1 h-3 w-3" /> : <ArrowDownRight className="mr-1 h-3 w-3" />}
           {trend}
         </p>
@@ -205,15 +204,15 @@ function MetricCard({ title, value, icon: Icon, trend, trendUp }: any) {
 function ActivityItem({ title, subtitle, amount, icon: Icon }: any) {
   const isPositive = amount > 0;
   return (
-    <div className="flex items-center group cursor-pointer hover:bg-muted/30 p-2 -mx-2 rounded-xl transition-colors">
-      <div className="h-10 w-10 rounded-xl bg-muted/50 border flex items-center justify-center group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-        <Icon className="h-4 w-4" />
+    <div className="flex items-center">
+      <div className="h-9 w-9 rounded-full bg-muted/50 border flex items-center justify-center">
+        <Icon className="h-4 w-4 text-muted-foreground" />
       </div>
       <div className="ml-4 space-y-1">
-        <p className="text-sm font-semibold leading-none">{title}</p>
-        <p className="text-[11px] text-muted-foreground font-medium">{subtitle}</p>
+        <p className="text-sm font-medium leading-none">{title}</p>
+        <p className="text-xs text-muted-foreground">{subtitle}</p>
       </div>
-      <div className={cn("ml-auto font-bold text-sm tabular-nums", isPositive ? "text-emerald-500" : "text-rose-500")}>
+      <div className={cn("ml-auto font-medium text-sm tabular-nums", isPositive ? "text-green-600" : "text-foreground")}>
         {isPositive ? "+" : ""}
         <MoneyText value={amount} />
       </div>

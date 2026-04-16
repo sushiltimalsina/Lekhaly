@@ -1,6 +1,8 @@
 // apps/desktop/src/components/app/dashboard-charts.tsx
 import * as React from "react";
 import {
+    BarChart,
+    Bar,
     XAxis,
     YAxis,
     CartesianGrid,
@@ -50,7 +52,7 @@ export function RevenueChart() {
                             <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
                         </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.3} />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border) / 0.1)" />
                     <XAxis
                         dataKey="name"
                         axisLine={false}
@@ -64,11 +66,13 @@ export function RevenueChart() {
                     />
                     <Tooltip
                         contentStyle={{ 
-                            backgroundColor: "hsl(var(--card))", 
-                            borderColor: "hsl(var(--border))", 
-                            borderRadius: "12px",
-                            boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)"
+                          backgroundColor: "hsl(var(--card))", 
+                          borderColor: "hsl(var(--border))", 
+                          borderRadius: "12px", 
+                          border: "1px solid hsl(var(--border))", 
+                          backdropFilter: "blur(10px)" 
                         }}
+                        itemStyle={{ fontSize: "12px" }}
                     />
                     <Area
                         type="monotone"
@@ -108,7 +112,7 @@ export function ExpenseDistribution() {
                         cornerRadius={4}
                         dataKey="value"
                     >
-                        {pieData.map((_entry, index) => (
+                        {pieData.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                     </Pie>

@@ -23,17 +23,29 @@ export class PdfWorker implements OnModuleInit, OnModuleDestroy {
   async process(limit = 10) {
     this.running = true;
     try {
-      const jobs = await this.prisma.pdfJob.findMany({
-        where: { status: "pending" },
-        orderBy: { createdAt: "asc" },
-        take: limit
-      });
+      let jobs: Array<{ id: string; type: string }> = [];
+      try {
+        jobs = await this.prisma.pdfJob.findMany({
+          where: { status: "pending" },
+          orderBy: { createdAt: "asc" },
+          take: limit
+        });
+      } catch (err: any) {
+        const message = err?.message || String(err);
+        this.logger.warn(`PDF worker skipped (db unavailable): ${message}`);
+        return;
+      }
 
       for (const job of jobs) {
-        await this.prisma.pdfJob.update({
-          where: { id: job.id },
-          data: { status: "processing" }
-        });
+        try {
+          await this.prisma.pdfJob.update({
+            where: { id: job.id },
+            data: { status: "processing" }
+          });
+        } catch (err: any) {
+          this.logger.warn(`PDF job ${job.id} skipped (db unavailable): ${err?.message || err}`);
+          continue;
+        }
 
         try {
           // Placeholder: generate file key in object storage later.
@@ -44,12 +56,19 @@ export class PdfWorker implements OnModuleInit, OnModuleDestroy {
           });
         } catch (err: any) {
           this.logger.warn(`PDF job ${job.id} failed: ${err?.message || err}`);
-          await this.prisma.pdfJob.update({
-            where: { id: job.id },
-            data: { status: "failed", error: err?.message || String(err) }
-          });
+          try {
+            await this.prisma.pdfJob.update({
+              where: { id: job.id },
+              data: { status: "failed", error: err?.message || String(err) }
+            });
+          } catch (updateErr: any) {
+            this.logger.warn(`PDF job ${job.id} failed to persist status: ${updateErr?.message || updateErr}`);
+          }
         }
       }
+    } catch (err: any) {
+      // Never let the worker crash the process; log and retry on next tick.
+      this.logger.warn(`PDF worker error: ${err?.message || String(err)}`);
     } finally {
       this.running = false;
     }

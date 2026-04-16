@@ -34,10 +34,11 @@ import { adToBs } from "@/lib/dates/convert";
 type Line = { itemId: string; qty: string; rate: string; description?: string; expenseAccountId?: string };
 type BillSundryRow = { id: string; sundryId?: string; name: string; type: "add" | "less"; ratePct: string; manualAmount?: string; isManual?: boolean };
 
-export default function PurchaseCreatePage() {
+export default function PurchaseCreatePage({ mode = "purchase" }: { mode?: "purchase" | "purchase_return" }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const editId = searchParams.get("id");
+  const baseRoute = mode === "purchase_return" ? "/purchase-return" : "/purchase";
 
   const [loading, setLoading] = React.useState(false);
   const [fetching, setFetching] = React.useState(false);
@@ -74,7 +75,7 @@ export default function PurchaseCreatePage() {
   const loadDependencies = async () => {
     try {
       const [p, a, i, s] = await Promise.all([
-        listParties({ type: "vendor", take: 200 }),
+        listParties({ type: "supplier", take: 200 }),
         listAccounts({ type: "liability", take: 200 }),
         listItems({ take: 500 }),
         listBillSundries({ take: 100 })
@@ -156,7 +157,7 @@ export default function PurchaseCreatePage() {
       } as any);
 
       const payload = {
-        voucherType: "purchase" as const,
+        voucherType: mode,
         voucherDate: form.purchaseDate.ad,
         voucherDateBs: form.purchaseDate.bs,
         partyId: form.partyId,
@@ -176,10 +177,10 @@ export default function PurchaseCreatePage() {
       if (post && id) {
           await postVoucher(id);
           setSuccess("Purchase bill committed to ledger.");
-          setTimeout(() => navigate("/purchase"), 1500);
+          setTimeout(() => navigate(baseRoute), 1500);
       } else {
           setSuccess("Purchase draft saved.");
-          if (!editId && id) navigate(`/purchase/create?id=${id}`, { replace: true });
+          if (!editId && id) navigate(`${baseRoute}/create?id=${id}`, { replace: true });
       }
     } catch (e: any) { setError(e?.message || "Operation failed"); }
     finally { setLoading(false); }

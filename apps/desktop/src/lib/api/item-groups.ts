@@ -13,3 +13,11 @@ export async function listItemGroups(params?: { q?: string; skip?: number; take?
     query: params,
   });
 }
+
+export async function createItemGroup(input: { name: string }) {
+  return apiRequest<ItemGroupRecord>({
+    method: "POST",
+    path: "/item-groups",
+    body: input,
+  });
+}

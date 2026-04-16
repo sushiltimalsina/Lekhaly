@@ -243,26 +243,8 @@ export default function SalesOrdersListPage() {
                 rows={data}
                 loading={loading}
                 onRowClick={(row) => navigate(`/sales-orders/view/${row.id}`)}
-                pagination={{
-                    page,
-                    pageSize,
-                    total: totalRecords,
-                    onPageChange: setPage,
-                    onPageSizeChange: setPageSize
-                }}
-                emptyState={
-                    <div className="flex flex-col items-center justify-center py-24 space-y-4">
-                        <div className="h-20 w-20 rounded-full bg-slate-50 flex items-center justify-center border-2 border-dashed border-slate-100">
-                           <Package className="h-10 w-10 text-slate-200" />
-                        </div>
-                        <div className="text-center space-y-1">
-                            <h3 className="font-black text-slate-900 uppercase tracking-widest text-sm italic">Zero Active Orders</h3>
-                            <p className="text-xs text-slate-400 font-medium">No sales order records were discovered in the registry.</p>
-                        </div>
-                    </div>
-                }
+                emptyText="No sales orders found"
             />
         </div>
     );
 }
-

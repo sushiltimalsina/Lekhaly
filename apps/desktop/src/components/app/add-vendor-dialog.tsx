@@ -35,7 +35,7 @@ export default function AddVendorDialog({
         try {
             const res = await createParty({
                 ...form,
-                type: "vendor"
+                type: "supplier"
             });
             onSuccess(res);
             onClose();

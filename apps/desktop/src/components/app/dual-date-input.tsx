@@ -82,7 +82,7 @@ export function DualDateInput({
         setError(null);
         onChange({ ad: val, bs });
       } else {
-        const ad = bsToAd(val);
+        const ad = bsToAd(val).toISOString().slice(0, 10);
         setError(null);
         onChange({ ad, bs: val });
       }

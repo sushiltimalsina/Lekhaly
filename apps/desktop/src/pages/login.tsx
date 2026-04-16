@@ -55,8 +55,8 @@ export default function LoginPage() {
             </div>
           </div>
           <div className="space-y-2">
-            <CardTitle className="text-2xl font-bold font-heading tracking-tight text-gradient">Welcome back</CardTitle>
-            <CardDescription className="text-base text-muted-foreground/80">
+            <CardTitle className="text-2xl font-bold font-heading tracking-tight">Welcome back</CardTitle>
+            <CardDescription className="text-base">
               Enter your credentials to access your workspace
             </CardDescription>
           </div>
@@ -142,7 +142,7 @@ export default function LoginPage() {
           </div>
 
           <div className="text-xs text-muted-foreground/60 px-4">
-            Managed accounting secure & unified. Professional business software.
+            By clicking details, you agree to our Terms of Service and Privacy Policy.
           </div>
         </CardFooter>
       </Card>

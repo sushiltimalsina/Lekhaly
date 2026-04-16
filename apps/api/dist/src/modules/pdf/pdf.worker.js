@@ -35,16 +35,30 @@ let PdfWorker = PdfWorker_1 = class PdfWorker {
     async process(limit = 10) {
         this.running = true;
         try {
-            const jobs = await this.prisma.pdfJob.findMany({
-                where: { status: "pending" },
-                orderBy: { createdAt: "asc" },
-                take: limit
-            });
-            for (const job of jobs) {
-                await this.prisma.pdfJob.update({
-                    where: { id: job.id },
-                    data: { status: "processing" }
+            let jobs = [];
+            try {
+                jobs = await this.prisma.pdfJob.findMany({
+                    where: { status: "pending" },
+                    orderBy: { createdAt: "asc" },
+                    take: limit
                 });
+            }
+            catch (err) {
+                const message = err?.message || String(err);
+                this.logger.warn(`PDF worker skipped (db unavailable): ${message}`);
+                return;
+            }
+            for (const job of jobs) {
+                try {
+                    await this.prisma.pdfJob.update({
+                        where: { id: job.id },
+                        data: { status: "processing" }
+                    });
+                }
+                catch (err) {
+                    this.logger.warn(`PDF job ${job.id} skipped (db unavailable): ${err?.message || err}`);
+                    continue;
+                }
                 try {
                     const resultKey = `pdf/${job.type}/${job.id}.pdf`;
                     await this.prisma.pdfJob.update({
@@ -54,12 +68,20 @@ let PdfWorker = PdfWorker_1 = class PdfWorker {
                 }
                 catch (err) {
                     this.logger.warn(`PDF job ${job.id} failed: ${err?.message || err}`);
-                    await this.prisma.pdfJob.update({
-                        where: { id: job.id },
-                        data: { status: "failed", error: err?.message || String(err) }
-                    });
+                    try {
+                        await this.prisma.pdfJob.update({
+                            where: { id: job.id },
+                            data: { status: "failed", error: err?.message || String(err) }
+                        });
+                    }
+                    catch (updateErr) {
+                        this.logger.warn(`PDF job ${job.id} failed to persist status: ${updateErr?.message || updateErr}`);
+                    }
                 }
             }
+        }
+        catch (err) {
+            this.logger.warn(`PDF worker error: ${err?.message || String(err)}`);
         }
         finally {
             this.running = false;

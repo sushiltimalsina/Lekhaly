@@ -7,11 +7,11 @@ import { listVouchers } from "@/lib/api/vouchers";
 import StatusBadge, { DocStatus } from "@/components/app/status-badge";
 import { useDateFormat } from "@/lib/date-format";
 import { getDateDisplay } from "@/lib/dates/display";
-import { Plus, ChevronRight, ShoppingCart, Download } from "lucide-react";
+import { Plus, ChevronRight, FileText, ShoppingCart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import AdvancedFilterBar from "@/components/app/advanced-filter-bar";
 import { getSettings, subscribeSettings } from "@/lib/store/settings";
-import { cn } from "@/lib/utils";
 
 export default function PurchaseListPage() {
     const navigate = useNavigate();
@@ -20,7 +20,6 @@ export default function PurchaseListPage() {
     const [loading, setLoading] = React.useState(true);
     const [data, setData] = React.useState<any[]>([]);
     const [error, setError] = React.useState<string | null>(null);
-
     const [filters, setFilters] = React.useState({
         q: "",
         status: "all",
@@ -45,7 +44,7 @@ export default function PurchaseListPage() {
                 status: filters.status === "all" ? undefined : (filters.status as any),
                 from: filters.from || undefined,
                 to: filters.to || undefined,
-                take: 100
+                take: 50
             });
             const list = Array.isArray(res) ? res : res?.items ?? res?.data ?? [];
             setData(list);
@@ -66,7 +65,7 @@ export default function PurchaseListPage() {
     const filterOptions = [
         {
             key: "status",
-            label: "Status",
+            label: "Purchase Status",
             options: [
                 { value: "draft", label: "Draft" },
                 { value: "posted", label: "Posted" },
@@ -76,115 +75,244 @@ export default function PurchaseListPage() {
     ];
 
     const columnOptions = [
-        { key: "date", label: "Voucher Date", defaultVisible: true },
-        { key: "invoiceNo", label: "Vendor Invoice", defaultVisible: true },
-        { key: "party", label: "Supplier", defaultVisible: true },
-        { key: "amount", label: "Total Amount", defaultVisible: true },
+        { key: "date", label: "Vendor Invoice Date", defaultVisible: true },
+        { key: "voucherNo", label: "Vendor Invoice No", defaultVisible: true },
+        { key: "refNo", label: "Reference No", defaultVisible: false },
+        { key: "party", label: "Vendor Name", defaultVisible: true },
+        { key: "panVat", label: "PAN/VAT Number", defaultVisible: false },
+        { key: "items", label: "Item Details", defaultVisible: true },
+        { key: "qty", label: "Quantity", defaultVisible: true },
+        { key: "taxable", label: "Taxable Amount", defaultVisible: false },
+        { key: "nonTaxable", label: "Non Taxable Amount", defaultVisible: false },
+        { key: "amount", label: "Amount", defaultVisible: true },
+        { key: "notes", label: "Memo", defaultVisible: false },
+        { key: "additionalNote", label: "Additional Note", defaultVisible: false },
         { key: "status", label: "Status", defaultVisible: true },
+        { key: "postedAt", label: "Posted Date/Time", defaultVisible: true },
     ];
 
     const [visibleColumns, setVisibleColumns] = React.useState<string[]>(
         columnOptions.filter(c => c.defaultVisible).map(c => c.key)
     );
+    const [expandedItems, setExpandedItems] = React.useState<Record<string, boolean>>({});
+
+    const handleFilterChange = (newFilters: any) => {
+        setFilters(prev => ({
+            ...prev,
+            status: newFilters.status?.[0] || prev.status,
+            from: newFilters.dateRange?.from || null,
+            to: newFilters.dateRange?.to || null,
+        }));
+    };
 
     const isVisible = (key: string) => visibleColumns.includes(key);
 
     return (
-        <div className="space-y-6 animate-fade-in">
+        <div className="space-y-6">
             <PageHeader
-                title="Purchase Registry"
-                description="Monitor vendor invoices, stock inward entries, and supplier liabilities."
+                title="Purchase Bills"
+                description="Monitor vendor invoices, stock inward registries, and supplier balances."
                 actions={
-                    <div className="flex items-center gap-2">
-                        <Button variant="outline" className="h-10 px-4 rounded-xl border-slate-200 hidden sm:flex">
-                            <Download className="mr-2 h-4 w-4" />
-                            Export
-                        </Button>
-                        <Button
-                            onClick={() => navigate("/purchase/create")}
-                            className="h-10 px-6 rounded-xl bg-orange-600 text-white shadow-lg shadow-orange-100"
-                        >
-                            <Plus className="mr-2 h-4 w-4" />
-                            New Purchase
-                        </Button>
-                    </div>
+                    <Button
+                        onClick={() => navigate("/purchase/create")}
+                        className="rounded-2xl bg-orange-600 hover:bg-orange-700 text-white shadow-xl shadow-orange-500/20 h-11 px-8 font-black text-xs uppercase tracking-widest transition-all active:scale-95 border-none"
+                    >
+                        <Plus className="mr-2 h-4 w-4" />
+                        New Bill
+                    </Button>
                 }
             />
 
             <AdvancedFilterBar
                 onSearch={(q) => setFilters(prev => ({ ...prev, q }))}
-                onFilterChange={(f) => {
-                    setFilters(prev => ({
-                        ...prev,
-                        status: f.status?.[0] || "all",
-                        from: f.dateRange?.from || null,
-                        to: f.dateRange?.to || null,
-                    }));
-                }}
+                onFilterChange={handleFilterChange}
                 filterOptions={filterOptions}
+                defaultRange={settings.defaultDateRange}
                 columnOptions={columnOptions}
                 onVisibleColumnsChange={setVisibleColumns}
-                className="border-orange-50"
+                className="border-orange-100 dark:border-orange-900/50"
             />
 
-            <div className="rounded-[24px] border border-slate-200 bg-white overflow-hidden shadow-sm">
+            <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl shadow-slate-200/40 dark:border-slate-800 dark:bg-slate-950 dark:shadow-none">
                 {loading && data.length === 0 ? (
-                    <div className="py-24 text-center">
-                        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-orange-600 border-t-transparent"></div>
-                        <p className="mt-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Auditing Stock Inward...</p>
+                    <div className="flex flex-col items-center justify-center py-24 space-y-4">
+                        <div className="relative h-12 w-12">
+                            <div className="absolute inset-0 rounded-full border-4 border-slate-100 dark:border-slate-800"></div>
+                            <div className="absolute inset-0 rounded-full border-4 border-orange-600 border-t-transparent animate-spin"></div>
+                        </div>
+                        <p className="text-sm font-black text-slate-400 animate-pulse uppercase tracking-widest text-[10px]">Registry Audit...</p>
                     </div>
                 ) : data.length > 0 ? (
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left">
-                            <thead className="bg-orange-50/30 border-b border-slate-100">
-                                <tr>
-                                    {isVisible("date") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Date</th>}
-                                    {isVisible("invoiceNo") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Vendor Invoice</th>}
-                                    {isVisible("party") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Supplier</th>}
+                            <thead>
+                                <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30">
+                                    {isVisible("date") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Vendor Invoice Date</th>}
+                                    {isVisible("voucherNo") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Vendor Invoice No</th>}
+                                    {isVisible("refNo") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Reference No</th>}
+                                    {isVisible("party") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Vendor Name</th>}
+                                    {isVisible("panVat") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Pan/Vat Number</th>}
+                                    {isVisible("items") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Item Details</th>}
+                                    {isVisible("qty") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Quantity</th>}
+                                    {isVisible("taxable") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Taxable Amount</th>}
+                                    {isVisible("nonTaxable") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Non Taxable Amount</th>}
                                     {isVisible("amount") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Amount</th>}
+                                    {isVisible("notes") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Memo</th>}
+                                    {isVisible("additionalNote") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Additional Note</th>}
                                     {isVisible("status") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-center">Status</th>}
+                                    {isVisible("postedAt") && <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Posted Date/Time</th>}
                                     <th className="px-6 py-4 w-10"></th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-50">
+                            <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
                                 {data.map((item) => {
                                     const dateInfo = getDateDisplay({ ad: item.voucherDate, bs: item.voucherDateBs, format: calendarFmt });
-                                    const totalAmount = (item.lines || []).reduce((max: number, l: any) => Math.max(max, Number(l.credit || 0)), 0);
-                                    
+                                    const lines = item.lines || [];
+                                    const itemLines = lines.filter((l: any) => l.itemId);
+
+                                    const firstLine = itemLines[0];
+                                    const itemSummary = itemLines.length > 1
+                                        ? `${firstLine?.item?.name || firstLine?.description || "Mixed"} (+${itemLines.length - 1})`
+                                        : (firstLine?.item?.name || firstLine?.description || "—");
+
+                                    // Calculate total quantity
+                                    let totalQty = itemLines.reduce((sum: number, l: any) => sum + Number(l.qty || 0), 0);
+
+                                    if (totalQty === 0) {
+                                        const stockEntries = item.stockLedger || [];
+                                        totalQty = stockEntries.reduce((sum: number, entry: any) => {
+                                            const qtyIn = Number(entry.qtyIn || 0);
+                                            const qtyOut = Number(entry.qtyOut || 0);
+                                            return sum + qtyIn - qtyOut;
+                                        }, 0);
+                                    }
+
+                                    let taxableAmount = 0;
+                                    let nonTaxableAmount = 0;
+                                    itemLines.forEach((l: any) => {
+                                        const val = Number(l.debit || l.credit || 0);
+                                        const hasTax = Number(l.taxAmount || 0) > 0 || !!l.taxCodeId;
+                                        if (hasTax) taxableAmount += val;
+                                        else nonTaxableAmount += val;
+                                    });
+
+                                    const totalAmount = lines.reduce((max: number, l: any) => Math.max(max, Number(l.credit || 0)), 0);
+
                                     return (
                                         <tr
                                             key={item.id}
                                             onClick={() => navigate(`/purchase/create?id=${item.id}`)}
-                                            className="group cursor-pointer hover:bg-orange-50/20 transition-colors"
+                                            className="group cursor-pointer hover:bg-orange-50/20 dark:hover:bg-orange-900/10 transition-colors"
                                         >
                                             {isVisible("date") && (
-                                                <td className="px-6 py-4">
+                                                <td className="px-6 py-5 whitespace-nowrap">
                                                     <div className="flex flex-col">
-                                                        <span className="font-bold text-slate-700">{dateInfo.primary}</span>
+                                                        <span className="font-bold text-slate-800 dark:text-slate-100">{dateInfo.primary}</span>
                                                         <span className="text-[9px] text-slate-400 font-medium">{dateInfo.secondary}</span>
                                                     </div>
                                                 </td>
                                             )}
-                                            {isVisible("invoiceNo") && (
-                                                <td className="px-6 py-4 font-bold text-slate-900 uppercase tracking-tight text-[11px]">
-                                                    {item.vendorInvoiceNo || item.voucherNumber || "Draft"}
+                                            {isVisible("voucherNo") && (
+                                                <td className="px-6 py-5 whitespace-nowrap font-black text-slate-900 dark:text-white uppercase tracking-widest text-[11px]">
+                                                    {item.vendorInvoiceNo || item.voucherNumber || "DRAFT"}
                                                 </td>
                                             )}
+                                            {isVisible("refNo") && <td className="px-6 py-5 whitespace-nowrap text-slate-400 text-xs">{item.referenceNo || "—"}</td>}
                                             {isVisible("party") && (
-                                                <td className="px-6 py-4 font-bold text-slate-700">{item.party?.name || "Unknown Vendor"}</td>
+                                                <td className="px-6 py-5">
+                                                    <span className="font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">{item.party?.name || "Unknown Vendor"}</span>
+                                                </td>
+                                            )}
+                                            {isVisible("panVat") && (
+                                                <td className="px-6 py-5 whitespace-nowrap text-xs text-slate-500 font-medium">
+                                                    {item.party?.panNumber || item.party?.vatNumber || "—"}
+                                                </td>
+                                            )}
+                                            {isVisible("items") && (
+                                                <td
+                                                    className="px-6 py-5 cursor-pointer hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors rounded-lg"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setExpandedItems(prev => ({ ...prev, [item.id]: !prev[item.id] }));
+                                                    }}
+                                                >
+                                                    {expandedItems[item.id] ? (
+                                                        <div className="flex flex-col gap-1 min-w-[200px]">
+                                                            {itemLines.map((l: any, i: number) => (
+                                                                <span key={i} className="text-xs font-medium text-slate-700 dark:text-slate-300 break-words whitespace-normal">
+                                                                    • {l.item?.name || l.description} {Number(l.qty || 0) > 0 && <span className="text-slate-400">x{Number(l.qty)}</span>}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-xs font-medium text-slate-600 dark:text-slate-400 truncate max-w-[200px] block" title="Click to expand">
+                                                            {itemSummary}
+                                                        </span>
+                                                    )}
+                                                </td>
+                                            )}
+                                            {isVisible("qty") && (
+                                                <td className="px-6 py-5 text-right font-bold text-slate-700 dark:text-slate-300">
+                                                    {totalQty.toLocaleString()}
+                                                </td>
+                                            )}
+                                            {isVisible("taxable") && (
+                                                <td className="px-6 py-5 text-right font-medium text-slate-900 dark:text-white">
+                                                    <MoneyText value={taxableAmount} />
+                                                </td>
+                                            )}
+                                            {isVisible("nonTaxable") && (
+                                                <td className="px-6 py-5 text-right text-slate-400">
+                                                    <MoneyText value={nonTaxableAmount} />
+                                                </td>
                                             )}
                                             {isVisible("amount") && (
-                                                <td className="px-6 py-4 text-right font-black text-orange-600 text-base">
-                                                    <MoneyText value={Number(totalAmount || 0)} />
+                                                <td className="px-6 py-5 text-right whitespace-nowrap">
+                                                    <span className="font-black text-orange-600 dark:text-orange-400 text-base tabular-nums">
+                                                        <MoneyText value={Number(totalAmount)} />
+                                                    </span>
+                                                </td>
+                                            )}
+                                            {isVisible("notes") && (
+                                                <td className="px-6 py-5">
+                                                    <span className="text-xs text-slate-400 font-medium truncate max-w-[150px] block" title={item.memo}>
+                                                        {item.memo || "—"}
+                                                    </span>
+                                                </td>
+                                            )}
+                                            {isVisible("additionalNote") && (
+                                                <td className="px-6 py-5">
+                                                    <span className="text-xs text-slate-400 font-medium truncate max-w-[150px] block" title={item.additionalNote}>
+                                                        {item.additionalNote || "—"}
+                                                    </span>
                                                 </td>
                                             )}
                                             {isVisible("status") && (
-                                                <td className="px-6 py-4 text-center">
+                                                <td className="px-6 py-5 whitespace-nowrap text-center">
                                                     <StatusBadge status={item.status as DocStatus} />
                                                 </td>
                                             )}
-                                            <td className="px-6 py-4 text-right">
-                                                <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-orange-400 transition-colors" />
+                                            {isVisible("postedAt") && (
+                                                <td className="px-6 py-5 whitespace-nowrap">
+                                                    {item.postedAt ? (() => {
+                                                        const postedInfo = getDateDisplay({ ad: item.postedAt, format: calendarFmt });
+                                                        return (
+                                                            <div className="flex flex-col">
+                                                                <span className="font-bold text-slate-800 dark:text-slate-100 text-xs">
+                                                                    {postedInfo.primary}
+                                                                </span>
+                                                                <span className="text-[9px] text-slate-400 font-medium">
+                                                                    {new Date(item.postedAt).toLocaleTimeString()}
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    })() : (
+                                                        <span className="text-slate-300 text-xs">—</span>
+                                                    )}
+                                                </td>
+                                            )}
+                                            <td className="px-6 py-5 text-right">
+                                                <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-orange-400 group-hover:translate-x-1 transition-all" />
                                             </td>
                                         </tr>
                                     );
@@ -193,14 +321,33 @@ export default function PurchaseListPage() {
                         </table>
                     </div>
                 ) : (
-                    <div className="py-24 text-center">
-                        <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-slate-50">
-                            <ShoppingCart className="h-6 w-6 text-slate-200" />
+                    <div className="flex flex-col items-center justify-center py-32 px-6 text-center space-y-4">
+                        <div className="h-24 w-24 rounded-full bg-slate-50 dark:bg-slate-900 flex items-center justify-center border-4 border-dotted border-slate-200 dark:border-slate-800">
+                            <Plus className="h-10 w-10 text-slate-200" />
                         </div>
-                        <p className="text-sm font-bold text-slate-400">No purchase records found</p>
+                        <div className="max-w-xs space-y-1">
+                            <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-widest text-sm text-orange-600">No Purchases Found</h3>
+                            <p className="text-sm text-slate-500 font-medium leading-relaxed">Recorded vendor bills and inward entries will appear in this registry once linked.</p>
+                        </div>
+                        <Button
+                            onClick={() => setFilters({ q: "", status: "all", from: null, to: null })}
+                            className="bg-orange-600 rounded-2xl h-11 px-8 font-black text-xs uppercase tracking-widest shadow-xl shadow-orange-500/20"
+                        >
+                            Reset Audit Filters
+                        </Button>
                     </div>
                 )}
             </div>
+
+            {data.length > 0 && (
+                <div className="flex items-center justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">
+                    <p>Audit Trail: {data.length} records in view</p>
+                    <div className="flex items-center gap-1.5 font-bold text-orange-600">
+                        <span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse"></span>
+                        <span>Verified with Supplier Ledger</span>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

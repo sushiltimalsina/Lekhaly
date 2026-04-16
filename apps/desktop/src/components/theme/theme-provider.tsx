@@ -1,72 +1,66 @@
-// apps/desktop/src/components/theme/theme-provider.tsx
 import * as React from "react";
 
-type Theme = "dark" | "light" | "system";
+type ThemeMode = "light" | "dark" | "system";
 
-type ThemeProviderState = {
-  theme: Theme;
-  setTheme: (theme: Theme) => void;
+type ThemeProviderProps = {
+  children: React.ReactNode;
+  attribute?: string;
+  defaultTheme?: ThemeMode;
+  enableSystem?: boolean;
+  disableTransitionOnChange?: boolean;
 };
 
-const initialState: ThemeProviderState = {
-  theme: "system",
-  setTheme: () => null,
-};
+const STORAGE_KEY = "lekhaly-theme";
 
-const ThemeProviderContext = React.createContext<ThemeProviderState>(initialState);
+function applyTheme(mode: ThemeMode) {
+  const root = document.documentElement;
+  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const isDark = mode === "dark" || (mode === "system" && prefersDark);
+  root.classList.toggle("dark", isDark);
+  root.dataset.theme = mode;
+}
 
 export function ThemeProvider({
   children,
   defaultTheme = "system",
-  storageKey = "lekhaly-ui-theme",
-  ...props
-}: {
-  children: React.ReactNode;
-  defaultTheme?: Theme;
-  storageKey?: string;
-}) {
-  const [theme, setTheme] = React.useState<Theme>(
-    () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
-  );
-
+}: ThemeProviderProps) {
   React.useEffect(() => {
-    const root = window.document.documentElement;
+    const getStoredTheme = () => {
+      const stored = localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
+      return stored ?? defaultTheme;
+    };
 
-    root.classList.remove("light", "dark");
+    const handleSystemChange = () => {
+      const mode = getStoredTheme();
+      if (mode === "system") applyTheme("system");
+    };
 
-    if (theme === "system") {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-        .matches
-        ? "dark"
-        : "light";
+    const handleThemeChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ theme: ThemeMode }>).detail;
+      const mode = detail?.theme ?? getStoredTheme();
+      applyTheme(mode);
+    };
 
-      root.classList.add(systemTheme);
-      return;
+    applyTheme(getStoredTheme());
+
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener("change", handleSystemChange);
+    } else {
+      mediaQuery.addListener(handleSystemChange);
     }
 
-    root.classList.add(theme);
-  }, [theme]);
+    window.addEventListener("lekhaly-theme-change", handleThemeChange);
 
-  const value = {
-    theme,
-    setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme);
-      setTheme(theme);
-    },
-  };
+    return () => {
+      if (mediaQuery.removeEventListener) {
+        mediaQuery.removeEventListener("change", handleSystemChange);
+      } else {
+        mediaQuery.removeListener(handleSystemChange);
+      }
+      window.removeEventListener("lekhaly-theme-change", handleThemeChange);
+    };
+  }, [defaultTheme]);
 
-  return (
-    <ThemeProviderContext.Provider {...props} value={value}>
-      {children}
-    </ThemeProviderContext.Provider>
-  );
+  return <>{children}</>;
 }
-
-export const useTheme = () => {
-  const context = React.useContext(ThemeProviderContext);
-
-  if (context === undefined)
-    throw new Error("useTheme must be used within a ThemeProvider");
-
-  return context;
-};

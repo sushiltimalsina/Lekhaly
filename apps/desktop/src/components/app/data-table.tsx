@@ -17,17 +17,9 @@ type DataTableProps<T> = {
   columns: Column<T>[];
   loading?: boolean;
   emptyText?: string;
-  emptyState?: React.ReactNode;
   className?: string;
   onRowClick?: (row: T) => void;
   rowClassName?: string;
-  pagination?: {
-    page: number;
-    pageSize: number;
-    total: number;
-    onPageChange: (page: number) => void;
-    onPageSizeChange?: (pageSize: number) => void;
-  };
 };
 
 export default function DataTable<T>({
@@ -35,11 +27,9 @@ export default function DataTable<T>({
   columns,
   loading,
   emptyText = "No data found",
-  emptyState,
   className,
   onRowClick,
   rowClassName,
-  pagination,
 }: DataTableProps<T>) {
   const [colWidths, setColWidths] = React.useState<Record<string, number>>({});
   const resizingRef = React.useRef<{
@@ -58,8 +48,8 @@ export default function DataTable<T>({
           return;
         }
         if (typeof c.width === "string") {
-          const parsed = parseInt(c.width, 10);
-          if (!isNaN(parsed)) next[c.key] = parsed;
+          const parsed = Number.parseInt(c.width, 10);
+          if (!Number.isNaN(parsed)) next[c.key] = parsed;
         }
       });
       return next;
@@ -93,8 +83,8 @@ export default function DataTable<T>({
     if (typeof w === "number") return w;
     if (typeof c.width === "number") return c.width;
     if (typeof c.width === "string") {
-      const parsed = parseInt(c.width, 10);
-      if (!isNaN(parsed)) return parsed;
+      const parsed = Number.parseInt(c.width, 10);
+      if (!Number.isNaN(parsed)) return parsed;
     }
     return undefined;
   };
@@ -110,7 +100,7 @@ export default function DataTable<T>({
                   key={c.key}
                   style={getWidth(c) ? { width: getWidth(c), minWidth: getWidth(c) } : undefined}
                   className={cn(
-                    "relative h-11 px-4 text-left align-middle font-semibold text-muted-foreground border-r last:border-r-0",
+                    "relative h-10 px-4 text-left align-middle font-medium text-muted-foreground border-r last:border-r-0 [&:has([role=checkbox])]:pr-0",
                     c.align === "right"
                       ? "text-right"
                       : c.align === "center"
@@ -134,7 +124,7 @@ export default function DataTable<T>({
                       document.body.style.cursor = "col-resize";
                       document.body.style.userSelect = "none";
                     }}
-                    className="absolute right-0 top-0 h-full w-1 cursor-col-resize bg-transparent hover:bg-primary/20 transition-colors"
+                    className="absolute right-0 top-0 h-full w-1 cursor-col-resize bg-transparent"
                     aria-hidden
                   />
                 </th>
@@ -142,12 +132,12 @@ export default function DataTable<T>({
             </tr>
           </thead>
 
-          <tbody className="[&_tr:last-child]:border-0 font-medium">
+          <tbody className="[&_tr:last-child]:border-0">
             {loading ? (
               <tr>
                 <td colSpan={columns.length} className="h-24 text-center">
                   <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                     <span>Loading data...</span>
                   </div>
                 </td>
@@ -155,13 +145,9 @@ export default function DataTable<T>({
             ) : rows.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="h-24 text-center">
-                  {emptyState ? (
-                    <div className="py-12">{emptyState}</div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center gap-1 text-muted-foreground py-12">
-                      <p className="font-semibold">{emptyText}</p>
-                    </div>
-                  )}
+                  <div className="flex flex-col items-center justify-center gap-1 text-muted-foreground py-8">
+                    <p>{emptyText}</p>
+                  </div>
                 </td>
               </tr>
             ) : (
@@ -170,7 +156,7 @@ export default function DataTable<T>({
                   key={i}
                   onClick={() => onRowClick?.(row)}
                   className={cn(
-                    "border-b transition-colors hover:bg-muted/40",
+                    "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
                     onRowClick ? "cursor-pointer" : "",
                     rowClassName
                   )}
@@ -180,9 +166,9 @@ export default function DataTable<T>({
                       key={c.key}
                       style={getWidth(c) ? { width: getWidth(c), minWidth: getWidth(c) } : undefined}
                       className={cn(
-                        "p-4 align-middle border-r last:border-r-0",
+                        "p-4 align-middle border-r last:border-r-0 [&:has([role=checkbox])]:pr-0",
                         c.align === "right"
-                          ? "text-right mono-numbers tabular-nums"
+                          ? "text-right mono-numbers"
                           : c.align === "center"
                             ? "text-center"
                             : "text-left",
@@ -198,33 +184,6 @@ export default function DataTable<T>({
           </tbody>
         </table>
       </div>
-      
-      {pagination && (
-        <div className="flex items-center justify-between px-4 py-4 border-t bg-muted/10">
-          <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-            Displaying {Math.min(pagination.total, (pagination.page - 1) * pagination.pageSize + 1)} - {Math.min(pagination.total, pagination.page * pagination.pageSize)} of {pagination.total} records
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              disabled={pagination.page <= 1}
-              onClick={() => pagination.onPageChange(pagination.page - 1)}
-              className="px-3 py-1.5 rounded-lg border bg-background text-[10px] font-black uppercase tracking-widest hover:bg-muted disabled:opacity-50 transition-colors"
-            >
-              Previous
-            </button>
-            <div className="h-8 flex items-center px-4 rounded-lg bg-slate-900 text-white text-[10px] font-black tabular-nums">
-              Page {pagination.page}
-            </div>
-            <button
-              disabled={pagination.page * pagination.pageSize >= pagination.total}
-              onClick={() => pagination.onPageChange(pagination.page + 1)}
-              className="px-3 py-1.5 rounded-lg border bg-background text-[10px] font-black uppercase tracking-widest hover:bg-muted disabled:opacity-50 transition-colors"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

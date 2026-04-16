@@ -21,9 +21,9 @@ export default function AddItemDialog({
         name: "",
         sku: "",
         barcode: "",
-        salePrice: "0",
+        salesPrice: "0",
         purchasePrice: "0",
-        openingStock: "0"
+        openingQty: "0"
     });
 
     if (!open) return null;
@@ -34,10 +34,11 @@ export default function AddItemDialog({
         setError(null);
         try {
             const res = await createItem({
-                ...form,
-                salePrice: Number(form.salePrice),
+                name: form.name,
+                sku: form.sku || undefined,
+                salesPrice: Number(form.salesPrice),
                 purchasePrice: Number(form.purchasePrice),
-                openingStock: Number(form.openingStock),
+                openingQty: Number(form.openingQty),
                 type: "goods"
             });
             onSuccess(res);
@@ -109,8 +110,8 @@ export default function AddItemDialog({
                             <div className="relative">
                                 <Input
                                     type="number"
-                                    value={form.salePrice}
-                                    onChange={e => setForm(f => ({ ...f, salePrice: e.target.value }))}
+                                    value={form.salesPrice}
+                                    onChange={e => setForm(f => ({ ...f, salesPrice: e.target.value }))}
                                     className="h-11 rounded-2xl pl-10 font-bold"
                                 />
                                 <Tag className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
@@ -132,8 +133,8 @@ export default function AddItemDialog({
                              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block">Initial Opening Stock Balance</label>
                              <Input
                                 type="number"
-                                value={form.openingStock}
-                                onChange={e => setForm(f => ({ ...f, openingStock: e.target.value }))}
+                                value={form.openingQty}
+                                onChange={e => setForm(f => ({ ...f, openingQty: e.target.value }))}
                                 className="h-11 rounded-2xl font-bold"
                              />
                         </div>

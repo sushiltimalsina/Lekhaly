@@ -244,24 +244,7 @@ export default function PurchaseOrdersListPage() {
                 rows={data}
                 loading={loading}
                 onRowClick={(row) => navigate(`/purchase-orders/view/${row.id}`)}
-                pagination={{
-                    page,
-                    pageSize,
-                    total: totalRecords,
-                    onPageChange: setPage,
-                    onPageSizeChange: setPageSize
-                }}
-                emptyState={
-                    <div className="flex flex-col items-center justify-center py-12 space-y-4">
-                        <div className="h-20 w-20 rounded-full bg-slate-50 flex items-center justify-center border-2 border-dashed border-slate-100">
-                           <PackageSearch className="h-10 w-10 text-slate-200" />
-                        </div>
-                        <div className="text-center space-y-1">
-                            <h3 className="font-black text-slate-900 uppercase tracking-widest text-sm italic">Registry is Empty</h3>
-                            <p className="text-xs text-slate-400 font-medium">No purchase order records were discovered in the procurement ledger.</p>
-                        </div>
-                    </div>
-                }
+                emptyText="No purchase orders found"
             />
         </div>
     );

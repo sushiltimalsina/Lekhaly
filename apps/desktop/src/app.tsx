@@ -8,6 +8,8 @@ import Sidebar from "@/components/app/sidebar";
 import Topbar from "@/components/app/topbar";
 import QuickActionsRail from "@/components/app/quick-actions";
 import OfflineSyncBanner from "@/components/app/offline-sync-banner";
+import CommandPalette from "@/components/app/command-palette";
+import { cn } from "@/lib/utils";
 
 // Pages
 import LoginPage from "@/pages/login";
@@ -15,10 +17,21 @@ import DashboardPage from "@/pages/dashboard";
 import SalesListPage from "@/pages/sales/index";
 import SalesDetailPage from "@/pages/sales/view";
 import SalesCreatePage from "@/pages/sales/create";
+import SalesReturnListPage from "@/pages/sales-return";
+import SalesReturnCreatePage from "@/pages/sales-return/create";
+
+import CustomersListPage from "@/pages/customers/index";
+import CustomersNewPage from "@/pages/customers/new";
+import VendorsListPage from "@/pages/vendors/index";
+import VendorsNewPage from "@/pages/vendors/new";
+import ItemsListPage from "@/pages/items/index";
+import NewItemPage from "@/pages/items/new";
 
 import PurchaseListPage from "@/pages/purchase/index";
 import PurchaseDetailPage from "@/pages/purchase/view";
 import PurchaseCreatePage from "@/pages/purchase/create";
+import PurchaseReturnListPage from "@/pages/purchase-return";
+import PurchaseReturnCreatePage from "@/pages/purchase-return/create";
 
 import VouchersListPage from "@/pages/vouchers/index";
 import VoucherDetailPage from "@/pages/vouchers/view";
@@ -29,6 +42,9 @@ import JournalCreatePage from "@/pages/vouchers/journal-create";
 import SalesOrdersListPage from "@/pages/sales-orders/index";
 import SalesOrderDetailPage from "@/pages/sales-orders/view";
 import SalesOrderCreatePage from "@/pages/sales-orders/create";
+
+import QuotationsListPage from "@/pages/quotations";
+import QuotationCreatePage from "@/pages/quotations/create";
 
 import PurchaseOrderCreatePage from "@/pages/purchase-orders/create";
 
@@ -55,26 +71,37 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AppShell({ children }: { children: React.ReactNode }) {
+  const { pathname } = useLocation();
+  const isCreationPage = pathname.includes("/create") || pathname.includes("/view/") || pathname.includes("/new");
+
   return (
     <div className="min-h-screen bg-background text-foreground flex overflow-hidden">
-      {/* Desktop sidebar */}
-      <div
-        className="hidden md:block flex-shrink-0"
-        style={{ width: "var(--sidebar-width, 84px)" }}
-      >
-        <Sidebar className="fixed inset-y-0 z-20" />
-      </div>
+      {!isCreationPage && (
+        <div
+          className="hidden md:block flex-shrink-0"
+          style={{ width: "var(--sidebar-width, 84px)" }}
+        >
+          <Sidebar className="fixed inset-y-0 z-20" />
+        </div>
+      )}
 
       {/* Main Content Area */}
       <div className="flex flex-1 flex-col min-w-0 overflow-hidden relative">
-        <Topbar />
+        {!isCreationPage && <Topbar />}
         <OfflineSyncBanner />
+        <CommandPalette />
 
         {/* Content Wrapper */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 scroll-smooth custom-scrollbar">
-          <div className="mx-auto max-w-7xl gap-6 flex">
+        <main className={cn(
+          "flex-1 scroll-smooth",
+          isCreationPage ? "overflow-hidden" : "overflow-y-auto p-4 sm:p-6 lg:p-8 custom-scrollbar"
+        )}>
+          <div className={cn(
+            "mx-auto animate-fade-in flex",
+            isCreationPage ? "max-w-none w-full h-full" : "max-w-7xl gap-6"
+          )}>
             <div className="min-w-0 flex-1 h-full">{children}</div>
-            <QuickActionsRail />
+            {!isCreationPage && <QuickActionsRail />}
           </div>
         </main>
       </div>
@@ -98,12 +125,26 @@ export default function App() {
                 {/* Sales Module */}
                 <Route path="/sales" element={<SalesListPage />} />
                 <Route path="/sales/view/:id" element={<SalesDetailPage />} />
-                <Route path="/sales/create" element={<SalesCreatePage />} />
+                <Route path="/sales/create" element={<ProtectedRoute><SalesCreatePage /></ProtectedRoute>} />
+                <Route path="/sales-return" element={<ProtectedRoute><SalesReturnListPage /></ProtectedRoute>} />
+                <Route path="/sales-return/create" element={<ProtectedRoute><SalesReturnCreatePage /></ProtectedRoute>} />
 
-                {/* Purchase Module */}
-                <Route path="/purchase" element={<PurchaseListPage />} />
+                <Route path="/customers" element={<ProtectedRoute><CustomersListPage /></ProtectedRoute>} />
+                <Route path="/customers/new" element={<ProtectedRoute><CustomersNewPage /></ProtectedRoute>} />
+                <Route path="/vendors" element={<ProtectedRoute><VendorsListPage /></ProtectedRoute>} />
+                <Route path="/vendors/new" element={<ProtectedRoute><VendorsNewPage /></ProtectedRoute>} />
+
+                <Route path="/items" element={<ProtectedRoute><ItemsListPage /></ProtectedRoute>} />
+                <Route path="/items/new" element={<ProtectedRoute><NewItemPage /></ProtectedRoute>} />
+
+                <Route path="/purchase" element={<ProtectedRoute><PurchaseListPage /></ProtectedRoute>} />
                 <Route path="/purchase/view/:id" element={<PurchaseDetailPage />} />
                 <Route path="/purchase/create" element={<PurchaseCreatePage />} />
+                <Route path="/purchase-return" element={<ProtectedRoute><PurchaseReturnListPage /></ProtectedRoute>} />
+                <Route path="/purchase-return/create" element={<ProtectedRoute><PurchaseReturnCreatePage /></ProtectedRoute>} />
+
+                <Route path="/quotations" element={<ProtectedRoute><QuotationsListPage /></ProtectedRoute>} />
+                <Route path="/quotations/create" element={<ProtectedRoute><QuotationCreatePage /></ProtectedRoute>} />
 
                 {/* Vouchers Module */}
                 <Route path="/vouchers" element={<VouchersListPage />} />
