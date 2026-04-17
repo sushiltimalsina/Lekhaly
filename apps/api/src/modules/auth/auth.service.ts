@@ -370,6 +370,14 @@ export class AuthService {
         nextOrderNumber: true,
         nextQuotationNumber: true,
         nextPurchaseOrderNumber: true,
+        lockDate: true,
+        creditLimitAmount: true,
+        printLogo: true,
+        address: true,
+        phone: true,
+        email: true,
+        panNumber: true,
+        vatNumber: true,
       } as any
     });
   }
@@ -412,6 +420,14 @@ export class AuthService {
         nextOrderNumber: dto.nextOrderNumber ?? undefined,
         nextQuotationNumber: dto.nextQuotationNumber ?? undefined,
         nextPurchaseOrderNumber: dto.nextPurchaseOrderNumber ?? undefined,
+        lockDate: dto.lockDate !== undefined ? (dto.lockDate ? new Date(dto.lockDate) : null) : undefined,
+        creditLimitAmount: dto.creditLimitAmount ?? undefined,
+        printLogo: dto.printLogo ?? undefined,
+        address: dto.address ?? undefined,
+        phone: dto.phone ?? undefined,
+        email: dto.email ?? undefined,
+        panNumber: dto.panNumber ?? undefined,
+        vatNumber: dto.vatNumber ?? undefined,
       } as any,
       select: {
         id: true,
@@ -427,6 +443,14 @@ export class AuthService {
         nextOrderNumber: true,
         nextQuotationNumber: true,
         nextPurchaseOrderNumber: true,
+        lockDate: true,
+        creditLimitAmount: true,
+        printLogo: true,
+        address: true,
+        phone: true,
+        email: true,
+        panNumber: true,
+        vatNumber: true,
       } as any
     });
   }

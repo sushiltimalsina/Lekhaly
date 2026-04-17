@@ -256,12 +256,12 @@ export declare class AuthService {
             name: string;
             createdAt: Date;
             updatedAt: Date;
-            type: import("@prisma/client").$Enums.PartyType;
-            isActive: boolean;
-            phone: string | null;
             address: string | null;
+            phone: string | null;
             panNumber: string | null;
             vatNumber: string | null;
+            type: import("@prisma/client").$Enums.PartyType;
+            isActive: boolean;
         } | {
             id: string;
             companyId: string;
@@ -269,12 +269,12 @@ export declare class AuthService {
             name: string;
             createdAt: Date;
             updatedAt: Date;
-            type: import("@prisma/client").$Enums.PartyType;
-            isActive: boolean;
-            phone: string | null;
             address: string | null;
+            phone: string | null;
             panNumber: string | null;
             vatNumber: string | null;
+            type: import("@prisma/client").$Enums.PartyType;
+            isActive: boolean;
         })[] | ({
             id: string;
             companyId: string;
@@ -912,12 +912,12 @@ export declare class AuthService {
             name: string;
             createdAt: Date;
             updatedAt: Date;
-            type: import("@prisma/client").$Enums.PartyType;
-            isActive: boolean;
-            phone: string | null;
             address: string | null;
+            phone: string | null;
             panNumber: string | null;
             vatNumber: string | null;
+            type: import("@prisma/client").$Enums.PartyType;
+            isActive: boolean;
         }[] | {
             id: string;
             companyId: string;
@@ -1420,12 +1420,12 @@ export declare class AuthService {
             name: string;
             createdAt: Date;
             updatedAt: Date;
-            type: import("@prisma/client").$Enums.PartyType;
-            isActive: boolean;
-            phone: string | null;
             address: string | null;
+            phone: string | null;
             panNumber: string | null;
             vatNumber: string | null;
+            type: import("@prisma/client").$Enums.PartyType;
+            isActive: boolean;
         } | {
             id: string;
             companyId: string;
@@ -1433,12 +1433,12 @@ export declare class AuthService {
             name: string;
             createdAt: Date;
             updatedAt: Date;
-            type: import("@prisma/client").$Enums.PartyType;
-            isActive: boolean;
-            phone: string | null;
             address: string | null;
+            phone: string | null;
             panNumber: string | null;
             vatNumber: string | null;
+            type: import("@prisma/client").$Enums.PartyType;
+            isActive: boolean;
         })[] | ({
             id: string;
             companyId: string;
@@ -2076,12 +2076,12 @@ export declare class AuthService {
             name: string;
             createdAt: Date;
             updatedAt: Date;
-            type: import("@prisma/client").$Enums.PartyType;
-            isActive: boolean;
-            phone: string | null;
             address: string | null;
+            phone: string | null;
             panNumber: string | null;
             vatNumber: string | null;
+            type: import("@prisma/client").$Enums.PartyType;
+            isActive: boolean;
         }[] | {
             id: string;
             companyId: string;

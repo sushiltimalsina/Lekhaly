@@ -47,6 +47,12 @@ export declare const CompanySchema: z.ZodObject<{
     lockDate: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     creditLimitAmount: z.ZodOptional<z.ZodNumber>;
     printLogo: z.ZodOptional<z.ZodBoolean>;
+    address: z.ZodOptional<z.ZodString>;
+    phone: z.ZodOptional<z.ZodString>;
+    email: z.ZodOptional<z.ZodString>;
+    panNumber: z.ZodOptional<z.ZodString>;
+    vatNumber: z.ZodOptional<z.ZodString>;
+    panVat: z.ZodOptional<z.ZodString>;
 }, z.core.$strip>;
 export declare const NotificationsSchema: z.ZodObject<{
     emailAlerts: z.ZodOptional<z.ZodBoolean>;

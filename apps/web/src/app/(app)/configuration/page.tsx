@@ -649,6 +649,206 @@ export default function ConfigurationPage() {
         </Card>
       </div>
 
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Voucher Numbering Section */}
+        <Card className="glass-card overflow-hidden">
+          <CardHeader onClick={() => setShowNumbering(!showNumbering)} className="cursor-pointer hover:bg-accent/10 transition-colors select-none">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Hash className="h-5 w-5 text-indigo-500" />
+              Voucher Numbering
+            </CardTitle>
+            <CardDescription>Setup prefixes and sequences</CardDescription>
+          </CardHeader>
+          {showNumbering && (
+            <CardContent className="space-y-4 animate-in fade-in slide-in-from-top-1">
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold uppercase text-muted-foreground">Invoice Prefix</label>
+                    <Input 
+                      value={companyForm.invoicePrefix || ""} 
+                      onChange={e => setCompanyForm({...companyForm, invoicePrefix: e.target.value.toUpperCase()})}
+                      onBlur={() => saveCompanySettings({ invoicePrefix: companyForm.invoicePrefix })}
+                      className="h-9 rounded-xl"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold uppercase text-muted-foreground">Next No.</label>
+                    <Input 
+                      type="number"
+                      value={companyForm.nextInvoiceNumber || 1} 
+                      onChange={e => setCompanyForm({...companyForm, nextInvoiceNumber: parseInt(e.target.value)})}
+                      onBlur={() => saveCompanySettings({ nextInvoiceNumber: companyForm.nextInvoiceNumber })}
+                      className="h-9 rounded-xl"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold uppercase text-muted-foreground">Order Prefix</label>
+                    <Input 
+                      value={companyForm.orderPrefix || ""} 
+                      onChange={e => setCompanyForm({...companyForm, orderPrefix: e.target.value.toUpperCase()})}
+                      onBlur={() => saveCompanySettings({ orderPrefix: companyForm.orderPrefix })}
+                      className="h-9 rounded-xl"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold uppercase text-muted-foreground">Next No.</label>
+                    <Input 
+                      type="number"
+                      value={companyForm.nextOrderNumber || 1} 
+                      onChange={e => setCompanyForm({...companyForm, nextOrderNumber: parseInt(e.target.value)})}
+                      onBlur={() => saveCompanySettings({ nextOrderNumber: companyForm.nextOrderNumber })}
+                      className="h-9 rounded-xl"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold uppercase text-muted-foreground">Quota Prefix</label>
+                    <Input 
+                      value={companyForm.quotationPrefix || ""} 
+                      onChange={e => setCompanyForm({...companyForm, quotationPrefix: e.target.value.toUpperCase()})}
+                      onBlur={() => saveCompanySettings({ quotationPrefix: companyForm.quotationPrefix })}
+                      className="h-9 rounded-xl"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold uppercase text-muted-foreground">Next No.</label>
+                    <Input 
+                      type="number"
+                      value={companyForm.nextQuotationNumber || 1} 
+                      onChange={e => setCompanyForm({...companyForm, nextQuotationNumber: parseInt(e.target.value)})}
+                      onBlur={() => saveCompanySettings({ nextQuotationNumber: companyForm.nextQuotationNumber })}
+                      className="h-9 rounded-xl"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold uppercase text-muted-foreground">PO Prefix</label>
+                    <Input 
+                      value={companyForm.purchaseOrderPrefix || ""} 
+                      onChange={e => setCompanyForm({...companyForm, purchaseOrderPrefix: e.target.value.toUpperCase()})}
+                      onBlur={() => saveCompanySettings({ purchaseOrderPrefix: companyForm.purchaseOrderPrefix })}
+                      className="h-9 rounded-xl"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold uppercase text-muted-foreground">Next No.</label>
+                    <Input 
+                      type="number"
+                      value={companyForm.nextPurchaseOrderNumber || 1} 
+                      onChange={e => setCompanyForm({...companyForm, nextPurchaseOrderNumber: parseInt(e.target.value)})}
+                      onBlur={() => saveCompanySettings({ nextPurchaseOrderNumber: companyForm.nextPurchaseOrderNumber })}
+                      className="h-9 rounded-xl"
+                    />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          )}
+        </Card>
+
+        {/* Fiscal Year & Security Section */}
+        <Card className="glass-card overflow-hidden">
+          <CardHeader onClick={() => setShowSecurity(!showSecurity)} className="cursor-pointer hover:bg-accent/10 transition-colors select-none">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Shield className="h-5 w-5 text-red-500" />
+              Fiscal & Security
+            </CardTitle>
+            <CardDescription>Lock dates and start month</CardDescription>
+          </CardHeader>
+          {showSecurity && (
+            <CardContent className="space-y-4 animate-in fade-in slide-in-from-top-1">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Account Lock Date
+                  </label>
+                  <Input 
+                    type="date"
+                    value={companyForm.lockDate ? new Date(companyForm.lockDate).toISOString().split('T')[0] : ""}
+                    onChange={e => {
+                      const d = e.target.value;
+                      setCompanyForm({...companyForm, lockDate: d || null});
+                      saveCompanySettings({ lockDate: d || null });
+                    }}
+                    className="rounded-xl h-11"
+                  />
+                  <p className="text-[10px] text-muted-foreground italic">No vouchers can be added/modified on or before this date.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
+                    <Monitor className="h-4 w-4" />
+                    FY Start Month
+                  </label>
+                  <select 
+                    value={companyForm.fiscalYearStartMonth || 4} 
+                    onChange={e => {
+                      const v = parseInt(e.target.value);
+                      setCompanyForm({...companyForm, fiscalYearStartMonth: v});
+                      saveCompanySettings({ fiscalYearStartMonth: v });
+                    }}
+                    className="w-full h-11 rounded-xl border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
+                      <option key={m} value={m}>{new Date(2000, m-1).toLocaleString('default', { month: 'long' })}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </CardContent>
+          )}
+        </Card>
+
+        {/* Global Credit Management */}
+        <Card className="glass-card overflow-hidden">
+          <CardHeader onClick={() => setShowCredit(!showSecurity)} className="cursor-pointer hover:bg-accent/10 transition-colors select-none">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-emerald-500" />
+              Credit Management
+            </CardTitle>
+            <CardDescription>Global business credit safety</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase text-muted-foreground">Default Credit Limit (Rs.)</label>
+                <div className="relative">
+                  <CreditCard className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input 
+                    type="number"
+                    value={companyForm.creditLimitAmount || 0} 
+                    onChange={e => setCompanyForm({...companyForm, creditLimitAmount: parseFloat(e.target.value)})}
+                    onBlur={() => saveCompanySettings({ creditLimitAmount: companyForm.creditLimitAmount })}
+                    className="pl-9 h-11 rounded-xl font-bold text-emerald-600"
+                    placeholder="0.00"
+                  />
+                </div>
+                <p className="text-[10px] text-muted-foreground">This is the default limit for new customers unless overridden individually.</p>
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40">
+                <div className="text-xs font-medium text-emerald-800 dark:text-emerald-300">Print Logo on Documents</div>
+                <Switch 
+                  checked={companyForm.printLogo ?? true} 
+                  onCheckedChange={(v) => {
+                    setCompanyForm({...companyForm, printLogo: v});
+                    saveCompanySettings({ printLogo: v });
+                  }}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="mt-8">
+
       <AddUnitDialog
         open={addUnitOpen}
         onClose={() => { setAddUnitOpen(false); setEditUnit(undefined); }}

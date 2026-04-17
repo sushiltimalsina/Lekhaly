@@ -85,6 +85,13 @@ model Company {
 
   fiscalYearStartMonth Int @default(4) // Nepal common FY start is mid-April; UI can configure.
 
+  // Profile Information
+  address             String?
+  phone               String?
+  email               String?
+  panNumber           String?
+  vatNumber           String?
+
   // numbering + lock settings
   invoicePrefix       String    @default("INV")
   orderPrefix         String    @default("SO")

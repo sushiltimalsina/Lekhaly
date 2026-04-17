@@ -50,6 +50,12 @@ exports.CompanySchema = zod_1.z.object({
     lockDate: zod_1.z.string().datetime().nullable().optional(),
     creditLimitAmount: zod_1.z.number().min(0).optional(),
     printLogo: zod_1.z.boolean().optional(),
+    address: zod_1.z.string().trim().max(500).optional(),
+    phone: zod_1.z.string().trim().max(50).optional(),
+    email: zod_1.z.string().email().optional(),
+    panNumber: zod_1.z.string().trim().max(50).optional(),
+    vatNumber: zod_1.z.string().trim().max(50).optional(),
+    panVat: zod_1.z.string().trim().max(100).optional(),
 });
 exports.NotificationsSchema = zod_1.z.object({
     emailAlerts: zod_1.z.boolean().optional(),

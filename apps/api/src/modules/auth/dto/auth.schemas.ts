@@ -55,6 +55,12 @@ export const CompanySchema = z.object({
   lockDate: z.string().datetime().nullable().optional(),
   creditLimitAmount: z.number().min(0).optional(),
   printLogo: z.boolean().optional(),
+  address: z.string().trim().max(500).optional(),
+  phone: z.string().trim().max(50).optional(),
+  email: z.string().email().optional(),
+  panNumber: z.string().trim().max(50).optional(),
+  vatNumber: z.string().trim().max(50).optional(),
+  panVat: z.string().trim().max(100).optional(), // Legacy support
 });
 
 export const NotificationsSchema = z.object({

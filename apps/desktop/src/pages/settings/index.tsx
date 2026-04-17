@@ -80,12 +80,12 @@ export default function SettingsPage() {
     try {
       const res: any = await getCompany();
       setForm({
-        companyName: res?.companyName ?? "",
-        companyCode: res?.companyCode ?? "",
+        companyName: res?.name ?? "",
+        companyCode: res?.code ?? "",
         address: res?.address ?? "",
         phone: res?.phone ?? "",
         email: res?.email ?? "",
-        panVat: res?.panVat ?? res?.pan ?? res?.vat ?? "",
+        panVat: res?.panNumber || res?.vatNumber || "",
       });
     } catch (e: any) {
       setMsg(e?.message ?? "Failed to load company settings");
@@ -99,11 +99,12 @@ export default function SettingsPage() {
     setMsg(null);
     try {
       await updateCompany({
-        companyName: form.companyName,
+        name: form.companyName,
         address: form.address,
         phone: form.phone,
         email: form.email,
-        panVat: form.panVat,
+        panNumber: form.panVat,
+        vatNumber: form.panVat,
       });
       setMsg("Saved successfully");
     } catch (e: any) {
