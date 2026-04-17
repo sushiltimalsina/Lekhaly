@@ -41,13 +41,13 @@ export declare class InvoicesController {
         voucherId: string | null;
         date: Date;
         dateBs: string | null;
-        total: import("@prisma/client/runtime/client").Decimal;
         invoiceNo: string | null;
+        receivableAccountId: string;
         dueDate: Date | null;
         dueDateBs: string | null;
         subtotal: import("@prisma/client/runtime/client").Decimal;
         vatAmount: import("@prisma/client/runtime/client").Decimal;
-        receivableAccountId: string;
+        total: import("@prisma/client/runtime/client").Decimal;
     }>;
     updateDraft(user: AuthUser, id: string, body: any): Promise<{
         id: string;
@@ -63,13 +63,13 @@ export declare class InvoicesController {
         voucherId: string | null;
         date: Date;
         dateBs: string | null;
-        total: import("@prisma/client/runtime/client").Decimal;
         invoiceNo: string | null;
+        receivableAccountId: string;
         dueDate: Date | null;
         dueDateBs: string | null;
         subtotal: import("@prisma/client/runtime/client").Decimal;
         vatAmount: import("@prisma/client/runtime/client").Decimal;
-        receivableAccountId: string;
+        total: import("@prisma/client/runtime/client").Decimal;
     }>;
     preview(user: AuthUser, body: any): Promise<{
         totals: {
@@ -131,13 +131,13 @@ export declare class InvoicesController {
         voucherId: string | null;
         date: Date;
         dateBs: string | null;
-        total: import("@prisma/client/runtime/client").Decimal;
         invoiceNo: string | null;
+        receivableAccountId: string;
         dueDate: Date | null;
         dueDateBs: string | null;
         subtotal: import("@prisma/client/runtime/client").Decimal;
         vatAmount: import("@prisma/client/runtime/client").Decimal;
-        receivableAccountId: string;
+        total: import("@prisma/client/runtime/client").Decimal;
     }>;
     void(user: AuthUser, id: string): Promise<{
         id: string;
@@ -153,13 +153,13 @@ export declare class InvoicesController {
         voucherId: string | null;
         date: Date;
         dateBs: string | null;
-        total: import("@prisma/client/runtime/client").Decimal;
         invoiceNo: string | null;
+        receivableAccountId: string;
         dueDate: Date | null;
         dueDateBs: string | null;
         subtotal: import("@prisma/client/runtime/client").Decimal;
         vatAmount: import("@prisma/client/runtime/client").Decimal;
-        receivableAccountId: string;
+        total: import("@prisma/client/runtime/client").Decimal;
     }>;
     list(user: AuthUser, query: any): Promise<({
         items: ({
@@ -205,13 +205,13 @@ export declare class InvoicesController {
         voucherId: string | null;
         date: Date;
         dateBs: string | null;
-        total: import("@prisma/client/runtime/client").Decimal;
         invoiceNo: string | null;
+        receivableAccountId: string;
         dueDate: Date | null;
         dueDateBs: string | null;
         subtotal: import("@prisma/client/runtime/client").Decimal;
         vatAmount: import("@prisma/client/runtime/client").Decimal;
-        receivableAccountId: string;
+        total: import("@prisma/client/runtime/client").Decimal;
     })[]>;
     getById(user: AuthUser, id: string): Promise<{
         items: any[];
@@ -239,12 +239,12 @@ export declare class InvoicesController {
         voucherId: string | null;
         date: Date;
         dateBs: string | null;
-        total: import("@prisma/client/runtime/client").Decimal;
         invoiceNo: string | null;
+        receivableAccountId: string;
         dueDate: Date | null;
         dueDateBs: string | null;
         subtotal: import("@prisma/client/runtime/client").Decimal;
         vatAmount: import("@prisma/client/runtime/client").Decimal;
-        receivableAccountId: string;
+        total: import("@prisma/client/runtime/client").Decimal;
     }>;
 }

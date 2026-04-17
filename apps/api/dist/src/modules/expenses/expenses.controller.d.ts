@@ -15,8 +15,8 @@ export declare class ExpensesController {
         date: Date;
         dateBs: string | null;
         amount: import("@prisma/client/runtime/client").Decimal;
-        attachmentId: string | null;
         vendorId: string | null;
+        attachmentId: string | null;
     }>;
     preview(user: AuthUser, body: any): Promise<{
         total: import("@prisma/client/runtime/client").Decimal;
@@ -49,8 +49,8 @@ export declare class ExpensesController {
         date: Date;
         dateBs: string | null;
         amount: import("@prisma/client/runtime/client").Decimal;
-        attachmentId: string | null;
         vendorId: string | null;
+        attachmentId: string | null;
     }>;
     list(user: AuthUser, query: any): Promise<{
         id: string;
@@ -64,7 +64,7 @@ export declare class ExpensesController {
         date: Date;
         dateBs: string | null;
         amount: import("@prisma/client/runtime/client").Decimal;
-        attachmentId: string | null;
         vendorId: string | null;
+        attachmentId: string | null;
     }[]>;
 }

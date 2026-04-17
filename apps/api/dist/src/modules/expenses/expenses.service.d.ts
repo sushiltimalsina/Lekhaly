@@ -18,8 +18,8 @@ export declare class ExpensesService {
         date: Date;
         dateBs: string | null;
         amount: Prisma.Decimal;
-        attachmentId: string | null;
         vendorId: string | null;
+        attachmentId: string | null;
     }>;
     preview(user: AuthUser, input: any): Promise<{
         total: Prisma.Decimal;
@@ -52,8 +52,8 @@ export declare class ExpensesService {
         date: Date;
         dateBs: string | null;
         amount: Prisma.Decimal;
-        attachmentId: string | null;
         vendorId: string | null;
+        attachmentId: string | null;
     }>;
     list(user: AuthUser, filters: {
         from?: Date;
@@ -73,7 +73,7 @@ export declare class ExpensesService {
         date: Date;
         dateBs: string | null;
         amount: Prisma.Decimal;
-        attachmentId: string | null;
         vendorId: string | null;
+        attachmentId: string | null;
     }[]>;
 }

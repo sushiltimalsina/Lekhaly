@@ -321,8 +321,8 @@ export declare class VouchersService {
         companyId: string;
         createdAt: Date;
         voucherId: string;
-        fileName: string;
         uploadedByUserId: string | null;
+        fileName: string;
         mimeType: string;
         sizeBytes: number;
         storageKey: string;
@@ -344,8 +344,8 @@ export declare class VouchersService {
         companyId: string;
         createdAt: Date;
         voucherId: string;
-        fileName: string;
         uploadedByUserId: string | null;
+        fileName: string;
         mimeType: string;
         sizeBytes: number;
         storageKey: string;

@@ -884,7 +884,7 @@ export default function QuotationCreatePage() {
                                                         onChange={(id, opt) => {
                                                             updateLine(idx, {
                                                                 itemId: id,
-                                                                rate: opt?.salePrice ? String(opt.salePrice) : line.rate,
+                                                                rate: opt?.salesPrice ? String(opt.salesPrice) : line.rate,
                                                                 description: opt?.name
                                                             });
                                                         }}
@@ -894,7 +894,7 @@ export default function QuotationCreatePage() {
                                                         placeholder="Select Item..."
                                                         className="w-full min-w-[200px]"
                                                         buttonClassName="h-9 border-transparent bg-transparent hover:bg-white focus:bg-white focus:ring-2 px-2 shadow-none"
-                                                        buttonRef={(el) => (rowRefs.current.select[idx] = el)}
+                                                        buttonRef={(el) => { rowRefs.current.select[idx] = el; }}
                                                         onEnterNext={() => rowRefs.current.qty[idx]?.focus()}
                                                     />
                                                     {line.description && (
@@ -908,7 +908,7 @@ export default function QuotationCreatePage() {
                                                 </td>
                                                 <td className="px-4 py-2">
                                                     <input
-                                                        ref={(el) => (rowRefs.current.qty[idx] = el)}
+                                                        ref={(el) => { rowRefs.current.qty[idx] = el; }}
                                                         className="w-full text-right bg-transparent p-1 outline-none focus:bg-slate-100 rounded"
                                                         value={line.qty}
                                                         onChange={(e) => updateLine(idx, { qty: e.target.value })}
@@ -920,7 +920,7 @@ export default function QuotationCreatePage() {
                                                 </td>
                                                 <td className="px-4 py-2">
                                                     <input
-                                                        ref={(el) => (rowRefs.current.rate[idx] = el)}
+                                                        ref={(el) => { rowRefs.current.rate[idx] = el; }}
                                                         className="w-full text-right bg-transparent p-1 outline-none focus:bg-slate-100 rounded"
                                                         value={line.rate}
                                                         onChange={(e) => updateLine(idx, { rate: e.target.value })}
@@ -1050,7 +1050,7 @@ export default function QuotationCreatePage() {
                                     <span>{total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                                 </div>
                                 <div className="text-right text-xs text-slate-500">
-                                    <MoneyText amount={total} />
+                                    <MoneyText value={total} />
                                 </div>
                             </div>
                         </div>
@@ -1071,27 +1071,24 @@ export default function QuotationCreatePage() {
             {/* Dialogs */}
             <AddCustomerDialog
                 open={addCustomerOpen}
-                onOpenChange={setAddCustomerOpen}
+                onClose={() => setAddCustomerOpen(false)}
                 onSuccess={(party) => {
                     setParties((prev) => [...prev, party]);
                     setForm((f) => ({ ...f, partyId: party.id, partyName: party.name }));
-                    setAddCustomerOpen(false);
                 }}
             />
             <AddItemDialog
                 open={addItemOpen}
-                onOpenChange={setAddItemOpen}
+                onClose={() => setAddItemOpen(false)}
                 onSuccess={(item) => {
                     setItems((prev) => [...prev, item]);
-                    setAddItemOpen(false);
                 }}
             />
             <AddBillSundryDialog
                 open={addSundryOpen}
-                onOpenChange={setAddSundryOpen}
+                onClose={() => setAddSundryOpen(false)}
                 onSuccess={(bs) => {
                     setSundryOptions((prev) => [...prev, bs]);
-                    setAddSundryOpen(false);
                     // Add directly to rows
                     setBillSundries(prev => [...prev, {
                         id: crypto.randomUUID(),

@@ -33,8 +33,8 @@ export declare class BankingController {
         date: Date;
         dateBs: string | null;
         amount: import("@prisma/client/runtime/client").Decimal;
-        debitCredit: string;
         statementId: string;
+        debitCredit: string;
         matchedVoucherId: string | null;
         matchedLineId: string | null;
     }>;
@@ -46,8 +46,8 @@ export declare class BankingController {
         date: Date;
         dateBs: string | null;
         amount: import("@prisma/client/runtime/client").Decimal;
-        debitCredit: string;
         statementId: string;
+        debitCredit: string;
         matchedVoucherId: string | null;
         matchedLineId: string | null;
     }>;
@@ -59,8 +59,8 @@ export declare class BankingController {
         date: Date;
         dateBs: string | null;
         amount: import("@prisma/client/runtime/client").Decimal;
-        debitCredit: string;
         statementId: string;
+        debitCredit: string;
         matchedVoucherId: string | null;
         matchedLineId: string | null;
     }>;
@@ -96,8 +96,8 @@ export declare class BankingController {
             date: Date;
             dateBs: string | null;
             amount: import("@prisma/client/runtime/client").Decimal;
-            debitCredit: string;
             statementId: string;
+            debitCredit: string;
             matchedVoucherId: string | null;
             matchedLineId: string | null;
         }[];
