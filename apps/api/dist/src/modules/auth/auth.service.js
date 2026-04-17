@@ -371,7 +371,14 @@ let AuthService = AuthService_1 = class AuthService {
                 baseCurrency: true,
                 timezone: true,
                 fiscalYearStartMonth: true,
-                invoicePrefix: true
+                invoicePrefix: true,
+                orderPrefix: true,
+                quotationPrefix: true,
+                purchaseOrderPrefix: true,
+                nextInvoiceNumber: true,
+                nextOrderNumber: true,
+                nextQuotationNumber: true,
+                nextPurchaseOrderNumber: true,
             }
         });
     }
@@ -389,7 +396,14 @@ let AuthService = AuthService_1 = class AuthService {
                 baseCurrency: dto.baseCurrency ?? undefined,
                 timezone: dto.timezone ?? undefined,
                 fiscalYearStartMonth: dto.fiscalYearStartMonth ?? undefined,
-                invoicePrefix: dto.invoicePrefix ?? undefined
+                invoicePrefix: dto.invoicePrefix ?? undefined,
+                orderPrefix: dto.orderPrefix ?? undefined,
+                quotationPrefix: dto.quotationPrefix ?? undefined,
+                purchaseOrderPrefix: dto.purchaseOrderPrefix ?? undefined,
+                nextInvoiceNumber: dto.nextInvoiceNumber ?? undefined,
+                nextOrderNumber: dto.nextOrderNumber ?? undefined,
+                nextQuotationNumber: dto.nextQuotationNumber ?? undefined,
+                nextPurchaseOrderNumber: dto.nextPurchaseOrderNumber ?? undefined,
             },
             select: {
                 id: true,
@@ -397,9 +411,27 @@ let AuthService = AuthService_1 = class AuthService {
                 baseCurrency: true,
                 timezone: true,
                 fiscalYearStartMonth: true,
-                invoicePrefix: true
+                invoicePrefix: true,
+                orderPrefix: true,
+                quotationPrefix: true,
+                purchaseOrderPrefix: true,
+                nextInvoiceNumber: true,
+                nextOrderNumber: true,
+                nextQuotationNumber: true,
+                nextPurchaseOrderNumber: true,
             }
         });
+    }
+    async logoutAll(userId) {
+        await this.prisma.authSession.updateMany({
+            where: { userId, revokedAt: null },
+            data: { revokedAt: new Date() }
+        });
+        await this.prisma.user.update({
+            where: { id: userId },
+            data: { trustedDeviceVersion: { increment: 1 } }
+        });
+        return { ok: true };
     }
     async updateNotifications(userId, dto) {
         const user = await this.prisma.user.findUnique({
@@ -440,7 +472,10 @@ let AuthService = AuthService_1 = class AuthService {
         this.logger.debug(`Login attempt for ${dto.email}@${dto.companyCode}`);
         try {
             this.logger.debug('Finding user...');
-            const company = await this.prisma.company.findUnique({ where: { code: dto.companyCode } });
+            const company = await this.prisma.company.findUnique({
+                where: { code: dto.companyCode },
+                select: { id: true, code: true, name: true, baseCurrency: true, timezone: true }
+            });
             if (!company)
                 throw new common_1.UnauthorizedException("Invalid credentials");
             const found = await this.getUserWithPerms(company.id, dto.email);

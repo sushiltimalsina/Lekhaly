@@ -36,6 +36,11 @@ export class AuthController {
     return this.auth.logout(body.refreshToken);
   }
 
+  @Post("logout-all")
+  logoutAll(@CurrentUser("sub") userId: string) {
+    return this.auth.logoutAll(userId);
+  }
+
   @Get("me")
   me(@CurrentUser() user: AuthUser) {
     return user;

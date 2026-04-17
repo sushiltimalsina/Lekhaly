@@ -362,8 +362,15 @@ export class AuthService {
         baseCurrency: true,
         timezone: true,
         fiscalYearStartMonth: true,
-        invoicePrefix: true
-      }
+        invoicePrefix: true,
+        orderPrefix: true,
+        quotationPrefix: true,
+        purchaseOrderPrefix: true,
+        nextInvoiceNumber: true,
+        nextOrderNumber: true,
+        nextQuotationNumber: true,
+        nextPurchaseOrderNumber: true,
+      } as any
     });
   }
 
@@ -373,6 +380,16 @@ export class AuthService {
     timezone?: string;
     fiscalYearStartMonth?: number;
     invoicePrefix?: string;
+    orderPrefix?: string;
+    quotationPrefix?: string;
+    purchaseOrderPrefix?: string;
+    nextInvoiceNumber?: number;
+    nextOrderNumber?: number;
+    nextQuotationNumber?: number;
+    nextPurchaseOrderNumber?: number;
+    lockDate?: string | null;
+    creditLimitAmount?: number;
+    printLogo?: boolean;
   }) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -387,17 +404,44 @@ export class AuthService {
         baseCurrency: dto.baseCurrency ?? undefined,
         timezone: dto.timezone ?? undefined,
         fiscalYearStartMonth: dto.fiscalYearStartMonth ?? undefined,
-        invoicePrefix: dto.invoicePrefix ?? undefined
-      },
+        invoicePrefix: dto.invoicePrefix ?? undefined,
+        orderPrefix: dto.orderPrefix ?? undefined,
+        quotationPrefix: dto.quotationPrefix ?? undefined,
+        purchaseOrderPrefix: dto.purchaseOrderPrefix ?? undefined,
+        nextInvoiceNumber: dto.nextInvoiceNumber ?? undefined,
+        nextOrderNumber: dto.nextOrderNumber ?? undefined,
+        nextQuotationNumber: dto.nextQuotationNumber ?? undefined,
+        nextPurchaseOrderNumber: dto.nextPurchaseOrderNumber ?? undefined,
+      } as any,
       select: {
         id: true,
         name: true,
         baseCurrency: true,
         timezone: true,
         fiscalYearStartMonth: true,
-        invoicePrefix: true
-      }
+        invoicePrefix: true,
+        orderPrefix: true,
+        quotationPrefix: true,
+        purchaseOrderPrefix: true,
+        nextInvoiceNumber: true,
+        nextOrderNumber: true,
+        nextQuotationNumber: true,
+        nextPurchaseOrderNumber: true,
+      } as any
     });
+  }
+
+  async logoutAll(userId: string) {
+    await this.prisma.authSession.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date() }
+    });
+    // Increment trustedDeviceVersion to invalidate all existing tokens immediately
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { trustedDeviceVersion: { increment: 1 } }
+    });
+    return { ok: true };
   }
 
   async updateNotifications(userId: string, dto: {
@@ -455,7 +499,10 @@ export class AuthService {
     this.logger.debug(`Login attempt for ${dto.email}@${dto.companyCode}`);
     try {
       this.logger.debug('Finding user...');
-      const company = await this.prisma.company.findUnique({ where: { code: dto.companyCode } });
+      const company = await this.prisma.company.findUnique({ 
+        where: { code: dto.companyCode },
+        select: { id: true, code: true, name: true, baseCurrency: true, timezone: true } as any
+      }) as any;
       if (!company) throw new UnauthorizedException("Invalid credentials");
       const found = await this.getUserWithPerms(company.id, dto.email);
       if (!found) {

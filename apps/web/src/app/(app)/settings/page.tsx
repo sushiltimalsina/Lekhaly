@@ -6,7 +6,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@lekh
 import { Button } from "@lekhaly/ui";
 import { Input } from "@lekhaly/ui";
 import { getCompany, updateCompany } from "@/lib/api/auth";
-import { Sun, Moon, Monitor } from "lucide-react";
+import { Sun, Moon, Monitor, Printer, Bell, Languages, ShieldAlert, LogOut } from "lucide-react";
+import { 
+  getSettings, 
+  setPrintLayout, 
+  setLanguage, 
+  setNotifications, 
+  subscribeSettings,
+} from "@/lib/store/settings";
+import { logoutAllSessions } from "@/lib/api/auth";
+import { Switch } from "@lekhaly/ui";
+import ConfirmDialog from "@/components/app/confirm-dialog";
 import { cn } from "@/lib/utils";
 
 type CompanyForm = {
@@ -23,6 +33,10 @@ export default function SettingsPage() {
   const [saving, setSaving] = React.useState(false);
   const [msg, setMsg] = React.useState<string | null>(null);
   const [theme, setThemeState] = React.useState<"light" | "dark" | "system">("system");
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
+  
+  // Local Settings State
+  const [localSettings, setLocalSettings] = React.useState(getSettings());
 
   const [form, setForm] = React.useState<CompanyForm>({
     companyName: "",
@@ -101,7 +115,24 @@ export default function SettingsPage() {
 
   React.useEffect(() => {
     load();
+    const unsubscribe = subscribeSettings((next) => {
+      setLocalSettings(next);
+    });
+    return () => unsubscribe();
   }, []);
+
+  const handleLogoutAll = async () => {
+    setConfirmOpen(false);
+    setSaving(true);
+    try {
+      await logoutAllSessions();
+      setMsg("Successfully logged out from all other sessions.");
+    } catch (e: any) {
+      setMsg(e?.message ?? "Failed to logout other sessions");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -223,8 +254,137 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Printing & Hardware Section */}
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Printer className="h-5 w-5 text-blue-500" />
+                Hardware & Printing
+              </CardTitle>
+              <CardDescription>Configure printer layouts and labels</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-3">
+                <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Default Paper Size</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(["a4", "a5", "thermal"] as const).map(p => (
+                    <button
+                      key={p}
+                      onClick={() => setPrintLayout(p)}
+                      className={cn(
+                        "py-3 rounded-xl border text-xs font-bold uppercase transition-all",
+                        localSettings.printLayout === p 
+                          ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20" 
+                          : "bg-background hover:bg-muted text-muted-foreground"
+                      )}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* App Behavior & Language */}
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Languages className="h-5 w-5 text-emerald-500" />
+                App Behavior & Language
+              </CardTitle>
+              <CardDescription>Personalize your experience</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-3">
+                <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Select Language</label>
+                <div className="flex p-1 bg-muted/30 rounded-2xl">
+                  {(["en", "ne"] as const).map(lang => (
+                    <button
+                      key={lang}
+                      onClick={() => setLanguage(lang)}
+                      className={cn(
+                        "flex-1 py-3 rounded-xl text-xs font-bold transition-all",
+                        localSettings.language === lang 
+                          ? "bg-emerald-600 text-white shadow-lg shadow-emerald-500/20" 
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {lang === "en" ? "English" : "Nepali (नेपाली)"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-2">
+                <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Alerts & Notifications</label>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-muted/20 border">
+                    <div className="flex items-center gap-3">
+                      <Bell className="h-4 w-4 text-orange-500" />
+                      <span className="text-sm font-medium">Low Stock Alerts</span>
+                    </div>
+                    <Switch 
+                      checked={localSettings.notifications.lowStock} 
+                      onCheckedChange={(v) => setNotifications({ lowStock: v })} 
+                    />
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-muted/20 border">
+                    <div className="flex items-center gap-3">
+                      <Bell className="h-4 w-4 text-indigo-500" />
+                      <span className="text-sm font-medium">Overdue Invoice Reminders</span>
+                    </div>
+                    <Switch 
+                      checked={localSettings.notifications.overdueInvoices} 
+                      onCheckedChange={(v) => setNotifications({ overdueInvoices: v })} 
+                    />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Security & Sessions */}
+          <Card className="glass-card border-red-200/20 dark:border-red-900/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-red-600">
+                <ShieldAlert className="h-5 w-5" />
+                Security & Sessions
+              </CardTitle>
+              <CardDescription>Manage your account security</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/50">
+                <p className="text-xs text-red-800 dark:text-red-400 font-medium mb-3">
+                  Logout from all other devices. This will invalidate all active sessions immediately except the current one.
+                </p>
+                <Button 
+                  variant="destructive" 
+                  size="sm" 
+                  className="w-full rounded-xl"
+                  onClick={() => setConfirmOpen(true)}
+                  disabled={saving}
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Logout All Sessions
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Logout All Sessions"
+        description="Are you sure you want to logout from all devices? All other sessions will be immediately terminated."
+        variant="danger"
+        confirmText="Logout All"
+        onConfirm={handleLogoutAll}
+        onCancel={() => setConfirmOpen(false)}
+        loading={saving}
+      />
     </div>
   );
 }

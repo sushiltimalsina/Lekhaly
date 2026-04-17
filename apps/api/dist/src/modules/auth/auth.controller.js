@@ -35,6 +35,9 @@ let AuthController = class AuthController {
     logout(body) {
         return this.auth.logout(body.refreshToken);
     }
+    logoutAll(userId) {
+        return this.auth.logoutAll(userId);
+    }
     me(user) {
         return user;
     }
@@ -102,6 +105,13 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
 ], AuthController.prototype, "logout", null);
+__decorate([
+    (0, common_1.Post)("logout-all"),
+    __param(0, (0, auth_decorator_1.CurrentUser)("sub")),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "logoutAll", null);
 __decorate([
     (0, common_1.Get)("me"),
     __param(0, (0, auth_decorator_1.CurrentUser)()),

@@ -331,6 +331,8 @@ export default function QuotationCreatePage() {
     const salesTypeRef = React.useRef<HTMLSelectElement>(null);
     const memoRef = React.useRef<HTMLInputElement>(null);
     const referenceNoRef = React.useRef<HTMLInputElement>(null);
+    const customerSelectRef = React.useRef<HTMLButtonElement>(null);
+    const addLineButtonRef = React.useRef<HTMLButtonElement>(null);
     const [lineErrors, setLineErrors] = React.useState<Record<number, { qty?: string; rate?: string }>>({});
     const [addItemOpen, setAddItemOpen] = React.useState(false);
     const [activeLineIdx, setActiveLineIdx] = React.useState<number | null>(null);

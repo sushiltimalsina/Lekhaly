@@ -33,27 +33,34 @@ export default function ConfirmDialog({
       : "bg-primary text-white hover:bg-primary/90";
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-2xl border bg-card p-4 shadow-lg">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div 
+        className="fixed inset-0 bg-black/60 backdrop-blur-2xl animate-in fade-in duration-300" 
+        onClick={onCancel}
+      />
+      
+      {/* Dialog Content */}
+      <div className="relative w-full max-w-md rounded-2xl border bg-card p-4 shadow-2xl animate-in zoom-in-95 duration-200">
         <div className="mb-3">
           <div className={[
-            "text-sm font-semibold",
-            variant === "danger" ? "text-red-600 dark:text-red-500" : ""
+            "text-base font-bold",
+            variant === "danger" ? "text-red-600 dark:text-red-500" : "text-foreground"
           ].join(" ")}>
             {title}
           </div>
           {description ? (
-            <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+            <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{description}</p>
           ) : null}
         </div>
 
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex items-center justify-end gap-3 mt-6">
           {onCancel && cancelText && (
             <button
               type="button"
               onClick={onCancel}
               disabled={loading}
-              className="rounded-xl border bg-background px-3 py-2 text-sm hover:bg-muted disabled:opacity-60"
+              className="rounded-xl border bg-background px-4 py-2 text-sm font-medium hover:bg-muted transition-colors disabled:opacity-60"
             >
               {cancelText}
             </button>
@@ -64,12 +71,12 @@ export default function ConfirmDialog({
             onClick={onConfirm}
             disabled={loading}
             className={[
-              "rounded-xl px-3 py-2 text-sm",
+              "rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-lg transition-all",
               confirmClass,
-              loading ? "opacity-70" : "",
+              loading ? "opacity-70 cursor-not-allowed" : "hover:scale-105 active:scale-95",
             ].join(" ")}
           >
-            {loading ? "Working..." : confirmText}
+            {loading ? "Please wait..." : confirmText}
           </button>
         </div>
       </div>

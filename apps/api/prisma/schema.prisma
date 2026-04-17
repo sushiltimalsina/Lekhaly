@@ -95,6 +95,8 @@ model Company {
   nextPurchaseOrderNumber Int @default(1)
   nextQuotationNumber Int     @default(1)
   lockDate          DateTime?
+  creditLimitAmount Decimal   @default(0) @db.Decimal(14, 2)
+  printLogo         Boolean   @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

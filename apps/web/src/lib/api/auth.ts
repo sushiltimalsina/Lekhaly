@@ -54,7 +54,13 @@ export async function logout() {
   return apiRequest<any>({
     method: "POST",
     path: "/auth/logout",
-    auth: false,
+  });
+}
+
+export async function logoutAllSessions() {
+  return apiRequest<any>({
+    method: "POST",
+    path: "/auth/logout-all",
   });
 }
 

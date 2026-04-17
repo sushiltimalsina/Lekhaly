@@ -1,4 +1,4 @@
-﻿import { z } from "zod";
+import { z } from "zod";
 
 export const LoginSchema = z.object({
   companyCode: z.string().trim().min(3).max(20),
@@ -44,7 +44,17 @@ export const CompanySchema = z.object({
   baseCurrency: z.string().trim().min(3).max(3).optional(),
   timezone: z.string().trim().min(2).max(120).optional(),
   fiscalYearStartMonth: z.number().int().min(1).max(12).optional(),
-  invoicePrefix: z.string().trim().min(1).max(10).optional()
+  invoicePrefix: z.string().trim().min(1).max(10).optional(),
+  orderPrefix: z.string().trim().min(1).max(10).optional(),
+  quotationPrefix: z.string().trim().min(1).max(10).optional(),
+  purchaseOrderPrefix: z.string().trim().min(1).max(10).optional(),
+  nextInvoiceNumber: z.number().int().min(1).optional(),
+  nextOrderNumber: z.number().int().min(1).optional(),
+  nextQuotationNumber: z.number().int().min(1).optional(),
+  nextPurchaseOrderNumber: z.number().int().min(1).optional(),
+  lockDate: z.string().datetime().nullable().optional(),
+  creditLimitAmount: z.number().min(0).optional(),
+  printLogo: z.boolean().optional(),
 });
 
 export const NotificationsSchema = z.object({

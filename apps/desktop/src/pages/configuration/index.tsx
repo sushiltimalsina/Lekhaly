@@ -4,7 +4,7 @@ import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, Inpu
 import { deleteUnit, listUnits, type UnitRecord } from "@/lib/api/units";
 import { deleteItemGroup, listItemGroups, type ItemGroupRecord } from "@/lib/api/item-groups";
 import { listBillSundries, deleteBillSundry, type BillSundryRecord } from "@/lib/api/bill-sundries";
-import { Trash2, Ruler, Layers, Calculator, Plus, AlertCircle, ChevronDown, ChevronRight, Search, Pencil, Monitor } from "lucide-react";
+import { Trash2, Ruler, Layers, Calculator, Plus, AlertCircle, ChevronDown, ChevronRight, Search, Pencil, Monitor, Hash, Shield, CreditCard, Calendar } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import AddUnitDialog from "@/components/app/add-unit-dialog";
@@ -15,6 +15,7 @@ import { useDateFormat } from "@/lib/date-format";
 import { getSettings, setCalendarPreference, setDefaultDateRange, subscribeSettings } from "@/lib/store/settings";
 import { getCurrencySettings, setCurrencySymbol, setNumberFormat, subscribeUi } from "@/lib/store/ui";
 import { MoneyText } from "@/components/app/money";
+import { getCompany, updateCompany } from "@/lib/api/auth";
 
 export default function ConfigurationPage() {
   const [searchParams] = useSearchParams();
@@ -58,6 +59,13 @@ export default function ConfigurationPage() {
 
   // Visibility for Preferences
   const [showRegional, setShowRegional] = React.useState(false);
+  const [showNumbering, setShowNumbering] = React.useState(false);
+  const [showSecurity, setShowSecurity] = React.useState(false);
+  const [showCredit, setShowCredit] = React.useState(false);
+
+  // Company Settings State
+  const [company, setCompany] = React.useState<any>(null);
+  const [companyForm, setCompanyForm] = React.useState<any>({});
 
   // Custom Dialog States
   const [confirmState, setConfirmState] = React.useState<{
@@ -81,14 +89,17 @@ export default function ConfigurationPage() {
       return obj?.items ?? obj?.data ?? [];
     };
     try {
-      const [uRes, gRes, sRes] = await Promise.all([
+      const [uRes, gRes, sRes, cRes] = await Promise.all([
         listUnits({ take: 200 }),
         listItemGroups({ take: 200 }),
-        listBillSundries({ take: 200 })
+        listBillSundries({ take: 200 }),
+        getCompany()
       ]);
       setUnits(normalizeList<UnitRecord>(uRes));
       setGroups(normalizeList<ItemGroupRecord>(gRes));
       setSundries(normalizeList<BillSundryRecord>(sRes));
+      setCompany(cRes);
+      setCompanyForm(cRes);
     } catch (e: any) {
       setError(e?.message ?? "Failed to load configuration data.");
     } finally {
@@ -164,6 +175,20 @@ export default function ConfigurationPage() {
     setConfirmState({ id, name: item.name, type: "sundry", open: true });
   };
 
+  const saveCompanySettings = async (updates: any) => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await updateCompany({ ...companyForm, ...updates });
+      setCompany(res);
+      setCompanyForm(res);
+      // Optional: Show success toast/message
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to update company settings.");
+    } finally {
+      setBusy(false);
+    }
+  };
   const handleConfirmDelete = async () => {
     const { id, name, type } = confirmState;
     setBusy(true);

@@ -56,8 +56,9 @@ export default function Topbar({ title, subtitle, rightSlot }: TopbarProps) {
 
   return (
     <>
-      <header className="sticky top-0 z-30 border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
-        <div className="flex items-center justify-between gap-4 px-6 py-3">
+      <header className="sticky top-0 z-30 border-b border-border/40 bg-background/40 backdrop-blur-2xl supports-[backdrop-filter]:bg-background/40 shadow-sm shadow-black/5">
+        <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
+        <div className="relative flex items-center justify-between gap-4 px-6 py-3">
           {/* Left */}
           <div className="flex min-w-0 items-center gap-3">
             <button

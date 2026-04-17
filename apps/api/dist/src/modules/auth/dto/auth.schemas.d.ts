@@ -37,6 +37,16 @@ export declare const CompanySchema: z.ZodObject<{
     timezone: z.ZodOptional<z.ZodString>;
     fiscalYearStartMonth: z.ZodOptional<z.ZodNumber>;
     invoicePrefix: z.ZodOptional<z.ZodString>;
+    orderPrefix: z.ZodOptional<z.ZodString>;
+    quotationPrefix: z.ZodOptional<z.ZodString>;
+    purchaseOrderPrefix: z.ZodOptional<z.ZodString>;
+    nextInvoiceNumber: z.ZodOptional<z.ZodNumber>;
+    nextOrderNumber: z.ZodOptional<z.ZodNumber>;
+    nextQuotationNumber: z.ZodOptional<z.ZodNumber>;
+    nextPurchaseOrderNumber: z.ZodOptional<z.ZodNumber>;
+    lockDate: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    creditLimitAmount: z.ZodOptional<z.ZodNumber>;
+    printLogo: z.ZodOptional<z.ZodBoolean>;
 }, z.core.$strip>;
 export declare const NotificationsSchema: z.ZodObject<{
     emailAlerts: z.ZodOptional<z.ZodBoolean>;

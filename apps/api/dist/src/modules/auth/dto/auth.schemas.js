@@ -39,7 +39,17 @@ exports.CompanySchema = zod_1.z.object({
     baseCurrency: zod_1.z.string().trim().min(3).max(3).optional(),
     timezone: zod_1.z.string().trim().min(2).max(120).optional(),
     fiscalYearStartMonth: zod_1.z.number().int().min(1).max(12).optional(),
-    invoicePrefix: zod_1.z.string().trim().min(1).max(10).optional()
+    invoicePrefix: zod_1.z.string().trim().min(1).max(10).optional(),
+    orderPrefix: zod_1.z.string().trim().min(1).max(10).optional(),
+    quotationPrefix: zod_1.z.string().trim().min(1).max(10).optional(),
+    purchaseOrderPrefix: zod_1.z.string().trim().min(1).max(10).optional(),
+    nextInvoiceNumber: zod_1.z.number().int().min(1).optional(),
+    nextOrderNumber: zod_1.z.number().int().min(1).optional(),
+    nextQuotationNumber: zod_1.z.number().int().min(1).optional(),
+    nextPurchaseOrderNumber: zod_1.z.number().int().min(1).optional(),
+    lockDate: zod_1.z.string().datetime().nullable().optional(),
+    creditLimitAmount: zod_1.z.number().min(0).optional(),
+    printLogo: zod_1.z.boolean().optional(),
 });
 exports.NotificationsSchema = zod_1.z.object({
     emailAlerts: zod_1.z.boolean().optional(),
