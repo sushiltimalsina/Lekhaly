@@ -114,33 +114,41 @@ export function DropdownMenuItem({
     children,
     onClick,
     className,
-    closeOnSelect
+    closeOnSelect,
+    asChild
 }: {
     children: React.ReactNode
     onClick?: () => void
     className?: string
     closeOnSelect?: boolean
+    asChild?: boolean
 }) {
     const context = React.useContext(DropdownMenuContext)
     if (!context) throw new Error("DropdownMenuItem must be used within DropdownMenu")
 
     const handleClick = (e: React.MouseEvent) => {
-        e.preventDefault()
-        e.stopPropagation()
+        // Only prevent default if it's NOT a child link or similar
+        // Actually, we want to allow navigation but still close the menu
         onClick?.()
         if (closeOnSelect !== false) {
             context.setOpen(false)
         }
     }
 
+    const commonProps = {
+        onClick: handleClick,
+        className: cn(
+            "relative flex cursor-pointer select-none items-center rounded-xl px-3 py-2 text-sm font-medium outline-none transition-colors hover:bg-slate-100 focus:bg-slate-100 dark:hover:bg-slate-900 dark:focus:bg-slate-900",
+            className
+        )
+    }
+
+    if (asChild && React.isValidElement(children)) {
+        return React.cloneElement(children as React.ReactElement<any>, commonProps)
+    }
+
     return (
-        <div
-            onClick={handleClick}
-            className={cn(
-                "relative flex cursor-pointer select-none items-center rounded-xl px-3 py-2 text-sm font-medium outline-none transition-colors hover:bg-slate-100 focus:bg-slate-100 dark:hover:bg-slate-900 dark:focus:bg-slate-900",
-                className
-            )}
-        >
+        <div {...commonProps}>
             {children}
         </div>
     )

@@ -209,7 +209,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
         ref={setButtonRef}
         className={cn(
           "flex w-full items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-left text-sm shadow-sm hover:bg-slate-50",
-          "dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800/40",
+          "dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800/40",
           disabled && "opacity-60 cursor-not-allowed bg-slate-50 dark:bg-slate-800/20",
           buttonClassName
         )}
@@ -226,9 +226,9 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
           <div
             ref={menuRef}
             style={menuStyle}
-            className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/40 dark:border-slate-700 dark:bg-slate-900 dark:shadow-black/20"
+            className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/40 dark:border-zinc-700 dark:bg-zinc-900 dark:shadow-black/20"
           >
-            <div className="border-b border-slate-200 px-3 py-2 dark:border-slate-700">
+            <div className="border-b border-zinc-200 px-3 py-2 dark:border-zinc-700">
               <div className="relative">
                 <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <input
@@ -270,7 +270,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                     }
                   }}
                   placeholder="Type to search…"
-                  className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-8 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-950"
+                  className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-8 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20 dark:border-zinc-700 dark:bg-zinc-950"
                 />
               </div>
             </div>
@@ -298,7 +298,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                       }}
                       className={cn(
                         "flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition",
-                        isActive ? "bg-slate-100 dark:bg-slate-800" : "hover:bg-slate-50 dark:hover:bg-slate-800/40",
+                        isActive ? "bg-zinc-100 dark:bg-zinc-800" : "hover:bg-zinc-50 dark:hover:bg-zinc-800/40",
                         isSelected && "text-primary font-medium"
                       )}
                     >
@@ -768,7 +768,7 @@ export default function SalesCreatePage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+      <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
         <div className="mb-4">
           <Button
             variant="ghost"
@@ -1021,13 +1021,13 @@ export default function SalesCreatePage() {
         </div>
 
         {/* Items Details */}
-        <section className="mb-8 rounded-3xl border bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+        <section className="mb-8 rounded-3xl border bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
           <div className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-100">Items Details</div>
 
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/30">
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/60 dark:border-zinc-800 dark:bg-zinc-900/30">
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
-                <thead className="bg-slate-100/70 dark:bg-slate-900/40">
+                <thead className="bg-slate-100/70 dark:bg-zinc-900/40">
                   <tr>
                     <th className="w-[60px] px-4 py-3 text-left text-xs text-muted-foreground">S.No.</th>
                     <th className="w-[520px] min-w-[420px] px-4 py-3 text-left text-xs text-muted-foreground">Particulars</th>
@@ -1049,7 +1049,7 @@ export default function SalesCreatePage() {
                     const amt = qty * rate;
 
                     return (
-                      <tr key={idx} className="border-t border-slate-200/70 dark:border-slate-800/60">
+                      <tr key={idx} className="border-t border-slate-200/70 dark:border-zinc-800/60">
                         <td className="px-4 py-3 text-muted-foreground font-medium">{idx + 1}</td>
                         <td className="px-4 py-3">
                           <div className="relative">
@@ -1096,7 +1096,7 @@ export default function SalesCreatePage() {
                                 }
                               }}
                               leftIcon={<Search className="h-4 w-4" />}
-                              buttonClassName="h-11 rounded-2xl bg-white dark:bg-slate-900 pr-[100px]"
+                              buttonClassName="h-11 rounded-2xl bg-white dark:bg-zinc-900 pr-[100px]"
                               emptyText="No items found"
                             />
                             {!line.itemId && (
@@ -1107,7 +1107,7 @@ export default function SalesCreatePage() {
                                   setActiveLineIdx(idx);
                                   setAddItemOpen(true);
                                 }}
-                                className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 rounded-xl px-3 text-[10px] font-medium bg-slate-50 dark:bg-slate-800"
+                                className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 rounded-xl px-3 text-[10px] font-medium bg-slate-50 dark:bg-zinc-800"
                               >
                                 <Plus className="mr-1 h-3 w-3" />
                                 Add item
@@ -1178,7 +1178,7 @@ export default function SalesCreatePage() {
                               }
                             }}
                             className={cn(
-                              "h-11 rounded-2xl bg-white text-center dark:bg-slate-900 transition-colors",
+                              "h-11 rounded-2xl bg-white text-center dark:bg-zinc-900 transition-colors",
                               lineErrors[idx]?.qty && "border-red-500 focus:ring-red-200"
                             )}
                           />
@@ -1278,7 +1278,7 @@ export default function SalesCreatePage() {
                     );
                   })}
 
-                  <tr className="border-t bg-slate-100/60 font-semibold dark:bg-slate-900/40">
+                  <tr className="border-t bg-slate-100/60 font-semibold dark:bg-zinc-900/40">
                     <td />
                     <td className="px-4 py-3 text-right">
                       Total
@@ -1318,13 +1318,13 @@ export default function SalesCreatePage() {
             BILL SUNDRY
           </div> */}
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
 
 
             <div className="mr-4 text-sm font-semibold text-slate-700 dark:text-slate-200">Bill Sundry Details</div>
             <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
               <table className="min-w-full text-sm">
-                <thead className="bg-slate-100/70 dark:bg-slate-900/40">
+                <thead className="bg-slate-100/70 dark:bg-zinc-900/40">
                   <tr>
                     <th className="w-[70px] px-3 py-2 text-left text-xs text-muted-foreground">S.N.</th>
                     <th className="px-3 py-2 text-left text-xs text-muted-foreground">Bill Sundry</th>
@@ -1336,7 +1336,7 @@ export default function SalesCreatePage() {
 
                 <tbody>
                   {billSundryComputed.rows.map((r, i) => (
-                    <tr key={r.id} className="border-t border-slate-200/70 dark:border-slate-800/60">
+                    <tr key={r.id} className="border-t border-slate-200/70 dark:border-zinc-800/60">
                       <td className="px-3 py-2 text-muted-foreground">{i + 1}</td>
                       <td className="px-3 py-2">
                         <div className="relative">
@@ -1553,7 +1553,7 @@ export default function SalesCreatePage() {
         </section>
 
         {/* TERMS */}
-        <section className="mb-6 rounded-3xl border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+        <section className="mb-6 rounded-3xl border bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
           <button type="button" onClick={() => setShowTerms((v) => !v)} className="flex w-full items-center gap-3">
             <ChevronRight className={cn("h-4 w-4 text-muted-foreground transition-transform", showTerms && "rotate-90")} />
             <div className="text-sm font-semibold">Terms &amp; Conditions</div>
@@ -1612,10 +1612,10 @@ export default function SalesCreatePage() {
 
         {/* Bottom */}
         <section className="grid gap-6 lg:grid-cols-12">
-          <div className="lg:col-span-6 rounded-3xl border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+          <div className="lg:col-span-6 rounded-3xl border bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
             <div className="mb-3 text-sm font-semibold">Summary</div>
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-5 dark:border-slate-800 dark:bg-slate-900/30">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-5 dark:border-zinc-800 dark:bg-zinc-900/30">
               <div className="space-y-3 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Taxable Total</span>
@@ -1662,7 +1662,7 @@ export default function SalesCreatePage() {
                 </div>
               </div>
 
-              <div className="mt-5 flex items-center justify-between rounded-2xl bg-white px-4 py-3 shadow-sm dark:bg-slate-950">
+              <div className="mt-5 flex items-center justify-between rounded-2xl bg-white px-4 py-3 shadow-sm dark:bg-zinc-950">
                 <div className="text-sm font-semibold">Total</div>
                 <div className="text-sm font-semibold">
                   <MoneyText value={total} />
@@ -1671,7 +1671,7 @@ export default function SalesCreatePage() {
             </div>
           </div>
 
-          <div className="lg:col-span-6 rounded-3xl border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+          <div className="lg:col-span-6 rounded-3xl border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-zinc-950">
             <div className="mb-2 flex items-center justify-between">
               <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">Additional notes</div>
               <div className="text-xs text-muted-foreground">
@@ -1691,7 +1691,7 @@ export default function SalesCreatePage() {
                 }
               }}
               placeholder="Add overall remarks or terms for this sale..."
-              className="min-h-[120px] w-full rounded-2xl border-2 border-slate-100 bg-slate-50/30 p-5 text-sm outline-none ring-indigo-500/10 focus:border-indigo-500 focus:bg-white focus:ring-4 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 transition-all font-medium leading-relaxed"
+              className="min-h-[120px] w-full rounded-2xl border-2 border-slate-100 bg-slate-50/30 p-5 text-sm outline-none ring-indigo-500/10 focus:border-indigo-500 focus:bg-white focus:ring-4 dark:border-slate-800 dark:bg-zinc-950 dark:text-slate-300 transition-all font-medium leading-relaxed"
               disabled={!isEditMode}
             />
           </div>

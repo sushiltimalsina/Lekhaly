@@ -797,7 +797,7 @@ export default function PurchaseCreatePage() {
 
     return (
         <div className="space-y-6">
-            <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+            <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
                 <div className="mb-4">
                     <Button
                         variant="ghost"
@@ -1033,7 +1033,7 @@ export default function PurchaseCreatePage() {
                 )}
 
                 {/* Items Details */}
-                <section className="mb-8 rounded-3xl border bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                <section className="mb-8 rounded-3xl border bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
                     <div className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-100">Items Details</div>
 
                     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/30">
@@ -1330,7 +1330,7 @@ export default function PurchaseCreatePage() {
 
                 {/* BILL SUNDRY */}
                 <section className="mb-6">
-                    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
                         <div className="mr-4 text-sm font-semibold text-slate-700 dark:text-slate-200">Bill Sundry Details</div>
                         <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
                             <table className="min-w-full text-sm">
@@ -1532,7 +1532,7 @@ export default function PurchaseCreatePage() {
                                                             }}
                                                             placeholder="0.00"
                                                             disabled={!isEditMode || r.id === "vat"}
-                                                            className="h-8 w-24 rounded-lg border-slate-200 bg-white px-2 text-right text-sm dark:border-slate-800 dark:bg-slate-900"
+                                                            className="h-8 w-24 rounded-lg border-slate-200 bg-white px-2 text-right text-sm dark:border-zinc-800 dark:bg-zinc-900/40"
                                                         />
                                                     </div>
                                                     {r.type === "less" ? ")" : null}
@@ -1555,7 +1555,7 @@ export default function PurchaseCreatePage() {
                                         </tr>
                                     ))}
 
-                                    <tr className="border-t bg-slate-50/50 font-bold dark:bg-slate-900/50">
+                                    <tr className="border-t bg-slate-50/50 font-bold dark:bg-zinc-900/50">
                                         <td colSpan={3} className="px-3 py-3 text-right text-slate-500">Net Bill Sundry</td>
                                         <td className="px-3 py-3 text-right">
                                             <span className={cn(billSundryComputed.net >= 0 ? "text-emerald-600" : "text-red-600")}>
@@ -1574,7 +1574,7 @@ export default function PurchaseCreatePage() {
 
                 {/* BOTTOM SUMMARY ACTIONS */}
                 <section className="grid gap-6 lg:grid-cols-12">
-                    <div className="lg:col-span-6 rounded-3xl border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                    <div className="lg:col-span-6 rounded-3xl border bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
                         <div className="mb-3 text-sm font-semibold">Summary</div>
 
                         <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-5 dark:border-slate-800 dark:bg-slate-900/30">
@@ -1624,7 +1624,7 @@ export default function PurchaseCreatePage() {
                                 </div>
                             </div>
 
-                            <div className="mt-5 flex items-center justify-between rounded-2xl bg-white px-4 py-3 shadow-sm dark:bg-slate-950">
+                            <div className="mt-5 flex items-center justify-between rounded-2xl bg-white px-4 py-3 shadow-sm dark:bg-zinc-950">
                                 <div className="text-sm font-semibold">Total</div>
                                 <div className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">
                                     <MoneyText value={total} />
@@ -1633,7 +1633,7 @@ export default function PurchaseCreatePage() {
                         </div>
                     </div>
 
-                    <div className="lg:col-span-6 rounded-3xl border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                    <div className="lg:col-span-6 rounded-3xl border bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
                         <div className="mb-2 flex items-center justify-between">
                             <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">Additional notes</div>
                             <div className="text-xs text-muted-foreground">
@@ -1654,7 +1654,7 @@ export default function PurchaseCreatePage() {
                                 }
                             }}
                             placeholder="Internal record notes..."
-                            className="h-11 rounded-2xl bg-slate-50/60"
+                            className="h-11 rounded-2xl bg-slate-50/60 dark:bg-zinc-900 dark:border-zinc-800"
                             disabled={!isEditMode}
                         />
 

@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import colors from "tailwindcss/colors";
 import tailwindAnimate from "tailwindcss-animate";
 
 const config: Config = {
@@ -11,6 +12,7 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        slate: colors.zinc,
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

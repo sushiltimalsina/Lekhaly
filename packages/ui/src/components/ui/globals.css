@@ -41,34 +41,35 @@
   }
 
   .dark {
-    /* Premium Dark Mode - Deep, Rich, Glassy */
-    --background: 222 47% 10%;
-    /* Rich dark navy background, not pure black */
+    /* Premium Dark Mode - Pure Neutral Black */
+    --background: 0 0% 2%;
+    /* True Black background */
     --foreground: 210 40% 98%;
 
-    --card: 222 47% 13%;
+    --card: 0 0% 6%;
+    /* Charcoal card elevation */
     --card-foreground: 210 40% 98%;
 
-    --popover: 222 47% 13%;
+    --popover: 0 0% 7%;
     --popover-foreground: 210 40% 98%;
 
     --primary: 217 91% 60%;
     --primary-foreground: 222 47.4% 11.2%;
 
-    --secondary: 217.2 32.6% 17.5%;
+    --secondary: 0 0% 10%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 217.2 32.6% 17.5%;
+    --muted: 0 0% 10%;
     --muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 217.2 32.6% 17.5%;
+    --accent: 0 0% 10%;
     --accent-foreground: 210 40% 98%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
+    --border: 0 0% 12%;
+    --input: 0 0% 12%;
     --ring: 224.3 76.3% 48%;
   }
 }

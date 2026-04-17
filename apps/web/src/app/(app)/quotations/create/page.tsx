@@ -667,7 +667,7 @@ export default function QuotationCreatePage() {
 
     return (
         <div className="space-y-6">
-            <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+            <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
                 <div className="mb-4">
                     <Button
                         variant="ghost"
@@ -845,7 +845,7 @@ export default function QuotationCreatePage() {
 
                     {/* Sales Type (Hidden logic or explicit) - For Quotations we might default to taxable but allow exempt */}
                     {/* Items Table */}
-                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
                         <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/50 px-4 py-2 dark:border-slate-800 dark:bg-slate-900/20">
                             <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Items</h3>
                             {isEditMode && (
