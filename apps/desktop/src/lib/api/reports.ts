@@ -1,4 +1,4 @@
-// apps/desktop/src/lib/api/reports.ts
+// apps/web/src/lib/api/reports.ts
 import { apiRequest } from "./client";
 
 export async function getTrialBalance(params?: Record<string, any>) {
@@ -41,18 +41,18 @@ export async function getLedger(params?: Record<string, any>) {
   });
 }
 
+export async function getStockSummary(params?: Record<string, any>) {
+  return apiRequest<any>({
+    method: "GET",
+    path: "/reports/stock-summary",
+    query: params,
+  });
+}
+
 export async function exportReport(body: Record<string, any>) {
   return apiRequest<any>({
     method: "POST",
     path: "/reports/export",
     body,
-  });
-}
-
-export async function getStockSummary(params?: Record<string, any>) {
-  return apiRequest<any>({
-    method: "GET",
-    path: "/inventory/report",
-    query: params,
   });
 }

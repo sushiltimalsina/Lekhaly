@@ -1,4 +1,5 @@
-// apps/desktop/src/lib/api/items.ts
+// apps/web/src/lib/api/items.ts
+
 import { apiRequest } from "./client";
 
 export type ItemType = "goods" | "services";
@@ -24,7 +25,7 @@ export type ItemRecord = {
   id: string;
   name: string;
   sku?: string | null;
-  code?: string | null;
+  code?: string | null; // Alias for SKU or separate field if needed. Using SKU as code in UI often.
   hsCode?: string | null;
   unit?: string | null;
   type?: ItemType;
@@ -44,12 +45,17 @@ export async function createItem(input: CreateItemInput) {
     body: input,
   });
 }
-
 export async function listItems(params?: { q?: string; skip?: number; take?: number }) {
   const safeParams = params?.take && params.take > 100 ? { ...params, take: 100 } : params;
   return apiRequest<ItemRecord[]>({
     path: "/items",
     method: "GET",
     query: safeParams,
+  });
+}
+export async function deleteItem(id: string) {
+  return apiRequest<void>({
+    path: `/items/${id}`,
+    method: "DELETE",
   });
 }

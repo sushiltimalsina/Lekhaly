@@ -24,6 +24,12 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@lekhaly/ui": [
+        "../../packages/ui/src"
+      ],
+      "@lekhaly/ui/*": [
+        "../../packages/ui/src/*"
       ]
     },
     "target": "ES2017"

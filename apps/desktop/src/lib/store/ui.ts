@@ -1,4 +1,4 @@
-// apps/desktop/src/lib/store/ui.ts
+﻿// apps/web/src/lib/store/ui.ts
 import * as React from "react";
 
 type UiState = {

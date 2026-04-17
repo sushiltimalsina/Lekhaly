@@ -1,4 +1,5 @@
-// apps/desktop/src/pages/sales/view.tsx
+"use client";
+
 import * as React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import PageHeader from "@/components/app/page-header";
@@ -8,14 +9,15 @@ import ConfirmDialog from "@/components/app/confirm-dialog";
 import { getInvoice, postInvoice, voidInvoice } from "@/lib/api/invoices";
 import { generateInvoicePdf, getPdfJobUrl } from "@/lib/api/pdf";
 import { useDateFormat } from "@/lib/date-format";
-import { getDateDisplay } from "@/lib/dates/display";
-import { ArrowLeft, Printer, MoreVertical, Trash2, CheckCircle2, Receipt, Building2, Calendar, FileText } from "lucide-react";
+import { getDateDisplay, getDateLabel } from "@/lib/dates/display";
+import { ArrowLeft, Printer, MoreVertical, Trash2, CheckCircle2, Receipt, Building2, Calendar, FileText, Download } from "lucide-react";
 import { Button } from "@lekhaly/ui";
 import { cn } from "@/lib/utils";
 
 export default function SalesDetailPage() {
-    const { id } = useParams<{ id: string }>();
+    const params = useParams();
     const navigate = useNavigate();
+    const id = params?.id;
     const { dateFormat } = useDateFormat();
 
     const [loading, setLoading] = React.useState(true);
@@ -101,130 +103,150 @@ export default function SalesDetailPage() {
     if (loading) return (
         <div className="min-h-[400px] flex items-center justify-center">
             <div className="flex flex-col items-center gap-4">
-                <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-                <p className="text-sm font-black text-slate-400 uppercase tracking-widest animate-pulse">Auditing Registry Details...</p>
+                <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"></div>
+                <p className="text-sm font-medium text-muted-foreground animate-pulse">Loading invoice details...</p>
             </div>
         </div>
     );
 
     if (!invoice) return (
         <div className="min-h-[400px] flex flex-col items-center justify-center space-y-4">
-            <div className="text-xl font-bold opacity-40 uppercase tracking-widest">Entry Not Found</div>
-            <Button variant="outline" onClick={() => navigate("/sales")} className="rounded-2xl h-11 px-8">
-                <ArrowLeft className="mr-2 h-4 w-4" /> Back to Registry
+            <div className="text-xl font-semibold opacity-40">Invoice not found</div>
+            <Button variant="outline" onClick={() => navigate("/sales")} className="rounded-full">
+                <ArrowLeft className="mr-2 h-4 w-4" /> Go back
             </Button>
         </div>
     );
 
     return (
-        <div className="space-y-6 animate-fade-in">
-            <div className="rounded-[28px] border bg-white p-8 shadow-sm">
-                <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between mb-10">
-                    <div className="flex items-center gap-5">
+        <div className="space-y-6">
+            <div className="rounded-[28px] border bg-gradient-to-br from-slate-50 via-white to-slate-50 p-6 shadow-xl shadow-slate-200/40 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 dark:shadow-black/20">
+                <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between mb-8">
+                    <div className="flex items-center gap-4">
                         <button
                             onClick={() => navigate("/sales")}
-                            className="h-12 w-12 flex items-center justify-center rounded-2xl border bg-slate-50 hover:bg-slate-100 transition-all active:scale-95 shadow-inner"
+                            className="h-12 w-12 flex items-center justify-center rounded-2xl border bg-white shadow-sm hover:bg-slate-50 transition-all dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700"
                         >
                             <ArrowLeft className="h-5 w-5" />
                         </button>
                         <div>
                             <div className="flex items-center gap-3">
-                                <h1 className="text-2xl font-black tracking-tight text-slate-900 sm:text-3xl uppercase">
+                                <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
                                     {invoice?.invoiceNo || "Invoice Draft"}
                                 </h1>
                                 <StatusBadge status={status} />
                             </div>
-                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mt-2">
-                                Sales Audit Trail • Entry Point: {new Date(invoice.createdAt).toLocaleDateString()}
+                            <p className="text-sm text-muted-foreground mt-1">
+                                Sales Invoice • Created on {new Date(invoice.createdAt).toLocaleDateString()}
                             </p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                        <Button variant="outline" onClick={onPdf} disabled={actionLoading} className="rounded-2xl h-11 px-6 border-2 font-black text-[10px] uppercase tracking-widest">
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" onClick={onPdf} disabled={actionLoading} className="rounded-full border-slate-200 dark:border-slate-800">
                             <Printer className="mr-2 h-4 w-4" />
-                            Print Certificate
+                            Print
                         </Button>
                         {status === "draft" && (
                             <Button
                                 onClick={() => setConfirmPost(true)}
                                 disabled={actionLoading}
-                                className="rounded-2xl bg-indigo-600 text-white hover:bg-indigo-700 h-11 px-8 font-black text-[10px] uppercase tracking-widest shadow-xl shadow-indigo-100 transition-all active:scale-95"
+                                className="rounded-full bg-slate-900 text-white hover:bg-slate-800 px-6 shadow-lg shadow-slate-200 dark:shadow-none"
                             >
                                 <CheckCircle2 className="mr-2 h-4 w-4" />
-                                Commit to Ledger
+                                Post Invoice
                             </Button>
                         )}
-                        <Button variant="outline" className="h-11 w-11 p-0 rounded-2xl border-2 flex items-center justify-center">
+                        <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full border border-transparent hover:border-slate-200 dark:hover:border-slate-800">
                             <MoreVertical className="h-5 w-5" />
                         </Button>
                     </div>
                 </div>
 
                 {error ? (
-                    <div className="mb-6 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-[11px] font-bold text-rose-600 uppercase tracking-wide">
+                    <div className="mb-6 rounded-xl border border-red-600/30 bg-red-600/10 px-4 py-3 text-sm text-red-700 animate-in fade-in slide-in-from-top-2">
                         {error}
                     </div>
                 ) : null}
 
-                <div className="grid gap-8 lg:grid-cols-3">
+                <div className="grid gap-6 lg:grid-cols-3">
                     {/* Main Content */}
-                    <div className="lg:col-span-2 space-y-8">
-                        <div className="rounded-[32px] border-2 border-slate-50 bg-slate-50/20 p-8">
-                            <div className="flex items-center justify-between mb-8 pb-6 border-b-2 border-slate-50">
-                                <div className="flex items-center gap-2 text-indigo-600 font-black uppercase tracking-[0.2em] text-[10px]">
+                    <div className="lg:col-span-2 space-y-6">
+                        <div className="rounded-3xl border bg-white/90 p-8 shadow-sm dark:bg-slate-900/80">
+                            <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-50 dark:border-slate-800/50">
+                                <div className="flex items-center gap-2 text-slate-400 font-bold uppercase tracking-wider text-xs">
                                     <Receipt className="h-4 w-4" />
-                                    Transaction Ledger
+                                    Line Items
                                 </div>
-                                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                    {invoice?.items?.length || 0} Registered Units
+                                <div className="text-sm font-medium text-muted-foreground">
+                                    {invoice?.items?.length || 0} items
                                 </div>
                             </div>
 
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
                                     <thead>
-                                        <tr className="text-slate-400 border-b border-slate-100">
-                                            <th className="text-left pb-4 font-black uppercase text-[9px] tracking-[0.2em]">Unit Description</th>
-                                            <th className="text-right pb-4 font-black uppercase text-[9px] tracking-[0.2em]">Qty</th>
-                                            <th className="text-right pb-4 font-black uppercase text-[9px] tracking-[0.2em]">Value/Unit</th>
-                                            <th className="text-right pb-4 font-black uppercase text-[9px] tracking-[0.2em]">Line Total</th>
+                                        <tr className="text-muted-foreground border-b border-slate-50 dark:border-slate-800/50">
+                                            <th className="text-left pb-4 font-semibold uppercase text-[10px] tracking-wider">Item Details</th>
+                                            <th className="text-right pb-4 font-semibold uppercase text-[10px] tracking-wider">Qty</th>
+                                            <th className="text-right pb-4 font-semibold uppercase text-[10px] tracking-wider">Rate</th>
+                                            <th className="text-right pb-4 font-semibold uppercase text-[10px] tracking-wider">Total</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-50">
-                                        {invoice?.items?.map((it: any, idx: number) => (
-                                            <tr key={idx} className="group">
-                                                <td className="py-5">
-                                                    <div className="font-black text-slate-800 uppercase tracking-tight text-[11px]">{it.itemName || it.name || it.itemId || "—"}</div>
-                                                    <div className="text-[10px] text-slate-400 font-bold uppercase mt-1 tracking-wide">{it.description || "General Inventory"}</div>
+                                    <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
+                                        {invoice?.items?.map((it: any, idx: number) => {
+                                            const qty = Number(it.qty ?? 0);
+                                            const rate = Number(it.rate ?? 0);
+                                            const amt = Number(it.amount ?? qty * rate);
+                                            return (
+                                                <tr key={idx} className="group transition-colors">
+                                                    <td className="py-5">
+                                                        <div className="font-bold text-foreground">{it.itemName || it.name || it.itemId || "—"}</div>
+                                                        <div className="text-xs text-muted-foreground mt-1">{it.description || "Product/Service"}</div>
+                                                    </td>
+                                                    <td className="py-5 text-right font-medium text-foreground">{qty}</td>
+                                                    <td className="py-5 text-right font-medium text-foreground">
+                                                        <MoneyText value={rate} />
+                                                    </td>
+                                                    <td className="py-5 text-right font-bold text-foreground">
+                                                        <MoneyText value={amt} />
+                                                    </td>
+                                                </tr>
+                                            )
+                                        })}
+                                        {/* Total Row */}
+                                        {invoice?.items?.length > 0 && (
+                                            <tr className="border-t-2 border-slate-100 dark:border-slate-800/80 font-bold bg-slate-50/30 dark:bg-slate-800/10">
+                                                <td className="py-4 text-left uppercase text-[10px] tracking-wider text-muted-foreground">Total</td>
+                                                <td className="py-4 text-right">
+                                                    {invoice.items.reduce((s: number, i: any) => s + Number(i.qty || 0), 0)}
                                                 </td>
-                                                <td className="py-5 text-right font-black text-slate-900 tabular-nums uppercase text-[11px]">{Number(it.qty || 0).toLocaleString()}</td>
-                                                <td className="py-5 text-right font-bold text-slate-600 tabular-nums text-[11px]">
-                                                    <MoneyText value={Number(it.rate || 0)} />
+                                                <td className="py-4 text-right">
+                                                    <MoneyText value={invoice.items.reduce((s: number, i: any) => s + Number(i.rate || 0), 0)} />
                                                 </td>
-                                                <td className="py-5 text-right font-black text-slate-900 tabular-nums text-[13px]">
-                                                    <MoneyText value={Number(it.amount ?? (Number(it.qty || 0) * Number(it.rate || 0)))} />
+                                                <td className="py-4 text-right">
+                                                    <MoneyText value={invoice.items.reduce((s: number, i: any) => s + Number(i.amount ?? (Number(i.qty || 0) * Number(i.rate || 0))), 0)} />
                                                 </td>
                                             </tr>
-                                        ))}
+                                        )}
                                     </tbody>
                                 </table>
                             </div>
 
-                            <div className="mt-12 pt-8 border-t-4 border-slate-50 flex flex-col items-end">
-                                <div className="w-full sm:w-80 space-y-5">
-                                    <div className="flex justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        <span>Gross Value</span>
-                                        <span className="text-slate-900"><MoneyText value={Number(invoice.subtotal || 0)} /></span>
+                            <div className="mt-12 pt-8 border-t border-slate-50 dark:border-slate-800/50 flex flex-col items-end">
+                                <div className="w-full sm:w-80 space-y-4">
+                                    <div className="flex justify-between text-sm text-muted-foreground">
+                                        <span>Subtotal</span>
+                                        <span className="font-semibold text-foreground"><MoneyText value={Number(invoice.subtotal || 0)} /></span>
                                     </div>
-                                    <div className="flex justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        <span>Tax Liability (VAT)</span>
-                                        <span className="text-slate-900"><MoneyText value={Number(invoice.vatAmount || 0)} /></span>
+                                    <div className="flex justify-between text-sm text-muted-foreground">
+                                        <span>VAT Amount</span>
+                                        <span className="font-semibold text-foreground"><MoneyText value={Number(invoice.vatAmount || 0)} /></span>
                                     </div>
-                                    <div className="h-px bg-slate-100 my-2" />
+                                    <div className="h-px bg-slate-50 dark:bg-slate-800/50 my-2" />
                                     <div className="flex justify-between items-center py-2">
-                                        <span className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.3em]">Net Commitment</span>
-                                        <span className="text-3xl font-black text-slate-900 tabular-nums">
+                                        <span className="text-base font-bold text-foreground">Grand Total</span>
+                                        <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400 font-heading">
                                             <MoneyText value={Number(invoice.total || 0)} />
                                         </span>
                                     </div>
@@ -235,33 +257,61 @@ export default function SalesDetailPage() {
 
                     {/* Sidebar */}
                     <div className="space-y-6">
-                        <div className="rounded-[32px] border-2 border-slate-50 bg-white p-8">
-                            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300 mb-8 border-b pb-4">Schedule Metadata</div>
-                            <div className="space-y-8">
-                                <DataField icon={Building2} label="Entity/Customer" value={invoice?.partyName || invoice?.party?.name || "—"} color="bg-indigo-50 text-indigo-600" />
-                                <DataField icon={Calendar} label="Audit Date" value={invoiceDate.primary} sub={invoiceDate.secondary} color="bg-amber-50 text-amber-600" />
-                                <DataField icon={Calendar} label="Maturity Date" value={dueDate.primary} sub={dueDate.secondary} color="bg-rose-50 text-rose-600" />
+                        <div className="rounded-3xl border bg-white/90 p-8 shadow-sm dark:bg-slate-900/80">
+                            <div className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-6">Customer & Schedule</div>
+                            <div className="space-y-6">
+                                <div className="flex items-start gap-4">
+                                    <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400 shrink-0">
+                                        <Building2 className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Customer</div>
+                                        <div className="text-sm font-bold text-foreground mt-0.5">{invoice?.partyName || invoice?.party?.name || "—"}</div>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-start gap-4">
+                                    <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 shrink-0">
+                                        <Calendar className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Invoice Date</div>
+                                        <div className="text-sm font-bold text-foreground mt-0.5">{invoiceDate.primary}</div>
+                                        <div className="text-[10px] text-muted-foreground mt-0.5">{invoiceDate.secondary}</div>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-start gap-4">
+                                    <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400 shrink-0">
+                                        <Calendar className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Due Date</div>
+                                        <div className="text-sm font-bold text-foreground mt-0.5">{dueDate.primary}</div>
+                                        <div className="text-[10px] text-muted-foreground mt-0.5">{dueDate.secondary}</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="rounded-[32px] bg-slate-900 p-8 text-white shadow-xl shadow-slate-200">
-                            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-6">
-                                <FileText className="h-4 w-4" />
-                                Internal Notes
+                        <div className="rounded-3xl border bg-slate-50/50 p-6 dark:bg-slate-800/20">
+                            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-4 px-2">
+                                <FileText className="h-3 w-3" />
+                                Notes
                             </div>
-                            <div className="text-[11px] font-bold text-slate-400 leading-relaxed uppercase tracking-wider italic">
-                                {invoice?.notes || "No additional audit notes provided for this transaction sequence."}
+                            <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 text-sm text-muted-foreground border border-slate-100 dark:border-slate-800 leading-relaxed shadow-sm italic text-center">
+                                {invoice?.notes || "No additional notes provided."}
                             </div>
                         </div>
 
                         {status !== "void" && (
                             <Button
-                                onClick={() => setConfirmVoid(true)}
                                 variant="outline"
-                                className="w-full rounded-[24px] h-14 border-rose-100 text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition-all font-black text-[10px] uppercase tracking-widest"
+                                onClick={() => setConfirmVoid(true)}
+                                className="w-full rounded-2xl h-12 border-red-100/50 text-red-600 hover:bg-red-50 hover:border-red-200 transition-all font-semibold dark:border-red-900/20 dark:hover:bg-red-900/10"
                             >
-                                <Trash2 className="mr-3 h-4 w-4" />
-                                Invalidate Entry (Void)
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Void Invoice
                             </Button>
                         )}
                     </div>
@@ -270,9 +320,9 @@ export default function SalesDetailPage() {
 
             <ConfirmDialog
                 open={confirmPost}
-                title="Commit to Ledger?"
-                description="This action will finalize the transaction and update your permanent audit trail. This cannot be undone."
-                confirmText="Commit Entry"
+                title="Post Invoice?"
+                description="Posting will finalize the invoice and update your customer ledger. This action is irreversible."
+                confirmText="Post Invoice"
                 onConfirm={onPost}
                 onCancel={() => setConfirmPost(false)}
                 loading={actionLoading}
@@ -280,9 +330,9 @@ export default function SalesDetailPage() {
 
             <ConfirmDialog
                 open={confirmVoid}
-                title="Invalidate Record?"
-                description="This will mark the entry as VOID and reverse its ledger impact. This action is recorded in the permanent audit logs."
-                confirmText="Invalidate"
+                title="Void Invoice?"
+                description="Voiding will revert the accounting impact. This action is irreversible."
+                confirmText="Void Invoice"
                 variant="danger"
                 onConfirm={onVoid}
                 onCancel={() => setConfirmVoid(false)}
@@ -292,17 +342,4 @@ export default function SalesDetailPage() {
     );
 }
 
-function DataField({ icon: Icon, label, value, sub, color }: { icon: any, label: string, value: string, sub?: string, color: string }) {
-    return (
-        <div className="flex items-start gap-4">
-            <div className={cn("h-11 w-11 flex items-center justify-center rounded-2xl shrink-0 shadow-sm", color)}>
-                <Icon className="h-5 w-5" />
-            </div>
-            <div className="min-w-0">
-                <div className="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em] mb-1">{label}</div>
-                <div className="text-[11px] font-black text-slate-800 uppercase tracking-tight truncate">{value}</div>
-                {sub && <div className="text-[9px] text-slate-500 font-bold uppercase mt-1 tracking-tight">{sub}</div>}
-            </div>
-        </div>
-    );
-}
+

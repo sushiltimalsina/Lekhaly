@@ -1,4 +1,5 @@
-import * as React from "react";
+﻿"use client";
+
 import { MoneyText } from "@/components/app/money";
 import {
   Activity,
@@ -11,6 +12,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@lekhaly/ui";
 import { Button } from "@lekhaly/ui";
+import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { RevenueChart, ExpenseDistribution } from "@/components/app/dashboard-charts";
 
@@ -54,7 +56,7 @@ export default function DashboardPage() {
           value={43200}
           icon={CreditCard}
           trend="-5.4% from last month"
-          trendUp={false}
+          trendUp={false} // Good for payables? Or means it went down? Let's assume down is good for payables contextually, but usually red means alarming. Let's stick to standard arrow logic.
         />
         <MetricCard
           title="Cash at Hand"
@@ -219,3 +221,5 @@ function ActivityItem({ title, subtitle, amount, icon: Icon }: any) {
     </div>
   )
 }
+
+

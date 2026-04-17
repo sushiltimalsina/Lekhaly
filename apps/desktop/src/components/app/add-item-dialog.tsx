@@ -1,155 +1,457 @@
-// apps/desktop/src/components/app/add-item-dialog.tsx
-import * as React from "react";
-import { X, PackagePlus, Barcode, Tag, Calculator } from "lucide-react";
-import { Button } from "@lekhaly/ui";
-import { Input } from "@lekhaly/ui";
-import { createItem } from "@/lib/api/items";
+﻿"use client";
 
-export default function AddItemDialog({
-    open,
-    onClose,
-    onSuccess
-}: {
+import * as React from "react";
+import { Input } from "@lekhaly/ui";
+import { createItem, type ItemType } from "@/lib/api/items";
+import { listUnits, type UnitRecord } from "@/lib/api/units";
+import { listItemGroups, type ItemGroupRecord } from "@/lib/api/item-groups";
+import { listTaxes } from "@/lib/api/taxes";
+import { X, Save, PackagePlus, Info, Banknote, History, FileText, Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { createPortal } from "react-dom";
+import AddUnitDialog from "./add-unit-dialog";
+import AddGroupDialog from "./add-group-dialog";
+
+type AddItemDialogProps = {
     open: boolean;
     onClose: () => void;
     onSuccess: (item: any) => void;
-}) {
-    const [loading, setLoading] = React.useState(false);
+};
+
+type TaxCode = { id: string; name: string; rate: number };
+
+export default function AddItemDialog({ open, onClose, onSuccess }: AddItemDialogProps) {
+    const [saving, setSaving] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
+    const [units, setUnits] = React.useState<UnitRecord[]>([]);
+    const [groups, setGroups] = React.useState<ItemGroupRecord[]>([]);
+    const [taxes, setTaxes] = React.useState<TaxCode[]>([]);
+    const [taxable, setTaxable] = React.useState(false);
+
+    const [addUnitOpen, setAddUnitOpen] = React.useState(false);
+    const [addGroupOpen, setAddGroupOpen] = React.useState(false);
 
     const [form, setForm] = React.useState({
         name: "",
         sku: "",
-        barcode: "",
-        salesPrice: "0",
-        purchasePrice: "0",
-        openingQty: "0"
+        hsCode: "",
+        unit: "",
+        type: "goods" as ItemType,
+        salesPrice: "",
+        purchasePrice: "",
+        openingQty: "",
+        openingPrice: "",
+        groupId: "",
+        incomeAccountId: "",
+        expenseAccountId: "",
+        taxCodeIds: [] as string[],
     });
+
+    const update = (key: keyof typeof form, value: any) => {
+        setForm((prev) => ({ ...prev, [key]: value }));
+    };
+
+    React.useEffect(() => {
+        if (!open) return;
+
+        const normalizeList = <T,>(input: any): T[] => {
+            if (Array.isArray(input)) return input;
+            return input?.items ?? input?.data ?? [];
+        };
+
+        Promise.all([
+            listUnits({ take: 100 }),
+            listItemGroups({ take: 100 }),
+            listTaxes({ take: 100 })
+        ]).then(([u, g, t]: any) => {
+            setUnits(normalizeList<UnitRecord>(u));
+            setGroups(normalizeList<ItemGroupRecord>(g));
+            setTaxes(normalizeList<any>(t).map((item: any) => ({
+                id: item.id,
+                name: item.name,
+                rate: item.rate
+            })));
+        }).catch(() => { });
+    }, [open]);
+
+    React.useEffect(() => {
+        if (open) {
+            document.body.style.overflow = "hidden";
+        } else {
+            document.body.style.overflow = "unset";
+        }
+        return () => {
+            document.body.style.overflow = "unset";
+        };
+    }, [open]);
 
     if (!open) return null;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setLoading(true);
+        if (!form.name.trim()) {
+            setError("Item name is required");
+            return;
+        }
+        setSaving(true);
         setError(null);
         try {
             const res = await createItem({
-                name: form.name,
-                sku: form.sku || undefined,
-                salesPrice: Number(form.salesPrice),
-                purchasePrice: Number(form.purchasePrice),
-                openingQty: Number(form.openingQty),
-                type: "goods"
+                name: form.name.trim(),
+                sku: form.sku.trim() || undefined,
+                hsCode: form.hsCode.trim() || undefined,
+                unit: form.unit || undefined,
+                type: form.type,
+                salesPrice: form.salesPrice ? Number(form.salesPrice) : undefined,
+                purchasePrice: form.purchasePrice ? Number(form.purchasePrice) : undefined,
+                openingQty: form.openingQty ? Number(form.openingQty) : undefined,
+                openingPrice: form.openingPrice ? Number(form.openingPrice) : undefined,
+                groupId: form.groupId || undefined,
+                incomeAccountId: form.incomeAccountId.trim() || undefined,
+                expenseAccountId: form.expenseAccountId.trim() || undefined,
+                taxCodeIds: taxable ? form.taxCodeIds : undefined,
             });
             onSuccess(res);
             onClose();
-        } catch (e: any) {
-            setError(e?.message ?? "Failed to create item");
+            // Reset form
+            setForm({
+                name: "", sku: "", hsCode: "", unit: "", type: "goods",
+                salesPrice: "", purchasePrice: "", openingQty: "", openingPrice: "",
+                groupId: "", incomeAccountId: "", expenseAccountId: "", taxCodeIds: []
+            });
+            setTaxable(false);
+        } catch (err: any) {
+            setError(err?.message ?? "Failed to create item");
         } finally {
-            setLoading(false);
+            setSaving(false);
         }
     };
 
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/20 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="w-full max-w-lg bg-white rounded-[32px] border border-slate-200 shadow-2xl overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-2">
-                <div className="flex items-center justify-between p-6 border-b border-slate-50">
-                    <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
-                            <PackagePlus className="h-5 w-5" />
+    return createPortal(
+        <div className="fixed inset-0 z-[9999] grid place-items-center bg-black/40 backdrop-blur-md p-4 overflow-y-auto animate-in fade-in duration-300">
+            <div className="my-8 w-full max-w-2xl rounded-[2.5rem] border bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950 overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300">
+                {/* Header */}
+                <div className="flex items-center justify-between border-b px-8 py-5 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30">
+                    <div className="flex items-center gap-4">
+                        <div className="h-12 w-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-200 dark:shadow-none">
+                            <PackagePlus className="h-6 w-6" />
                         </div>
                         <div>
-                            <h3 className="text-sm font-black uppercase tracking-widest text-slate-800">New Inventory Entry</h3>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Manual Stock Registration</p>
+                            <h3 className="text-lg font-bold">New Item Details</h3>
+                            <p className="text-xs text-muted-foreground">Fill in all details to create a new inventory item</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="h-10 w-10 flex items-center justify-center rounded-xl hover:bg-slate-50 transition-colors">
-                        <X className="h-5 w-5 text-slate-400" />
+                    <button
+                        onClick={onClose}
+                        className="rounded-full p-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    >
+                        <X className="h-6 w-6" />
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-6 space-y-5">
+                {/* Scrollable Content */}
+                <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-8 pt-6 space-y-8">
                     {error && (
-                        <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl text-[11px] font-black text-rose-500 uppercase tracking-wide">
+                        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-600 dark:bg-red-900/20 dark:border-red-800 animate-in fade-in slide-in-from-top-2">
                             {error}
                         </div>
                     )}
 
-                    <div className="grid grid-cols-2 gap-5">
-                        <div className="col-span-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block">Item/Service Name *</label>
-                            <Input
-                                required
-                                value={form.name}
-                                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                                placeholder="Public Name"
-                                className="h-11 rounded-2xl"
-                            />
+                    {/* Type Toggle */}
+                    <div className="flex items-center justify-center bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl w-fit mx-auto">
+                        {(["goods", "services"] as const).map((t) => (
+                            <button
+                                key={t}
+                                type="button"
+                                onClick={() => update("type", t)}
+                                className={cn(
+                                    "px-6 py-2 rounded-xl text-sm font-semibold transition-all duration-200",
+                                    form.type === t
+                                        ? "bg-white dark:bg-slate-800 shadow-md text-indigo-600 dark:text-indigo-400"
+                                        : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                                )}
+                            >
+                                {t === "goods" ? "Inventory Item" : "Service Item"}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Section: Basic Info */}
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Info className="h-4 w-4 text-indigo-600" />
+                            <h4 className="text-sm font-bold uppercase tracking-wider text-slate-400">Basic Information</h4>
                         </div>
-                        <div>
-                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block">SKU / Item Code</label>
-                            <Input
-                                value={form.sku}
-                                onChange={e => setForm(f => ({ ...f, sku: e.target.value }))}
-                                placeholder="Internal SKU"
-                                className="h-11 rounded-2xl"
-                            />
-                        </div>
-                        <div>
-                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block">Barcode (EAN/UPC)</label>
-                            <Input
-                                value={form.barcode}
-                                onChange={e => setForm(f => ({ ...f, barcode: e.target.value }))}
-                                placeholder="Scan Barcode"
-                                className="h-11 rounded-2xl"
-                            />
-                        </div>
-                        <div className="col-span-2 h-px bg-slate-50 my-2" />
-                        <div>
-                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block">Default Selling Rate</label>
-                            <div className="relative">
+                        <div className="grid gap-5">
+                            <label className="space-y-1.5">
+                                <span className="text-xs font-bold text-slate-600 dark:text-slate-400 ml-1">ITEM NAME *</span>
                                 <Input
-                                    type="number"
-                                    value={form.salesPrice}
-                                    onChange={e => setForm(f => ({ ...f, salesPrice: e.target.value }))}
-                                    className="h-11 rounded-2xl pl-10 font-bold"
+                                    autoFocus
+                                    value={form.name}
+                                    onChange={e => update("name", e.target.value)}
+                                    placeholder="e.g. Premium Ledger Paper"
+                                    className="h-12 rounded-2xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-indigo-500 focus:border-indigo-500"
                                 />
-                                <Tag className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+                            </label>
+
+                            <div className="grid grid-cols-2 gap-5">
+                                <label className="space-y-1.5">
+                                    <span className="text-xs font-bold text-slate-600 dark:text-slate-400 ml-1">SKU / CODE</span>
+                                    <Input
+                                        value={form.sku}
+                                        onChange={e => update("sku", e.target.value)}
+                                        placeholder="LKH-001"
+                                        className="h-12 rounded-2xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                                    />
+                                </label>
+                                <label className="space-y-1.5">
+                                    <span className="text-xs font-bold text-slate-600 dark:text-slate-400 ml-1">HS CODE</span>
+                                    <Input
+                                        value={form.hsCode}
+                                        onChange={e => update("hsCode", e.target.value)}
+                                        placeholder="4820.10"
+                                        className="h-12 rounded-2xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                                    />
+                                </label>
                             </div>
-                        </div>
-                        <div>
-                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block">Cost Price (Valuation)</label>
-                            <div className="relative">
-                                <Input
-                                    type="number"
-                                    value={form.purchasePrice}
-                                    onChange={e => setForm(f => ({ ...f, purchasePrice: e.target.value }))}
-                                    className="h-11 rounded-2xl pl-10 font-bold"
-                                />
-                                <Calculator className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+
+                            <div className="grid grid-cols-2 gap-5">
+                                <label className="space-y-1.5">
+                                    <div className="flex items-center justify-between ml-1">
+                                        <span className="text-xs font-bold text-slate-600 dark:text-slate-400">UNIT</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setAddUnitOpen(true)}
+                                            className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-0.5"
+                                        >
+                                            <Plus className="h-2.5 w-2.5" /> ADD
+                                        </button>
+                                    </div>
+                                    <select
+                                        value={form.unit}
+                                        onChange={e => update("unit", e.target.value)}
+                                        className="flex h-12 w-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none"
+                                    >
+                                        <option value="">Select unit</option>
+                                        {units.map(u => (
+                                            <option key={u.id} value={u.name}>{u.name}</option>
+                                        ))}
+                                    </select>
+                                </label>
+                                <label className="space-y-1.5">
+                                    <div className="flex items-center justify-between ml-1">
+                                        <span className="text-xs font-bold text-slate-600 dark:text-slate-400">ITEM GROUP</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setAddGroupOpen(true)}
+                                            className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-0.5"
+                                        >
+                                            <Plus className="h-2.5 w-2.5" /> ADD
+                                        </button>
+                                    </div>
+                                    <select
+                                        value={form.groupId}
+                                        onChange={e => update("groupId", e.target.value)}
+                                        className="flex h-12 w-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none"
+                                    >
+                                        <option value="">Select group</option>
+                                        {groups.map(g => (
+                                            <option key={g.id} value={g.id}>{g.name}</option>
+                                        ))}
+                                    </select>
+                                </label>
                             </div>
-                        </div>
-                        <div className="col-span-2">
-                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block">Initial Opening Stock Balance</label>
-                             <Input
-                                type="number"
-                                value={form.openingQty}
-                                onChange={e => setForm(f => ({ ...f, openingQty: e.target.value }))}
-                                className="h-11 rounded-2xl font-bold"
-                             />
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-end gap-3 pt-4">
-                        <Button type="button" variant="ghost" onClick={onClose} className="rounded-2xl h-11 px-6 font-black text-[10px] uppercase tracking-widest">
-                            Dismiss
-                        </Button>
-                        <Button type="submit" disabled={loading} className="rounded-2xl h-11 px-10 bg-amber-600 text-white shadow-xl shadow-amber-100 font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all">
-                            {loading ? "Registering..." : "Commit Inventory"}
-                        </Button>
+                    {/* Section: Pricing */}
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Banknote className="h-4 w-4 text-emerald-600" />
+                            <h4 className="text-sm font-bold uppercase tracking-wider text-slate-400">Pricing & Taxes</h4>
+                        </div>
+                        <div className="grid gap-5">
+                            <div className="grid grid-cols-2 gap-5">
+                                <label className="space-y-1.5">
+                                    <span className="text-xs font-bold text-slate-600 dark:text-slate-400 ml-1">SALES PRICE</span>
+                                    <Input
+                                        type="number"
+                                        value={form.salesPrice}
+                                        onChange={e => update("salesPrice", e.target.value)}
+                                        placeholder="0.00"
+                                        className="h-12 rounded-2xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                                    />
+                                </label>
+                                <label className="space-y-1.5">
+                                    <span className="text-xs font-bold text-slate-600 dark:text-slate-400 ml-1">PURCHASE PRICE</span>
+                                    <Input
+                                        type="number"
+                                        value={form.purchasePrice}
+                                        onChange={e => update("purchasePrice", e.target.value)}
+                                        placeholder="0.00"
+                                        disabled={form.type === "services"}
+                                        className="h-12 rounded-2xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 disabled:opacity-50"
+                                    />
+                                </label>
+                            </div>
+
+                            {/* Taxes */}
+                            <div className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-3xl border border-slate-200 dark:border-slate-800">
+                                <div className="flex items-center justify-between mb-4">
+                                    <span className="text-xs font-bold text-slate-600 dark:text-slate-400">APPLY TAX</span>
+                                    <div className="flex p-0.5 bg-slate-200 dark:bg-slate-800 rounded-lg">
+                                        <button
+                                            type="button"
+                                            onClick={() => { setTaxable(false); update("taxCodeIds", []); }}
+                                            className={cn("px-3 py-1 text-[10px] font-bold rounded-md transition-all", !taxable ? "bg-white dark:bg-slate-700 text-indigo-600 shadow-sm" : "text-slate-500")}
+                                        >OFF</button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setTaxable(true)}
+                                            className={cn("px-3 py-1 text-[10px] font-bold rounded-md transition-all", taxable ? "bg-white dark:bg-slate-700 text-indigo-600 shadow-sm" : "text-slate-500")}
+                                        >ON</button>
+                                    </div>
+                                </div>
+                                {taxable && (
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {taxes.map(tax => (
+                                            <label key={tax.id} className={cn(
+                                                "flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer",
+                                                form.taxCodeIds.includes(tax.id)
+                                                    ? "bg-indigo-50 border-indigo-200 dark:bg-indigo-900/20 dark:border-indigo-800"
+                                                    : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-800"
+                                            )}>
+                                                <input
+                                                    type="checkbox"
+                                                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                                                    checked={form.taxCodeIds.includes(tax.id)}
+                                                    onChange={() => {
+                                                        const next = new Set(form.taxCodeIds);
+                                                        if (next.has(tax.id)) next.delete(tax.id);
+                                                        else next.add(tax.id);
+                                                        update("taxCodeIds", Array.from(next));
+                                                    }}
+                                                />
+                                                <span className="text-xs font-medium">{tax.name} ({tax.rate}%)</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Section: Opening Stock */}
+                    {form.type === "goods" && (
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-2 mb-2">
+                                <History className="h-4 w-4 text-orange-600" />
+                                <h4 className="text-sm font-bold uppercase tracking-wider text-slate-400">Opening Stock</h4>
+                            </div>
+                            <div className="grid grid-cols-2 gap-5">
+                                <label className="space-y-1.5">
+                                    <span className="text-xs font-bold text-slate-600 dark:text-slate-400 ml-1">OPENING QTY</span>
+                                    <Input
+                                        type="number"
+                                        value={form.openingQty}
+                                        onChange={e => update("openingQty", e.target.value)}
+                                        placeholder="0"
+                                        className="h-12 rounded-2xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                                    />
+                                </label>
+                                <label className="space-y-1.5">
+                                    <span className="text-xs font-bold text-slate-600 dark:text-slate-400 ml-1">OPENING RATE</span>
+                                    <Input
+                                        type="number"
+                                        value={form.openingPrice}
+                                        onChange={e => update("openingPrice", e.target.value)}
+                                        placeholder="0.00"
+                                        className="h-12 rounded-2xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                                    />
+                                </label>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Section: Accounting */}
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2 mb-2">
+                            <FileText className="h-4 w-4 text-blue-600" />
+                            <h4 className="text-sm font-bold uppercase tracking-wider text-slate-400">Accounting Integration</h4>
+                        </div>
+                        <div className="grid grid-cols-2 gap-5">
+                            <label className="space-y-1.5">
+                                <span className="text-xs font-bold text-slate-600 dark:text-slate-400 ml-1">INCOME ACCOUNT</span>
+                                <Input
+                                    value={form.incomeAccountId}
+                                    onChange={e => update("incomeAccountId", e.target.value)}
+                                    placeholder="Ledger ID or Name"
+                                    className="h-12 rounded-2xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                                />
+                            </label>
+                            <label className="space-y-1.5">
+                                <span className="text-xs font-bold text-slate-600 dark:text-slate-400 ml-1">EXPENSE ACCOUNT</span>
+                                <Input
+                                    value={form.expenseAccountId}
+                                    onChange={e => update("expenseAccountId", e.target.value)}
+                                    placeholder="Ledger ID or Name"
+                                    disabled={form.type === "services"}
+                                    className="h-12 rounded-2xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 disabled:opacity-50"
+                                />
+                            </label>
+                        </div>
                     </div>
                 </form>
+
+                {/* Footer */}
+                <div className="border-t px-8 py-6 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 flex items-center justify-end gap-3">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="h-12 px-8 rounded-2xl text-sm font-bold border-2 border-slate-200 dark:border-slate-800 hover:bg-white dark:hover:bg-slate-900 transition-all active:scale-95"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="submit"
+                        onClick={handleSubmit}
+                        disabled={saving}
+                        className="h-12 px-10 rounded-2xl text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-700 shadow-xl shadow-indigo-200 dark:shadow-none transition-all active:scale-95 disabled:opacity-70 flex items-center gap-2"
+                    >
+                        {saving ? (
+                            <div className="flex items-center gap-2">
+                                <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                Processing...
+                            </div>
+                        ) : (
+                            <>
+                                <Save className="h-5 w-5" />
+                                Save & Select
+                            </>
+                        )}
+                    </button>
+                </div>
             </div>
-        </div>
+
+            <AddUnitDialog
+                open={addUnitOpen}
+                onClose={() => setAddUnitOpen(false)}
+                onSuccess={(newUnit) => {
+                    setUnits(prev => [...prev, newUnit]);
+                    update("unit", newUnit.name);
+                }}
+            />
+
+            <AddGroupDialog
+                open={addGroupOpen}
+                onClose={() => setAddGroupOpen(false)}
+                onSuccess={(newGroup) => {
+                    setGroups(prev => [...prev, newGroup]);
+                    update("groupId", newGroup.id);
+                }}
+            />
+        </div>,
+        document.body
     );
 }
+

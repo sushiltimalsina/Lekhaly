@@ -1,4 +1,4 @@
-// apps/desktop/src/lib/api/invoices.ts
+// apps/web/src/lib/api/invoices.ts
 import { apiRequest } from "./client";
 
 export type InvoiceItemInput = {
@@ -18,8 +18,6 @@ export type InvoiceDraftInput = {
   dueDate?: string; // ISO
   dueDateBs?: string; // BS string
   receivableAccountId: string;
-  referenceNo?: string;
-  salesType?: string;
   memo?: string;
   additionalNote?: string;
   items: InvoiceItemInput[];

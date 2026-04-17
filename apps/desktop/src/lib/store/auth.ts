@@ -1,4 +1,4 @@
-// apps/desktop/src/lib/store/auth.ts
+// apps/web/src/lib/store/auth.ts
 
 type AuthState = {
   token: string | null;
@@ -39,6 +39,9 @@ export function subscribeAuth(listener: Listener) {
   return () => listeners.delete(listener);
 }
 
+/**
+ * Handy helper to keep in sync with other tabs.
+ */
 export function initAuthStorageSync() {
   if (typeof window === "undefined") return () => {};
 

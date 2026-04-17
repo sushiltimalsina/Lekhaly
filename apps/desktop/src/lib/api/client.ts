@@ -1,4 +1,4 @@
-// apps/desktop/src/lib/api/client.ts
+// apps/web/src/lib/api/client.ts
 
 export type ApiErrorResponse = {
   statusCode?: number;
@@ -48,10 +48,8 @@ type RequestOptions = {
   };
 };
 
-// Adapted for Vite: using import.meta.env
 const DEFAULT_BASE_URL =
-  (import.meta.env.VITE_API_BASE_URL as string)?.trim() || "http://localhost:4000/v1";
-
+  (import.meta as any).env?.VITE_API_BASE_URL || "http://localhost:4000/v1";
 const OFFLINE_DB_NAME = "lekhaly-offline-db";
 const OFFLINE_STORE_NAME = "pending-api-requests";
 export const OFFLINE_SYNC_EVENT = "lekhaly:offline-sync";
@@ -72,6 +70,7 @@ export function buildUrl(path: string, query?: RequestOptions["query"]) {
 }
 
 function getToken() {
+  // Later you can move to httpOnly cookies. For now keep simple.
   if (typeof window === "undefined") return null;
   return localStorage.getItem("lekhaly_token");
 }
@@ -288,6 +287,7 @@ export async function apiRequest<T>(opts: RequestOptions): Promise<T> {
     throw error;
   }
 
+  // Try parsing json, but don’t crash if empty
   let data: any = null;
   const text = await res.text();
   if (text) {

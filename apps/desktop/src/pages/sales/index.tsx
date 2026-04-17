@@ -1,4 +1,5 @@
-// apps/desktop/src/pages/sales/index.tsx
+"use client";
+
 import * as React from "react";
 import PageHeader from "@/components/app/page-header";
 import { Button } from "@lekhaly/ui";
@@ -8,7 +9,8 @@ import StatusBadge, { DocStatus } from "@/components/app/status-badge";
 import { useDateFormat } from "@/lib/date-format";
 import { getDateDisplay } from "@/lib/dates/display";
 import { Plus, ChevronRight, FileText, Download } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import AdvancedFilterBar from "@/components/app/advanced-filter-bar";
 import { getSettings, subscribeSettings } from "@/lib/store/settings";
@@ -354,3 +356,6 @@ export default function SalesListPage() {
         </div>
     );
 }
+
+
+

@@ -1,4 +1,5 @@
-// apps/desktop/src/pages/items/index.tsx
+﻿"use client";
+
 import * as React from "react";
 import PageHeader from "@/components/app/page-header";
 import FiltersBar from "@/components/app/filters-bar";
@@ -6,7 +7,8 @@ import DataTable, { Column } from "@/components/app/data-table";
 import { MoneyText } from "@/components/app/money";
 import { Button } from "@lekhaly/ui";
 import { Input } from "@lekhaly/ui";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Package } from "lucide-react";
+import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { getStockReport, StockReportRow } from "@/lib/api/inventory";
 import AddItemDialog from "@/components/app/add-item-dialog";
@@ -353,3 +355,5 @@ export default function ItemsPage() {
     </div>
   );
 }
+
+

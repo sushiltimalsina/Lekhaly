@@ -1,5 +1,4 @@
-// apps/desktop/src/lib/store/settings.ts
-import * as React from "react";
+"use client";
 
 export type CalendarPreference = "BS" | "AD";
 export type DefaultDateRange = "today" | "this_week" | "this_month" | "this_quarter" | "this_year";
@@ -59,17 +58,5 @@ export function setDefaultDateRange(next: DefaultDateRange) {
 
 export function subscribeSettings(listener: (next: SettingsState) => void) {
   listeners.add(listener);
-  return () => { listeners.delete(listener); };
-}
-
-export function useSettings() {
-  const [settings, setSettings] = React.useState(getSettings());
-
-  React.useEffect(() => {
-    return subscribeSettings((next) => {
-      setSettings(next);
-    });
-  }, []);
-
-  return settings;
+  return () => listeners.delete(listener);
 }

@@ -1,4 +1,5 @@
-// apps/desktop/src/lib/api/units.ts
+// apps/web/src/lib/api/units.ts
+
 import { apiRequest } from "./client";
 
 export type UnitRecord = {
@@ -18,6 +19,14 @@ export async function createUnit(input: { name: string }) {
   return apiRequest<UnitRecord>({
     method: "POST",
     path: "/units",
+    body: input,
+  });
+}
+
+export async function updateUnit(id: string, input: { name: string }) {
+  return apiRequest<UnitRecord>({
+    method: "PATCH",
+    path: `/units/${id}`,
     body: input,
   });
 }

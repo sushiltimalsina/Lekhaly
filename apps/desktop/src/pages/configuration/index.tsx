@@ -1,200 +1,663 @@
 import * as React from "react";
 import PageHeader from "@/components/app/page-header";
-import { Input } from "@lekhaly/ui";
-import { Button } from "@lekhaly/ui";
-import { createUnit, deleteUnit, listUnits, type UnitRecord } from "@/lib/api/units";
-import { createItemGroup, deleteItemGroup, listItemGroups, type ItemGroupRecord } from "@/lib/api/item-groups";
-import { Trash2 } from "lucide-react";
+import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, Input } from "@lekhaly/ui";
+import { deleteUnit, listUnits, type UnitRecord } from "@/lib/api/units";
+import { deleteItemGroup, listItemGroups, type ItemGroupRecord } from "@/lib/api/item-groups";
+import { listBillSundries, deleteBillSundry, type BillSundryRecord } from "@/lib/api/bill-sundries";
+import { Trash2, Ruler, Layers, Calculator, Plus, AlertCircle, ChevronDown, ChevronRight, Search, Pencil, Monitor } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import AddUnitDialog from "@/components/app/add-unit-dialog";
+import AddItemGroupDialog from "@/components/app/add-item-group-dialog";
+import AddBillSundryDialog from "@/components/app/add-bill-sundry-dialog";
+import ConfirmDialog from "@/components/app/confirm-dialog";
+import { useDateFormat } from "@/lib/date-format";
+import { getSettings, setCalendarPreference, setDefaultDateRange, subscribeSettings } from "@/lib/store/settings";
+import { getCurrencySettings, setCurrencySymbol, setNumberFormat, subscribeUi } from "@/lib/store/ui";
+import { MoneyText } from "@/components/app/money";
 
 export default function ConfigurationPage() {
   const [searchParams] = useSearchParams();
   const focus = searchParams.get("focus");
   const unitsRef = React.useRef<HTMLDivElement | null>(null);
   const groupsRef = React.useRef<HTMLDivElement | null>(null);
+  const sundriesRef = React.useRef<HTMLDivElement | null>(null);
+
   const [units, setUnits] = React.useState<UnitRecord[]>([]);
   const [groups, setGroups] = React.useState<ItemGroupRecord[]>([]);
-  const [unitInput, setUnitInput] = React.useState("");
-  const [groupInput, setGroupInput] = React.useState("");
+  const [sundries, setSundries] = React.useState<BillSundryRecord[]>([]);
+
+  const [loading, setLoading] = React.useState(true);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  React.useEffect(() => {
-    let alive = true;
+  const [addUnitOpen, setAddUnitOpen] = React.useState(false);
+  const [addGroupOpen, setAddGroupOpen] = React.useState(false);
+  const [addSundryOpen, setAddSundryOpen] = React.useState(false);
+
+  const [editUnit, setEditUnit] = React.useState<UnitRecord | undefined>();
+  const [editGroup, setEditGroup] = React.useState<ItemGroupRecord | undefined>();
+  const [editSundry, setEditSundry] = React.useState<BillSundryRecord | undefined>();
+
+  // Visibility state
+  const [showUnits, setShowUnits] = React.useState(false);
+  const [showGroups, setShowGroups] = React.useState(false);
+  const [showSundries, setShowSundries] = React.useState(false);
+
+  // Search state
+  const [qUnits, setQUnits] = React.useState("");
+  const [qGroups, setQGroups] = React.useState("");
+  const [qSundries, setQSundries] = React.useState("");
+
+  // System Preferences State
+  const { dateFormat, setDateFormat } = useDateFormat();
+  const [currencySymbol, setCurrencySymbolState] = React.useState(getCurrencySettings().currencySymbol);
+  const [numberFormat, setNumberFormatState] = React.useState(getCurrencySettings().numberFormat);
+  const [calendarPreference, setCalendarPreferenceState] = React.useState<"BS" | "AD">("BS");
+  const [defaultDateRange, setDefaultDateRangeState] = React.useState<string>("this_month");
+
+  // Visibility for Preferences
+  const [showRegional, setShowRegional] = React.useState(false);
+
+  // Custom Dialog States
+  const [confirmState, setConfirmState] = React.useState<{
+    id: string;
+    name: string;
+    type: "unit" | "group" | "sundry";
+    open: boolean;
+  }>({ id: "", name: "", type: "unit", open: false });
+
+  const [alertState, setAlertState] = React.useState<{
+    title: string;
+    message: string;
+    open: boolean;
+  }>({ title: "", message: "", open: false });
+
+  const fetchData = async () => {
+    setLoading(true);
     const normalizeList = <T,>(input: unknown): T[] => {
       if (Array.isArray(input)) return input as T[];
       const obj = input as { items?: T[]; data?: T[] } | null;
       return obj?.items ?? obj?.data ?? [];
     };
-    Promise.all([listUnits({ take: 200 }), listItemGroups({ take: 200 })])
-      .then(([uRes, gRes]) => {
-        if (!alive) return;
-        const uData = normalizeList<UnitRecord>(uRes);
-        const gData = normalizeList<ItemGroupRecord>(gRes);
-        setUnits(uData);
-        setGroups(gData);
-      })
-      .catch((e: any) => {
-        if (!alive) return;
-        setError(e?.message ?? "Failed to load configuration data.");
-      });
-    return () => {
-      alive = false;
-    };
+    try {
+      const [uRes, gRes, sRes] = await Promise.all([
+        listUnits({ take: 200 }),
+        listItemGroups({ take: 200 }),
+        listBillSundries({ take: 200 })
+      ]);
+      setUnits(normalizeList<UnitRecord>(uRes));
+      setGroups(normalizeList<ItemGroupRecord>(gRes));
+      setSundries(normalizeList<BillSundryRecord>(sRes));
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to load configuration data.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchData();
   }, []);
 
   React.useEffect(() => {
-    if (focus === "units") {
-      unitsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-    if (focus === "groups") {
-      groupsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }, [focus]);
+    const unsubscribe = subscribeUi((next) => {
+      setCurrencySymbolState(next.currencySymbol);
+      setNumberFormatState(next.numberFormat);
+    });
+    return () => { unsubscribe(); };
+  }, []);
 
-  const addUnit = async () => {
-    const name = unitInput.trim();
-    if (!name) return;
+  React.useEffect(() => {
+    const s = getSettings();
+    setCalendarPreferenceState(s.calendarPreference);
+    setDefaultDateRangeState(s.defaultDateRange);
+    const unsubscribe = subscribeSettings((next) => {
+      setCalendarPreferenceState(next.calendarPreference);
+      setDefaultDateRangeState(next.defaultDateRange);
+    });
+    return () => { unsubscribe(); };
+  }, []);
+
+  React.useEffect(() => {
+    if (!loading) {
+      if (focus === "units") {
+        setShowUnits(true);
+        unitsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+      if (focus === "groups") {
+        setShowGroups(true);
+        groupsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+      if (focus === "sundries") {
+        setShowSundries(true);
+        sundriesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+  }, [focus, loading]);
+
+  const onRemoveUnit = (id: string) => {
+    const item = units.find(u => u.id === id);
+    if (!item) return;
+    setConfirmState({ id, name: item.name, type: "unit", open: true });
+  };
+
+  const onRemoveGroup = (id: string) => {
+    const item = groups.find(g => g.id === id);
+    if (!item) return;
+    setConfirmState({ id, name: item.name, type: "group", open: true });
+  };
+
+  const onRemoveSundry = (id: string) => {
+    const item = sundries.find(s => s.id === id);
+    if (!item) return;
+    
+    const systemNames = ["Discount", "Shipping & Handling", "Packaging Charges", "Insurance", "Round Off", "VAT"];
+    if (systemNames.includes(item.name)) {
+      setAlertState({
+        title: "System Default",
+        message: `The bill sundry '${item.name}' is a system default and cannot be deleted.`,
+        open: true
+      });
+      return;
+    }
+    setConfirmState({ id, name: item.name, type: "sundry", open: true });
+  };
+
+  const handleConfirmDelete = async () => {
+    const { id, name, type } = confirmState;
     setBusy(true);
-    setError(null);
+    setConfirmState(prev => ({ ...prev, open: false }));
     try {
-      const created = await createUnit({ name });
-      setUnits((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
-      setUnitInput("");
+      if (type === "unit") {
+        await deleteUnit(id);
+        setUnits(prev => prev.filter(u => u.id !== id));
+      } else if (type === "group") {
+        await deleteItemGroup(id);
+        setGroups(prev => prev.filter(g => g.id !== id));
+      } else if (type === "sundry") {
+        await deleteBillSundry(id);
+        setSundries(prev => prev.filter(s => s.id !== id));
+      }
     } catch (e: any) {
-      setError(e?.message ?? "Failed to add unit.");
+       const readableType = type.charAt(0).toUpperCase() + type.slice(1);
+       setAlertState({
+         title: "Delete Failed",
+         message: `${readableType} '${name}' cannot be deleted because it is currently used by items or in the accounting part. If you want to delete this ${type}, make sure you remove all related items or accounting system first.`,
+         open: true
+       });
     } finally {
       setBusy(false);
     }
   };
 
-  const addGroup = async () => {
-    const name = groupInput.trim();
-    if (!name) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const created = await createItemGroup({ name });
-      setGroups((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
-      setGroupInput("");
-    } catch (e: any) {
-      setError(e?.message ?? "Failed to add group.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const removeGroup = async (id: string) => {
-    setBusy(true);
-    setError(null);
-    try {
-      await deleteItemGroup(id);
-      setGroups((prev) => prev.filter((g) => g.id !== id));
-    } catch (e: any) {
-      setError(e?.message ?? "Failed to delete group.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const removeUnit = async (id: string) => {
-    setBusy(true);
-    setError(null);
-    try {
-      await deleteUnit(id);
-      setUnits((prev) => prev.filter((u) => u.id !== id));
-    } catch (e: any) {
-      setError(e?.message ?? "Failed to delete unit.");
-    } finally {
-      setBusy(false);
-    }
-  };
+  const filteredUnits = units.filter(u => u.name.toLowerCase().includes(qUnits.toLowerCase()));
+  const filteredGroups = groups.filter(g => g.name.toLowerCase().includes(qGroups.toLowerCase()));
+  const filteredSundries = sundries.filter(s => s.name.toLowerCase().includes(qSundries.toLowerCase()));
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Configuration"
-        description="Manage item units and groups used across the system."
+        description="Manage item units, groups, and bill sundries used across the system."
       />
 
-      {error ? (
-        <div className="rounded-xl border border-red-600/30 bg-red-600/10 px-3 py-2 text-sm text-red-700">
-          {error}
+      {error && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+          <AlertCircle className="h-5 w-5 shrink-0" />
+          <p>{error}</p>
+          <Button variant="ghost" size="sm" onClick={() => setError(null)} className="ml-auto text-red-800 hover:bg-accent dark:hover:bg-accent/20">
+            Dismiss
+          </Button>
         </div>
-      ) : null}
+      )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <section
-          ref={unitsRef}
-          className={cn(
-            "rounded-xl border bg-card p-6 shadow-sm space-y-4",
-            focus === "units" && "ring-2 ring-primary/40"
+      {/* items-start ensures cards don't stretch to fill the row height when collapsed */}
+      <div className="grid gap-6 lg:grid-cols-2 items-start">
+        {/* Units Section */}
+        <Card ref={unitsRef} className={cn("glass-card overflow-hidden", focus === "units" && "ring-2 ring-blue-500/50")}>
+          <CardHeader 
+            onClick={() => setShowUnits(!showUnits)}
+            className={cn("flex flex-row items-center justify-between cursor-pointer hover:bg-accent/10 transition-colors select-none", showUnits ? "pb-2" : "pb-4")}
+          >
+            <div className="flex items-center gap-3">
+               <div className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-accent transition-colors">
+                 {showUnits ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
+               </div>
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Ruler className="h-5 w-5 text-blue-500" />
+                  Units
+                </CardTitle>
+                <CardDescription>Measurement units for items</CardDescription>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setAddUnitOpen(true); }} className="rounded-xl">
+                <Plus className="h-4 w-4 mr-1" /> Add New
+              </Button>
+            </div>
+          </CardHeader>
+          {showUnits && (
+            <CardContent className="animate-in fade-in slide-in-from-top-1 duration-200">
+              <div className="mb-4 relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search units..."
+                  value={qUnits}
+                  onChange={e => setQUnits(e.target.value)}
+                  className="pl-9 rounded-xl border-border"
+                />
+              </div>
+              <div className="grid gap-2">
+                {loading ? (
+                  <div className="py-8 text-center text-sm text-muted-foreground">Loading units...</div>
+                ) : filteredUnits.length ? (
+                  filteredUnits.map(u => (
+                    <div key={u.id} className="flex items-center justify-between rounded-2xl border bg-muted/20 px-4 py-3 text-sm transition-all hover:bg-muted/40">
+                      <span className="font-medium text-foreground">{u.name}</span>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => { setEditUnit(u); setAddUnitOpen(true); }}
+                          disabled={busy}
+                          className="h-8 w-8 text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-950/30"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onRemoveUnit(u.id)}
+                          disabled={busy}
+                          className="h-8 w-8 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="py-8 text-center text-sm text-muted-foreground border-2 border-dashed rounded-2xl">
+                    {qUnits ? `No units matching "${qUnits}"` : "No units added yet."}
+                  </div>
+                )}
+              </div>
+            </CardContent>
           )}
-        >
-          <div className="text-sm font-semibold">Units</div>
-          <div className="flex items-center gap-2">
-            <Input value={unitInput} onChange={(e) => setUnitInput(e.target.value)} placeholder="Add new unit" />
-            <Button onClick={addUnit} disabled={busy || !unitInput.trim()}>
-              Add
-            </Button>
-          </div>
-          <div className="grid gap-2">
-            {units.length ? (
-              units.map((u) => (
-                <div key={u.id} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm">
-                  <span>{u.name}</span>
-                  <button
-                    type="button"
-                    onClick={() => removeUnit(u.id)}
-                    disabled={busy}
-                    className="rounded-md border px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-60"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </button>
-                </div>
-              ))
-            ) : (
-              <div className="text-sm text-muted-foreground">No units added yet.</div>
-            )}
-          </div>
-        </section>
+        </Card>
 
-        <section
-          ref={groupsRef}
-          className={cn(
-            "rounded-xl border bg-card p-6 shadow-sm space-y-4",
-            focus === "groups" && "ring-2 ring-primary/40"
+        {/* Groups Section */}
+        <Card ref={groupsRef} className={cn("glass-card overflow-hidden", focus === "groups" && "ring-2 ring-orange-500/50")}>
+          <CardHeader 
+            onClick={() => setShowGroups(!showGroups)}
+            className={cn("flex flex-row items-center justify-between cursor-pointer hover:bg-accent/10 transition-colors select-none", showGroups ? "pb-2" : "pb-4")}
+          >
+            <div className="flex items-center gap-3">
+               <div className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-accent transition-colors">
+                 {showGroups ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
+               </div>
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Layers className="h-5 w-5 text-orange-500" />
+                  Groups
+                </CardTitle>
+                <CardDescription>Item categorization groups</CardDescription>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setAddGroupOpen(true); }} className="rounded-xl">
+                <Plus className="h-4 w-4 mr-1" /> Add New
+              </Button>
+            </div>
+          </CardHeader>
+          {showGroups && (
+            <CardContent className="animate-in fade-in slide-in-from-top-1 duration-200">
+              <div className="mb-4 relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search groups..."
+                  value={qGroups}
+                  onChange={e => setQGroups(e.target.value)}
+                  className="pl-9 rounded-xl border-border"
+                />
+              </div>
+              <div className="grid gap-2">
+                {loading ? (
+                  <div className="py-8 text-center text-sm text-muted-foreground">Loading groups...</div>
+                ) : filteredGroups.length ? (
+                  filteredGroups.map(g => (
+                    <div key={g.id} className="flex items-center justify-between rounded-2xl border bg-muted/20 px-4 py-3 text-sm transition-all hover:bg-muted/40">
+                      <span className="font-medium text-foreground">{g.name}</span>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => { setEditGroup(g); setAddGroupOpen(true); }}
+                          disabled={busy}
+                          className="h-8 w-8 text-orange-600 hover:bg-orange-50 hover:text-orange-700 dark:hover:bg-orange-950/30"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onRemoveGroup(g.id)}
+                          disabled={busy}
+                          className="h-8 w-8 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="py-8 text-center text-sm text-muted-foreground border-2 border-dashed rounded-2xl">
+                    {qGroups ? `No groups matching "${qGroups}"` : "No groups added yet."}
+                  </div>
+                )}
+              </div>
+            </CardContent>
           )}
-        >
-          <div className="text-sm font-semibold">Groups</div>
-          <div className="flex items-center gap-2">
-            <Input value={groupInput} onChange={(e) => setGroupInput(e.target.value)} placeholder="Add new group" />
-            <Button onClick={addGroup} disabled={busy || !groupInput.trim()}>
-              Add
-            </Button>
-          </div>
-          <div className="grid gap-2">
-            {groups.length ? (
-              groups.map((g) => (
-                <div key={g.id} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm">
-                  <span>{g.name}</span>
-                  <button
-                    type="button"
-                    onClick={() => removeGroup(g.id)}
-                    disabled={busy}
-                    className="rounded-md border px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-60"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </button>
+        </Card>
+
+        {/* Bill Sundries Section */}
+        <Card ref={sundriesRef} className={cn("glass-card overflow-hidden lg:col-span-2", focus === "sundries" && "ring-2 ring-indigo-500/50")}>
+          <CardHeader 
+            onClick={() => setShowSundries(!showSundries)}
+            className={cn("flex flex-row items-center justify-between cursor-pointer hover:bg-accent/10 transition-colors select-none", showSundries ? "pb-2" : "pb-4")}
+          >
+            <div className="flex items-center gap-3">
+               <div className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-accent transition-colors">
+                 {showSundries ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
+               </div>
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Calculator className="h-5 w-5 text-indigo-500" />
+                  Bill Sundries
+                </CardTitle>
+                <CardDescription>Predefined additional charges or discounts</CardDescription>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setAddSundryOpen(true); }} className="rounded-xl">
+                <Plus className="h-4 w-4 mr-1" /> Add New
+              </Button>
+            </div>
+          </CardHeader>
+          {showSundries && (
+            <CardContent className="animate-in fade-in slide-in-from-top-1 duration-200">
+              <div className="mb-4 relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search bill sundries..."
+                  value={qSundries}
+                  onChange={e => setQSundries(e.target.value)}
+                  className="pl-9 rounded-xl border-border"
+                />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {loading ? (
+                  <div className="col-span-2 py-8 text-center text-sm text-muted-foreground">Loading sundries...</div>
+                ) : filteredSundries.length ? (
+                  filteredSundries.map(s => (
+                    <div key={s.id} className="flex items-center justify-between rounded-2xl border bg-muted/20 p-4 transition-all hover:bg-muted/40">
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          "flex h-10 w-10 items-center justify-center rounded-xl",
+                          s.type === "add" ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-950/30 font-medium" : "bg-red-100 text-red-600 dark:bg-red-950/30 font-medium"
+                        )}>
+                          {s.type === "add" ? <Plus className="h-5 w-5" /> : <Calculator className="h-5 w-5" />}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 font-semibold text-foreground">
+                            {s.name}
+                            {["Discount", "Shipping & Handling", "Packaging Charges", "Insurance", "Round Off", "VAT"].includes(s.name) && (
+                               <span className="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 text-[10px] px-1.5 py-0.5 rounded-md font-medium">System</span>
+                            )}
+                          </div>
+                          <div className="font-mono text-xs uppercase tracking-tight text-muted-foreground">
+                            {s.rate ? `${s.rate}%` : "Manual"} • {s.type} {s.account?.name ? `• ${s.account.name}` : ""}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => { setEditSundry(s); setAddSundryOpen(true); }}
+                          disabled={busy}
+                          className="h-8 w-8 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-indigo-950/30"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        {!["Discount", "Shipping & Handling", "Packaging Charges", "Insurance", "Round Off", "VAT"].includes(s.name) && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => onRemoveSundry(s.id)}
+                            disabled={busy}
+                            className="h-8 w-8 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="col-span-2 py-8 text-center text-sm text-muted-foreground border-2 border-dashed rounded-2xl">
+                    {qSundries ? `No sundries matching "${qSundries}"` : "No predefined sundries found."}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          )}
+        </Card>
+
+        {/* System & Regional Preferences Section */}
+        <Card className={cn("glass-card overflow-hidden lg:col-span-2")}>
+          <CardHeader 
+            onClick={() => setShowRegional(!showRegional)}
+            className={cn("flex flex-row items-center justify-between cursor-pointer hover:bg-accent/10 transition-colors select-none", showRegional ? "pb-2" : "pb-4")}
+          >
+            <div className="flex items-center gap-3">
+               <div className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-accent transition-colors">
+                 {showRegional ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
+               </div>
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Monitor className="h-5 w-5 text-blue-600" />
+                  System & Regional Preferences
+                </CardTitle>
+                <CardDescription>Setup your business calendar, currency, and date formats</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          {showRegional && (
+            <CardContent className="animate-in fade-in slide-in-from-top-1 duration-200 lg:p-8">
+              <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+                {/* Calendar preference */}
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="text-sm font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
+                      <Ruler className="h-4 w-4 text-blue-500" />
+                      Calendar Input
+                    </h4>
+                    <p className="text-xs text-muted-foreground mt-1">Default calendar for entry</p>
+                  </div>
+                  <div className="flex p-1 bg-muted/40 dark:bg-muted/10 border border-border/50 rounded-2xl w-full">
+                    {(["BS", "AD"] as const).map(pref => (
+                      <button
+                        key={pref}
+                        type="button"
+                        onClick={() => setCalendarPreference(pref)}
+                        className={cn(
+                          "flex-1 py-3 rounded-xl text-xs font-bold transition-all duration-200",
+                          calendarPreference === pref 
+                            ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30 ring-1 ring-blue-500/50" 
+                            : "text-muted-foreground hover:bg-background/50 hover:text-foreground"
+                        )}
+                      >
+                        {pref}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              ))
-            ) : (
-              <div className="text-sm text-muted-foreground">No groups added yet.</div>
-            )}
-          </div>
-        </section>
+
+                {/* Date display format */}
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="text-sm font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
+                      <ChevronRight className="h-4 w-4 text-emerald-500" />
+                      Display Format
+                    </h4>
+                    <p className="text-xs text-muted-foreground mt-1">How dates appear in lists</p>
+                  </div>
+                  <div className="flex p-1 bg-muted/40 dark:bg-muted/10 border border-border/50 rounded-2xl w-full">
+                    {(["bs", "ad"] as const).map(pref => (
+                      <button
+                        key={pref}
+                        type="button"
+                        onClick={() => setDateFormat(pref)}
+                        className={cn(
+                          "flex-1 py-3 rounded-xl text-xs font-bold uppercase transition-all duration-200",
+                          dateFormat === pref 
+                            ? "bg-emerald-600 text-white shadow-lg shadow-emerald-500/30 ring-1 ring-emerald-500/50" 
+                            : "text-muted-foreground hover:bg-background/50 hover:text-foreground"
+                        )}
+                      >
+                        {pref}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Date range default */}
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="text-sm font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
+                      <Search className="h-4 w-4 text-orange-500" />
+                      Default range
+                    </h4>
+                    <p className="text-xs text-muted-foreground mt-1">Initial filter for reports</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 p-1 bg-muted/40 dark:bg-muted/10 border border-border/50 rounded-2xl">
+                    {(["today", "this_week", "this_month", "this_quarter", "this_year"] as const).map(range => (
+                      <button
+                        key={range}
+                        type="button"
+                        onClick={() => setDefaultDateRange(range)}
+                        className={cn(
+                          "py-2 px-2 rounded-xl text-[10px] font-bold uppercase tracking-tight transition-all duration-200 border",
+                          defaultDateRange === range 
+                            ? "bg-orange-500 border-orange-400 text-white shadow-md shadow-orange-500/30" 
+                            : "bg-transparent border-transparent text-muted-foreground hover:bg-background/50 hover:text-foreground"
+                        )}
+                      >
+                        {range.replace("_", " ")}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Currency settings */}
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="text-sm font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
+                      <Calculator className="h-4 w-4 text-indigo-500" />
+                      Currency & Format
+                    </h4>
+                    <p className="text-xs text-muted-foreground mt-1">Formatting and symbol</p>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex p-1 bg-muted/40 dark:bg-muted/10 border border-border/50 rounded-2xl w-full">
+                      {(["रु.", "NPR", "Rs."] as const).map(symbol => (
+                        <button
+                          key={symbol}
+                          type="button"
+                          onClick={() => setCurrencySymbol(symbol)}
+                          className={cn(
+                            "flex-1 py-3 rounded-xl text-[10px] font-bold transition-all duration-200",
+                            currencySymbol === symbol 
+                              ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30 ring-1 ring-indigo-500/50" 
+                              : "text-muted-foreground hover:bg-background/50 hover:text-foreground"
+                          )}
+                        >
+                          {symbol}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex p-1 bg-muted/40 dark:bg-muted/10 border border-border/50 rounded-2xl w-full">
+                      {(["en-IN", "en-US"] as const).map(format => (
+                        <button
+                          key={format}
+                          type="button"
+                          onClick={() => setNumberFormat(format)}
+                          className={cn(
+                            "flex-1 py-3 rounded-xl text-[10px] font-bold transition-all duration-200",
+                            numberFormat === format 
+                              ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30 ring-1 ring-indigo-500/50" 
+                              : "text-muted-foreground hover:bg-background/50 hover:text-foreground"
+                          )}
+                        >
+                          {format === "en-IN" ? "1,23,456" : "123,456"}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="rounded-xl border bg-muted/30 dark:bg-muted/10 px-4 py-2 text-center">
+                      <div className="text-[10px] font-bold text-muted-foreground uppercase opacity-50">Preview</div>
+                      <div className="text-sm font-bold text-indigo-600">
+                        <MoneyText value={1234567.89} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          )}
+        </Card>
       </div>
+
+      <AddUnitDialog
+        open={addUnitOpen}
+        onClose={() => { setAddUnitOpen(false); setEditUnit(undefined); }}
+        onSuccess={() => fetchData()}
+        unit={editUnit}
+      />
+      <AddItemGroupDialog
+        open={addGroupOpen}
+        onClose={() => { setAddGroupOpen(false); setEditGroup(undefined); }}
+        onSuccess={() => fetchData()}
+        group={editGroup}
+      />
+      <AddBillSundryDialog
+        open={addSundryOpen}
+        onClose={() => { setAddSundryOpen(false); setEditSundry(undefined); }}
+        onSuccess={() => fetchData()}
+        sundry={editSundry}
+      />
+
+      <ConfirmDialog
+        open={confirmState.open}
+        title={`Delete ${confirmState.type.charAt(0).toUpperCase() + confirmState.type.slice(1)}`}
+        description={`Are you sure you want to delete '${confirmState.name}'? This action cannot be undone.`}
+        variant="danger"
+        confirmText="Delete"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setConfirmState(prev => ({ ...prev, open: false }))}
+        loading={busy}
+      />
+
+      <ConfirmDialog
+        open={alertState.open}
+        title={alertState.title}
+        description={alertState.message}
+        variant="danger"
+        confirmText="OK"
+        onConfirm={() => setAlertState(prev => ({ ...prev, open: false }))}
+      />
     </div>
   );
 }

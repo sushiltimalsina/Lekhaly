@@ -1,3 +1,5 @@
+"use client";
+
 import * as React from "react";
 import PageHeader from "@/components/app/page-header";
 import { Input } from "@lekhaly/ui";
@@ -6,8 +8,9 @@ import { listTaxes } from "@/lib/api/taxes";
 import { listUnits, type UnitRecord } from "@/lib/api/units";
 import { listItemGroups, type ItemGroupRecord } from "@/lib/api/item-groups";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
 import { ArrowLeft, PackagePlus, Plus, Save } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import AddUnitDialog from "@/components/app/add-unit-dialog";
 import AddGroupDialog from "@/components/app/add-group-dialog";
 
@@ -25,7 +28,6 @@ export default function NewItemPage() {
   const [groups, setGroups] = React.useState<ItemGroupRecord[]>([]);
   const [addUnitOpen, setAddUnitOpen] = React.useState(false);
   const [addGroupOpen, setAddGroupOpen] = React.useState(false);
-
   const [form, setForm] = React.useState({
     name: "",
     sku: "",
@@ -51,8 +53,8 @@ export default function NewItemPage() {
         setTaxes(
           Array.isArray(data)
             ? data
-                .filter((t: any) => t && typeof t.id === "string")
-                .map((t: any) => ({ id: t.id, name: String(t.name), rate: Number(t.rate ?? 0) }))
+              .filter((t: any) => t && typeof t.id === "string")
+              .map((t: any) => ({ id: t.id, name: String(t.name), rate: Number(t.rate ?? 0) }))
             : []
         );
       })
@@ -74,8 +76,8 @@ export default function NewItemPage() {
         setUnits(
           Array.isArray(data)
             ? data
-                .filter((u: any) => u && typeof u.id === "string")
-                .map((u: any) => ({ id: u.id, name: String(u.name) }))
+              .filter((u: any) => u && typeof u.id === "string")
+              .map((u: any) => ({ id: u.id, name: String(u.name) }))
             : []
         );
       })
@@ -97,8 +99,8 @@ export default function NewItemPage() {
         setGroups(
           Array.isArray(data)
             ? data
-                .filter((g: any) => g && typeof g.id === "string")
-                .map((g: any) => ({ id: g.id, name: String(g.name) }))
+              .filter((g: any) => g && typeof g.id === "string")
+              .map((g: any) => ({ id: g.id, name: String(g.name) }))
             : []
         );
       })
@@ -111,7 +113,7 @@ export default function NewItemPage() {
     };
   }, []);
 
-  const update = (key: keyof typeof form, value: any) => {
+  const update = (key: keyof typeof form, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -155,156 +157,212 @@ export default function NewItemPage() {
     <div className="space-y-10">
       <PageHeader
         title="Add New Item"
-        description="Register a stock item or service, with pricing and taxation details."
+        description="Create a goods or services item with pricing and accounting details."
         actions={
-          <Link
-            to="/items"
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition"
+          <Link to="/items"
+            className="inline-flex items-center gap-6 text-sm text-muted-foreground hover:text-foreground transition"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Stock
+            Back to Items
           </Link>
         }
       />
 
-      <form onSubmit={onSubmit} className="grid gap-6 lg:grid-cols-3 max-w-6xl mx-auto">
-        <section className="lg:col-span-2 space-y-6">
-          <div className="rounded-2xl border bg-card p-6 shadow-sm space-y-6">
-            <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-2xl bg-amber-600 text-white flex items-center justify-center shadow-lg shadow-amber-200 dark:shadow-none">
-                <PackagePlus className="h-6 w-6" />
-              </div>
-              <div>
-                <div className="text-base font-bold">Item Profile</div>
-                <div className="text-xs text-muted-foreground">Name, type, grouping and unit details.</div>
-              </div>
+      <form onSubmit={onSubmit} className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+        <section className="rounded-xl border bg-card p-6 shadow-sm space-y-5">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+              <PackagePlus className="h-5 w-5" />
             </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="space-y-1 text-sm sm:col-span-2">
-                <span className="text-muted-foreground">Item / Service Name *</span>
-                <Input
-                  autoFocus
-                  required
-                  value={form.name}
-                  onChange={(e) => update("name", e.target.value)}
-                  placeholder="e.g. Laptop, Consultation Service"
-                  className="h-12 rounded-xl"
-                />
-              </label>
-
-              <label className="space-y-1 text-sm">
-                <span className="text-muted-foreground">SKU</span>
-                <Input value={form.sku} onChange={(e) => update("sku", e.target.value)} placeholder="Optional" className="h-12 rounded-xl" />
-              </label>
-
-              <label className="space-y-1 text-sm">
-                <span className="text-muted-foreground">HS Code</span>
-                <Input value={form.hsCode} onChange={(e) => update("hsCode", e.target.value)} placeholder="Optional" className="h-12 rounded-xl" />
-              </label>
-
-              <div className="space-y-1 text-sm">
-                <span className="text-muted-foreground">Type</span>
-                <div className="flex gap-2">
-                  {(["goods", "services"] as const).map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => update("type", t)}
-                      className={cn(
-                        "rounded-full border px-3 py-2 text-xs font-medium transition",
-                        form.type === t ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:bg-muted"
-                      )}
-                    >
-                      {t === "goods" ? "Goods" : "Services"}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-1 text-sm">
-                <span className="text-muted-foreground">Unit</span>
-                <div className="flex gap-2">
-                  <select
-                    value={form.unit}
-                    onChange={(e) => update("unit", e.target.value)}
-                    className="h-12 flex-1 rounded-xl border bg-background px-3 text-sm"
-                  >
-                    <option value="">Select unit...</option>
-                    {units.map((u) => (
-                      <option key={u.id} value={u.name}>
-                        {u.name}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => setAddUnitOpen(true)}
-                    className="inline-flex items-center gap-2 rounded-xl border px-3 text-xs font-medium hover:bg-muted transition"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-1 text-sm sm:col-span-2">
-                <span className="text-muted-foreground">Group</span>
-                <div className="flex gap-2">
-                  <select
-                    value={form.groupId}
-                    onChange={(e) => update("groupId", e.target.value)}
-                    className="h-12 flex-1 rounded-xl border bg-background px-3 text-sm"
-                  >
-                    <option value="">No group</option>
-                    {groups.map((g) => (
-                      <option key={g.id} value={g.id}>
-                        {g.name}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => setAddGroupOpen(true)}
-                    className="inline-flex items-center gap-2 rounded-xl border px-3 text-xs font-medium hover:bg-muted transition"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add
-                  </button>
-                </div>
-              </div>
+            <div>
+              <div className="text-sm font-semibold">Item Details</div>
+              <div className="text-xs text-muted-foreground">Basic information about the item.</div>
             </div>
           </div>
 
-          <div className="rounded-2xl border bg-card p-6 shadow-sm space-y-6">
-            <div className="text-sm font-bold">Pricing</div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="space-y-1 text-sm">
-                <span className="text-muted-foreground">Sales Price</span>
-                <Input type="number" value={form.salesPrice} onChange={(e) => update("salesPrice", e.target.value)} placeholder="0.00" className="h-12 rounded-xl" />
-              </label>
-              <label className="space-y-1 text-sm">
-                <span className="text-muted-foreground">Purchase Price</span>
-                <Input type="number" value={form.purchasePrice} onChange={(e) => update("purchasePrice", e.target.value)} placeholder="0.00" className="h-12 rounded-xl" />
-              </label>
-              <label className="space-y-1 text-sm">
-                <span className="text-muted-foreground">Opening Qty</span>
-                <Input type="number" value={form.openingQty} onChange={(e) => update("openingQty", e.target.value)} placeholder="0" className="h-12 rounded-xl" />
-              </label>
-              <label className="space-y-1 text-sm">
-                <span className="text-muted-foreground">Opening Price</span>
-                <Input type="number" value={form.openingPrice} onChange={(e) => update("openingPrice", e.target.value)} placeholder="0.00" className="h-12 rounded-xl" />
-              </label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="space-y-1 text-sm">
+              <span className="text-muted-foreground">Item Name</span>
+              <Input
+                value={form.name}
+                onChange={(e) => update("name", e.target.value)}
+                placeholder="e.g. Premium Ledger Paper"
+                required
+              />
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="text-muted-foreground">SKU(Unique Code)</span>
+              <Input
+                value={form.sku}
+                onChange={(e) => update("sku", e.target.value)}
+                placeholder="e.g. LKH-001"
+              />
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="text-muted-foreground">HS Code</span>
+              <Input
+                value={form.hsCode}
+                onChange={(e) => update("hsCode", e.target.value)}
+                placeholder="e.g. 4820.10"
+              />
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="flex items-center justify-between text-muted-foreground">
+                Group
+                {form.type === "goods" ? (
+                  <button
+                    type="button"
+                    onClick={() => setAddGroupOpen(true)}
+                    className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-3 py-1 text-[10px] font-medium text-white hover:bg-blue-500"
+                  >
+                    <span aria-hidden>+</span>
+                    Add
+                  </button>
+                ) : null}
+              </span>
+              <select
+                value={form.groupId}
+                onChange={(e) => update("groupId", e.target.value)}
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+              >
+                <option value="">Select group</option>
+                {groups.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="flex items-center justify-between text-muted-foreground">
+                Unit
+                {form.type === "goods" ? (
+                  <button
+                    type="button"
+                    onClick={() => setAddUnitOpen(true)}
+                    className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-2 py-1 text-[10px] font-medium text-white hover:bg-blue-500"
+                  >
+                    <span aria-hidden>+</span>
+                    Add
+                  </button>
+                ) : null}
+              </span>
+              <select
+                value={form.unit}
+                onChange={(e) => update("unit", e.target.value)}
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+              >
+                <option value="">Select unit</option>
+                {units.map((u) => (
+                  <option key={u.id} value={u.name}>
+                    {u.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="text-muted-foreground">Type</span>
+              <div className="flex items-center gap-2">
+                {(["goods", "services"] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => update("type", t)}
+                    className={cn(
+                      "rounded-full border px-3 py-1.5 text-xs font-medium transition",
+                      form.type === t
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "bg-background hover:bg-muted"
+                    )}
+                  >
+                    {t === "goods" ? "Goods" : "Services"}
+                  </button>
+                ))}
+              </div>
+            </label>
+          </div>
+        </section>
+
+        <section className="rounded-xl border bg-card p-6 shadow-sm space-y-5">
+          <div className="text-sm font-semibold">Pricing</div>
+          <div className="grid gap-4">
+            <label className="space-y-1 text-sm">
+              <span className="text-muted-foreground">Sales Price</span>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.salesPrice}
+                onChange={(e) => update("salesPrice", e.target.value)}
+                placeholder="0.00"
+              />
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="text-muted-foreground">Purchase Price</span>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.purchasePrice}
+                onChange={(e) => update("purchasePrice", e.target.value)}
+                placeholder="0.00"
+                disabled={form.type === "services"}
+              />
+            </label>
+            {form.type === "services" ? (
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
+                Services don't track stock. Purchase price is optional.
+              </div>
+            ) : null}
+          </div>
+        </section>
+
+        <section className="rounded-xl border bg-card p-6 shadow-sm space-y-5">
+          <div className="text-sm font-semibold">Opening Balance</div>
+          <div className="grid gap-4">
+            <label className="space-y-1 text-sm">
+              <span className="text-muted-foreground">Opening Quantity</span>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.openingQty}
+                onChange={(e) => update("openingQty", e.target.value)}
+                placeholder="0"
+                disabled={form.type === "services"}
+              />
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="text-muted-foreground">Opening Price</span>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.openingPrice}
+                onChange={(e) => update("openingPrice", e.target.value)}
+                placeholder="0.00"
+                disabled={form.type === "services"}
+              />
+            </label>
+            <div className="rounded-lg border bg-background px-3 py-2 text-sm text-muted-foreground">
+              Opening Amount:{" "}
+              <span className="font-semibold text-foreground">
+                {(Number(form.openingQty || 0) * Number(form.openingPrice || 0)).toFixed(2)}
+              </span>
             </div>
           </div>
         </section>
 
-        <section className="space-y-6">
-          <div className="rounded-2xl border bg-card p-6 shadow-sm space-y-4">
-            <div className="text-sm font-bold">Accounts</div>
+        <section className="rounded-xl border bg-card p-6 shadow-sm space-y-5 lg:col-span-2">
+          <div className="text-sm font-semibold">Accounting</div>
+          <div className="grid gap-4 sm:grid-cols-3">
             <label className="space-y-1 text-sm">
               <span className="text-muted-foreground">Income Account ID</span>
-              <Input value={form.incomeAccountId} onChange={(e) => update("incomeAccountId", e.target.value)} placeholder="Optional" />
+              <Input
+                value={form.incomeAccountId}
+                onChange={(e) => update("incomeAccountId", e.target.value)}
+                placeholder="Optional"
+              />
             </label>
             <label className="space-y-1 text-sm">
               <span className="text-muted-foreground">Expense Account ID</span>
@@ -315,97 +373,99 @@ export default function NewItemPage() {
                 disabled={form.type === "services"}
               />
             </label>
-          </div>
-
-          <div className="rounded-2xl border bg-card p-6 shadow-sm space-y-4">
-            <div className="text-sm font-bold">Tax</div>
-            <div className="flex items-center gap-2">
-              {(["non-taxable", "taxable"] as const).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => {
-                    const next = t === "taxable";
-                    setTaxable(next);
-                    if (!next) setForm((prev) => ({ ...prev, taxCodeIds: [] }));
-                  }}
-                  className={cn(
-                    "rounded-full border px-3 py-1.5 text-xs font-medium transition",
-                    taxable === (t === "taxable") ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:bg-muted"
-                  )}
-                >
-                  {t === "taxable" ? "Taxable" : "Non-taxable"}
-                </button>
-              ))}
-            </div>
-
-            {taxable ? (
-              <div className="grid gap-2 rounded-xl border bg-background p-3 text-sm">
-                {taxes.length ? (
-                  taxes.map((tax) => {
-                    const checked = form.taxCodeIds.includes(tax.id);
-                    return (
-                      <label key={tax.id} className="flex items-center justify-between gap-2">
-                        <span className="text-sm">
-                          {tax.name} ({tax.rate}%)
-                        </span>
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => {
-                            setForm((prev) => {
-                              const next = new Set(prev.taxCodeIds);
-                              if (next.has(tax.id)) next.delete(tax.id);
-                              else next.add(tax.id);
-                              return { ...prev, taxCodeIds: Array.from(next) };
-                            });
-                          }}
-                        />
-                      </label>
-                    );
-                  })
-                ) : (
-                  <div className="text-xs text-muted-foreground">No tax codes found.</div>
-                )}
+            <div className="space-y-2 text-sm">
+              <span className="text-muted-foreground">Tax</span>
+              <div className="flex items-center gap-2">
+                {(["non-taxable", "taxable"] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => {
+                      const next = t === "taxable";
+                      setTaxable(next);
+                      if (!next) {
+                        setForm((prev) => ({ ...prev, taxCodeIds: [] }));
+                      }
+                    }}
+                    className={cn(
+                      "rounded-full border px-3 py-1.5 text-xs font-medium transition",
+                      taxable === (t === "taxable")
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "bg-background hover:bg-muted"
+                    )}
+                  >
+                    {t === "taxable" ? "Taxable" : "Non-taxable"}
+                  </button>
+                ))}
               </div>
-            ) : (
-              <div className="text-xs text-muted-foreground">No tax will be applied.</div>
-            )}
-          </div>
-
-          <div className="flex items-center justify-between gap-3">
-            <div className="text-sm space-y-2">
-              {error ? (
-                <div className="rounded-lg border border-red-600/30 bg-red-600/10 px-3 py-2 text-red-700">
-                  {error}
+              {taxable ? (
+                <div className="grid gap-2 rounded-lg border bg-background p-3 text-sm">
+                  {taxes.length ? (
+                    taxes.map((tax) => {
+                      const checked = form.taxCodeIds.includes(tax.id);
+                      return (
+                        <label key={tax.id} className="flex items-center justify-between gap-2">
+                          <span className="text-sm">
+                            {tax.name} ({tax.rate}%)
+                          </span>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => {
+                              setForm((prev) => {
+                                const next = new Set(prev.taxCodeIds);
+                                if (next.has(tax.id)) next.delete(tax.id);
+                                else next.add(tax.id);
+                                return { ...prev, taxCodeIds: Array.from(next) };
+                              });
+                            }}
+                          />
+                        </label>
+                      );
+                    })
+                  ) : (
+                    <div className="text-xs text-muted-foreground">No tax codes found.</div>
+                  )}
                 </div>
-              ) : null}
-              {success ? (
-                <div className="rounded-lg border border-emerald-600/30 bg-emerald-600/10 px-3 py-2 text-emerald-700">
-                  {success}
-                </div>
-              ) : null}
-            </div>
-
-            <button
-              type="submit"
-              disabled={saving}
-              className={cn(
-                "inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-medium text-primary-foreground shadow-md transition",
-                saving ? "opacity-70" : "hover:shadow-lg hover:-translate-y-[1px]"
+              ) : (
+                <div className="text-xs text-muted-foreground">No tax will be applied.</div>
               )}
-            >
-              <Save className="h-4 w-4" />
-              {saving ? "Saving..." : "Create Item"}
-            </button>
+            </div>
           </div>
+        </section>
+
+        <section className="lg:col-span-2 flex items-center justify-between">
+          <div className="text-sm">
+            {error ? (
+              <div className="rounded-lg border border-red-600/30 bg-red-600/10 px-3 py-2 text-red-700">
+                {error}
+              </div>
+            ) : null}
+            {success ? (
+              <div className="rounded-lg border border-emerald-600/30 bg-emerald-600/10 px-3 py-2 text-emerald-700">
+                {success}
+              </div>
+            ) : null}
+          </div>
+
+          <button
+            type="submit"
+            disabled={saving}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2 text-sm font-medium text-primary-foreground shadow-md transition",
+              saving ? "opacity-70" : "hover:shadow-lg hover:-translate-y-[1px]"
+            )}
+          >
+            <Save className="h-4 w-4" />
+            {saving ? "Saving..." : "Create Item"}
+          </button>
         </section>
       </form>
 
       <AddUnitDialog
         open={addUnitOpen}
         onClose={() => setAddUnitOpen(false)}
-        onSuccess={(unit: UnitRecord) => {
+        onSuccess={(unit) => {
           setUnits((prev) => [...prev, unit]);
           update("unit", unit.name);
         }}
@@ -422,3 +482,6 @@ export default function NewItemPage() {
     </div>
   );
 }
+
+
+

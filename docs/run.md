@@ -17,4 +17,16 @@ cd c:\Lekhaly\apps\web
 pnpm dev
 
 
+For DEsktop mode 
+backend only
+pnpm --filter lekhaly-api dev
+
+frontend 
+
+cd apps/desktop
+pnpm run tauri dev
+
+
+
+
 make sure anything which is being updated in offline mode an be added through the same UI like sales invoice creattion page but show waring offlinne mode just created proforma once you get online your entered data will be updated and synced to the server

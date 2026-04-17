@@ -1,4 +1,4 @@
-// apps/desktop/src/lib/api/pdf.ts
+// apps/web/src/lib/api/pdf.ts
 import { apiRequest } from "./client";
 
 export async function generateInvoicePdf(invoiceId: string) {

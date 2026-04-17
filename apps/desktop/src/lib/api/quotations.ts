@@ -1,4 +1,4 @@
-// apps/desktop/src/lib/api/quotations.ts
+// apps/web/src/lib/api/quotations.ts
 import { apiRequest } from "./client";
 
 export type QuotationStatus = "draft" | "sent" | "accepted" | "declined" | "expired";
@@ -13,10 +13,10 @@ export type QuotationItemInput = {
 
 export type QuotationInput = {
     partyId: string;
-    quotationDate?: string;
-    quotationDateBs?: string;
-    expiryDate?: string;
-    expiryDateBs?: string;
+    quotationDate?: string; // ISO
+    quotationDateBs?: string; // BS string
+    expiryDate?: string; // ISO
+    expiryDateBs?: string; // BS string
     referenceNo?: string;
     salesType?: "vat_13" | "exempt" | "export";
     memo?: string;
@@ -30,6 +30,22 @@ export type QuotationInput = {
         rate?: number | null;
         amount: number;
     }>;
+};
+
+export type QuotationRecord = {
+    id: string;
+    quotationNo: string;
+    partyId: string;
+    partyName?: string;
+    quotationDate: string;
+    quotationDateBs: string;
+    expiryDate?: string;
+    expiryDateBs?: string;
+    status: QuotationStatus;
+    total: number;
+    memo?: string;
+    createdAt: string;
+    updatedAt: string;
 };
 
 export async function createQuotation(input: QuotationInput) {

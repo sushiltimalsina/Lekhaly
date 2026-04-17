@@ -1,6 +1,8 @@
-// apps/desktop/src/components/app/command-palette.tsx
+"use client";
+
 import * as React from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 type CommandItem = {
   label: string;
@@ -11,8 +13,8 @@ type CommandItem = {
 const commands: CommandItem[] = [
   { label: "Dashboard", href: "/dashboard", keywords: ["home", "overview"] },
   { label: "Vouchers", href: "/vouchers", keywords: ["entries", "journal"] },
-  { label: "Invoices", href: "/sales", keywords: ["sales", "bill"] },
-  { label: "Payments", href: "/payments/create", keywords: ["receipt"] },
+  { label: "Invoices", href: "/invoices", keywords: ["sales", "bill"] },
+  { label: "Payments", href: "/payments", keywords: ["receipt"] },
   { label: "Customers", href: "/customers", keywords: ["party"] },
   { label: "Vendors", href: "/vendors", keywords: ["supplier"] },
   { label: "Items", href: "/items", keywords: ["stock", "inventory"] },
@@ -105,3 +107,6 @@ export default function CommandPalette() {
     </div>
   );
 }
+
+
+

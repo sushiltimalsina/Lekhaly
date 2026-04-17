@@ -1,4 +1,6 @@
-// apps/desktop/src/lib/date-format.tsx
+// apps/web/src/lib/date-format.tsx
+"use client";
+
 import * as React from "react";
 
 export type DateFormat = "bs" | "ad";
@@ -43,3 +45,4 @@ export function useDateFormat() {
   }
   return ctx;
 }
+

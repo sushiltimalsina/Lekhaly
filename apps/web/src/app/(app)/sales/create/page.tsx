@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import * as React from "react";
 import { createPortal } from "react-dom";
@@ -468,7 +468,7 @@ export default function SalesCreatePage() {
     Promise.all([
       listParties({ type: "customer", take: 200 }),
       listAccounts({ type: "asset", take: 200 }),
-      listItems({ take: 500 }),
+      listItems({ take: 200 }),
       listBillSundries({ take: 100 })
     ])
       .then(([p, a, i, s]) => {

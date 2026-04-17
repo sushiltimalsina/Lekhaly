@@ -1,4 +1,4 @@
-// apps/desktop/src/lib/api/vouchers.ts
+// apps/web/src/lib/api/vouchers.ts
 import { apiRequest } from "./client";
 
 export type VoucherType =

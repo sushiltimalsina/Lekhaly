@@ -53,3 +53,9 @@ export async function listItems(params?: { q?: string; skip?: number; take?: num
     query: safeParams,
   });
 }
+export async function deleteItem(id: string) {
+  return apiRequest<void>({
+    path: `/items/${id}`,
+    method: "DELETE",
+  });
+}

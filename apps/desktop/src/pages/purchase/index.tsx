@@ -1,13 +1,15 @@
-// apps/desktop/src/pages/purchase/index.tsx
+"use client";
+
 import * as React from "react";
 import PageHeader from "@/components/app/page-header";
 import { Button } from "@lekhaly/ui";
 import { MoneyText } from "@/components/app/money";
-import { listVouchers } from "@/lib/api/vouchers";
+import { listVouchers, type VoucherType } from "@/lib/api/vouchers";
 import StatusBadge, { DocStatus } from "@/components/app/status-badge";
 import { useDateFormat } from "@/lib/date-format";
 import { getDateDisplay } from "@/lib/dates/display";
 import { Plus, ChevronRight, FileText, ShoppingCart } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import AdvancedFilterBar from "@/components/app/advanced-filter-bar";
@@ -176,8 +178,10 @@ export default function PurchaseListPage() {
                                         : (firstLine?.item?.name || firstLine?.description || "—");
 
                                     // Calculate total quantity
+                                    // 1. Prioritize lines (reflects the document exactly)
                                     let totalQty = itemLines.reduce((sum: number, l: any) => sum + Number(l.qty || 0), 0);
 
+                                    // 2. Fallback to stock ledger if lines have no qty (legacy data)
                                     if (totalQty === 0) {
                                         const stockEntries = item.stockLedger || [];
                                         totalQty = stockEntries.reduce((sum: number, entry: any) => {
@@ -196,6 +200,7 @@ export default function PurchaseListPage() {
                                         else nonTaxableAmount += val;
                                     });
 
+                                    // Total amount: Grand Total is roughly the Vendor Payable (largest Credit line)
                                     const totalAmount = lines.reduce((max: number, l: any) => Math.max(max, Number(l.credit || 0)), 0);
 
                                     return (
@@ -323,7 +328,7 @@ export default function PurchaseListPage() {
                 ) : (
                     <div className="flex flex-col items-center justify-center py-32 px-6 text-center space-y-4">
                         <div className="h-24 w-24 rounded-full bg-slate-50 dark:bg-slate-900 flex items-center justify-center border-4 border-dotted border-slate-200 dark:border-slate-800">
-                            <Plus className="h-10 w-10 text-slate-200" />
+                            <ShoppingCart className="h-10 w-10 text-slate-200" />
                         </div>
                         <div className="max-w-xs space-y-1">
                             <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-widest text-sm text-orange-600">No Purchases Found</h3>
@@ -351,3 +356,6 @@ export default function PurchaseListPage() {
         </div>
     );
 }
+
+
+

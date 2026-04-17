@@ -23,6 +23,14 @@ export async function createUnit(input: { name: string }) {
   });
 }
 
+export async function updateUnit(id: string, input: { name: string }) {
+  return apiRequest<UnitRecord>({
+    method: "PATCH",
+    path: `/units/${id}`,
+    body: input,
+  });
+}
+
 export async function deleteUnit(id: string) {
   return apiRequest<void>({
     method: "DELETE",

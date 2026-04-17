@@ -4,15 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@lekh
 import { Button } from "@lekhaly/ui";
 import { Input } from "@lekhaly/ui";
 import { getCompany, updateCompany } from "@/lib/api/auth";
-import { useDateFormat } from "@/lib/date-format";
 import { Sun, Moon, Monitor } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getCurrencySettings, setCurrencySymbol, setNumberFormat, subscribeUi } from "@/lib/store/ui";
-import { MoneyText } from "@/components/app/money";
-import { getSettings, setCalendarPreference, setDefaultDateRange, subscribeSettings } from "@/lib/store/settings";
-import { listBillSundries, deleteBillSundry, type BillSundryRecord } from "@/lib/api/bill-sundries";
-import AddBillSundryDialog from "@/components/app/add-bill-sundry-dialog";
-import { Calculator, Plus, Trash2, Settings2 } from "lucide-react";
 
 type CompanyForm = {
   companyName?: string;
@@ -27,12 +20,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [msg, setMsg] = React.useState<string | null>(null);
-  const { dateFormat, setDateFormat } = useDateFormat();
   const [theme, setThemeState] = React.useState<"light" | "dark" | "system">("system");
-  const [currencySymbol, setCurrencySymbolState] = React.useState(getCurrencySettings().currencySymbol);
-  const [numberFormat, setNumberFormatState] = React.useState(getCurrencySettings().numberFormat);
-  const [calendarPreference, setCalendarPreferenceState] = React.useState<"BS" | "AD">("BS");
-  const [defaultDateRange, setDefaultDateRangeState] = React.useState<string>("this_month");
 
   const [form, setForm] = React.useState<CompanyForm>({
     companyName: "",
@@ -43,35 +31,12 @@ export default function SettingsPage() {
     panVat: "",
   });
 
-  const [sundries, setSundries] = React.useState<BillSundryRecord[]>([]);
-  const [sundryLoading, setSundryLoading] = React.useState(false);
-  const [addSundryOpen, setAddSundryOpen] = React.useState(false);
-
   React.useEffect(() => {
     if (typeof window === "undefined") return;
     const stored = localStorage.getItem("lekhaly-theme") as "light" | "dark" | "system" | null;
     const savedTheme = stored || "system";
     setThemeState(savedTheme);
     applyTheme(savedTheme);
-  }, []);
-
-  React.useEffect(() => {
-    const unsubscribe = subscribeUi((next) => {
-      setCurrencySymbolState(next.currencySymbol);
-      setNumberFormatState(next.numberFormat);
-    });
-    return () => { unsubscribe(); };
-  }, []);
-
-  React.useEffect(() => {
-    const s = getSettings();
-    setCalendarPreferenceState(s.calendarPreference);
-    setDefaultDateRangeState(s.defaultDateRange);
-    const unsubscribe = subscribeSettings((next) => {
-      setCalendarPreferenceState(next.calendarPreference);
-      setDefaultDateRangeState(next.defaultDateRange);
-    });
-    return () => { unsubscribe(); };
   }, []);
 
   const applyTheme = (newTheme: "light" | "dark" | "system") => {
@@ -132,51 +97,22 @@ export default function SettingsPage() {
     }
   }
 
-  async function loadSundries() {
-    setSundryLoading(true);
-    try {
-      const res: any = await listBillSundries();
-      setSundries(Array.isArray(res) ? res : res?.items ?? []);
-    } catch (e) {
-      console.error("Failed to load sundries", e);
-    } finally {
-      setSundryLoading(false);
-    }
-  }
-
-  async function removeSundry(id: string) {
-    const sundry = sundries.find(s => s.id === id);
-    const systemNames = ["Discount", "Shipping & Handling", "Packaging Charges", "Insurance", "Round Off", "VAT"];
-    if (sundry && systemNames.includes(sundry.name)) {
-      alert("System default bill sundries cannot be deleted.");
-      return;
-    }
-    if (!confirm("Are you sure you want to delete this bill sundry?")) return;
-    try {
-      await deleteBillSundry(id);
-      loadSundries();
-    } catch (e) {
-      console.error("Failed to delete sundry", e);
-    }
-  }
-
   React.useEffect(() => {
     load();
-    loadSundries();
   }, []);
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Settings"
-        description="Company and system preferences"
+        description="Company profile and app theme"
         actions={
           <Button
             onClick={onSave}
             disabled={saving || loading}
             className="shadow-lg shadow-primary/20"
           >
-            {saving ? "Saving…" : "Save changes"}
+            {saving ? "Saving…" : "Save Changes"}
           </Button>
         }
       />
@@ -236,83 +172,9 @@ export default function SettingsPage() {
         <div className="space-y-6">
           <Card className="glass-card">
             <CardHeader>
-              <CardTitle>Calendar Preference</CardTitle>
+              <CardTitle>App Theme</CardTitle>
               <CardDescription>
-                Choose the primary calendar for date inputs
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setCalendarPreference("BS")}
-                  className={cn(
-                    "flex-1 rounded-xl border px-4 py-3 text-sm font-medium transition-all",
-                    calendarPreference === "BS"
-                      ? "border-primary bg-primary text-primary-foreground shadow-md"
-                      : "bg-background hover:bg-muted"
-                  )}
-                >
-                  BS (Bikram Sambat)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCalendarPreference("AD")}
-                  className={cn(
-                    "flex-1 rounded-xl border px-4 py-3 text-sm font-medium transition-all",
-                    calendarPreference === "AD"
-                      ? "border-primary bg-primary text-primary-foreground shadow-md"
-                      : "bg-background hover:bg-muted"
-                  )}
-                >
-                  AD (Gregorian)
-                </button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card">
-            <CardHeader>
-              <CardTitle>Date Format</CardTitle>
-              <CardDescription>
-                Choose your primary date display format
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setDateFormat("bs")}
-                  className={cn(
-                    "flex-1 rounded-xl border px-4 py-3 text-sm font-medium transition-all",
-                    dateFormat === "bs"
-                      ? "border-primary bg-primary text-primary-foreground shadow-md"
-                      : "bg-background hover:bg-muted"
-                  )}
-                >
-                  BS (Bikram Sambat)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDateFormat("ad")}
-                  className={cn(
-                    "flex-1 rounded-xl border px-4 py-3 text-sm font-medium transition-all",
-                    dateFormat === "ad"
-                      ? "border-primary bg-primary text-primary-foreground shadow-md"
-                      : "bg-background hover:bg-muted"
-                  )}
-                >
-                  AD (Gregorian)
-                </button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card">
-            <CardHeader>
-              <CardTitle>Theme</CardTitle>
-              <CardDescription>
-                Choose your preferred color theme
+                Choose your preferred colors for the desktop application
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -359,176 +221,8 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
-
-          <Card className="glass-card">
-            <CardHeader>
-              <CardTitle>Default Date Range</CardTitle>
-              <CardDescription>
-                Select the default period for list pages
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {(["today", "this_week", "this_month", "this_quarter", "this_year"] as const).map((range) => (
-                  <button
-                    key={range}
-                    type="button"
-                    onClick={() => setDefaultDateRange(range)}
-                    className={cn(
-                      "rounded-xl border px-4 py-3 text-xs font-bold uppercase tracking-widest transition-all",
-                      defaultDateRange === range
-                        ? "border-primary bg-primary text-primary-foreground shadow-md font-black"
-                        : "bg-background hover:bg-muted text-slate-500"
-                    )}
-                  >
-                    {range.replace("_", " ")}
-                  </button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card">
-            <CardHeader>
-              <CardTitle>Currency</CardTitle>
-              <CardDescription>
-                Configure currency symbol and comma grouping
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Symbol
-                  </div>
-                  <div className="mt-2 grid grid-cols-3 gap-3">
-                    {(["रु.", "NPR", "Rs."] as const).map((symbol) => (
-                      <button
-                        key={symbol}
-                        type="button"
-                        onClick={() => setCurrencySymbol(symbol)}
-                        className={cn(
-                          "rounded-xl border px-4 py-3 text-sm font-medium transition-all",
-                          currencySymbol === symbol
-                            ? "border-primary bg-primary text-primary-foreground shadow-md"
-                            : "bg-background hover:bg-muted"
-                        )}
-                      >
-                        {symbol}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Number format
-                  </div>
-                  <div className="mt-2 grid grid-cols-2 gap-3">
-                    {(["en-IN", "en-US"] as const).map((format) => (
-                      <button
-                        key={format}
-                        type="button"
-                        onClick={() => setNumberFormat(format)}
-                        className={cn(
-                          "rounded-xl border px-4 py-3 text-sm font-medium transition-all",
-                          numberFormat === format
-                            ? "border-primary bg-primary text-primary-foreground shadow-md"
-                            : "bg-background hover:bg-muted"
-                        )}
-                      >
-                        {format === "en-IN" ? "1,23,45,678" : "123,456,789"}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="rounded-xl border bg-background px-4 py-3 text-sm">
-                  <div className="text-xs text-muted-foreground">Preview</div>
-                  <div className="mt-1 text-lg font-semibold">
-                    <MoneyText value={1234567.89} />
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="glass-card">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0">
-              <div>
-                <CardTitle>Bill Sundries</CardTitle>
-                <CardDescription>
-                  Predefined items for additional charges or discounts
-                </CardDescription>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setAddSundryOpen(true)}
-                className="rounded-xl"
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Add New
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {sundryLoading ? (
-                  <div className="py-8 text-center text-sm text-muted-foreground">Loading sundries...</div>
-                ) : sundries.length === 0 ? (
-                  <div className="py-8 text-center text-sm text-muted-foreground border-2 border-dashed rounded-2xl">
-                    No predefined sundries found.
-                  </div>
-                ) : (
-                  sundries.map((s) => (
-                    <div
-                      key={s.id}
-                      className="flex items-center justify-between rounded-2xl border bg-muted/20 p-4 transition-all hover:bg-muted/40"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={cn(
-                          "flex h-10 w-10 items-center justify-center rounded-xl",
-                          s.type === "add" ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-950/30" : "bg-red-100 text-red-600 dark:bg-red-950/30"
-                        )}>
-                          {s.type === "add" ? <Plus className="h-5 w-5" /> : <Calculator className="h-5 w-5" />}
-                        </div>
-                        <div>
-                          <div className="font-semibold flex items-center gap-2">
-                            {s.name}
-                            {["Discount", "Shipping & Handling", "Packaging Charges", "Insurance", "Round Off", "VAT"].includes(s.name) && (
-                              <span className="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 text-[10px] px-1.5 py-0.5 rounded-md font-medium">System</span>
-                            )}
-                          </div>
-                          <div className="text-xs text-muted-foreground uppercase tracking-tight font-mono">
-                            {s.rate ? `${s.rate}%` : "Manual"} • {s.type} {s.account?.name ? `• ${s.account.name}` : ""}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex gap-1">
-                        {!["Discount", "Shipping & Handling", "Packaging Charges", "Insurance", "Round Off", "VAT"].includes(s.name) && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removeSundry(s.id)}
-                            className="h-9 w-9 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
-
-      <AddBillSundryDialog
-        open={addSundryOpen}
-        onClose={() => setAddSundryOpen(false)}
-        onSuccess={() => loadSundries()}
-      />
     </div>
   );
 }

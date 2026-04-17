@@ -23,6 +23,14 @@ export async function createItemGroup(input: { name: string }) {
   });
 }
 
+export async function updateItemGroup(id: string, input: { name: string }) {
+  return apiRequest<ItemGroupRecord>({
+    method: "PATCH",
+    path: `/item-groups/${id}`,
+    body: input,
+  });
+}
+
 export async function deleteItemGroup(id: string) {
   return apiRequest<void>({
     method: "DELETE",

@@ -1,4 +1,4 @@
-// apps/desktop/src/lib/dates/display.ts
+// apps/web/src/lib/dates/display.ts
 import { isValidBs, isValidIso, toAd, toBs } from "./bs";
 import { adToBs, bsToAd } from "./convert";
 import type { DateFormat } from "@/lib/date-format";
@@ -53,7 +53,7 @@ export function formatDisplayDate(
 
   if (bsValue && !adValue) {
     try {
-      adValue = bsToAd(bsValue).toISOString().slice(0, 10);
+      adValue = bsToAd(bsValue);
     } catch {
       // ignore
     }

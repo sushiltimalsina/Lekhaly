@@ -1,4 +1,5 @@
-// apps/desktop/src/components/app/searchable-select.tsx
+﻿"use client";
+
 import * as React from "react";
 import { createPortal } from "react-dom";
 import { Search, ChevronDown, Check } from "lucide-react";
@@ -34,7 +35,6 @@ export interface SearchableSelectProps<T> {
     onChange: (id: string, opt?: T) => void;
     options: T[];
     getLabel?: (opt: T) => string;
-    getDetail?: (opt: T) => string | undefined;
     leftIcon?: React.ReactNode;
     className?: string;
     buttonClassName?: string;
@@ -49,12 +49,11 @@ export interface SearchableSelectProps<T> {
 export default function SearchableSelect<T extends { id: string; name?: string }>(props: SearchableSelectProps<T>) {
     const {
         label,
-        placeholder = "Select…",
+        placeholder = "Selectâ€¦",
         valueId,
         onChange,
         options,
         getLabel,
-        getDetail,
         leftIcon,
         className,
         buttonClassName,
@@ -94,8 +93,8 @@ export default function SearchableSelect<T extends { id: string; name?: string }
         const q = query.trim().toLowerCase();
         if (!q) return options;
         return options.filter((o) => {
-            const name = (getLabel ? getLabel(o) : o.name ?? o.id).toLowerCase();
-            return name.includes(q);
+            const labelText = (getLabel ? getLabel(o) : o.name ?? o.id).toLowerCase();
+            return labelText.includes(q);
         });
     }, [options, query, getLabel]);
 
@@ -114,7 +113,7 @@ export default function SearchableSelect<T extends { id: string; name?: string }
                 position: "fixed",
                 top: rect.bottom + 8,
                 left: rect.left,
-                width: Math.max(rect.width, 280),
+                width: Math.max(rect.width, 250),
                 zIndex: 1000,
                 opacity: 1,
                 pointerEvents: "auto",
@@ -123,7 +122,7 @@ export default function SearchableSelect<T extends { id: string; name?: string }
         update();
         const timer = setTimeout(() => {
             inputRef.current?.focus({ preventScroll: true });
-        }, 100);
+        }, 40);
 
         window.addEventListener("resize", update);
         window.addEventListener("scroll", update, true);
@@ -153,7 +152,7 @@ export default function SearchableSelect<T extends { id: string; name?: string }
 
     return (
         <div className={cn("relative space-y-1", className)} ref={wrapRef}>
-            {label ? <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</div> : null}
+            {label ? <div className="text-xs text-muted-foreground">{label}</div> : null}
 
             <button
                 type="button"
@@ -171,17 +170,17 @@ export default function SearchableSelect<T extends { id: string; name?: string }
                 disabled={disabled}
                 ref={setButtonRef}
                 className={cn(
-                    "flex w-full items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-left text-sm shadow-sm transition-all hover:border-primary/30",
-                    "dark:border-slate-800 dark:bg-slate-900",
-                    disabled && "opacity-60 cursor-not-allowed bg-slate-50",
+                    "flex w-full items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-left text-sm shadow-sm hover:bg-slate-50",
+                    "dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800/40",
+                    disabled && "opacity-60 cursor-not-allowed bg-slate-50 dark:bg-slate-800/20",
                     buttonClassName
                 )}
             >
-                {leftIcon ? <span className="text-slate-400">{leftIcon}</span> : null}
-                <span className={cn("min-w-0 flex-1 truncate font-bold text-slate-700 dark:text-slate-200", !selectedLabel && "text-slate-400")}>
+                {leftIcon ? <span className="text-muted-foreground">{leftIcon}</span> : null}
+                <span className={cn("min-w-0 flex-1 truncate", !selectedLabel && "text-muted-foreground")}>
                     {selectedLabel || placeholder}
                 </span>
-                <ChevronDown className="h-4 w-4 text-slate-400" />
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
             </button>
 
             {open
@@ -189,11 +188,11 @@ export default function SearchableSelect<T extends { id: string; name?: string }
                     <div
                         ref={menuRef}
                         style={menuStyle}
-                        className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-150 dark:border-slate-800 dark:bg-slate-950"
+                        className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/40 dark:border-slate-700 dark:bg-slate-900 dark:shadow-black/20"
                     >
-                        <div className="border-b border-slate-100 px-3 py-2 dark:border-slate-900">
+                        <div className="border-b border-slate-200 px-3 py-2 dark:border-slate-700">
                             <div className="relative">
-                                <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                                <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                                 <input
                                     ref={inputRef}
                                     value={query}
@@ -202,18 +201,23 @@ export default function SearchableSelect<T extends { id: string; name?: string }
                                         if (e.key === "Escape") {
                                             e.preventDefault();
                                             setOpen(false);
+                                            setQuery("");
                                             buttonRef.current?.focus();
                                             return;
                                         }
                                         if (e.key === "ArrowDown") {
                                             e.preventDefault();
-                                            setActiveIndex((p) => (p + 1) % Math.max(1, filtered.length));
+                                            setActiveIndex((prev) => (prev + 1) % Math.max(1, filtered.length));
                                         }
                                         if (e.key === "ArrowUp") {
                                             e.preventDefault();
-                                            setActiveIndex((p) => (p - 1 + filtered.length) % Math.max(1, filtered.length));
+                                            setActiveIndex((prev) => (prev - 1 + filtered.length) % Math.max(1, filtered.length));
                                         }
                                         if (e.key === "Enter") {
+                                            if (props.onKeyDownCustom) {
+                                                props.onKeyDownCustom(e);
+                                                if (e.defaultPrevented) return;
+                                            }
                                             e.preventDefault();
                                             const item = filtered[activeIndex];
                                             if (item) {
@@ -222,27 +226,24 @@ export default function SearchableSelect<T extends { id: string; name?: string }
                                                 setQuery("");
                                                 setTimeout(() => {
                                                     if (props.onEnterNext) props.onEnterNext();
-                                                    else buttonRef.current?.focus();
+                                                    else buttonRef.current?.focus({ preventScroll: true });
                                                 }, 10);
                                             }
                                         }
                                     }}
-                                    placeholder="Search..."
-                                    className="w-full bg-transparent py-1.5 pl-8 pr-3 text-sm outline-none font-bold text-slate-700"
+                                    placeholder="Type to search…"
+                                    className="w-full bg-transparent py-1.5 pl-8 pr-3 text-sm outline-none"
                                 />
                             </div>
                         </div>
                         <div
-                            className="max-h-[300px] overflow-y-auto p-1 custom-scrollbar"
+                            className="max-h-[300px] overflow-y-auto p-1"
                             ref={listRef}
                         >
                             {filtered.length ? (
                                 filtered.map((o, i) => {
                                     const isSelected = o.id === valueId;
                                     const isActive = i === activeIndex;
-                                    const labelText = getLabel ? getLabel(o) : o.name;
-                                    const detailText = getDetail ? getDetail(o) : undefined;
-                                    
                                     return (
                                         <div
                                             key={o.id}
@@ -253,21 +254,18 @@ export default function SearchableSelect<T extends { id: string; name?: string }
                                             }}
                                             onMouseEnter={() => setActiveIndex(i)}
                                             className={cn(
-                                                "flex cursor-pointer items-center justify-between rounded-xl px-3 py-2.5 text-sm transition-all",
-                                                isActive ? "bg-primary/5 text-primary" : "text-slate-600 dark:text-slate-400",
-                                                isSelected && "bg-primary/10 text-primary font-black"
+                                                "flex cursor-pointer items-center justify-between rounded-xl px-3 py-2 text-sm transition-colors",
+                                                isActive ? "bg-slate-100 dark:bg-slate-800" : "",
+                                                isSelected ? "text-primary font-medium" : "text-slate-700 dark:text-slate-300"
                                             )}
                                         >
-                                            <div className="flex flex-col min-w-0">
-                                                <span className="truncate">{labelText}</span>
-                                                {detailText && <span className="text-[10px] opacity-60 uppercase font-bold">{detailText}</span>}
-                                            </div>
-                                            {isSelected && <Check className="h-4 w-4 stroke-[3px]" />}
+                                            <span className="truncate">{getLabel ? getLabel(o) : o.name}</span>
+                                            {isSelected && <Check className="h-4 w-4" />}
                                         </div>
                                     );
                                 })
                             ) : (
-                                <div className="px-3 py-6 text-center text-[11px] font-black text-slate-400 uppercase tracking-widest">{emptyText}</div>
+                                <div className="px-3 py-4 text-center text-sm text-muted-foreground">{emptyText}</div>
                             )}
                         </div>
                     </div>,
@@ -277,3 +275,4 @@ export default function SearchableSelect<T extends { id: string; name?: string }
         </div>
     );
 }
+

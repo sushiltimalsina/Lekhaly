@@ -1,19 +1,17 @@
-// apps/desktop/src/components/app/confirm-dialog.tsx
-import React from "react";
-import { Button } from "@lekhaly/ui";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@lekhaly/ui";
-import { Loader2 } from "lucide-react";
+"use client";
+
+import * as React from "react";
 
 type ConfirmDialogProps = {
   open: boolean;
   title: string;
-  description: string;
+  description?: string;
   confirmText?: string;
   cancelText?: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-  loading?: boolean;
   variant?: "default" | "danger";
+  onConfirm: () => void;
+  onCancel?: () => void;
+  loading?: boolean;
 };
 
 export default function ConfirmDialog({
@@ -22,36 +20,60 @@ export default function ConfirmDialog({
   description,
   confirmText = "Confirm",
   cancelText = "Cancel",
+  variant = "default",
   onConfirm,
   onCancel,
   loading,
-  variant = "default"
 }: ConfirmDialogProps) {
   if (!open) return null;
 
+  const confirmClass =
+    variant === "danger"
+      ? "bg-red-600 text-white hover:bg-red-700"
+      : "bg-primary text-white hover:bg-primary/90";
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <Card className="w-full max-w-sm shadow-2xl border-border/50 bg-card/95 animate-in slide-in-from-bottom-2">
-        <CardHeader>
-          <CardTitle className="text-lg">{title}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">{description}</p>
-        </CardContent>
-        <CardFooter className="flex justify-end gap-2 pt-2">
-          <Button variant="ghost" onClick={onCancel} disabled={loading}>
-            {cancelText}
-          </Button>
-          <Button
-            variant={variant === "danger" ? "destructive" : "default"}
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
+      <div className="w-full max-w-md rounded-2xl border bg-card p-4 shadow-lg">
+        <div className="mb-3">
+          <div className={[
+            "text-sm font-semibold",
+            variant === "danger" ? "text-red-600 dark:text-red-500" : ""
+          ].join(" ")}>
+            {title}
+          </div>
+          {description ? (
+            <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+          ) : null}
+        </div>
+
+        <div className="flex items-center justify-end gap-2">
+          {onCancel && cancelText && (
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={loading}
+              className="rounded-xl border bg-background px-3 py-2 text-sm hover:bg-muted disabled:opacity-60"
+            >
+              {cancelText}
+            </button>
+          )}
+
+          <button
+            type="button"
             onClick={onConfirm}
             disabled={loading}
+            className={[
+              "rounded-xl px-3 py-2 text-sm",
+              confirmClass,
+              loading ? "opacity-70" : "",
+            ].join(" ")}
           >
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {confirmText}
-          </Button>
-        </CardFooter>
-      </Card>
+            {loading ? "Working..." : confirmText}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
+

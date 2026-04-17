@@ -27,6 +27,21 @@ let ItemGroupsService = class ItemGroupsService {
             data: { companyId: user.companyId, name: input.name.trim() }
         });
     }
+    async update(user, id, input) {
+        const existing = await this.prisma.itemGroup.findFirst({
+            where: {
+                companyId: user.companyId,
+                name: { equals: input.name, mode: "insensitive" },
+                NOT: { id }
+            }
+        });
+        if (existing)
+            throw new common_1.BadRequestException("Group with this name already exists");
+        return this.prisma.itemGroup.update({
+            where: { id },
+            data: { name: input.name.trim() }
+        });
+    }
     async list(user, filters) {
         const where = { companyId: user.companyId };
         if (filters.q)

@@ -429,7 +429,7 @@ export default function SalesReturnCreatePage() {
         Promise.all([
             listParties({ type: "customer", take: 200 }),
             listAccounts({ type: "asset", take: 200 }),
-            listItems({ take: 500 }),
+            listItems({ take: 200 }),
             listBillSundries({ take: 100 })
         ])
             .then(([p, a, i, s]) => {

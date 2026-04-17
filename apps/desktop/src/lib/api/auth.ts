@@ -1,4 +1,4 @@
-// apps/desktop/src/lib/api/auth.ts
+// apps/web/src/lib/api/auth.ts
 import { apiRequest } from "./client";
 
 export type LoginInput = {

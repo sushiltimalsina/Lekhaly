@@ -26,6 +26,9 @@ let UnitsController = class UnitsController {
     create(user, body) {
         return this.units.create(user, body);
     }
+    update(user, id, body) {
+        return this.units.update(user, id, body);
+    }
     list(user, query) {
         return this.units.list(user, query);
     }
@@ -43,6 +46,16 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", void 0)
 ], UnitsController.prototype, "create", null);
+__decorate([
+    (0, common_1.Patch)(":id"),
+    (0, auth_decorator_1.RequirePerm)("masters.write"),
+    __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)("id")),
+    __param(2, (0, common_1.Body)(new zod_pipe_1.ZodValidationPipe(unit_schemas_1.CreateUnitSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, Object]),
+    __metadata("design:returntype", void 0)
+], UnitsController.prototype, "update", null);
 __decorate([
     (0, common_1.Get)(),
     (0, auth_decorator_1.RequirePerm)("masters.read"),

@@ -10,7 +10,7 @@ type ConfirmDialogProps = {
   cancelText?: string;
   variant?: "default" | "danger";
   onConfirm: () => void;
-  onCancel: () => void;
+  onCancel?: () => void;
   loading?: boolean;
 };
 
@@ -36,21 +36,28 @@ export default function ConfirmDialog({
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
       <div className="w-full max-w-md rounded-2xl border bg-card p-4 shadow-lg">
         <div className="mb-3">
-          <div className="text-sm font-semibold">{title}</div>
+          <div className={[
+            "text-sm font-semibold",
+            variant === "danger" ? "text-red-600 dark:text-red-500" : ""
+          ].join(" ")}>
+            {title}
+          </div>
           {description ? (
             <p className="mt-1 text-sm text-muted-foreground">{description}</p>
           ) : null}
         </div>
 
         <div className="flex items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={loading}
-            className="rounded-xl border bg-background px-3 py-2 text-sm hover:bg-muted disabled:opacity-60"
-          >
-            {cancelText}
-          </button>
+          {onCancel && cancelText && (
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={loading}
+              className="rounded-xl border bg-background px-3 py-2 text-sm hover:bg-muted disabled:opacity-60"
+            >
+              {cancelText}
+            </button>
+          )}
 
           <button
             type="button"

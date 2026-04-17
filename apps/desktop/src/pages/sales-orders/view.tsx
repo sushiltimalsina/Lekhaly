@@ -1,4 +1,5 @@
-// apps/desktop/src/pages/sales-orders/view.tsx
+"use client";
+
 import * as React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -10,10 +11,10 @@ import {
     MoreVertical,
     Package,
     Calendar,
-    Receipt,
+    ArrowUpRight,
     XCircle,
     FileText,
-    ArrowUpRight
+    Receipt
 } from "lucide-react";
 import PageHeader from "@/components/app/page-header";
 import StatusBadge, { DocStatus } from "@/components/app/status-badge";
@@ -36,8 +37,9 @@ import {
 } from "@lekhaly/ui";
 
 export default function SalesOrderDetailPage() {
-    const { id } = useParams<{ id: string }>();
+    const params = useParams();
     const navigate = useNavigate();
+    const id = params?.id;
     const { dateFormat } = useDateFormat();
 
     const [loading, setLoading] = React.useState(true);
@@ -67,38 +69,9 @@ export default function SalesOrderDetailPage() {
         load();
     }, [id]);
 
-    if (loading) {
-        return (
-            <div className="flex flex-col items-center justify-center py-24 space-y-4">
-                <div className="relative h-12 w-12 text-indigo-600">
-                    <div className="absolute inset-0 rounded-full border-4 border-slate-100 italic opacity-20"></div>
-                    <div className="absolute inset-0 rounded-full border-4 border-current border-t-transparent animate-spin"></div>
-                </div>
-                <p className="text-sm font-black text-slate-400 animate-pulse uppercase tracking-widest text-[10px]">Retrieving Order Registry...</p>
-            </div>
-        );
-    }
-
-    if (!order) {
-        return (
-            <div className="flex flex-col items-center justify-center py-24 px-6 text-center space-y-4">
-                <div className="h-20 w-20 rounded-full bg-rose-50 flex items-center justify-center border-2 border-dashed border-rose-100">
-                    <AlertCircle className="h-8 w-8 text-rose-300" />
-                </div>
-                <div className="max-w-xs space-y-1">
-                    <h3 className="font-black text-slate-900 uppercase tracking-widest text-xs italic">Registry Identity Lost</h3>
-                    <p className="text-sm text-slate-500 font-medium">The sales order record requested does not exist in the active ledger.</p>
-                </div>
-                <Button onClick={() => navigate("/sales-orders")} variant="outline" className="rounded-2xl border-2 font-black text-[10px] uppercase tracking-widest px-8">
-                    Return to Registry
-                </Button>
-            </div>
-        );
-    }
-
-    const status: DocStatus = (order.status ?? "draft") as DocStatus;
-    const orderDate = getDateDisplay({ ad: order.orderDate, bs: order.orderDateBs, format: dateFormat });
-    const deliveryDate = order.expectedDelivery ? getDateDisplay({ ad: order.expectedDelivery, bs: order.expectedDeliveryBs, format: dateFormat }) : null;
+    const status: DocStatus = (order?.status ?? "draft") as DocStatus;
+    const orderDate = getDateDisplay({ ad: order?.orderDate, bs: order?.orderDateBs, format: dateFormat });
+    const deliveryDate = order?.expectedDelivery ? getDateDisplay({ ad: order?.expectedDelivery, bs: order?.expectedDeliveryBs, format: dateFormat }) : null;
 
     async function onCancel() {
         if (!id) return;
@@ -133,67 +106,102 @@ export default function SalesOrderDetailPage() {
         }
     }
 
+    if (loading) {
+        return (
+            <div className="flex flex-col items-center justify-center py-24 space-y-4">
+                <div className="relative h-12 w-12 text-indigo-600">
+                    <div className="absolute inset-0 rounded-full border-4 border-slate-100 dark:border-slate-800"></div>
+                    <div className="absolute inset-0 rounded-full border-4 border-current border-t-transparent animate-spin"></div>
+                </div>
+                <p className="text-sm font-black text-slate-400 animate-pulse uppercase tracking-widest text-[10px]">Retrieving Order Details...</p>
+            </div>
+        );
+    }
+
+    if (!order) {
+        return (
+            <div className="flex flex-col items-center justify-center py-24 px-6 text-center space-y-4">
+                <div className="h-20 w-20 rounded-full bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center border-2 border-dashed border-rose-200 dark:border-rose-800">
+                    <AlertCircle className="h-8 w-8 text-rose-300" />
+                </div>
+                <div className="max-w-xs space-y-1">
+                    <h3 className="font-bold text-slate-900 dark:text-white uppercase tracking-widest text-xs">Order Registry Missing</h3>
+                    <p className="text-sm text-slate-500 font-medium">The sales order record you are looking for could not be found in the system.</p>
+                </div>
+                <Button onClick={() => navigate("/sales-orders")} variant="outline" className="rounded-2xl border-2 font-black text-[10px] uppercase tracking-widest">
+                    Return to List
+                </Button>
+            </div>
+        );
+    }
+
     return (
-        <div className="space-y-6 pb-20 animate-fade-in">
+        <div className="space-y-6 pb-12">
             {/* Header Section */}
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div className="space-y-1">
                     <button
                         onClick={() => navigate("/sales-orders")}
-                        className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-widest mb-2"
+                        className="flex items-center gap-1.5 text-xs font-black text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-widest mb-1"
                     >
                         <ChevronLeft className="h-3.5 w-3.5" />
-                        Back to Registry
+                        Sales Order Registry
                     </button>
-                    <div className="flex items-center gap-4">
-                        <h1 className="text-3xl font-black text-slate-900 tracking-tighter">
-                            {order.orderNo || "Order Draft"}
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-2xl font-black text-slate-900 dark:text-white sm:text-3xl">
+                            {order?.orderNo || "Order Draft"}
                         </h1>
-                        <StatusBadge status={status} className="h-7 px-4 shadow-sm" />
+                        <StatusBadge status={status} className="h-6 px-3" />
                     </div>
+                    <p className="text-sm text-slate-500 flex items-center gap-4 font-medium uppercase tracking-tight">
+                        <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 opacity-50" /> {new Date(order.createdAt).toLocaleDateString()}</span>
+                        <span className="flex items-center gap-1.5"><User className="h-3.5 w-3.5 opacity-50" /> {order.partyName || "Unknown Party"}</span>
+                    </p>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                     <Button
                         variant="outline"
                         onClick={() => window.print()}
                         disabled={actionLoading}
-                        className="rounded-2xl h-11 border-2 font-black text-xs uppercase tracking-widest px-6 hover:bg-slate-50 transition-all"
+                        className="rounded-2xl h-11 border-2 font-black text-xs uppercase tracking-widest px-6"
                     >
-                        <Printer className="mr-2 h-4 w-4" /> Print
+                        <Printer className="mr-2 h-4 w-4" />
+                        Print Order
                     </Button>
 
                     {(status === "open" || status === "draft") && (
                         <Button
                             onClick={() => setConfirmConvert(true)}
                             disabled={actionLoading}
-                            className="rounded-2xl h-11 bg-indigo-600 text-white font-black text-xs uppercase tracking-widest px-8 shadow-xl shadow-indigo-100 hover:bg-slate-900 hover:scale-[1.02] active:scale-95 transition-all italic"
+                            className="rounded-2xl h-11 bg-indigo-600 text-white font-black text-xs uppercase tracking-widest px-8 shadow-xl shadow-indigo-500/20 hover:bg-indigo-700 hover:scale-105 active:scale-95 transition-all"
                         >
                             <Receipt className="mr-2 h-4 w-4" />
-                            Initialize Invoicing
+                            Generate Invoice
                         </Button>
                     )}
 
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-11 w-11 p-0 rounded-2xl border-2 hover:bg-slate-50">
+                            <Button variant="ghost" className="h-11 w-11 p-0 rounded-2xl border-2">
                                 <MoreVertical className="h-4 w-4" />
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="rounded-2xl p-2 min-w-[200px] shadow-2xl border-2 border-slate-50">
+                        <DropdownMenuContent align="end" className="rounded-2xl p-2 min-w-[200px]">
                             {status === "open" && (
                                 <DropdownMenuItem
                                     onClick={() => setConfirmCancel(true)}
-                                    className="flex items-center gap-3 text-rose-600 rounded-xl px-4 py-3 font-black text-[10px] uppercase tracking-widest"
+                                    className="flex items-center gap-2 text-rose-600 focus:text-rose-600 focus:bg-rose-50 rounded-xl px-3 py-2.5 font-bold text-xs uppercase tracking-widest"
                                 >
-                                    <XCircle className="h-4 w-4" /> Cancel Order Pipeline
+                                    <XCircle className="h-4 w-4" />
+                                    Cancel Order
                                 </DropdownMenuItem>
                             )}
                             <DropdownMenuItem
                                 onClick={() => navigate(`/sales-orders/create?id=${id}`)}
-                                className="flex items-center gap-3 text-slate-700 rounded-xl px-4 py-3 font-black text-[10px] uppercase tracking-widest"
+                                className="flex items-center gap-2 text-slate-700 rounded-xl px-3 py-2.5 font-bold text-xs uppercase tracking-widest"
                             >
-                                <FileText className="h-4 w-4" /> Edit Master Record
+                                Edit Order Details
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
@@ -201,80 +209,75 @@ export default function SalesOrderDetailPage() {
             </div>
 
             {error && (
-                <div className="rounded-[24px] border-2 border-rose-100 bg-rose-50/50 p-6 flex items-start gap-4 text-rose-700 animate-shake">
-                    <AlertCircle className="h-6 w-6 shrink-0" />
-                    <div className="text-xs font-black uppercase tracking-widest">{error}</div>
+                <div className="rounded-2xl border border-rose-200 bg-rose-50/50 p-4 flex items-start gap-3 text-rose-700">
+                    <AlertCircle className="h-5 w-5 mt-0.5 shrink-0" />
+                    <div className="text-sm font-black uppercase tracking-tight">{error}</div>
                 </div>
             )}
 
-            <div className="grid gap-8 lg:grid-cols-3">
-                <div className="lg:col-span-2 space-y-8">
-                    {/* Primary Logistics Data */}
-                    <div className="rounded-[32px] border-2 border-slate-50 bg-white p-10 shadow-sm relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 p-10 opacity-5 group-hover:scale-110 transition-transform duration-1000">
-                             <Package className="h-24 w-24 text-indigo-600" />
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-12 relative z-10">
-                            <DocumentField label="Consignee" value={order.partyName || "Unknown Party"} />
-                            <DocumentField label="Execution Date" value={orderDate.primary} subLabel={orderDate.secondary} />
-                            <DocumentField label="Fulfillment Goal" value={deliveryDate?.primary || "Pending"} subLabel={deliveryDate?.secondary} />
-                            <DocumentField label="Order Magnitude" value={<MoneyText value={order.total} />} isTotal />
+            <div className="grid gap-6 lg:grid-cols-3">
+                <div className="lg:col-span-2 space-y-6">
+                    {/* Key Metrics */}
+                    <div className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+                            <DocumentField label="Order For" value={order.partyName || "Unknown Customer"} />
+                            <DocumentField label="Order Date" value={orderDate.primary} subLabel={orderDate.secondary} />
+                            <DocumentField label="Exp. Delivery" value={deliveryDate?.primary || "Undetermined"} subLabel={deliveryDate?.secondary} />
+                            <DocumentField label="Total Payable" value={<MoneyText value={order.total} />} isTotal />
                         </div>
 
                         {order.memo && (
-                            <div className="mt-10 pt-8 border-t border-slate-50">
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic block mb-3">Auditor Narrations</span>
-                                <p className="text-sm text-slate-600 leading-relaxed font-medium bg-slate-50/50 p-5 rounded-3xl border border-slate-50 italic">
-                                    "{order.memo}"
+                            <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Order Notes</span>
+                                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
+                                    {order.memo}
                                 </p>
                             </div>
                         )}
                     </div>
 
                     {/* Line Items Registry */}
-                    <div className="rounded-[32px] border-2 border-slate-50 bg-white overflow-hidden shadow-sm">
-                        <div className="px-10 py-6 border-b border-slate-50 flex items-center justify-between bg-slate-50/20">
-                            <h3 className="font-black text-slate-900 text-xs uppercase tracking-[0.2em] italic flex items-center gap-3">
-                                <Package className="h-4 w-4 text-indigo-500" /> Item Manifest
-                            </h3>
-                            <div className="flex gap-4">
-                                <div className="bg-indigo-600 text-white px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg shadow-indigo-100 italic">
-                                    {order.items?.length || 0} SEPARATE ENTRIES
+                    <div className="rounded-[32px] border border-slate-200 bg-white overflow-hidden shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                        <div className="px-8 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/30 dark:bg-slate-900/30">
+                            <h3 className="font-black text-slate-900 dark:text-white text-xs uppercase tracking-widest">Ordered Items</h3>
+                            <div className="flex gap-3">
+                                <div className="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter border border-indigo-100 italic">
+                                    {order.items?.length || 0} Lines
                                 </div>
                                 {order.fulfilledAmount > 0 && (
-                                    <div className="bg-emerald-600 text-white px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg shadow-emerald-100 italic">
-                                        FULFILLED: <MoneyText value={order.fulfilledAmount} />
+                                    <div className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter border border-emerald-100">
+                                        Invoiced: <MoneyText value={order.fulfilledAmount} />
                                     </div>
                                 )}
                             </div>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm text-left">
-                                <thead className="bg-slate-50/30">
-                                    <tr>
-                                        <th className="px-10 py-5 font-black text-slate-400 uppercase tracking-widest text-[9px]">Resource / SKU Identity</th>
-                                        <th className="px-10 py-5 font-black text-slate-400 uppercase tracking-widest text-[9px] text-center">Volume</th>
-                                        <th className="px-10 py-5 font-black text-slate-400 uppercase tracking-widest text-[9px] text-right">Unit Factor</th>
-                                        <th className="px-10 py-5 font-black text-slate-400 uppercase tracking-widest text-[9px] text-right">Valuation</th>
+                                <thead>
+                                    <tr className="border-b border-slate-100 dark:border-slate-800">
+                                        <th className="px-8 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Product / Service SKU</th>
+                                        <th className="px-8 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-center">Qty</th>
+                                        <th className="px-8 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Unit Rate</th>
+                                        <th className="px-8 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Line Total</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-50">
+                                <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
                                     {(order.items || []).map((l: any, idx: number) => (
-                                        <tr key={idx} className="hover:bg-indigo-50/10 transition-colors group">
-                                            <td className="px-10 py-6">
+                                        <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/20 transition-colors">
+                                            <td className="px-8 py-5">
                                                 <div className="flex flex-col">
-                                                    <span className="font-bold text-slate-800 text-sm group-hover:text-indigo-600 transition-colors uppercase tracking-tight">{l.itemName || l.itemId}</span>
-                                                    {l.description && <span className="text-[11px] text-slate-400 font-bold italic mt-1">{l.description}</span>}
+                                                    <span className="font-bold text-slate-800 dark:text-slate-100">{l.itemName || l.itemId}</span>
+                                                    {l.description && <span className="text-[11px] text-slate-400 font-medium italic mt-0.5">{l.description}</span>}
                                                 </div>
                                             </td>
-                                            <td className="px-10 py-6 text-center font-black text-slate-600 tabular-nums">
+                                            <td className="px-8 py-5 text-center font-bold text-slate-600 dark:text-slate-400 tabular-nums">
                                                 {l.qty}
                                             </td>
-                                            <td className="px-10 py-6 text-right font-bold text-slate-600 tabular-nums">
+                                            <td className="px-8 py-5 text-right font-medium text-slate-600 dark:text-slate-400 tabular-nums">
                                                 <MoneyText value={l.rate} />
                                             </td>
-                                            <td className="px-10 py-6 text-right tabular-nums">
-                                                <span className="font-black text-slate-900 group-hover:text-indigo-600 transition-colors"><MoneyText value={l.qty * l.rate} /></span>
+                                            <td className="px-8 py-5 text-right tabular-nums">
+                                                <span className="font-black text-slate-900 dark:text-white"><MoneyText value={l.qty * l.rate} /></span>
                                             </td>
                                         </tr>
                                     ))}
@@ -283,26 +286,26 @@ export default function SalesOrderDetailPage() {
                         </div>
                     </div>
 
-                    {/* Monetary Reconciliation */}
-                    <div className="grid gap-8 md:grid-cols-2">
-                        <div className="rounded-[32px] border-2 border-slate-50 bg-white p-10 shadow-sm">
-                            <h3 className="font-black text-slate-900 text-xs uppercase tracking-[0.2em] mb-6 italic">Contractual Terms</h3>
-                            <div className="text-xs text-slate-500 font-medium leading-relaxed bg-slate-50/50 p-6 rounded-3xl border border-slate-50 italic whitespace-pre-line">
-                                {order.terms || "Standard commercial fulfillment terms apply. No specific overrides provided."}
+                    {/* Totals and Sundries */}
+                    <div className="grid gap-6 md:grid-cols-2">
+                        <div className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                            <h3 className="font-black text-slate-900 dark:text-white text-xs uppercase tracking-widest mb-4 italic">Terms of Engagement</h3>
+                            <div className="text-xs text-slate-500 font-medium leading-relaxed whitespace-pre-line bg-slate-50/50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+                                {order.terms || "Standard fulfillment terms apply to this sales order registry."}
                             </div>
                         </div>
 
-                        <div className="rounded-[32px] border-2 border-slate-50 bg-slate-900 p-10 shadow-2xl text-white relative overflow-hidden group">
-                           <div className="absolute top-0 right-0 p-10 opacity-5 group-hover:rotate-6 transition-transform duration-700">
-                                <Receipt className="h-32 w-32" />
+                        <div className="rounded-[32px] border border-slate-200 bg-slate-950 p-8 shadow-2xl text-white relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:rotate-12 transition-transform duration-700">
+                                <Package className="h-32 w-32" />
                             </div>
-                            <div className="relative z-10 space-y-5">
-                                <div className="flex justify-between text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
-                                    <span>Resources Subtotal</span>
+                            <div className="relative space-y-4">
+                                <div className="flex justify-between text-xs font-black uppercase tracking-[0.1em] text-slate-500">
+                                    <span>Goods Subtotal</span>
                                     <span className="text-white"><MoneyText value={order.total - (order.sundries?.reduce((s: number, r: any) => s + r.amount, 0) || 0)} /></span>
                                 </div>
                                 {(order.sundries || []).map((s: any, i: number) => (
-                                    <div key={i} className="flex justify-between text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                                    <div key={i} className="flex justify-between text-xs font-bold uppercase tracking-widest text-slate-500">
                                         <span>{s.name} {s.rate ? `(${s.rate}%)` : ""}</span>
                                         <span className={s.type === 'less' ? "text-rose-400" : "text-emerald-400"}>
                                             {s.type === 'less' ? "- " : "+ "}
@@ -310,16 +313,16 @@ export default function SalesOrderDetailPage() {
                                         </span>
                                     </div>
                                 ))}
-                                <div className="h-px bg-slate-800 my-8" />
+                                <div className="h-px bg-slate-800 my-6" />
                                 <div className="flex justify-between items-center">
-                                    <div className="space-y-2">
-                                        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400">Net Pipeline Magnitude</span>
-                                        <div className="text-4xl font-black tabular-nums tracking-tighter">
+                                    <div className="space-y-1">
+                                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400">Total Order Value</span>
+                                        <div className="text-3xl font-black tabular-nums tracking-tighter">
                                             <MoneyText value={order.total} />
                                         </div>
                                     </div>
-                                    <div className="h-16 w-16 rounded-[24px] bg-indigo-600 flex items-center justify-center shadow-xl shadow-indigo-500/10">
-                                        <Package className="h-8 w-8 text-white" />
+                                    <div className="h-12 w-12 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                                        <Package className="h-6 w-6 text-white" />
                                     </div>
                                 </div>
                             </div>
@@ -327,26 +330,55 @@ export default function SalesOrderDetailPage() {
                     </div>
                 </div>
 
-                {/* Tracking & Logic Sidebar */}
-                <div className="space-y-8">
-                    <div className="rounded-[32px] border-2 border-slate-50 bg-white p-10 shadow-sm relative overflow-hidden">
-                        <h3 className="font-black text-slate-900 text-xs uppercase tracking-[0.2em] mb-10 border-b-2 border-slate-50 pb-6 italic">Pipeline Flow</h3>
-                        <div className="space-y-10">
-                            <InfoRow icon={Calendar} label="Engagement Locked" value={orderDate.primary} isActive />
-                            <div className="h-10 w-1 bg-slate-50 ml-4.5 -mt-6 rounded-full" />
-                            <InfoRow icon={Receipt} label="Invoicing Phase" value={order.fulfilledAmount >= order.total ? "Completed" : order.fulfilledAmount > 0 ? "In Progress" : "Awaiting Init"} isActive={order.fulfilledAmount > 0} />
-                            <div className="h-10 w-1 bg-slate-50 ml-4.5 -mt-6 rounded-full" />
-                            <InfoRow icon={Package} label="Ultimate Dispatch" value={order.status === 'fulfilled' ? "Delivered" : "Queued"} isActive={order.status === 'fulfilled'} />
+                <div className="space-y-6">
+                    {/* Fulfillment Flow */}
+                    <div className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                        <h3 className="font-black text-slate-900 dark:text-white text-xs uppercase tracking-widest mb-6 border-b border-slate-100 dark:border-slate-800 pb-4">Order Progress</h3>
+                        <div className="space-y-8">
+                            <InfoRow
+                                icon={Calendar}
+                                label="Order Confirmed"
+                                value={orderDate.primary}
+                                isActive
+                            />
+                            <div className="h-8 w-px bg-slate-100 dark:bg-slate-800 ml-4 -mt-4 mb-0" />
+                            <InfoRow
+                                icon={Receipt}
+                                label="Invoicing"
+                                value={order.fulfilledAmount >= order.total ? "Fully Invoiced" : order.fulfilledAmount > 0 ? "Partial Invoicing" : "Awaiting Invoice"}
+                                isActive={order.fulfilledAmount > 0}
+                            />
+                            <div className="h-8 w-px bg-slate-100 dark:bg-slate-800 ml-4 -mt-4 mb-0" />
+                            <InfoRow
+                                icon={Package}
+                                label="Dispatch"
+                                value={order.status === 'fulfilled' ? "Completed" : "Scheduled"}
+                                isActive={order.status === 'fulfilled'}
+                            />
                         </div>
                     </div>
 
-                    <div className="rounded-[32px] border-2 border-slate-50 bg-slate-50/50 p-10 dark:bg-slate-900/10">
-                        <h3 className="font-black text-slate-400 text-xs uppercase tracking-[0.2em] mb-8 italic">Registry Metadata</h3>
-                        <div className="space-y-8">
-                            <InfoRow icon={User} label="Record Custodian" value={order.createdByUser?.name || "System Process"} />
-                            <InfoRow icon={AlertCircle} label="Serial Identity" value={order.id} isMono />
+                    {/* Metadata Registry */}
+                    <div className="rounded-[32px] border border-slate-200 bg-slate-50/50 p-8 dark:border-slate-800 dark:bg-slate-900/50">
+                        <h3 className="font-black text-slate-400 text-xs uppercase tracking-widest mb-6 italic">Registry Info</h3>
+                        <div className="space-y-6">
+                            <InfoRow
+                                icon={User}
+                                label="Registry Owner"
+                                value={order.createdByUser?.name || "System Record"}
+                            />
+                            <InfoRow
+                                icon={AlertCircle}
+                                label="Serial Reference"
+                                value={id ?? ""}
+                                isMono
+                            />
                             {order.customerPoRef && (
-                                <InfoRow icon={FileText} label="External PO ID" value={order.customerPoRef} />
+                                <InfoRow
+                                    icon={FileText}
+                                    label="Customer PO #"
+                                    value={order.customerPoRef}
+                                />
                             )}
                         </div>
                     </div>
@@ -355,9 +387,9 @@ export default function SalesOrderDetailPage() {
 
             <ConfirmDialog
                 open={confirmCancel}
-                title="Nullify this order?"
-                description="This will permanently revoke the order registry. This process is immutable and logged."
-                confirmText="Confirm Revoke"
+                title="Cancel this order?"
+                description="This will permanently nullify the order record. This action is logged for audit purposes."
+                confirmText="Cancel Order"
                 variant="danger"
                 onConfirm={onCancel}
                 onCancel={() => setConfirmCancel(false)}
@@ -367,8 +399,8 @@ export default function SalesOrderDetailPage() {
             <ConfirmDialog
                 open={confirmConvert}
                 title="Initialize Invoicing?"
-                description="Initialize a Sales Invoice draft from this order manifest. You can perform final calibrations on the next screen."
-                confirmText="Generate Invoice Draft"
+                description="This will prepare a sales invoice based on the current order items. You can finalize quantities on the Next screen."
+                confirmText="Create Invoice Draft"
                 onConfirm={onConvert}
                 onCancel={() => setConfirmConvert(false)}
                 loading={actionLoading}
@@ -379,16 +411,16 @@ export default function SalesOrderDetailPage() {
 
 function DocumentField({ label, value, subLabel, isTotal = false }: { label: string; value: any; subLabel?: string; isTotal?: boolean }) {
     return (
-        <div className="space-y-2">
+        <div className="space-y-1">
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</span>
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col">
                 <div className={cn(
-                    "font-black text-slate-900 tracking-tight",
-                    isTotal ? "text-3xl text-indigo-600 italic" : "text-sm",
+                    "font-black text-slate-800 dark:text-slate-100 tracking-tight",
+                    isTotal ? "text-xl text-indigo-600 dark:text-indigo-400" : "text-sm",
                 )}>
                     {value}
                 </div>
-                {subLabel && <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest italic">{subLabel}</span>}
+                {subLabel && <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter mt-0.5">{subLabel}</span>}
             </div>
         </div>
     );
@@ -396,23 +428,25 @@ function DocumentField({ label, value, subLabel, isTotal = false }: { label: str
 
 function InfoRow({ icon: Icon, label, value, isMono = false, isActive = false }: { icon: any, label: string, value: string, isMono?: boolean, isActive?: boolean }) {
     return (
-        <div className="flex items-start gap-6">
+        <div className="flex items-start gap-4">
             <div className={cn(
-                "h-10 w-10 rounded-[14px] flex items-center justify-center shrink-0 border-2 transition-all duration-300",
+                "h-9 w-9 rounded-xl flex items-center justify-center shrink-0 border transition-all duration-300",
                 isActive
-                    ? "bg-indigo-600 border-indigo-400 shadow-xl shadow-indigo-100"
-                    : "bg-white border-slate-50 text-slate-300"
+                    ? "bg-indigo-600 border-indigo-500 shadow-md shadow-indigo-200"
+                    : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800"
             )}>
-                <Icon className={cn("h-4.5 w-4.5", isActive ? "text-white" : "text-slate-300")} />
+                <Icon className={cn("h-4 w-4", isActive ? "text-white" : "text-slate-400")} />
             </div>
-            <div className="min-w-0 flex flex-col pt-0.5">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1.5">{label}</p>
+            <div className="min-w-0">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5">{label}</p>
                 <p className={cn(
-                    "font-black tracking-tight truncate",
-                    isActive ? "text-sm text-slate-900" : "text-xs text-slate-500 opacity-60",
+                    "font-bold text-slate-800 dark:text-slate-200 truncate",
+                    isActive ? "text-sm" : "text-[13px] opacity-70",
                     isMono && "font-mono"
                 )}>{value}</p>
             </div>
         </div>
     );
 }
+
+

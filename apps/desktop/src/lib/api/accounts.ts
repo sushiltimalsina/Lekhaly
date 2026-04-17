@@ -1,4 +1,5 @@
-// apps/desktop/src/lib/api/accounts.ts
+// apps/web/src/lib/api/accounts.ts
+
 import { apiRequest } from "./client";
 
 export type AccountRecord = {
@@ -18,3 +19,4 @@ export async function listAccounts(params?: { type?: string; isActive?: boolean;
     query: params,
   });
 }
+

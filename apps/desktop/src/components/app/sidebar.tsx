@@ -1,6 +1,8 @@
-// apps/desktop/src/components/app/sidebar.tsx
+"use client";
+
 import * as React from "react";
-import { useLocation, Link } from "react-router-dom";
+import { useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -203,16 +205,18 @@ export default function Sidebar({ className, onNavigate }: SidebarProps) {
   const [resetSignal, setResetSignal] = React.useState(0);
 
   React.useEffect(() => {
-    const stored = localStorage.getItem("lekhaly.sidebar.collapsed");
+    const stored = typeof window !== "undefined" ? localStorage.getItem("lekhaly.sidebar.collapsed") : null;
     if (stored !== null) setCollapsed(stored === "true");
   }, []);
 
   React.useEffect(() => {
-    localStorage.setItem("lekhaly.sidebar.collapsed", String(collapsed));
-    document.documentElement.style.setProperty(
-      "--sidebar-width",
-      collapsed ? "84px" : "280px"
-    );
+    if (typeof window !== "undefined") {
+      localStorage.setItem("lekhaly.sidebar.collapsed", String(collapsed));
+      document.documentElement.style.setProperty(
+        "--sidebar-width",
+        collapsed ? "84px" : "280px"
+      );
+    }
   }, [collapsed]);
 
   const toggleCollapsed = () => setCollapsed((prev) => !prev);
@@ -321,8 +325,7 @@ function NavItemNode({
 
   if (!hasChildren && item.href) {
     return (
-      <Link
-        to={item.href}
+      <Link to={item.href}
         onClick={handleNavigate}
         className={cn(
           "group relative flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-200 ease-in-out",
@@ -415,3 +418,6 @@ function NavItemNode({
     </div>
   );
 }
+
+
+

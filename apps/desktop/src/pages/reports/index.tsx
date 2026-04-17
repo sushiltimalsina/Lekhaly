@@ -1,5 +1,5 @@
-// apps/desktop/src/pages/reports/index.tsx
-import * as React from "react";
+﻿"use client";
+
 import PageHeader from "@/components/app/page-header";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@lekhaly/ui";
 import { Button } from "@lekhaly/ui";
@@ -136,3 +136,5 @@ export default function ReportsPage() {
     </div>
   );
 }
+
+

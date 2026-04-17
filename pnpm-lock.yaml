@@ -214,6 +214,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@lekhaly/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       '@radix-ui/react-progress':
         specifier: ^1.1.8
         version: 1.1.8(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)

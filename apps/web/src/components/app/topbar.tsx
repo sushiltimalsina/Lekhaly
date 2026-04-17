@@ -1,10 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { Search, Menu, X, Bell, List, Sun, Moon, LayoutGrid } from "lucide-react";
+import { Search, Menu, X, Bell, List, Sun, Moon, LayoutGrid, User, LogOut } from "lucide-react";
 import Sidebar from "@/components/app/sidebar";
 import { Input } from "@lekhaly/ui";
 import { getUiState, subscribeUi, toggleDensity } from "@/lib/store/ui";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@lekhaly/ui";
+import { useRouter } from "next/navigation";
+import { clearToken } from "@/lib/store/auth";
 
 type TopbarProps = {
   title?: string;
@@ -17,6 +20,12 @@ export default function Topbar({ title, subtitle, rightSlot }: TopbarProps) {
   const [density, setDensityState] = React.useState(getUiState().density);
   const [theme, setThemeState] = React.useState<"light" | "dark">("light");
   const [mounted, setMounted] = React.useState(false);
+  const router = useRouter();
+
+  const handleLogout = () => {
+    clearToken();
+    router.replace("/login");
+  };
 
   React.useEffect(() => {
     return subscribeUi((next) => {
@@ -121,9 +130,33 @@ export default function Topbar({ title, subtitle, rightSlot }: TopbarProps) {
               <span className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-red-500 border-2 border-background"></span>
             </button>
 
-            <button type="button" className="grid h-9 w-9 place-items-center rounded-full">
-              <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 border-2 border-background ring-2 ring-border/20" />
-            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button type="button" className="grid h-9 w-9 place-items-center rounded-full focus:outline-none focus:ring-2 focus:ring-primary/30">
+                  <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 border-2 border-background ring-2 ring-border/20 hover:scale-105 transition-transform" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 shadow-2xl glass-panel border-border/50">
+                <DropdownMenuLabel className="font-normal p-2 text-foreground">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-semibold leading-none">Sushil Timalsina</p>
+                    <p className="text-[10px] uppercase font-bold tracking-widest leading-none text-muted-foreground mt-1">sushil@lekhaly.com</p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator className="bg-border/50" />
+                <DropdownMenuItem className="rounded-xl px-3 py-2.5 focus:bg-primary/10 cursor-pointer transition-colors">
+                  <User className="mr-2 h-4 w-4" />
+                  <span className="font-medium text-sm text-foreground">Profile Settings</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  className="rounded-xl px-3 py-2.5 text-red-600 focus:bg-red-50 focus:text-red-700 dark:focus:bg-red-950/30 cursor-pointer transition-colors"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span className="font-medium text-sm">Log out & Exit</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 

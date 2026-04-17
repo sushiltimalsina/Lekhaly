@@ -1,3 +1,4 @@
+// apps/web/src/lib/api/banking.ts
 import { apiRequest } from "./client";
 
 export type BankAccountInput = {

@@ -1,4 +1,5 @@
-// apps/desktop/src/lib/api/inventory.ts
+// apps/web/src/lib/api/inventory.ts
+
 import { apiRequest } from "./client";
 
 export type StockReportRow = {

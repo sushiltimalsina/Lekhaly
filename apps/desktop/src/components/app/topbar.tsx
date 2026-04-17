@@ -1,4 +1,5 @@
-// apps/desktop/src/components/app/topbar.tsx
+"use client";
+
 import * as React from "react";
 import { Search, Menu, X, Bell, List, Sun, Moon, LayoutGrid, User, LogOut } from "lucide-react";
 import Sidebar from "@/components/app/sidebar";
@@ -78,7 +79,7 @@ export default function Topbar({ title, subtitle, rightSlot }: TopbarProps) {
             </div>
           </div>
 
-          {/* Center: Search */}
+          {/* Center: Search (Optional, aligned right mostly in dashboard) */}
           <div className="hidden max-w-md flex-1 sm:flex justify-center">
             <div className="relative w-full">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -125,6 +126,7 @@ export default function Topbar({ title, subtitle, rightSlot }: TopbarProps) {
               className="relative grid h-9 w-9 place-items-center rounded-full text-muted-foreground hover:text-foreground"
             >
               <Bell className="h-5 w-5" />
+              {/* Notification dot example */}
               <span className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-red-500 border-2 border-background"></span>
             </button>
 
@@ -135,16 +137,16 @@ export default function Topbar({ title, subtitle, rightSlot }: TopbarProps) {
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 shadow-2xl glass-panel border-border/50">
-                <DropdownMenuLabel className="font-normal p-2">
+                <DropdownMenuLabel className="font-normal p-2 text-foreground">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-semibold leading-none text-foreground">Sushil Timalsina</p>
+                    <p className="text-sm font-semibold leading-none">Sushil Timalsina</p>
                     <p className="text-[10px] uppercase font-bold tracking-widest leading-none text-muted-foreground mt-1">sushil@lekhaly.com</p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator className="bg-border/50" />
                 <DropdownMenuItem className="rounded-xl px-3 py-2.5 focus:bg-primary/10 cursor-pointer transition-colors">
                   <User className="mr-2 h-4 w-4" />
-                  <span className="font-medium text-sm">Profile Settings</span>
+                  <span className="font-medium text-sm text-foreground">Profile Settings</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem 
                   className="rounded-xl px-3 py-2.5 text-red-600 focus:bg-red-50 focus:text-red-700 dark:focus:bg-red-950/30 cursor-pointer transition-colors"
@@ -158,7 +160,7 @@ export default function Topbar({ title, subtitle, rightSlot }: TopbarProps) {
           </div>
         </div>
 
-        {/* Mobile Search */}
+        {/* Mobile Search - Only visible on small screens */}
         <div className="px-4 pb-3 sm:hidden">
           <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -195,3 +197,5 @@ export default function Topbar({ title, subtitle, rightSlot }: TopbarProps) {
     </>
   );
 }
+
+

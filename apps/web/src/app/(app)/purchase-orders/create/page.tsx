@@ -423,7 +423,7 @@ export default function PurchaseOrderCreatePage() {
         Promise.all([
             // Request Suppliers only
             listParties({ type: "supplier", take: 200 }),
-            listItems({ take: 500 }),
+            listItems({ take: 200 }),
             listBillSundries({ take: 100 })
         ])
             .then(([p, i, s]) => {

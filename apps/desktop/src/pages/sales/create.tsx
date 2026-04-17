@@ -3,7 +3,7 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import PageHeader from "@/components/app/page-header";
-import { DualDateInput } from "@/components/app/dual-date-input";
+import DualDateInput from "@/components/app/dual-date-input";
 import { Input } from "@lekhaly/ui";
 import { Button } from "@lekhaly/ui";
 import { MoneyText } from "@/components/app/money";
@@ -34,9 +34,9 @@ import {
   ChevronRight,
   ArrowLeft,
 } from "lucide-react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { toBs } from "@/lib/dates/bs";
-
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { getInvoice, updateInvoiceDraft } from "@/lib/api/invoices";
 
 type Line = { itemId: string; qty: string; rate: string; description?: string };
@@ -85,7 +85,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
 }) {
   const {
     label,
-    placeholder = "Select…",
+    placeholder = "Select�",
     valueId,
     onChange,
     options,
@@ -468,7 +468,7 @@ export default function SalesCreatePage() {
     Promise.all([
       listParties({ type: "customer", take: 200 }),
       listAccounts({ type: "asset", take: 200 }),
-      listItems({ take: 500 }),
+      listItems({ take: 200 }),
       listBillSundries({ take: 100 })
     ])
       .then(([p, a, i, s]) => {
@@ -763,7 +763,7 @@ export default function SalesCreatePage() {
   const onPrint = () => setSuccess("Print: connect to your PDF + print flow.");
   const onPrintPreview = () => setSuccess("Print Preview: PDF version loading...");
 
-  // ✅ Early return AFTER all hooks are declared
+  // ? Early return AFTER all hooks are declared
   if (!mounted) return <div className="min-h-screen" />;
 
   return (
@@ -1675,8 +1675,8 @@ export default function SalesCreatePage() {
             <div className="mb-2 flex items-center justify-between">
               <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">Additional notes</div>
               <div className="text-xs text-muted-foreground">
-                BS: <span className="font-medium text-foreground">{form.invoiceDate.bs || "—"}</span>{" "}
-                <span className="text-muted-foreground">({form.invoiceDate.ad || "—"})</span>
+                BS: <span className="font-medium text-foreground">{form.invoiceDate.bs || "�"}</span>{" "}
+                <span className="text-muted-foreground">({form.invoiceDate.ad || "�"})</span>
               </div>
             </div>
 
@@ -1810,3 +1810,6 @@ export default function SalesCreatePage() {
     </div>
   );
 }
+
+
+

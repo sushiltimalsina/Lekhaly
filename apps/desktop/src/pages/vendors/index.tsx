@@ -1,4 +1,5 @@
-// apps/desktop/src/pages/vendors/index.tsx
+﻿"use client";
+
 import * as React from "react";
 import PageHeader from "@/components/app/page-header";
 import FiltersBar from "@/components/app/filters-bar";
@@ -6,7 +7,7 @@ import DataTable, { Column } from "@/components/app/data-table";
 import { MoneyText } from "@/components/app/money";
 import { Button } from "@lekhaly/ui";
 import { Input } from "@lekhaly/ui";
-import { Plus, Search, MoreHorizontal, Mail, Phone, ExternalLink } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Building2, Mail, Phone, ExternalLink, Briefcase } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 
@@ -56,11 +57,11 @@ export default function VendorsPage() {
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors group">
             <Phone className="h-3 w-3" />
-            <span>{r.phone ?? "—"}</span>
+            <span>{r.phone ?? "â€”"}</span>
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors group">
             <Mail className="h-3 w-3" />
-            <span>{r.email ?? "—"}</span>
+            <span>{r.email ?? "â€”"}</span>
           </div>
         </div>
       )
@@ -166,3 +167,5 @@ export default function VendorsPage() {
     </div>
   );
 }
+
+

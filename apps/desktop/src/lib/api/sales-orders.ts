@@ -1,4 +1,4 @@
-// apps/desktop/src/lib/api/sales-orders.ts
+// apps/web/src/lib/api/sales-orders.ts
 import { apiRequest } from "./client";
 
 export type SalesOrderStatus = "draft" | "open" | "fulfilled" | "cancelled";
@@ -11,50 +11,12 @@ export type SalesOrderItemInput = {
     taxCodeId?: string;
 };
 
-export type SalesOrderRecord = {
-    id: string;
-    orderNo?: string;
-    partyId: string;
-    partyName?: string;
-    orderDate?: string;
-    orderDateBs?: string;
-    expectedDelivery?: string;
-    expectedDeliveryBs?: string;
-    customerPoRef?: string;
-    salesType?: string;
-    status: SalesOrderStatus;
-    memo?: string;
-    notes?: string;
-    terms?: string;
-    total: number;
-    fulfilledAmount?: number;
-    items: Array<{
-        id: string;
-        itemId: string;
-        itemName?: string;
-        qty: number;
-        rate: number;
-        amount: number;
-        description?: string;
-    }>;
-    sundries?: Array<{
-        id: string;
-        billSundryId?: string;
-        name: string;
-        type: "add" | "less";
-        rate?: number;
-        amount: number;
-    }>;
-    createdAt?: string;
-    updatedAt?: string;
-};
-
 export type SalesOrderInput = {
     partyId: string;
-    orderDate?: string;
-    orderDateBs?: string;
-    expectedDelivery?: string;
-    expectedDeliveryBs?: string;
+    orderDate?: string; // ISO
+    orderDateBs?: string; // BS string
+    expectedDelivery?: string; // ISO
+    expectedDeliveryBs?: string; // BS string
     customerPoRef?: string;
     salesType?: "vat_13" | "exempt" | "export";
     memo?: string;
@@ -70,8 +32,26 @@ export type SalesOrderInput = {
     }>;
 };
 
+export type SalesOrderRecord = {
+    id: string;
+    orderNo: string;
+    partyId: string;
+    partyName?: string;
+    orderDate: string;
+    orderDateBs: string;
+    expectedDelivery?: string;
+    expectedDeliveryBs?: string;
+    customerPoRef?: string;
+    status: SalesOrderStatus;
+    total: number;
+    fulfilledAmount?: number;
+    memo?: string;
+    createdAt: string;
+    updatedAt: string;
+};
+
 export async function createSalesOrder(input: SalesOrderInput) {
-    return apiRequest<SalesOrderRecord>({
+    return apiRequest<any>({
         method: "POST",
         path: "/sales-orders",
         body: input,
@@ -79,7 +59,7 @@ export async function createSalesOrder(input: SalesOrderInput) {
 }
 
 export async function updateSalesOrder(id: string, input: SalesOrderInput) {
-    return apiRequest<SalesOrderRecord>({
+    return apiRequest<any>({
         method: "PUT",
         path: `/sales-orders/${id}`,
         body: input,
@@ -87,7 +67,7 @@ export async function updateSalesOrder(id: string, input: SalesOrderInput) {
 }
 
 export async function getSalesOrder(id: string) {
-    return apiRequest<SalesOrderRecord>({
+    return apiRequest<any>({
         method: "GET",
         path: `/sales-orders/${id}`,
     });
@@ -101,7 +81,7 @@ export async function listSalesOrders(params?: {
     skip?: number;
     take?: number;
 }) {
-    return apiRequest<SalesOrderRecord[] | { items?: SalesOrderRecord[]; data?: SalesOrderRecord[]; meta: any }>({
+    return apiRequest<any>({
         method: "GET",
         path: "/sales-orders",
         query: params as any,

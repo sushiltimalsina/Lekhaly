@@ -1,4 +1,7 @@
-import { Link, useLocation } from "react-router-dom";
+"use client";
+
+import { Link } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 type ActionItem = {
   label: string;
@@ -18,33 +21,35 @@ const groups: ActionGroup[] = [
     match: (path) => path.startsWith("/dashboard"),
     actions: [
       { label: "Create Voucher", href: "/vouchers" },
-      { label: "Create Invoice", href: "/sales/create" },
-      { label: "Record Payment", href: "/payments/create" },
+      { label: "Create Invoice", href: "/invoices" },
+      { label: "Record Payment", href: "/payments" },
+    ],
+  },
+
+  {
+    title: "Invoices",
+    match: (path) => path.startsWith("/invoices"),
+    actions: [
+      { label: "New Invoice", href: "/invoices" },
+      { label: "Send Reminder", href: "/coming-soon" },
+      { label: "View Reports", href: "/reports" },
     ],
   },
   {
-    title: "Sales",
-    match: (path) => path.startsWith("/sales"),
+    title: "Payments",
+    match: (path) => path.startsWith("/payments"),
     actions: [
-      { label: "New Invoice", href: "/sales/create" },
-      { label: "Sales List", href: "/sales" },
-      { label: "View Reports", href: "/reports/sales-register" },
-    ],
-  },
-  {
-    title: "Purchase",
-    match: (path) => path.startsWith("/purchase"),
-    actions: [
-      { label: "New Purchase", href: "/purchase/create" },
-      { label: "Purchase List", href: "/purchase" },
+      { label: "New Payment", href: "/payments" },
+      { label: "Reconcile", href: "/coming-soon" },
       { label: "View Ledger", href: "/reports/ledger" },
     ],
   },
+
 ];
 
 export default function QuickActionsRail() {
   const { pathname } = useLocation();
-  const group = groups.find((entry) => entry.match(pathname));
+  const group = groups.find((g) => g.match(pathname));
 
   if (!group || pathname.includes("/create")) return null;
 
@@ -77,3 +82,6 @@ export default function QuickActionsRail() {
     </aside>
   );
 }
+
+
+

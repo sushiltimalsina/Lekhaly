@@ -1,5 +1,3 @@
-// apps/desktop/src/lib/dates/ranges.ts
-import NepaliDate from "nepali-date-converter";
 
 export type DateRangeKey =
     | "today"
@@ -18,6 +16,8 @@ export interface DateRange {
     from: Date | null;
     to: Date | null;
 }
+
+import NepaliDate from "nepali-date-converter";
 
 export function getDateRange(key: DateRangeKey, calendar: "ad" | "bs" = "ad"): DateRange {
     const now = new Date();

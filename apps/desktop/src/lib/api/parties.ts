@@ -1,4 +1,5 @@
-// apps/desktop/src/lib/api/parties.ts
+// apps/web/src/lib/api/parties.ts
+
 import { apiRequest } from "./client";
 
 export type PartyRecord = {
@@ -21,7 +22,6 @@ export async function listParties(params?: { type?: string; q?: string; skip?: n
     query: safeParams,
   });
 }
-
 export async function createParty(input: {
   name: string;
   type: "customer" | "supplier" | "both";

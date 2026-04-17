@@ -1,4 +1,5 @@
-// apps/desktop/src/components/app/calendar.tsx
+﻿"use client";
+
 import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { dateConfigMap } from "nepali-date-converter";
@@ -12,8 +13,8 @@ const BS_MONTHS = [
 ] as const;
 
 const BS_MONTHS_NP = [
-    "बैशाख", "जेठ", "असार", "श्रावण", "भदौ", "आश्विन",
-    "कार्तिक", "मंसिर", "पौष", "माघ", "फाल्गुन", "चैत्र",
+    "बैशाख", "जेठ", "असार", "श्रावण", "भाद्र", "आश्विन",
+    "कार्तिक", "मंसिर", "पौष", "माघ", "फाल्गुण", "चैत्र",
 ] as const;
 
 const WEEK_DAYS_NP = ["आइत", "सोम", "मंगल", "बुध", "बिही", "शुक्र", "शनि"];
@@ -96,6 +97,7 @@ export function Calendar({
     }, [value]);
 
     const todayAd = new Date().toISOString().slice(0, 10);
+    const todayBs = adToBs(todayAd);
 
     // AD helpers
     const adHeaderLabel = React.useMemo(() => {
@@ -161,8 +163,7 @@ export function Calendar({
     const handleSelect = (day: number) => {
         let dateStr = "";
         if (preference === "BS") {
-            const d = bsToAd(`${viewYear}-${pad(viewMonth)}-${pad(day)}`);
-            dateStr = d.toISOString().slice(0, 10);
+            dateStr = bsToAd(`${viewYear}-${pad(viewMonth)}-${pad(day)}`);
         } else {
             dateStr = `${viewAdYear}-${pad(viewAdMonth)}-${pad(day)}`;
         }
@@ -257,18 +258,25 @@ export function Calendar({
                         ? `${viewYear}-${pad(viewMonth)}-${pad(day)}`
                         : `${viewAdYear}-${pad(viewAdMonth)}-${pad(day)}`;
 
+                    // For selection and secondary label calculation
                     let currentAd = "";
+                    let currentBs = "";
                     try {
                         if (preference === "BS") {
-                            const d = bsToAd(dateStr);
-                            currentAd = d.toISOString().slice(0, 10);
+                            currentAd = bsToAd(dateStr);
+                            currentBs = dateStr;
                         } else {
                             currentAd = dateStr;
+                            currentBs = adToBs(dateStr);
                         }
                     } catch { return null; }
 
                     const isSelected = value === currentAd;
                     const isToday = currentAd === todayAd;
+
+                    // Extract day number for the secondary label
+                    const secondaryDay = (preference === "BS" ? currentAd : currentBs).split("-")[2];
+                    const secondaryLabel = preference === "AD" ? toNepaliDigits(parseInt(secondaryDay)) : parseInt(secondaryDay);
 
                     return (
                         <button
@@ -286,6 +294,12 @@ export function Calendar({
                             <span className="text-xs font-black leading-none">
                                 {preference === "BS" ? toNepaliDigits(day) : day}
                             </span>
+                            <span className={cn(
+                                "text-[8px] font-bold mt-0.5 opacity-60",
+                                isSelected ? "text-white" : "text-slate-400"
+                            )}>
+                                {secondaryLabel}
+                            </span>
                         </button>
                     );
                 })}
@@ -301,8 +315,17 @@ export function Calendar({
                     >
                         Switch to {preference === "BS" ? "AD" : "BS"}
                     </button>
+                    <div className="w-px h-3 bg-slate-200 dark:bg-slate-700" />
+                    <button
+                        type="button"
+                        onClick={() => onChange?.(todayAd)}
+                        className="text-[10px] font-black text-rose-500 uppercase hover:underline"
+                    >
+                        {preference === "BS" ? "आज" : "Today"}
+                    </button>
                 </div>
             </div>
         </div>
     );
 }
+

@@ -1,4 +1,5 @@
-// apps/desktop/src/components/app/add-group-dialog.tsx
+﻿"use client";
+
 import * as React from "react";
 import { Input } from "@lekhaly/ui";
 import { createItemGroup } from "@/lib/api/item-groups";
@@ -97,3 +98,4 @@ export default function AddGroupDialog({ open, onClose, onSuccess }: AddGroupDia
         document.body
     );
 }
+

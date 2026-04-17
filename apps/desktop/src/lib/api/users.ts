@@ -1,4 +1,4 @@
-// apps/desktop/src/lib/api/users.ts
+// apps/web/src/lib/api/users.ts
 import { apiRequest } from "./client";
 
 export type UserInput = {
@@ -20,6 +20,21 @@ export async function createUser(input: UserInput) {
   return apiRequest<any>({
     method: "POST",
     path: "/users",
+    body: input,
+  });
+}
+
+export async function getUser(id: string) {
+  return apiRequest<any>({
+    method: "GET",
+    path: `/users/${id}`,
+  });
+}
+
+export async function updateUser(id: string, input: Partial<UserInput>) {
+  return apiRequest<any>({
+    method: "PUT",
+    path: `/users/${id}`,
     body: input,
   });
 }

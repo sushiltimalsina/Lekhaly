@@ -1,4 +1,5 @@
-// apps/desktop/src/components/app/filters-bar.tsx
+﻿"use client";
+
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
@@ -16,3 +17,4 @@ export default function FiltersBar({ left, right, className }: FiltersBarProps) 
     </div>
   );
 }
+

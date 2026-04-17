@@ -1,45 +1,83 @@
-// apps/desktop/src/pages/purchase-orders/index.tsx
+"use client";
+
 import * as React from "react";
+import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import {
     Plus,
     ChevronRight,
-    Truck,
+    ChevronDown,
     PackageSearch,
-    CheckSquare,
+    Truck,
+    FileText,
     Clock,
-    AlertCircle,
-    ShoppingCart
+    CheckSquare
 } from "lucide-react";
 import PageHeader from "@/components/app/page-header";
 import StatusBadge, { DocStatus } from "@/components/app/status-badge";
 import { MoneyText } from "@/components/app/money";
 import { listPurchaseOrders, type PurchaseOrderRecord } from "@/lib/api/purchase-orders";
-import { getSettings } from "@/lib/store/settings";
+import { getSettings, subscribeSettings } from "@/lib/store/settings";
 import { getDateDisplay } from "@/lib/dates/display";
 import { cn } from "@/lib/utils";
 import { Button } from "@lekhaly/ui";
 import AdvancedFilterBar from "@/components/app/advanced-filter-bar";
-import DataTable from "@/components/app/data-table";
 
 export default function PurchaseOrdersListPage() {
     const navigate = useNavigate();
-    const settings = getSettings();
+    const [settings, setSettings] = React.useState(getSettings());
+
+    React.useEffect(() => {
+        const unsubscribe = subscribeSettings((next) => setSettings(next));
+        return () => { unsubscribe(); };
+    }, []);
+
     const calendarFmt = settings.calendarPreference.toLowerCase() as "ad" | "bs";
 
     const [loading, setLoading] = React.useState(true);
-    const [data, setData] = React.useState<PurchaseOrderRecord[]>([]);
-    const [totalRecords, setTotalRecords] = React.useState(0);
+    const [data, setData] = React.useState<any[]>([]);
     const [filters, setFilters] = React.useState({
         q: "",
         status: "all",
         from: null as Date | null,
         to: null as Date | null,
     });
-    const [page, setPage] = React.useState(1);
-    const [pageSize, setPageSize] = React.useState(50);
+    const [error, setError] = React.useState<string | null>(null);
+    const [expandedRow, setExpandedRow] = React.useState<string | null>(null);
 
-    const load = async () => {
+    /* Pagination State */
+    const [page, setPage] = React.useState(1);
+    const [totalPages, setTotalPages] = React.useState(1);
+    const [pageSize, setPageSize] = React.useState(50);
+    const [totalRecords, setTotalRecords] = React.useState(0);
+
+    /* Density State */
+    const [compactMode, setCompactMode] = React.useState(false);
+
+    /* Column Visibility State */
+    const [visibleColumns, setVisibleColumns] = React.useState<string[]>([
+        "sno", "date", "orderNo", "vendor", "amount", "delivery", "fulfillment", "status"
+    ]);
+
+    const columnOptions = [
+        { key: "sno", label: "S.No", defaultVisible: true },
+        { key: "date", label: "Date", defaultVisible: true },
+        { key: "orderNo", label: "Order No", defaultVisible: true },
+        { key: "vendor", label: "Vendor / Supplier", defaultVisible: true },
+        { key: "amount", label: "Procurement Amount", defaultVisible: true },
+        { key: "delivery", label: "Expected Delivery", defaultVisible: true },
+        { key: "fulfillment", label: "Fulfillment", defaultVisible: true },
+        { key: "status", label: "Status", defaultVisible: true },
+    ];
+
+    /* Summary Metrics */
+    const metrics = React.useMemo(() => {
+        const totalAmount = data.reduce((acc, q) => acc + Number(q.total || 0), 0);
+        const fulfilledCount = data.filter(q => q.status === "fulfilled").length;
+        return { totalAmount, fulfilledCount };
+    }, [data]);
+
+    async function load() {
         setLoading(true);
         try {
             const res = await listPurchaseOrders({
@@ -51,201 +89,396 @@ export default function PurchaseOrdersListPage() {
                 skip: (page - 1) * pageSize,
             });
 
-            const list = Array.isArray(res) ? res : res?.items ?? res?.data ?? [];
-            const meta = (res as any)?.meta;
-            
-            setData(list);
-            setTotalRecords(meta?.total || list.length);
-        } catch (e) {
-            console.error("Failed to load purchase orders", e);
+            if (res && res.data && res.meta) {
+                setData(res.data);
+                setTotalRecords(res.meta.total);
+                setTotalPages(res.meta.lastPage);
+            } else {
+                const list = Array.isArray(res) ? res : res?.items ?? res?.data ?? [];
+                setData(list);
+                setTotalRecords(list.length);
+                setTotalPages(1);
+            }
+        } catch (e: any) {
+            setError(e?.message ?? "Failed to load purchase orders");
         } finally {
             setLoading(false);
         }
-    };
+    }
 
     React.useEffect(() => {
-        load();
+        setPage(1);
+    }, [filters, pageSize]);
+
+    React.useEffect(() => {
+        const timer = setTimeout(() => {
+            load();
+        }, 300);
+        return () => clearTimeout(timer);
     }, [filters, page, pageSize]);
 
-    const metrics = React.useMemo(() => {
-        const totalAmount = data.reduce((acc, q) => acc + Number(q.total || 0), 0);
-        const fulfilledCount = data.filter(q => q.status === "fulfilled").length;
-        return { totalAmount, fulfilledCount };
-    }, [data]);
-
-    const getFulfillmentBadge = (order: PurchaseOrderRecord) => {
-        if (order.status === "fulfilled") {
-            return (
-                <div className="flex flex-col items-center">
-                    <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold uppercase tracking-tighter shadow-sm border border-emerald-200/50 text-[10px]">Fully Received</span>
-                </div>
-            );
-        }
-        if (order.fulfilledAmount && order.fulfilledAmount > 0) {
-            const pct = Math.round((Number(order.fulfilledAmount) / Number(order.total)) * 100);
-            return (
-                <div className="flex flex-col items-center gap-1">
-                    <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
-                        <div className="h-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.5)]" style={{ width: `${pct}%` }} />
-                    </div>
-                    <span className="text-[9px] font-black text-orange-600 uppercase tracking-tighter">Billed {pct}%</span>
-                </div>
-            );
-        }
-        return <span className="text-[9px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-bold uppercase tracking-tighter border border-slate-200/30 text-[10px]">Open</span>;
-    };
-
-    const columns = [
-        {
-            key: "date",
-            header: "Date",
-            cell: (order: PurchaseOrderRecord) => {
-                const d = getDateDisplay({ ad: order.orderDate, bs: order.orderDateBs, format: calendarFmt });
-                return (
-                    <div className="flex flex-col">
-                        <span className="font-bold text-slate-700">{d.primary}</span>
-                        <span className="text-[10px] text-slate-400 font-medium">{d.secondary}</span>
-                    </div>
-                );
-            }
-        },
-        {
-            key: "orderNo",
-            header: "Order No",
-            cell: (order: PurchaseOrderRecord) => (
-                <span className="font-black text-orange-600 hover:text-orange-800 transition-colors cursor-pointer" onClick={() => navigate(`/purchase-orders/view/${order.id}`)}>
-                    {order.orderNo || `PO-DRAFT-${order.id.slice(0, 4)}`}
-                </span>
-            )
-        },
-        {
-            key: "vendor",
-            header: "Vendor / Supplier",
-            cell: (order: PurchaseOrderRecord) => (
-                <div className="flex flex-col">
-                    <span className="font-bold text-slate-900 line-clamp-1">{order.partyName || "Unknown Supplier"}</span>
-                    {order.vendorRef && (
-                        <span className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">Ref: {order.vendorRef}</span>
-                    )}
-                </div>
-            )
-        },
-        {
-            key: "total",
-            header: "Procurement Value",
-            align: "right" as const,
-            cell: (order: PurchaseOrderRecord) => (
-                <span className="font-black text-slate-900 tabular-nums">
-                    <MoneyText value={order.total} />
-                </span>
-            )
-        },
-        {
-            key: "delivery",
-            header: "Exp. Inward",
-            cell: (order: PurchaseOrderRecord) => {
-                if (!order.expectedDelivery) return <span className="text-slate-300 font-black">—</span>;
-                const d = getDateDisplay({ ad: order.expectedDelivery, bs: order.expectedDeliveryBs, format: calendarFmt });
-                return (
-                    <div className="flex flex-col">
-                        <span className="font-bold text-slate-700">{d.primary}</span>
-                        <span className="text-[10px] text-slate-400 font-medium">{d.secondary}</span>
-                    </div>
-                );
-            }
-        },
-        {
-            key: "fulfillment",
-            header: "Inward Status",
-            align: "center" as const,
-            cell: (order: PurchaseOrderRecord) => getFulfillmentBadge(order)
-        },
+    const filterOptions = [
         {
             key: "status",
-            header: "Status",
-            align: "center" as const,
-            cell: (order: PurchaseOrderRecord) => <StatusBadge status={order.status as DocStatus} />
+            label: "Order Status",
+            options: [
+                { value: "draft", label: "Draft" },
+                { value: "open", label: "Open" },
+                { value: "fulfilled", label: "Fulfilled" },
+                { value: "cancelled", label: "Cancelled" },
+            ]
         }
     ];
 
+    const handleFilterChange = (newFilters: any) => {
+        setFilters(prev => ({
+            ...prev,
+            status: newFilters.status?.[0] || prev.status,
+            from: newFilters.dateRange?.from || null,
+            to: newFilters.dateRange?.to || null,
+        }));
+    };
+
+    const getFulfillmentBadge = (order: PurchaseOrderRecord) => {
+        if (order.status === "fulfilled") {
+            return <div className="flex flex-col items-center">
+                <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 font-bold uppercase tracking-tighter">Received</span>
+            </div>;
+        }
+        if (order.fulfilledAmount && order.fulfilledAmount > 0) {
+            const pct = Math.round((Number(order.fulfilledAmount) / Number(order.total)) * 100);
+            return <div className="flex flex-col items-center gap-1">
+                <div className="w-16 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <div className="h-full bg-orange-500" style={{ width: `${pct}%` }} />
+                </div>
+                <span className="text-[9px] font-black text-orange-600 uppercase tracking-tighter">Partial {pct}%</span>
+            </div>;
+        }
+        return <span className="text-[9px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 font-bold uppercase tracking-tighter">Pending</span>;
+    };
+
     return (
-        <div className="space-y-6 animate-fade-in pb-20">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="space-y-6 pb-20">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <PageHeader
                     title="Purchase Orders"
-                    description="Orchestrate procurement and track vendor fulfillment pipelines."
+                    description="Manage vendor orders and track procurement fulfillment."
                     actions={
                         <Button
                             onClick={() => navigate("/purchase-orders/create")}
-                            className="rounded-2xl bg-orange-600 hover:bg-orange-700 text-white shadow-xl shadow-orange-100 px-8 h-12 font-black text-xs uppercase tracking-widest transition-all active:scale-95 italic border-none"
+                            className="rounded-2xl bg-slate-900 dark:bg-slate-200 dark:text-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-500/20 px-8 h-11 transition-all active:scale-95 border-none"
                         >
                             <Plus className="mr-2 h-4 w-4" />
-                            Initiate Procurement
+                            New Order
                         </Button>
                     }
                 />
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant={compactMode ? "secondary" : "ghost"}
+                        size="sm"
+                        onClick={() => setCompactMode(!compactMode)}
+                        className="rounded-xl h-9 px-3 text-xs font-bold uppercase tracking-wider hidden md:flex"
+                    >
+                        {compactMode ? "Comfortable" : "Compact"}
+                    </Button>
+                    <div className="h-4 w-px bg-slate-200 dark:bg-slate-800 mx-2 hidden md:block" />
+                    <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-2">Registry Size:</span>
+                        <span className="text-xs font-bold text-slate-900 dark:text-white bg-white dark:bg-slate-700 px-2 py-0.5 rounded-lg shadow-sm">{totalRecords}</span>
+                    </div>
+                </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white p-6 rounded-[28px] border-2 border-slate-50 shadow-sm flex items-center justify-between group hover:border-orange-100 transition-all">
-                    <div className="space-y-1">
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Total Purchase Commitment</span>
-                        <div className="text-2xl font-black text-slate-900"><MoneyText value={metrics.totalAmount} /></div>
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-white dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center justify-between">
+                    <div className="flex flex-col">
+                        <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">Total Purchase Value</span>
+                        <span className="text-xl font-black text-slate-900 dark:text-white mt-1"><MoneyText value={metrics.totalAmount} /></span>
                     </div>
-                    <div className="h-12 w-12 rounded-2xl bg-orange-50 flex items-center justify-center text-orange-600 group-hover:scale-110 transition-transform">
-                        <Truck className="h-6 w-6" />
-                    </div>
-                </div>
-                <div className="bg-white p-6 rounded-[28px] border-2 border-slate-50 shadow-sm flex items-center justify-between group hover:border-emerald-100 transition-all">
-                    <div className="space-y-1">
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Received & Billed</span>
-                        <div className="text-2xl font-black text-slate-900">{metrics.fulfilledCount} <span className="text-xs text-slate-300 font-bold ml-1">ORDERS</span></div>
-                    </div>
-                    <div className="h-12 w-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform">
-                        <CheckSquare className="h-6 w-6" />
+                    <div className="h-10 w-10 rounded-xl bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center text-orange-600">
+                        <Truck className="h-5 w-5" />
                     </div>
                 </div>
-                <div className="bg-slate-900 p-6 rounded-[28px] shadow-2xl flex flex-col justify-center relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:rotate-12 transition-transform duration-700">
-                        <ShoppingCart className="h-20 w-20 text-white" />
+                <div className="bg-white dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center justify-between">
+                    <div className="flex flex-col">
+                        <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">Fulfillment Done</span>
+                        <span className="text-xl font-black text-slate-900 dark:text-white mt-1">{metrics.fulfilledCount}</span>
                     </div>
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-2">Procurement Intel</span>
-                    <div className="flex items-center gap-3">
-                        <div className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse shadow-[0_0_8px_rgba(249,115,22,0.8)]" />
-                        <span className="text-white font-bold text-sm italic">Vendor Inventory Sync Active</span>
+                    <div className="h-10 w-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600">
+                        <CheckSquare className="h-5 w-5" />
+                    </div>
+                </div>
+                <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-5 rounded-2xl shadow-lg shadow-slate-500/20 flex flex-col justify-center border border-slate-700">
+                    <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">Procurement Engine</span>
+                    <div className="flex items-center gap-2 mt-2">
+                        <div className="h-2 w-2 rounded-full bg-orange-500 animate-pulse" />
+                        <span className="font-bold text-sm">Vendor Sync Active</span>
                     </div>
                 </div>
             </div>
 
             <AdvancedFilterBar
                 onSearch={(q) => setFilters(prev => ({ ...prev, q }))}
-                onFilterChange={(f) => setFilters(prev => ({ 
-                    ...prev, 
-                    status: f.status?.[0] || "all",
-                    from: f.dateRange?.from || null,
-                    to: f.dateRange?.to || null
-                }))}
-                filterOptions={[
-                    {
-                        key: "status",
-                        label: "Order Status",
-                        options: [
-                            { value: "draft", label: "Draft" },
-                            { value: "open", label: "Open" },
-                            { value: "fulfilled", label: "Fulfilled" },
-                            { value: "cancelled", label: "Cancelled" },
-                        ]
-                    }
-                ]}
+                onFilterChange={handleFilterChange}
+                filterOptions={filterOptions}
+                columnOptions={columnOptions}
+                onVisibleColumnsChange={setVisibleColumns}
+                className="border-slate-200 dark:border-slate-800"
             />
 
-            <DataTable
-                columns={columns}
-                rows={data}
-                loading={loading}
-                onRowClick={(row) => navigate(`/purchase-orders/view/${row.id}`)}
-                emptyText="No purchase orders found"
-            />
+            <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl shadow-slate-200/40 dark:border-slate-800 dark:bg-slate-950 dark:shadow-none">
+                {loading && data.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-24 space-y-4">
+                        <div className="relative h-12 w-12">
+                            <div className="absolute inset-0 rounded-full border-4 border-slate-100 dark:border-slate-900/30"></div>
+                            <div className="absolute inset-0 rounded-full border-4 border-orange-600 border-t-transparent animate-spin"></div>
+                        </div>
+                        <p className="text-sm font-medium text-slate-500 animate-pulse uppercase tracking-widest text-[10px] font-black">Syncing Procurement...</p>
+                    </div>
+                ) : data.length > 0 ? (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left">
+                            <thead>
+                                <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30">
+                                    {visibleColumns.includes("sno") && <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>S.No</th>}
+                                    {visibleColumns.includes("date") && <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>Order Date ({calendarFmt.toUpperCase()})</th>}
+                                    {visibleColumns.includes("orderNo") && <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>Order No</th>}
+                                    {visibleColumns.includes("vendor") && <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>Vendor / Supplier</th>}
+                                    {visibleColumns.includes("amount") && <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right", compactMode ? "py-3" : "py-4")}>Amount</th>}
+                                    {visibleColumns.includes("delivery") && <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px]", compactMode ? "py-3" : "py-4")}>Expected Delivery</th>}
+                                    {visibleColumns.includes("fulfillment") && <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px] text-center", compactMode ? "py-3" : "py-4")}>Fulfillment</th>}
+                                    {visibleColumns.includes("status") && <th className={cn("px-6 font-black text-slate-400 uppercase tracking-widest text-[10px] text-center", compactMode ? "py-3" : "py-4")}>Status</th>}
+                                    <th className={cn("px-6 w-10", compactMode ? "py-3" : "py-4")}></th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
+                                {data.map((order, index) => {
+                                    const dateInfo = getDateDisplay({ ad: order.orderDate, bs: order.orderDateBs, format: calendarFmt });
+                                    const deliveryInfo = order.expectedDelivery ? getDateDisplay({ ad: order.expectedDelivery, bs: order.expectedDeliveryBs, format: calendarFmt }) : null;
+                                    const sNo = (page - 1) * pageSize + index + 1;
+                                    const totalItems = order.items?.length || 0;
+
+                                    const py = compactMode ? "py-2.5" : "py-5";
+                                    const isExpanded = expandedRow === order.id;
+
+                                    return (
+                                        <React.Fragment key={order.id}>
+                                            <tr className="group hover:bg-slate-50/80 dark:hover:bg-slate-900/40 transition-colors">
+                                                {visibleColumns.includes("sno") && (
+                                                    <td className={`px-6 ${py} whitespace-nowrap font-bold text-slate-500`}>
+                                                        {sNo}
+                                                    </td>
+                                                )}
+                                                {visibleColumns.includes("date") && (
+                                                    <td className={`px-6 ${py} whitespace-nowrap`}>
+                                                        <div className="flex flex-col">
+                                                            <span className="font-bold text-slate-700 dark:text-slate-200">
+                                                                {dateInfo.primary}
+                                                            </span>
+                                                            <span className="text-[9px] text-slate-400 font-medium tracking-tight">
+                                                                {dateInfo.secondary}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                )}
+                                                {visibleColumns.includes("orderNo") && (
+                                                    <td className={`px-6 ${py} whitespace-nowrap`}>
+                                                        <span
+                                                            onClick={() => navigate(`/purchase-orders/create?id=${order.id}`)}
+                                                            className="font-black text-slate-900 dark:text-white hover:text-orange-600 transition-colors cursor-pointer"
+                                                        >
+                                                            {order.orderNo || `DRAFT-${order.id.slice(0, 4)}`}
+                                                        </span>
+                                                    </td>
+                                                )}
+                                                {visibleColumns.includes("vendor") && (
+                                                    <td
+                                                        className={`px-6 ${py} cursor-pointer`}
+                                                        onClick={() => setExpandedRow(isExpanded ? null : order.id)}
+                                                    >
+                                                        <div className="flex flex-col max-w-[250px]">
+                                                            <span className="truncate font-bold text-slate-900 dark:text-white group-hover:text-orange-600 transition-colors" title={order.partyName}>
+                                                                {order.partyName || "Unknown Vendor"}
+                                                            </span>
+                                                            <div className="flex items-center gap-1.5 mt-0.5">
+                                                                {order.vendorRef && (
+                                                                    <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-orange-50 dark:bg-orange-950 text-orange-600 font-bold uppercase tracking-tight">Ref: {order.vendorRef}</span>
+                                                                )}
+                                                                {totalItems > 0 && (
+                                                                    <span className="text-[9px] font-medium text-slate-400 italic">
+                                                                        ({totalItems} {totalItems === 1 ? 'item' : 'items'})
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                )}
+                                                {visibleColumns.includes("amount") && (
+                                                    <td className={`px-6 ${py} whitespace-nowrap text-right`}>
+                                                        <span className="font-bold text-slate-900 dark:text-white tabular-nums text-sm">
+                                                            <MoneyText value={order.total} />
+                                                        </span>
+                                                    </td>
+                                                )}
+                                                {visibleColumns.includes("delivery") && (
+                                                    <td className={`px-6 ${py} whitespace-nowrap`}>
+                                                        {deliveryInfo ? (
+                                                            <div className="flex flex-col">
+                                                                <span className="font-bold text-sm text-slate-700 dark:text-slate-200">
+                                                                    {deliveryInfo.primary}
+                                                                </span>
+                                                                <span className="text-[9px] text-slate-400 font-medium tracking-tight">
+                                                                    {deliveryInfo.secondary}
+                                                                </span>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-slate-300 font-black">—</span>
+                                                        )}
+                                                    </td>
+                                                )}
+                                                {visibleColumns.includes("fulfillment") && (
+                                                    <td className={`px-6 ${py} text-center`}>
+                                                        {getFulfillmentBadge(order)}
+                                                    </td>
+                                                )}
+                                                {visibleColumns.includes("status") && (
+                                                    <td className={`px-6 ${py} whitespace-nowrap text-center`}>
+                                                        <StatusBadge status={order.status as DocStatus} />
+                                                    </td>
+                                                )}
+                                                <td className={`px-6 ${py} text-right`}>
+                                                    <div className="text-slate-300 group-hover:text-orange-400 transition-all">
+                                                        {isExpanded ? (
+                                                            <ChevronDown className="h-4 w-4" />
+                                                        ) : (
+                                                            <ChevronRight className="h-4 w-4" />
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {isExpanded && order.items && order.items.length > 0 && (
+                                                <tr className="bg-slate-50/50 dark:bg-slate-900/20">
+                                                    <td colSpan={visibleColumns.length + 1} className="px-6 py-4">
+                                                        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+                                                            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Procured Items Inventory</h4>
+                                                            <table className="w-full text-xs">
+                                                                <thead>
+                                                                    <tr className="border-b border-slate-100 dark:border-slate-800">
+                                                                        <th className="text-left py-2 px-3 font-bold text-slate-500 uppercase tracking-wider text-[9px]">Item Name</th>
+                                                                        <th className="text-left py-2 px-3 font-bold text-slate-500 uppercase tracking-wider text-[9px]">Vendor Description</th>
+                                                                        <th className="text-center py-2 px-3 font-bold text-slate-500 uppercase tracking-wider text-[9px]">Qty</th>
+                                                                        <th className="text-right py-2 px-3 font-bold text-slate-500 uppercase tracking-wider text-[9px]">Cost</th>
+                                                                        <th className="text-right py-2 px-3 font-bold text-slate-500 uppercase tracking-wider text-[9px]">Total Cost</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
+                                                                    {order.items.map((item: any, idx: number) => (
+                                                                        <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                                                            <td className="py-2 px-3 font-medium text-slate-700 dark:text-slate-300">
+                                                                                {item.itemName || item.itemId}
+                                                                            </td>
+                                                                            <td className="py-2 px-3 text-slate-500 dark:text-slate-400 italic">
+                                                                                {item.description || "-"}
+                                                                            </td>
+                                                                            <td className="py-2 px-3 text-center font-bold text-slate-600 dark:text-slate-400 tabular-nums">
+                                                                                {item.qty}
+                                                                            </td>
+                                                                            <td className="py-2 px-3 text-right font-medium text-slate-600 dark:text-slate-400 tabular-nums">
+                                                                                <MoneyText value={item.rate} />
+                                                                            </td>
+                                                                            <td className="py-2 px-3 text-right font-bold tabular-nums text-slate-900 dark:text-white">
+                                                                                <MoneyText value={item.qty * item.rate} />
+                                                                            </td>
+                                                                        </tr>
+                                                                    ))}
+                                                                </tbody>
+                                                            </table>
+
+                                                            {order.memo && (
+                                                                <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
+                                                                    <h5 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Procurement Notes</h5>
+                                                                    <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-medium bg-slate-50/50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700/50">
+                                                                        {order.memo}
+                                                                    </p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </React.Fragment>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : (
+                    <div className="flex flex-col items-center justify-center py-32 px-6 text-center space-y-4">
+                        <div className="h-24 w-24 rounded-full bg-slate-50 dark:bg-slate-900 flex items-center justify-center border-4 border-dotted border-slate-200 dark:border-slate-800">
+                            <PackageSearch className="h-10 w-10 text-slate-300" />
+                        </div>
+                        <div className="max-w-xs space-y-1">
+                            <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-widest text-sm text-orange-600">No Purchase Orders Found</h3>
+                            <p className="text-sm text-slate-500 font-medium leading-relaxed">Procurement registry is empty. Create a new purchase order to track vendor fulfillment.</p>
+                        </div>
+                        <Button
+                            onClick={() => setFilters({ q: "", status: "all", from: null, to: null })}
+                            className="bg-slate-900 dark:bg-slate-200 dark:text-slate-900 rounded-2xl h-11 px-8 font-black text-xs uppercase tracking-widest shadow-xl shadow-slate-500/20"
+                        >
+                            Reset Registry Filters
+                        </Button>
+                    </div>
+                )}
+            </div>
+
+            {data.length > 0 && (
+                <div className="border-t border-slate-100 dark:border-slate-800 p-4 bg-slate-50/50 dark:bg-slate-900/30 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">Rows:</span>
+                        <select
+                            value={pageSize}
+                            onChange={(e) => setPageSize(Number(e.target.value))}
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold px-2 py-1 outline-none"
+                        >
+                            <option value={10}>10</option>
+                            <option value={20}>20</option>
+                            <option value={50}>50</option>
+                            <option value={100}>100</option>
+                        </select>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                        <span className="text-[10px] uppercase font-bold tracking-widest text-slate-500">
+                            registry {page} / {totalPages}
+                        </span>
+                        <div className="flex gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                disabled={page === 1}
+                                className="h-8 w-8 p-0 rounded-lg"
+                            >
+                                <ChevronRight className="h-4 w-4 rotate-180" />
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                disabled={page === totalPages}
+                                className="h-8 w-8 p-0 rounded-lg"
+                            >
+                                <ChevronRight className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
+
+
+

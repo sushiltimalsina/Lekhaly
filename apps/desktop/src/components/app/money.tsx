@@ -1,4 +1,5 @@
-// apps/desktop/src/components/app/money.tsx
+﻿"use client";
+
 import * as React from "react";
 import { getCurrencySettings, subscribeUi } from "@/lib/store/ui";
 
@@ -52,8 +53,10 @@ export function MoneyText({
     });
   }, []);
 
-  // For React-desktop/SPA, hydration is less of an issue than Next.js SSR,
-  // but keeping the mounted bridge for architectural parity.
+  // On server/first-render, usage of getCurrencySettings() is unsafe because it might return
+  // client-specific values (from localStorage) on the first client pass, causing a mismatch
+  // with the server which always uses defaults.
+  // We explicitly hardcode the server defaults here to match `ui.ts`.
   const currentSettings = mounted ? settings : {
     currencyCode: "NPR",
     currencySymbol: "रु.",
@@ -114,3 +117,4 @@ export function MoneyInput({
     />
   );
 }
+

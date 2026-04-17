@@ -1,4 +1,5 @@
-// apps/desktop/src/components/app/offline-sync-banner.tsx
+﻿"use client";
+
 import * as React from "react";
 import { OFFLINE_SYNC_EVENT, getPendingOfflineRequestCount, syncPendingOfflineRequests } from "@/lib/api/client";
 
@@ -37,9 +38,9 @@ export default function OfflineSyncBanner() {
       void refreshPendingCount();
     };
 
-    setIsOnline(navigator.onLine);
+    setIsOnline(typeof navigator === "undefined" ? true : navigator.onLine);
     void refreshPendingCount();
-    if (navigator.onLine) {
+    if (typeof navigator !== "undefined" && navigator.onLine) {
       void handleOnline();
     }
 
@@ -57,7 +58,7 @@ export default function OfflineSyncBanner() {
 
   if (!isOnline) {
     return (
-      <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 animate-in fade-in slide-in-from-top-1">
+      <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
         Offline mode: voucher and invoice drafts are being saved to local storage. Go online to sync them with the server.
       </div>
     );
@@ -65,7 +66,7 @@ export default function OfflineSyncBanner() {
 
   if (pendingCount > 0) {
     return (
-      <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 animate-in fade-in slide-in-from-top-1">
+      <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
         {pendingCount} offline draft{pendingCount === 1 ? "" : "s"} waiting to sync with the server.
       </div>
     );
@@ -73,7 +74,7 @@ export default function OfflineSyncBanner() {
 
   if (syncMessage) {
     return (
-      <div className="border-b border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 animate-in fade-in slide-in-from-top-1">
+      <div className="border-b border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
         {syncMessage}
       </div>
     );
@@ -81,3 +82,4 @@ export default function OfflineSyncBanner() {
 
   return null;
 }
+

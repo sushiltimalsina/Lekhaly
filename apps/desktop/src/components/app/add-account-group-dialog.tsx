@@ -1,3 +1,5 @@
+﻿"use client";
+
 import * as React from "react";
 import { Input } from "@lekhaly/ui";
 import { apiRequest } from "@/lib/api/client";
@@ -206,3 +208,4 @@ export default function AddAccountGroupDialog({ open, onClose, onSuccess, parent
         document.body
     );
 }
+

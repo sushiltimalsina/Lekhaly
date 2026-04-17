@@ -1,45 +1,7 @@
-// apps/desktop/src/lib/api/purchase-orders.ts
+// apps/web/src/lib/api/purchase-orders.ts
 import { apiRequest } from "./client";
 
 export type PurchaseOrderStatus = "draft" | "open" | "fulfilled" | "cancelled";
-
-export type PurchaseOrderRecord = {
-    id: string;
-    orderNo?: string;
-    partyId: string;
-    partyName?: string;
-    orderDate?: string;
-    orderDateBs?: string;
-    expectedDelivery?: string;
-    expectedDeliveryBs?: string;
-    vendorRef?: string;
-    purchaseType?: string;
-    status: PurchaseOrderStatus;
-    memo?: string;
-    notes?: string;
-    terms?: string;
-    total: number;
-    fulfilledAmount?: number;
-    items: Array<{
-        id: string;
-        itemId: string;
-        itemName?: string;
-        qty: number;
-        rate: number;
-        amount: number;
-        description?: string;
-    }>;
-    sundries?: Array<{
-        id: string;
-        billSundryId?: string;
-        name: string;
-        type: "add" | "less";
-        rate?: number;
-        amount: number;
-    }>;
-    createdAt?: string;
-    updatedAt?: string;
-};
 
 export type PurchaseOrderItemInput = {
     itemId: string;
@@ -51,10 +13,10 @@ export type PurchaseOrderItemInput = {
 
 export type PurchaseOrderInput = {
     partyId: string;
-    orderDate?: string;
-    orderDateBs?: string;
-    expectedDelivery?: string;
-    expectedDeliveryBs?: string;
+    orderDate?: string; // ISO
+    orderDateBs?: string; // BS string
+    expectedDelivery?: string; // ISO
+    expectedDeliveryBs?: string; // BS string
     vendorRef?: string;
     purchaseType?: "vat_13" | "exempt" | "export";
     memo?: string;
@@ -70,8 +32,26 @@ export type PurchaseOrderInput = {
     }>;
 };
 
+export type PurchaseOrderRecord = {
+    id: string;
+    orderNo: string;
+    partyId: string;
+    partyName?: string;
+    orderDate: string;
+    orderDateBs: string;
+    expectedDelivery?: string;
+    expectedDeliveryBs?: string;
+    vendorRef?: string;
+    status: PurchaseOrderStatus;
+    total: number;
+    fulfilledAmount?: number;
+    memo?: string;
+    createdAt: string;
+    updatedAt: string;
+};
+
 export async function createPurchaseOrder(input: PurchaseOrderInput) {
-    return apiRequest<PurchaseOrderRecord>({
+    return apiRequest<any>({
         method: "POST",
         path: "/purchase-orders",
         body: input,
@@ -79,7 +59,7 @@ export async function createPurchaseOrder(input: PurchaseOrderInput) {
 }
 
 export async function updatePurchaseOrder(id: string, input: PurchaseOrderInput) {
-    return apiRequest<PurchaseOrderRecord>({
+    return apiRequest<any>({
         method: "PUT",
         path: `/purchase-orders/${id}`,
         body: input,
@@ -87,7 +67,7 @@ export async function updatePurchaseOrder(id: string, input: PurchaseOrderInput)
 }
 
 export async function getPurchaseOrder(id: string) {
-    return apiRequest<PurchaseOrderRecord>({
+    return apiRequest<any>({
         method: "GET",
         path: `/purchase-orders/${id}`,
     });
@@ -101,7 +81,7 @@ export async function listPurchaseOrders(params?: {
     skip?: number;
     take?: number;
 }) {
-    return apiRequest<PurchaseOrderRecord[] | { items?: PurchaseOrderRecord[]; data?: PurchaseOrderRecord[]; meta: any }>({
+    return apiRequest<any>({
         method: "GET",
         path: "/purchase-orders",
         query: params as any,

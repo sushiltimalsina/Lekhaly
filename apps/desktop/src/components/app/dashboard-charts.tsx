@@ -1,4 +1,5 @@
-// apps/desktop/src/components/app/dashboard-charts.tsx
+﻿"use client";
+
 import * as React from "react";
 import {
     BarChart,
@@ -52,26 +53,20 @@ export function RevenueChart() {
                             <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
                         </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border) / 0.1)" />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
                     <XAxis
                         dataKey="name"
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+                        tick={{ fontSize: 12, fill: "rgba(255,255,255,0.4)" }}
                     />
                     <YAxis
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+                        tick={{ fontSize: 12, fill: "rgba(255,255,255,0.4)" }}
                     />
                     <Tooltip
-                        contentStyle={{ 
-                          backgroundColor: "hsl(var(--card))", 
-                          borderColor: "hsl(var(--border))", 
-                          borderRadius: "12px", 
-                          border: "1px solid hsl(var(--border))", 
-                          backdropFilter: "blur(10px)" 
-                        }}
+                        contentStyle={{ backgroundColor: "rgba(10, 10, 10, 0.8)", borderColor: "rgba(255,255,255,0.1)", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.1)", backdropFilter: "blur(10px)" }}
                         itemStyle={{ fontSize: "12px" }}
                     />
                     <Area
@@ -122,3 +117,4 @@ export function ExpenseDistribution() {
         </div>
     );
 }
+

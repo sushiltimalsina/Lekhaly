@@ -1,8 +1,11 @@
-// apps/desktop/src/pages/vouchers/index.tsx
+"use client";
+
 import * as React from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Search,
+  Filter,
   Plus,
   ChevronRight,
   FileText,
@@ -79,15 +82,16 @@ export default function VouchersListPage() {
         take: pageSize,
         skip: (page - 1) * pageSize,
       });
-      
+      // Handle new API format { data, meta }
       if (res && res.data && res.meta) {
         setVouchers(res.data);
         setTotalRecords(res.meta.total);
         setTotalPages(res.meta.lastPage);
       } else {
+        // Fallback for old API format or direct array
         const list = Array.isArray(res) ? res : res?.items ?? res?.data ?? [];
         setVouchers(list);
-        setTotalRecords(list.length);
+        setTotalRecords(list.length); // Approximate if no meta
         setTotalPages(1);
       }
     } catch (e: any) {
@@ -98,6 +102,7 @@ export default function VouchersListPage() {
   }
 
   React.useEffect(() => {
+    // Reset to page 1 on filter change
     setPage(1);
   }, [filters, pageSize]);
 
@@ -106,8 +111,9 @@ export default function VouchersListPage() {
       load();
     }, 300);
     return () => clearTimeout(timer);
-  }, [filters, page, pageSize]);
+  }, [filters, page, pageSize]); // Add page to dependency
 
+  // ... (Keep existing filterOptions) ...
   const filterOptions = [
     {
       key: "type",
@@ -164,6 +170,7 @@ export default function VouchersListPage() {
         </div>
       </div>
 
+      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center justify-between">
           <div className="flex flex-col">
@@ -199,9 +206,11 @@ export default function VouchersListPage() {
         filterOptions={filterOptions}
       />
 
+      {/* Content */}
       <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl shadow-slate-200/40 dark:border-slate-800 dark:bg-slate-950 dark:shadow-none flex flex-col">
         {loading && vouchers.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 space-y-4">
+            {/* ... Spinner ... */}
             <div className="relative h-12 w-12">
               <div className="absolute inset-0 rounded-full border-4 border-indigo-100 dark:border-indigo-900/30"></div>
               <div className="absolute inset-0 rounded-full border-4 border-indigo-600 border-t-transparent animate-spin"></div>
@@ -211,6 +220,7 @@ export default function VouchersListPage() {
         ) : vouchers.length > 0 ? (
           <>
             <div className="overflow-x-auto min-h-[400px]">
+              {/* Adjusted padding based on compactMode */}
               <table className="w-full text-sm text-left">
                 <thead>
                   <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30">
@@ -237,7 +247,7 @@ export default function VouchersListPage() {
                     return (
                       <tr
                         key={v.id}
-                        onClick={() => navigate(`/vouchers/view?id=${v.id}`)}
+                        onClick={() => navigate(`/vouchers/${v.id}`)}
                         className="group cursor-pointer hover:bg-indigo-50/20 dark:hover:bg-indigo-900/10 transition-colors"
                       >
                         <td className={`px-6 ${py} whitespace-nowrap`}>
@@ -297,6 +307,7 @@ export default function VouchersListPage() {
               </table>
             </div>
 
+            {/* Pagination Footer */}
             <div className="border-t border-slate-100 dark:border-slate-800 p-4 bg-slate-50/50 dark:bg-slate-900/30 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">Rows per page:</span>
@@ -341,6 +352,7 @@ export default function VouchersListPage() {
           </>
         ) : (
           <div className="flex flex-col items-center justify-center py-24 px-6 text-center space-y-4">
+            {/* ... Empty State ... */}
             <div className="h-20 w-20 rounded-full bg-slate-50 dark:bg-slate-900 flex items-center justify-center border-2 border-dashed border-slate-200 dark:border-slate-800">
               <FileText className="h-8 w-8 text-slate-300" />
             </div>
@@ -361,3 +373,6 @@ export default function VouchersListPage() {
     </div>
   );
 }
+
+
+
