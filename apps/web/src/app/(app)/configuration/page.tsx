@@ -712,14 +712,22 @@ export default function ConfigurationPage() {
         {/* Voucher Numbering Section */}
         <Card className="glass-card overflow-hidden lg:col-span-2">
           <CardHeader onClick={() => setExpandedSection(expandedSection === "numbering" ? null : "numbering")} className="cursor-pointer hover:bg-accent/10 transition-colors select-none">
-            <CardTitle className="text-lg flex items-center gap-2">
+            <div className="flex items-center gap-2">
               <Hash className="h-5 w-5 text-indigo-500" />
-              Voucher Numbering
-            </CardTitle>
-            <CardDescription>Setup prefixes and sequences for all document series</CardDescription>
+              <div>
+                <CardTitle className="text-lg">Voucher Numbering</CardTitle>
+                <CardDescription>Setup prefixes and sequences for all document series</CardDescription>
+              </div>
+            </div>
           </CardHeader>
           {expandedSection === "numbering" && (
             <CardContent className="space-y-6 animate-in fade-in slide-in-from-top-1 pt-2">
+              <div className="rounded-2xl border border-indigo-200 bg-indigo-50/50 p-4 text-xs text-indigo-800 dark:border-indigo-900/50 dark:bg-indigo-950/20 flex items-start gap-3">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                <p className="leading-relaxed">
+                  <strong>Important:</strong> Numbering settings should be finalized before issuing the first voucher. You can change the prefix and suffix freely until the first invoice or voucher is issued in each series.
+                </p>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
                 {/* Sales Invoice */}
                 <NumberingRow 

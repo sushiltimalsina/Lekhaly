@@ -970,4 +970,23 @@ export default function ConfigurationPage() {
 
       <ConfirmDialog
         open={confirmState.open}
-        title={`Delete ${confirmState.type.charAt(0).toU
+        title={`Delete ${confirmState.type.charAt(0).toUpperCase() + confirmState.type.slice(1)}`}
+        description={`Are you sure you want to delete '${confirmState.name}'? This action cannot be undone.`}
+        variant="danger"
+        confirmText="Delete"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setConfirmState(prev => ({ ...prev, open: false }))}
+        loading={busy}
+      />
+
+      <ConfirmDialog
+        open={alertState.open}
+        title={alertState.title}
+        description={alertState.message}
+        variant="danger"
+        confirmText="OK"
+        onConfirm={() => setAlertState(prev => ({ ...prev, open: false }))}
+      />
+    </div>
+  );
+}
