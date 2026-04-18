@@ -703,6 +703,22 @@ export default function ConfigurationPage() {
                   </div>
                 </div>
               </div>
+
+              <div className="mt-8 pt-8 border-t border-border/10">
+                <div className="flex items-center justify-between p-4 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40">
+                  <div className="flex items-center gap-3">
+                    <Monitor className="h-5 w-5 text-indigo-500" />
+                    <div className="text-sm font-bold text-foreground">Print Logo on Documents</div>
+                  </div>
+                  <Switch 
+                    checked={companyForm.printLogo ?? true} 
+                    onCheckedChange={(v) => {
+                      setCompanyForm({...companyForm, printLogo: v});
+                      saveCompanySettings({ printLogo: v });
+                    }}
+                  />
+                </div>
+              </div>
             </CardContent>
           )}
         </Card>
@@ -943,16 +959,6 @@ export default function ConfigurationPage() {
                     <p className="text-[10px] text-muted-foreground">This is the default limit for new customers unless overridden individually.</p>
                   </div>
 
-                  <div className="flex items-center justify-between p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40">
-                    <div className="text-xs font-medium text-emerald-800 dark:text-emerald-300">Print Logo on Documents</div>
-                    <Switch 
-                      checked={companyForm.printLogo ?? true} 
-                      onCheckedChange={(v) => {
-                        setCompanyForm({...companyForm, printLogo: v});
-                        saveCompanySettings({ printLogo: v });
-                      }}
-                    />
-                  </div>
                 </div>
               </CardContent>
             )}
