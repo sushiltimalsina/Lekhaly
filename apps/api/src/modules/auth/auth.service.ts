@@ -268,7 +268,26 @@ export class AuthService {
             baseCurrency: "NPR",
             timezone: "Asia/Kathmandu",
             fiscalYearStartMonth: 4,
-            invoicePrefix: "INV",
+            invoicePrefix: "SI",
+            purchasePrefix: "PURI",
+            salesReturnPrefix: "SR",
+            purchaseReturnPrefix: "PR",
+            orderPrefix: "SO",
+            quotationPrefix: "QT",
+            purchaseOrderPrefix: "PO",
+            receiptPrefix: "RV",
+            paymentPrefix: "PV",
+            journalPrefix: "JV",
+            invoiceSuffix: "80/81",
+            purchaseSuffix: "80/81",
+            salesReturnSuffix: "80/81",
+            purchaseReturnSuffix: "80/81",
+            orderSuffix: "80/81",
+            quotationSuffix: "80/81",
+            purchaseOrderSuffix: "80/81",
+            receiptSuffix: "80/81",
+            paymentSuffix: "80/81",
+            journalSuffix: "80/81",
             nextInvoiceNumber: 1
           }
         });
@@ -372,6 +391,16 @@ export class AuthService {
         receiptPrefix: true,
         paymentPrefix: true,
         journalPrefix: true,
+        invoiceSuffix: true,
+        purchaseSuffix: true,
+        salesReturnSuffix: true,
+        purchaseReturnSuffix: true,
+        orderSuffix: true,
+        quotationSuffix: true,
+        purchaseOrderSuffix: true,
+        receiptSuffix: true,
+        paymentSuffix: true,
+        journalSuffix: true,
         nextInvoiceNumber: true,
         nextPurchaseNumber: true,
         nextSalesReturnNumber: true,
@@ -400,16 +429,43 @@ export class AuthService {
     timezone?: string;
     fiscalYearStartMonth?: number;
     invoicePrefix?: string;
+    purchasePrefix?: string;
+    salesReturnPrefix?: string;
+    purchaseReturnPrefix?: string;
     orderPrefix?: string;
     quotationPrefix?: string;
     purchaseOrderPrefix?: string;
+    receiptPrefix?: string;
+    paymentPrefix?: string;
+    journalPrefix?: string;
+    invoiceSuffix?: string;
+    purchaseSuffix?: string;
+    salesReturnSuffix?: string;
+    purchaseReturnSuffix?: string;
+    orderSuffix?: string;
+    quotationSuffix?: string;
+    purchaseOrderSuffix?: string;
+    receiptSuffix?: string;
+    paymentSuffix?: string;
+    journalSuffix?: string;
     nextInvoiceNumber?: number;
+    nextPurchaseNumber?: number;
+    nextSalesReturnNumber?: number;
+    nextPurchaseReturnNumber?: number;
     nextOrderNumber?: number;
     nextQuotationNumber?: number;
     nextPurchaseOrderNumber?: number;
+    nextReceiptNumber?: number;
+    nextPaymentNumber?: number;
+    nextJournalNumber?: number;
     lockDate?: string | null;
     creditLimitAmount?: number;
     printLogo?: boolean;
+    address?: string;
+    phone?: string;
+    email?: string;
+    panNumber?: string;
+    vatNumber?: string;
   }) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -434,6 +490,16 @@ export class AuthService {
         receiptPrefix: dto.receiptPrefix ?? undefined,
         paymentPrefix: dto.paymentPrefix ?? undefined,
         journalPrefix: dto.journalPrefix ?? undefined,
+        invoiceSuffix: dto.invoiceSuffix ?? undefined,
+        purchaseSuffix: dto.purchaseSuffix ?? undefined,
+        salesReturnSuffix: dto.salesReturnSuffix ?? undefined,
+        purchaseReturnSuffix: dto.purchaseReturnSuffix ?? undefined,
+        orderSuffix: dto.orderSuffix ?? undefined,
+        quotationSuffix: dto.quotationSuffix ?? undefined,
+        purchaseOrderSuffix: dto.purchaseOrderSuffix ?? undefined,
+        receiptSuffix: dto.receiptSuffix ?? undefined,
+        paymentSuffix: dto.paymentSuffix ?? undefined,
+        journalSuffix: dto.journalSuffix ?? undefined,
         nextInvoiceNumber: dto.nextInvoiceNumber ?? undefined,
         nextPurchaseNumber: dto.nextPurchaseNumber ?? undefined,
         nextSalesReturnNumber: dto.nextSalesReturnNumber ?? undefined,
@@ -460,13 +526,35 @@ export class AuthService {
         timezone: true,
         fiscalYearStartMonth: true,
         invoicePrefix: true,
+        purchasePrefix: true,
+        salesReturnPrefix: true,
+        purchaseReturnPrefix: true,
         orderPrefix: true,
         quotationPrefix: true,
         purchaseOrderPrefix: true,
+        receiptPrefix: true,
+        paymentPrefix: true,
+        journalPrefix: true,
+        invoiceSuffix: true,
+        purchaseSuffix: true,
+        salesReturnSuffix: true,
+        purchaseReturnSuffix: true,
+        orderSuffix: true,
+        quotationSuffix: true,
+        purchaseOrderSuffix: true,
+        receiptSuffix: true,
+        paymentSuffix: true,
+        journalSuffix: true,
         nextInvoiceNumber: true,
+        nextPurchaseNumber: true,
+        nextSalesReturnNumber: true,
+        nextPurchaseReturnNumber: true,
         nextOrderNumber: true,
         nextQuotationNumber: true,
         nextPurchaseOrderNumber: true,
+        nextReceiptNumber: true,
+        nextPaymentNumber: true,
+        nextJournalNumber: true,
         lockDate: true,
         creditLimitAmount: true,
         printLogo: true,

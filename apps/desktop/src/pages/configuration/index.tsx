@@ -36,7 +36,12 @@ function NumberingRow({
   onSuffixChange: (v: string) => void;
   onSave: () => void; 
 }) {
-  const preview = `${prefix || ""}${String(seq || 1).padStart(5, '0')}${suffix || ""}`;
+  const p = prefix || "";
+  const s = suffix || "";
+  const formattedPrefix = p ? (p.endsWith("-") ? p : `${p}-`) : "";
+  const formattedSuffix = s ? (s.startsWith("-") ? s : `-${s}`) : "";
+  const preview = `${formattedPrefix}${seq || 1}${formattedSuffix}`;
+
   
   return (
     <div className="space-y-2">
@@ -103,7 +108,7 @@ export default function ConfigurationPage() {
   const [editSundry, setEditSundry] = React.useState<BillSundryRecord | undefined>();
 
   // Visibility state
-  const [expandedSection, setExpandedSection] = React.useState<string | null>("numbering");
+  const [expandedSection, setExpandedSection] = React.useState<string | null>(null);
 
   // Search state
   const [qUnits, setQUnits] = React.useState("");
@@ -703,14 +708,22 @@ export default function ConfigurationPage() {
         {/* Voucher Numbering Section */}
         <Card className="glass-card overflow-hidden lg:col-span-2">
           <CardHeader onClick={() => setExpandedSection(expandedSection === "numbering" ? null : "numbering")} className="cursor-pointer hover:bg-accent/10 transition-colors select-none border-b border-border/10">
-            <CardTitle className="text-lg flex items-center gap-2">
+            <div className="flex items-center gap-2">
               <Hash className="h-5 w-5 text-indigo-500" />
-              Voucher Numbering
-            </CardTitle>
-            <CardDescription>Setup prefixes and sequences for all document series</CardDescription>
+              <div>
+                <CardTitle className="text-lg">Voucher Numbering</CardTitle>
+                <CardDescription>Setup prefixes and sequences for all document series</CardDescription>
+              </div>
+            </div>
           </CardHeader>
           {expandedSection === "numbering" && (
             <CardContent className="space-y-6 animate-in fade-in slide-in-from-top-1 pt-6">
+              <div className="rounded-2xl border border-indigo-200 bg-indigo-50/50 p-4 text-xs text-indigo-800 dark:border-indigo-900/50 dark:bg-indigo-950/20 flex items-start gap-3">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                <p className="leading-relaxed">
+                  <strong>Important:</strong> Numbering settings should be finalized before issuing the first voucher. You can change the prefix and suffix freely until the first invoice or voucher is issued in each series.
+                </p>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-8">
                 {/* Sales Invoice */}
                 <NumberingRow 
@@ -957,23 +970,4 @@ export default function ConfigurationPage() {
 
       <ConfirmDialog
         open={confirmState.open}
-        title={`Delete ${confirmState.type.charAt(0).toUpperCase() + confirmState.type.slice(1)}`}
-        description={`Are you sure you want to delete '${confirmState.name}'? This action cannot be undone.`}
-        variant="danger"
-        confirmText="Delete"
-        onConfirm={handleConfirmDelete}
-        onCancel={() => setConfirmState(prev => ({ ...prev, open: false }))}
-        loading={busy}
-      />
-
-      <ConfirmDialog
-        open={alertState.open}
-        title={alertState.title}
-        description={alertState.message}
-        variant="danger"
-        confirmText="OK"
-        onConfirm={() => setAlertState(prev => ({ ...prev, open: false }))}
-      />
-    </div>
-  );
-}
+        title={`Delete ${confirmState.type.charAt(0).toU

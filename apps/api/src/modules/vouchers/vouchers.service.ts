@@ -560,7 +560,12 @@ export class VouchersService {
           break;
       }
 
-      const voucherNumber = `${prefix}-${sequence}${suffix}`;
+      const p = prefix || "";
+      const s = suffix || "";
+      const formattedPrefix = p ? (p.endsWith("-") ? p : `${p}-`) : "";
+      const formattedSuffix = s ? (s.startsWith("-") ? s : `-${s}`) : "";
+      const voucherNumber = `${formattedPrefix}${sequence}${formattedSuffix}`;
+
 
       const posted = await tx.voucher.update({
         where: { id: voucher.id },

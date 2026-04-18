@@ -38,7 +38,12 @@ function NumberingRow({
   onSuffixChange: (v: string) => void;
   onSave: () => void; 
 }) {
-  const preview = `${prefix || ""}${String(seq || 1).padStart(5, '0')}${suffix || ""}`;
+  const p = prefix || "";
+  const s = suffix || "";
+  const formattedPrefix = p ? (p.endsWith("-") ? p : `${p}-`) : "";
+  const formattedSuffix = s ? (s.startsWith("-") ? s : `-${s}`) : "";
+  const preview = `${formattedPrefix}${seq || 1}${formattedSuffix}`;
+
 
   return (
     <div className="space-y-2">
@@ -105,7 +110,7 @@ export default function ConfigurationPage() {
   const [editSundry, setEditSundry] = React.useState<BillSundryRecord | undefined>();
 
   // Visibility state
-  const [expandedSection, setExpandedSection] = React.useState<string | null>("numbering");
+  const [expandedSection, setExpandedSection] = React.useState<string | null>(null);
 
   // Search state
   const [qUnits, setQUnits] = React.useState("");
