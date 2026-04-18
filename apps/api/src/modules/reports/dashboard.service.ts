@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { Prisma, VoucherType } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
-import { bsFiscalYearRange, getCurrentBsDate } from "../../common/date/nepali-date";
+import { bsFiscalYearRange, getCurrentBsDate, adToBsDate, bsToAdDate, parseBsDate } from "../../common/date/nepali-date";
 
 @Injectable()
 export class DashboardService {
@@ -109,7 +109,7 @@ export class DashboardService {
       payablesTrend: calcTrend(snapshot.payables, prevData.payables),
       
       cashAtHand: snapshot.cashAtHand.toNumber(),
-      cashTrend: calcTrend(snapshot.cashAtHand, prevData.cashAtHand),
+      cashTrend: calcTrend(snapshot.cashAtHand, prevData.cash),
 
       quickRatio: Number(quickRatio.toFixed(1)),
       burnRate: burnRate.toNumber(),

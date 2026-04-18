@@ -31,6 +31,7 @@ import { SalesOrdersModule } from "./modules/sales-orders/sales-orders.module";
 import { QuotationsModule } from "./modules/quotations/quotations.module";
 import { PurchaseOrdersModule } from "./modules/purchase-orders/purchase-orders.module";
 import { ProformaModule } from "./modules/proforma/proforma.module";
+import { FiscalSessionsModule } from "./modules/fiscal-sessions/fiscal-sessions.module";
 
 @Module({
   imports: [
@@ -66,6 +67,7 @@ import { ProformaModule } from "./modules/proforma/proforma.module";
     AccountsModule,
     BillSundriesModule,
     ProformaModule,
+    FiscalSessionsModule,
   ],
   controllers: [AppController],
   providers: [

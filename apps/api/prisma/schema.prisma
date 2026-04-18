@@ -130,6 +130,9 @@ model Company {
   creditLimitAmount   Decimal   @default(0) @db.Decimal(14, 2)
   printLogo           Boolean   @default(true)
 
+  activeFiscalSessionId String?
+  fiscalSessions        FiscalSession[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -590,6 +593,9 @@ model Voucher {
   expenses Expense[]
   vatRegisterLines VatRegisterLine[]
   proformas ProformaInvoice[]
+
+  fiscalSessionId String?
+  fiscalSession   FiscalSession? @relation(fields: [fiscalSessionId], references: [id])
 
   @@unique([companyId, voucherNumber])
   @@index([companyId, status, voucherDate])
@@ -1267,4 +1273,56 @@ model PurchaseOrderSundry {
   account     ChartOfAccount? @relation(fields: [accountId], references: [id])
 
   createdAt   DateTime      @default(now())
+}
+model FiscalSession {
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  name      String   // e.g. "Year 2080/81"
+  startDate DateTime
+  endDate   DateTime
+  isLocked  Boolean  @default(false)
+
+  // Session-specific numbering + lock settings
+  invoicePrefix       String    @default("SI")
+  purchasePrefix      String    @default("PURI")
+  salesReturnPrefix   String    @default("SR")
+  purchaseReturnPrefix String   @default("PR")
+  orderPrefix         String    @default("SO")
+  quotationPrefix     String    @default("QT")
+  purchaseOrderPrefix String    @default("PO")
+  receiptPrefix       String    @default("RV")
+  paymentPrefix       String    @default("PV")
+  journalPrefix       String    @default("JV")
+
+  invoiceSuffix       String    @default("80/81")
+  purchaseSuffix      String    @default("80/81")
+  salesReturnSuffix   String    @default("80/81")
+  purchaseReturnSuffix String   @default("80/81")
+  orderSuffix         String    @default("80/81")
+  quotationSuffix     String    @default("80/81")
+  purchaseOrderSuffix String    @default("80/81")
+  receiptSuffix       String    @default("80/81")
+  paymentSuffix       String    @default("80/81")
+  journalSuffix       String    @default("80/81")
+
+  nextInvoiceNumber   Int       @default(1)
+  nextPurchaseNumber  Int       @default(1)
+  nextSalesReturnNumber Int     @default(1)
+  nextPurchaseReturnNumber Int   @default(1)
+  nextOrderNumber     Int       @default(1)
+  nextQuotationNumber Int       @default(1)
+  nextPurchaseOrderNumber Int @default(1)
+  nextReceiptNumber   Int       @default(1)
+  nextPaymentNumber   Int       @default(1)
+  nextJournalNumber   Int       @default(1)
+
+  vouchers Voucher[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([companyId, name])
+  @@index([companyId, isLocked])
 }

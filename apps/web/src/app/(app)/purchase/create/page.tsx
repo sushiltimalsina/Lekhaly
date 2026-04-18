@@ -684,9 +684,6 @@ export default function PurchaseCreatePage() {
             if (!r.sundryId) {
                 throw new Error(`Bill Sundry '${r.name || "Unknown"}' is not linked to a generic ledger account. Please select a valid sundry from the dropdown.`);
             }
-            // Wait, if validation is mandatory "if column is added", we should throw error even if amount is 0?
-            // User requirement: "make ... sundry name mandatory if column is added"
-            // So if checking sundryId above handles it.
 
             // Re-check amount for posting
             if (Math.abs(r.amount) < 0.01) return;
@@ -710,6 +707,7 @@ export default function PurchaseCreatePage() {
         // Add Credit line for Payable
         payloadLines.push({
             accountId: form.payableAccountId,
+            partyId: form.partyId,
             credit: total,
             debit: 0,
             description: form.memo || "Purchase from vendor",

@@ -85,14 +85,22 @@ export class PurchaseOrdersService {
             return { ...s, amount: amt };
         });
 
-        const company = await this.prisma.company.findUnique({ where: { id: user.companyId } });
+        const company = await this.prisma.company.findUnique({ 
+            where: { id: user.companyId },
+            include: { fiscalSessions: { where: { id: (await this.prisma.company.findFirst({ where: { id: user.companyId } }))?.activeFiscalSessionId || undefined } } }
+        });
         if (!company) throw new BadRequestException("Company not found");
-        const sequence = company.nextPurchaseOrderNumber;
-        const orderNo = `${company.purchaseOrderPrefix || "PO"}-${sequence}`;
+        
+        const activeSession = company.fiscalSessions[0];
+        if (!activeSession) throw new BadRequestException("No active fiscal session found");
+
+        const sequence = activeSession.nextPurchaseOrderNumber;
+        const p = activeSession.purchaseOrderPrefix || "PO";
+        const orderNo = `${p}-${sequence}`;
 
         return await this.prisma.$transaction(async (tx) => {
-            await tx.company.update({
-                where: { id: company.id },
+            await tx.fiscalSession.update({
+                where: { id: activeSession.id },
                 data: { nextPurchaseOrderNumber: sequence + 1 }
             });
 

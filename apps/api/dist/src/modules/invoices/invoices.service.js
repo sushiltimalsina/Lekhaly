@@ -305,6 +305,7 @@ let InvoicesService = class InvoicesService {
         if (input.type === "sales") {
             voucherLines.push({
                 accountId: receivable.id,
+                partyId: input.partyId,
                 debit: totals.total,
                 credit: new client_1.Prisma.Decimal(0),
                 description: "Accounts Receivable"
@@ -313,6 +314,7 @@ let InvoicesService = class InvoicesService {
         else {
             voucherLines.push({
                 accountId: receivable.id,
+                partyId: input.partyId,
                 debit: new client_1.Prisma.Decimal(0),
                 credit: totals.total,
                 description: "Accounts Receivable"
@@ -457,6 +459,7 @@ let InvoicesService = class InvoicesService {
                             companyId: user.companyId,
                             lineNo: idx + 1,
                             accountId: l.accountId,
+                            partyId: l.partyId,
                             description: l.description,
                             debit: l.debit,
                             credit: l.credit,

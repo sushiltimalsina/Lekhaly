@@ -216,6 +216,7 @@ export class InvoicesService {
 
     const voucherLines: Array<{
       accountId: string;
+      partyId?: string;
       debit: Prisma.Decimal;
       credit: Prisma.Decimal;
       description?: string;
@@ -350,6 +351,7 @@ export class InvoicesService {
     if (input.type === "sales") {
       voucherLines.push({
         accountId: receivable.id,
+        partyId: input.partyId,
         debit: totals.total,
         credit: new Prisma.Decimal(0),
         description: "Accounts Receivable"
@@ -357,6 +359,7 @@ export class InvoicesService {
     } else {
       voucherLines.push({
         accountId: receivable.id,
+        partyId: input.partyId,
         debit: new Prisma.Decimal(0),
         credit: totals.total,
         description: "Accounts Receivable"
@@ -523,6 +526,7 @@ export class InvoicesService {
               companyId: user.companyId,
               lineNo: idx + 1,
               accountId: l.accountId,
+              partyId: l.partyId,
               description: l.description,
               debit: l.debit,
               credit: l.credit,

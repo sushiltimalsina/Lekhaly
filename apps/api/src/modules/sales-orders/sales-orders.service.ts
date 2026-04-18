@@ -84,14 +84,22 @@ export class SalesOrdersService {
             return { ...s, amount: amt };
         });
 
-        const company = await this.prisma.company.findUnique({ where: { id: user.companyId } });
+        const company = await this.prisma.company.findUnique({ 
+            where: { id: user.companyId },
+            include: { fiscalSessions: { where: { id: (await this.prisma.company.findFirst({ where: { id: user.companyId } }))?.activeFiscalSessionId || undefined } } }
+        });
         if (!company) throw new BadRequestException("Company not found");
-        const sequence = company.nextOrderNumber;
-        const orderNo = `${company.orderPrefix || "SO"}-${sequence}`;
+        
+        const activeSession = company.fiscalSessions[0];
+        if (!activeSession) throw new BadRequestException("No active fiscal session found");
+
+        const sequence = activeSession.nextOrderNumber;
+        const p = activeSession.orderPrefix || "SO";
+        const orderNo = `${p}-${sequence}`;
 
         return await this.prisma.$transaction(async (tx) => {
-            await tx.company.update({
-                where: { id: company.id },
+            await tx.fiscalSession.update({
+                where: { id: activeSession.id },
                 data: { nextOrderNumber: sequence + 1 }
             });
 

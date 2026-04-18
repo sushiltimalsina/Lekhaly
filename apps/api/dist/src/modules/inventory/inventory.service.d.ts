@@ -14,14 +14,14 @@ export declare class InventoryService {
             id: string;
             companyId: string;
             createdAt: Date;
-            itemId: string;
             voucherId: string | null;
-            rate: Prisma.Decimal;
             date: Date;
             dateBs: string | null;
+            itemId: string;
+            amount: Prisma.Decimal;
+            rate: Prisma.Decimal;
             qtyIn: Prisma.Decimal;
             qtyOut: Prisma.Decimal;
-            amount: Prisma.Decimal;
         }[];
     }>;
     adjustStock(user: AuthUser, input: {

@@ -78,14 +78,22 @@ export class QuotationsService {
             return { ...s, amount: amt };
         });
 
-        const company = await this.prisma.company.findUnique({ where: { id: user.companyId } });
+        const company = await this.prisma.company.findUnique({ 
+            where: { id: user.companyId },
+            include: { fiscalSessions: { where: { id: (await this.prisma.company.findFirst({ where: { id: user.companyId } }))?.activeFiscalSessionId || undefined } } }
+        });
         if (!company) throw new BadRequestException("Company not found");
-        const sequence = company.nextQuotationNumber;
-        const quotationNo = `${company.quotationPrefix || "QT"}-${sequence}`;
+        
+        const activeSession = company.fiscalSessions[0];
+        if (!activeSession) throw new BadRequestException("No active fiscal session found");
+
+        const sequence = activeSession.nextQuotationNumber;
+        const p = activeSession.quotationPrefix || "QT";
+        const quotationNo = `${p}-${sequence}`;
 
         return await this.prisma.$transaction(async (tx) => {
-            await tx.company.update({
-                where: { id: company.id },
+            await tx.fiscalSession.update({
+                where: { id: activeSession.id },
                 data: { nextQuotationNumber: sequence + 1 }
             });
 

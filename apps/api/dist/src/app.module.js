@@ -40,6 +40,7 @@ const sales_orders_module_1 = require("./modules/sales-orders/sales-orders.modul
 const quotations_module_1 = require("./modules/quotations/quotations.module");
 const purchase_orders_module_1 = require("./modules/purchase-orders/purchase-orders.module");
 const proforma_module_1 = require("./modules/proforma/proforma.module");
+const fiscal_sessions_module_1 = require("./modules/fiscal-sessions/fiscal-sessions.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -77,6 +78,7 @@ exports.AppModule = AppModule = __decorate([
             accounts_module_1.AccountsModule,
             bill_sundries_module_1.BillSundriesModule,
             proforma_module_1.ProformaModule,
+            fiscal_sessions_module_1.FiscalSessionsModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [

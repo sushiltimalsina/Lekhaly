@@ -426,9 +426,22 @@ let VouchersService = class VouchersService {
             const totals = this.computeTotals([...normalized, ...taxLines].map((l) => ({ debit: l.debit, credit: l.credit })));
             if (!totals.debit.equals(totals.credit))
                 throw new common_1.BadRequestException("Voucher not balanced");
-            const company = await tx.company.findUnique({ where: { id: user.companyId } });
+            const company = await tx.company.findUnique({
+                where: { id: user.companyId },
+                include: { fiscalSessions: { where: { id: (await tx.company.findFirst({ where: { id: user.companyId } }))?.activeFiscalSessionId || undefined } } }
+            });
             if (!company)
                 throw new common_1.BadRequestException("Company not found");
+            const activeSession = company.fiscalSessions[0];
+            if (!activeSession) {
+                throw new common_1.BadRequestException("No active fiscal session found. Please create and activate a fiscal session first.");
+            }
+            if (activeSession.isLocked) {
+                throw new common_1.BadRequestException("The active fiscal session is locked.");
+            }
+            if (voucher.voucherDate < activeSession.startDate || voucher.voucherDate > activeSession.endDate) {
+                throw new common_1.BadRequestException(`Voucher date (${voucher.voucherDate.toISOString().split("T")[0]}) is outside the active fiscal session range (${activeSession.startDate.toISOString().split("T")[0]} to ${activeSession.endDate.toISOString().split("T")[0]}).`);
+            }
             this.ensureVoucherDate(company, voucher.voucherDate);
             await this.validateReferences(user.companyId, {
                 partyId: voucher.partyId || undefined,
@@ -445,48 +458,48 @@ let VouchersService = class VouchersService {
             const seqUpdate = {};
             switch (voucher.voucherType) {
                 case client_1.VoucherType.sales_invoice:
-                    sequence = company.nextInvoiceNumber;
-                    prefix = company.invoicePrefix;
-                    suffix = company.invoiceSuffix || "";
+                    sequence = activeSession.nextInvoiceNumber;
+                    prefix = activeSession.invoicePrefix;
+                    suffix = activeSession.invoiceSuffix || "";
                     seqUpdate.nextInvoiceNumber = sequence + 1;
                     break;
                 case client_1.VoucherType.purchase:
-                    sequence = company.nextPurchaseNumber;
-                    prefix = company.purchasePrefix;
-                    suffix = company.purchaseSuffix || "";
+                    sequence = activeSession.nextPurchaseNumber;
+                    prefix = activeSession.purchasePrefix;
+                    suffix = activeSession.purchaseSuffix || "";
                     seqUpdate.nextPurchaseNumber = sequence + 1;
                     break;
                 case client_1.VoucherType.sales_return:
-                    sequence = company.nextSalesReturnNumber;
-                    prefix = company.salesReturnPrefix;
-                    suffix = company.salesReturnSuffix || "";
+                    sequence = activeSession.nextSalesReturnNumber;
+                    prefix = activeSession.salesReturnPrefix;
+                    suffix = activeSession.salesReturnSuffix || "";
                     seqUpdate.nextSalesReturnNumber = sequence + 1;
                     break;
                 case client_1.VoucherType.purchase_return:
-                    sequence = company.nextPurchaseReturnNumber;
-                    prefix = company.purchaseReturnPrefix;
-                    suffix = company.purchaseReturnSuffix || "";
+                    sequence = activeSession.nextPurchaseReturnNumber;
+                    prefix = activeSession.purchaseReturnPrefix;
+                    suffix = activeSession.purchaseReturnSuffix || "";
                     seqUpdate.nextPurchaseReturnNumber = sequence + 1;
                     break;
                 case client_1.VoucherType.receipt:
-                    sequence = company.nextReceiptNumber;
-                    prefix = company.receiptPrefix;
-                    suffix = company.receiptSuffix || "";
+                    sequence = activeSession.nextReceiptNumber;
+                    prefix = activeSession.receiptPrefix;
+                    suffix = activeSession.receiptSuffix || "";
                     seqUpdate.nextReceiptNumber = sequence + 1;
                     break;
                 case client_1.VoucherType.payment:
-                    sequence = company.nextPaymentNumber;
-                    prefix = company.paymentPrefix;
-                    suffix = company.paymentSuffix || "";
+                    sequence = activeSession.nextPaymentNumber;
+                    prefix = activeSession.paymentPrefix;
+                    suffix = activeSession.paymentSuffix || "";
                     seqUpdate.nextPaymentNumber = sequence + 1;
                     break;
                 case client_1.VoucherType.journal:
                 case client_1.VoucherType.opening:
                 case client_1.VoucherType.reversal:
                 default:
-                    sequence = company.nextJournalNumber;
-                    prefix = company.journalPrefix;
-                    suffix = company.journalSuffix || "";
+                    sequence = activeSession.nextJournalNumber;
+                    prefix = activeSession.journalPrefix;
+                    suffix = activeSession.journalSuffix || "";
                     seqUpdate.nextJournalNumber = sequence + 1;
                     break;
             }
@@ -501,11 +514,12 @@ let VouchersService = class VouchersService {
                     status: client_1.VoucherStatus.posted,
                     postedAt: new Date(),
                     postedByUserId: user.sub,
-                    voucherNumber
+                    voucherNumber,
+                    fiscalSessionId: activeSession.id
                 }
             });
-            await tx.company.update({
-                where: { id: company.id },
+            await tx.fiscalSession.update({
+                where: { id: activeSession.id },
                 data: seqUpdate
             });
             if (taxLines.length) {

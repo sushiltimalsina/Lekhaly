@@ -48,19 +48,6 @@ export declare class BankingService {
         closingBalance: Prisma.Decimal;
     })[]>;
     getStatement(user: AuthUser, statementId: string): Promise<{
-        lines: {
-            id: string;
-            companyId: string;
-            createdAt: Date;
-            description: string | null;
-            date: Date;
-            dateBs: string | null;
-            amount: Prisma.Decimal;
-            statementId: string;
-            debitCredit: string;
-            matchedVoucherId: string | null;
-            matchedLineId: string | null;
-        }[];
         bankAccount: {
             id: string;
             companyId: string;
@@ -70,6 +57,19 @@ export declare class BankingService {
             bankName: string | null;
             accountNumber: string | null;
         };
+        lines: {
+            id: string;
+            companyId: string;
+            createdAt: Date;
+            date: Date;
+            dateBs: string | null;
+            description: string | null;
+            amount: Prisma.Decimal;
+            statementId: string;
+            debitCredit: string;
+            matchedVoucherId: string | null;
+            matchedLineId: string | null;
+        }[];
     } & {
         id: string;
         companyId: string;
@@ -114,9 +114,9 @@ export declare class BankingService {
         id: string;
         companyId: string;
         createdAt: Date;
-        description: string | null;
         date: Date;
         dateBs: string | null;
+        description: string | null;
         amount: Prisma.Decimal;
         statementId: string;
         debitCredit: string;
@@ -131,9 +131,9 @@ export declare class BankingService {
         id: string;
         companyId: string;
         createdAt: Date;
-        description: string | null;
         date: Date;
         dateBs: string | null;
+        description: string | null;
         amount: Prisma.Decimal;
         statementId: string;
         debitCredit: string;
@@ -144,9 +144,9 @@ export declare class BankingService {
         id: string;
         companyId: string;
         createdAt: Date;
-        description: string | null;
         date: Date;
         dateBs: string | null;
+        description: string | null;
         amount: Prisma.Decimal;
         statementId: string;
         debitCredit: string;

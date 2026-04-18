@@ -5,17 +5,17 @@ export declare class ExpensesController {
     constructor(expenses: ExpensesService);
     createDraft(user: AuthUser, body: any): Promise<{
         id: string;
-        date: Date;
-        dateBs: string | null;
-        amount: import("@prisma/client/runtime/client").Decimal;
-        description: string | null;
+        companyId: string;
         status: string;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
         voucherId: string | null;
-        vendorId: string | null;
+        date: Date;
+        dateBs: string | null;
+        description: string | null;
         taxCodeId: string | null;
+        vendorId: string | null;
+        amount: import("@prisma/client/runtime/client").Decimal;
         attachmentId: string | null;
     }>;
     preview(user: AuthUser, body: any): Promise<{
@@ -39,32 +39,32 @@ export declare class ExpensesController {
     }>;
     post(user: AuthUser, id: string, body: any): Promise<{
         id: string;
-        date: Date;
-        dateBs: string | null;
-        amount: import("@prisma/client/runtime/client").Decimal;
-        description: string | null;
+        companyId: string;
         status: string;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
         voucherId: string | null;
-        vendorId: string | null;
+        date: Date;
+        dateBs: string | null;
+        description: string | null;
         taxCodeId: string | null;
+        vendorId: string | null;
+        amount: import("@prisma/client/runtime/client").Decimal;
         attachmentId: string | null;
     }>;
     list(user: AuthUser, query: any): Promise<{
         id: string;
-        date: Date;
-        dateBs: string | null;
-        amount: import("@prisma/client/runtime/client").Decimal;
-        description: string | null;
+        companyId: string;
         status: string;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
         voucherId: string | null;
-        vendorId: string | null;
+        date: Date;
+        dateBs: string | null;
+        description: string | null;
         taxCodeId: string | null;
+        vendorId: string | null;
+        amount: import("@prisma/client/runtime/client").Decimal;
         attachmentId: string | null;
     }[]>;
 }
