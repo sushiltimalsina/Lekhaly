@@ -479,6 +479,26 @@ export class ReportsService {
     });
     const voucherDate = this.applyDateFilter(range);
 
+    let openingBalance = new Prisma.Decimal(0);
+
+    // 1. Calculate Opening Balance (vouchers before 'from' date)
+    if (range.from) {
+      const prevSummaries = await this.prisma.voucherLine.aggregate({
+        where: {
+          companyId,
+          accountId: filters.accountId || undefined,
+          partyId: filters.partyId || undefined,
+          voucher: { 
+            status: "posted",
+            voucherDate: { lt: range.from }
+          }
+        },
+        _sum: { debit: true, credit: true }
+      });
+      openingBalance = (prevSummaries._sum.debit || new Prisma.Decimal(0)).sub(prevSummaries._sum.credit || new Prisma.Decimal(0));
+    }
+
+    // 2. Fetch Periodic Lines
     const whereClause: any = {
       companyId,
       voucher: {
@@ -494,25 +514,35 @@ export class ReportsService {
       include: { voucher: true, account: true, party: true }
     });
 
-    let running = new Prisma.Decimal(0);
+    let running = openingBalance;
     const rows = lines
       .sort((a, b) => a.voucher.voucherDate.getTime() - b.voucher.voucherDate.getTime())
       .map((line) => {
         const debit = line.debit;
         const credit = line.credit;
         running = running.add(debit).sub(credit);
+        
+        // Improve memo: use voucher memo if available, otherwise account name
+        const memo = line.voucher.memo || line.account.name + (line.party ? ` — ${line.party.name}` : "");
+
         return {
           date: line.voucher.voucherDate,
           dateBs: line.voucher.voucherDateBs || null,
           ref: line.voucher.voucherNumber,
-          memo: line.account.name + (line.party ? ` — ${line.party.name}` : ""),
+          memo,
           debit,
           credit,
           balance: running
         };
       });
 
-    return { accountId: filters.accountId, partyId: filters.partyId, rows, balance: running };
+    return { 
+      accountId: filters.accountId, 
+      partyId: filters.partyId, 
+      openingBalance, 
+      rows, 
+      balance: running 
+    };
   }
 
   async exportPdf(companyId: string, input: { report: string; format?: string; from?: Date; to?: Date }) {

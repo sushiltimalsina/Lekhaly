@@ -26,7 +26,8 @@ import {
     User,
     Book,
     Wallet,
-    Printer
+    Printer,
+    ArrowLeft
 } from "lucide-react";
 import SearchableSelect from "@/components/app/searchable-select";
 import { useRouter } from "next/navigation";
@@ -193,13 +194,23 @@ export default function ReceiptCreatePage() {
     return (
         <div className="flex flex-col gap-6 p-4 md:p-8 font-sans transition-colors duration-300 relative min-h-full pb-12">
             <div className="flex flex-col gap-6">
+                <div className="mb-2">
+                    <Button
+                        variant="ghost"
+                        onClick={() => router.push("/receipts")}
+                        className="rounded-full h-10 px-4 text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors"
+                    >
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Back to Registry
+                    </Button>
+                </div>
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-xl shadow-emerald-500/20">
                             <Wallet className="h-6 w-6" />
                         </div>
                         <div>
-                            <h1 className="text-2xl font-bold italic tracking-tight text-slate-900 dark:text-slate-100">Money Receipt</h1>
+                            <h1 className="text-2xl font-bold italic tracking-tight text-slate-900 dark:text-slate-100 italic">Money Receipt</h1>
                             <p className="text-xs text-muted-foreground mt-0.5 font-medium">Record incoming funds</p>
                         </div>
                     </div>
@@ -215,10 +226,6 @@ export default function ReceiptCreatePage() {
                         >
                             <History className="h-4 w-4" />
                             Recent
-                        </Button>
-                        <div className="w-px h-6 bg-slate-200 mx-1" />
-                        <Button variant="outline" size="sm" onClick={() => router.back()} className="rounded-xl border-slate-200 h-9">
-                            Cancel
                         </Button>
                     </div>
                 </div>

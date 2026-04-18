@@ -87,6 +87,7 @@ export declare class ReportsController {
     partyLedger(user: AuthUser, query: any): Promise<{
         accountId: string | undefined;
         partyId: string | undefined;
+        openingBalance: import("@prisma/client/runtime/client").Decimal;
         rows: {
             date: Date;
             dateBs: string | null;

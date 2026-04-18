@@ -754,12 +754,12 @@ export default function SalesReturnCreatePage() {
 
     return (
         <div className="space-y-6">
-            <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+            <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
                 <div className="mb-4">
                     <Button
                         variant="ghost"
                         onClick={() => router.push("/sales-return")}
-                        className="rounded-full h-10 px-4 text-slate-500 hover:text-slate-900 transition-colors"
+                        className="rounded-full h-10 px-4 text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors"
                     >
                         <ArrowLeft className="mr-2 h-4 w-4" />
                         Back to Registry
@@ -779,7 +779,7 @@ export default function SalesReturnCreatePage() {
                                 className="rounded-2xl bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-500/20 h-11 px-8 font-black text-xs uppercase tracking-widest transition-all active:scale-95 border-none"
                             >
                                 <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 0 002 2h11a2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                 </svg>
                                 Edit
                             </Button>
@@ -809,6 +809,7 @@ export default function SalesReturnCreatePage() {
                             ref={invoiceDateRef}
                             label="Return Date"
                             value={form.invoiceDate}
+                            accentColor="bg-blue-600"
                             onChange={(next) => setForm((f) => ({ ...f, invoiceDate: next }))}
                             onEnterNext={() => safeFocus(dueDateRef.current)}
                             disabled={!isEditMode || (!!invoiceStatus && invoiceStatus !== "draft")}
@@ -817,6 +818,7 @@ export default function SalesReturnCreatePage() {
                             ref={dueDateRef}
                             label="Due Date"
                             value={form.dueDate}
+                            accentColor="bg-blue-600"
                             onChange={(next) => setForm((f) => ({ ...f, dueDate: next }))}
                             onEnterNext={() => safeFocus(paymentMethodRef.current)}
                             disabled={!isEditMode}
@@ -877,6 +879,7 @@ export default function SalesReturnCreatePage() {
                                         }
                                     }}
                                     className="mt-2 h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900"
+                                    disabled={!isEditMode}
                                 >
                                     <option value="">Select payment method…</option>
                                     <option value="bank_transfer">Bank Transfer</option>
@@ -999,10 +1002,10 @@ export default function SalesReturnCreatePage() {
                 <section className="mb-8 rounded-3xl border bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
                     <div className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-100">Items Details</div>
 
-                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/30">
+                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-zinc-900/30">
                         <div className="overflow-x-auto">
                             <table className="min-w-full text-sm">
-                                <thead className="bg-slate-100/70 dark:bg-slate-900/40">
+                                <thead className="bg-slate-100/70 dark:bg-zinc-900/40">
                                     <tr>
                                         <th className="w-[60px] px-4 py-3 text-left text-xs text-muted-foreground">S.No.</th>
                                         <th className="w-[520px] min-w-[420px] px-4 py-3 text-left text-xs text-muted-foreground">Particulars</th>
@@ -1255,7 +1258,7 @@ export default function SalesReturnCreatePage() {
 
                 {/* BILL SUNDRY */}
                 <section className="mb-6">
-                    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-zinc-950">
                         <div className="mr-4 text-sm font-semibold text-slate-700 dark:text-slate-200">Bill Sundry Details</div>
                         <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
                             <table className="min-w-full text-sm">
@@ -1486,7 +1489,7 @@ export default function SalesReturnCreatePage() {
                 </section>
 
                 {/* TERMS */}
-                <section className="mb-6 rounded-3xl border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                <section className="mb-6 rounded-3xl border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-zinc-950">
                     <button type="button" onClick={() => setShowTerms((v) => !v)} className="flex w-full items-center gap-3">
                         <ChevronRight className={cn("h-4 w-4 text-muted-foreground transition-transform", showTerms && "rotate-90")} />
                         <div className="text-sm font-semibold">Terms &amp; Conditions</div>
@@ -1498,6 +1501,7 @@ export default function SalesReturnCreatePage() {
                         type="button"
                         onClick={() => setShowTerms(true)}
                         className="mt-3 text-sm font-medium text-slate-700 hover:underline dark:text-slate-200"
+                        disabled={!isEditMode}
                     >
                         + Add terms &amp; conditions
                     </button>
@@ -1517,7 +1521,7 @@ export default function SalesReturnCreatePage() {
                                 ref={termsRef}
                                 value={form.termsText}
                                 onChange={(e) => setForm((f) => ({ ...f, termsText: e.target.value }))}
-                                disabled={!form.termsOverrideEnabled}
+                                disabled={!isEditMode || !form.termsOverrideEnabled}
                                 onKeyDown={(e) => {
                                     if (e.key === "Enter" && e.shiftKey) {
                                         e.preventDefault();
@@ -1544,10 +1548,10 @@ export default function SalesReturnCreatePage() {
 
                 {/* Bottom */}
                 <section className="grid gap-6 lg:grid-cols-12">
-                    <div className="lg:col-span-6 rounded-3xl border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                    <div className="lg:col-span-6 rounded-3xl border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-zinc-950">
                         <div className="mb-3 text-sm font-semibold">Summary</div>
 
-                        <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-5 dark:border-slate-800 dark:bg-slate-900/30">
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-5 dark:border-slate-800 dark:bg-zinc-900/30">
                             <div className="space-y-3 text-sm">
                                 <div className="flex items-center justify-between">
                                     <span className="text-muted-foreground">Taxable Total</span>
@@ -1603,7 +1607,7 @@ export default function SalesReturnCreatePage() {
                         </div>
                     </div>
 
-                    <div className="lg:col-span-6 rounded-3xl border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                    <div className="lg:col-span-6 rounded-3xl border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-zinc-950">
                         <div className="mb-2 flex items-center justify-between">
                             <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">Additional notes</div>
                             <div className="text-xs text-muted-foreground">
@@ -1622,58 +1626,78 @@ export default function SalesReturnCreatePage() {
                                     safeFocus(termsRef.current);
                                 }
                             }}
-                            placeholder="Additional notes..."
-                            className="min-h-[120px] w-full rounded-2xl border-2 border-slate-100 bg-slate-50/30 p-5 text-sm outline-none ring-rose-500/10 focus:border-rose-500 focus:bg-white focus:ring-4 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 transition-all font-medium leading-relaxed"
+                            placeholder="Add overall remarks or terms for this return..."
+                            className="min-h-[120px] w-full rounded-2xl border-2 border-slate-100 bg-slate-50/30 p-5 text-sm outline-none ring-indigo-500/10 focus:border-indigo-500 focus:bg-white focus:ring-4 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 transition-all font-medium leading-relaxed"
                             disabled={!isEditMode}
                         />
+                    </div>
 
-                        <div className="mt-5 flex flex-wrap items-center justify-end gap-3">
-                            {!invoiceStatus || invoiceStatus === "draft" ? (
-                                <>
-                                    {isEditMode ? (
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            onClick={onSave}
-                                            disabled={loading || sending}
-                                            className="rounded-2xl border-2 h-14 px-8 font-black text-xs uppercase tracking-widest transition-all active:scale-95 bg-white hover:bg-slate-50"
-                                        >
-                                            <Save className="mr-2 h-4 w-4" />
-                                            {loading ? "..." : "Save Draft"}
-                                        </Button>
-                                    ) : null}
-
-                                    <Button
-                                        onClick={onPost}
-                                        disabled={loading || sending || !isEditMode}
-                                        className="flex-1 md:flex-none rounded-2xl bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-500/20 h-14 px-10 font-black text-xs uppercase tracking-widest transition-all active:scale-95 border-none"
-                                    >
-                                        <Send className="mr-2 h-4 w-4" />
-                                        {sending ? "Posting..." : "Post & Finalize"}
-                                    </Button>
-                                </>
-                            ) : (
-                                <div className="flex items-center gap-3">
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={onPrint}
-                                        className="rounded-2xl border-2 h-14 px-8 font-black text-xs uppercase tracking-widest transition-all active:scale-95 bg-white hover:bg-slate-50"
-                                    >
-                                        <Printer className="mr-2 h-4 w-4" />
-                                        Print
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={onPreview}
-                                        className="rounded-2xl border-2 h-14 px-8 font-black text-xs uppercase tracking-widest transition-all active:scale-95 bg-white hover:bg-slate-50"
-                                    >
-                                        <Eye className="mr-2 h-4 w-4" />
-                                        Preview
-                                    </Button>
+                    <div className="lg:col-span-12">
+                        {/* Static Action Footer */}
+                        <div className="mt-8 border-t border-slate-100 dark:border-slate-800 pt-8 pb-12">
+                            <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-white dark:bg-slate-900/50 p-6 md:p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm">
+                                <div className="flex flex-wrap items-center gap-8">
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Items Subtotal</span>
+                                        <div className="text-xl font-black text-slate-900 dark:text-slate-100">
+                                            <MoneyText value={itemsSubtotal} />
+                                        </div>
+                                    </div>
+                                    <div className="hidden md:block w-px h-10 bg-slate-100 dark:bg-slate-800" />
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-widest mb-1">Return Total</span>
+                                        <div className="text-2xl font-black text-rose-600 dark:text-rose-400">
+                                            <MoneyText value={total} />
+                                        </div>
+                                    </div>
                                 </div>
-                            )}
+
+                                <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                                    {!invoiceStatus || invoiceStatus === "draft" ? (
+                                        <>
+                                            {isEditMode ? (
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={onSave}
+                                                    disabled={loading || sending}
+                                                    className="flex-1 md:flex-none rounded-2xl h-12 px-6 font-bold text-xs uppercase tracking-widest border-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
+                                                >
+                                                    <Save className="mr-2 h-4 w-4" />
+                                                    {loading ? "Saving..." : "Save Draft"}
+                                                </Button>
+                                            ) : null}
+
+                                            <Button
+                                                onClick={onPost}
+                                                disabled={loading || sending || !isEditMode}
+                                                className="flex-1 md:flex-none rounded-2xl h-12 px-10 font-black text-xs uppercase tracking-widest shadow-xl transition-all bg-rose-600 text-white hover:bg-rose-700 hover:scale-105 active:scale-95 shadow-rose-500/25 border-none"
+                                            >
+                                                <Send className="mr-2 h-4 w-4" />
+                                                {sending ? "Posting..." : "Post Return"}
+                                            </Button>
+                                        </>
+                                    ) : (
+                                        <div className="flex items-center gap-3">
+                                            <Button
+                                                variant="outline"
+                                                onClick={onPrint}
+                                                className="flex-1 md:flex-none rounded-2xl h-12 px-6 font-bold text-xs uppercase tracking-widest border-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
+                                            >
+                                                <Printer className="mr-2 h-4 w-4" />
+                                                Print
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                onClick={onPreview}
+                                                className="flex-1 md:flex-none rounded-2xl h-12 px-6 font-bold text-xs uppercase tracking-widest border-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
+                                            >
+                                                <Eye className="mr-2 h-4 w-4" />
+                                                Preview
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </section>

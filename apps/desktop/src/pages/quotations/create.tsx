@@ -672,10 +672,10 @@ export default function QuotationCreatePage() {
                     <Button
                         variant="ghost"
                         onClick={() => navigate("/quotations")}
-                        className="rounded-full h-10 px-4 text-slate-500 hover:text-slate-900 transition-colors"
+                        className="rounded-full h-10 px-4 text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors"
                     >
                         <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to List
+                        Back to Registry
                     </Button>
                 </div>
                 <PageHeader

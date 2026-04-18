@@ -92,6 +92,7 @@ export declare class ReportsService {
     partyLedger(companyId: string, filters: LedgerFilters): Promise<{
         accountId: string | undefined;
         partyId: string | undefined;
+        openingBalance: Prisma.Decimal;
         rows: {
             date: Date;
             dateBs: string | null;

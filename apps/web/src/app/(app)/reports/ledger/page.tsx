@@ -39,6 +39,7 @@ export default function LedgerPage() {
 
   const [loading, setLoading] = React.useState(false);
   const [rows, setRows] = React.useState<Row[]>([]);
+  const [openingBalance, setOpeningBalance] = React.useState(0);
   const [error, setError] = React.useState<string | null>(null);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [hasFetched, setHasFetched] = React.useState(false);
@@ -78,6 +79,7 @@ export default function LedgerPage() {
 
       const data = Array.isArray(res) ? res : res?.rows ?? res?.data ?? res?.items ?? [];
       setRows(data as Row[]);
+      setOpeningBalance(Number(res?.openingBalance || 0));
       setHasFetched(true);
     } catch (e: any) {
       setError(e?.message ?? "Failed to load ledger");
@@ -101,8 +103,17 @@ export default function LedgerPage() {
 
   const totalDebit = rows.reduce((acc, r) => acc + (r.debit ?? 0), 0);
   const totalCredit = rows.reduce((acc, r) => acc + (r.credit ?? 0), 0);
-  const closingBalance = rows.length > 0 ? (rows[rows.length - 1].balance ?? 0) : 0;
-  const openingBalance = rows.length > 0 ? ((rows[0].balance ?? 0) - (rows[0].debit ?? 0) + (rows[0].credit ?? 0)) : 0;
+  const closingBalance = rows.length > 0 ? (rows[rows.length - 1].balance ?? 0) : openingBalance;
+
+  // Final rows to display (including opening balance row)
+  const displayRows: Row[] = [
+    {
+      date: from?.toISOString(),
+      memo: "Opening Balance",
+      balance: openingBalance,
+    },
+    ...rows
+  ];
 
   const selectedLabel = (accountId && accounts.find(a => a.id === accountId)?.name)
     || (partyId && parties.find(p => p.id === partyId)?.name)
@@ -351,7 +362,7 @@ export default function LedgerPage() {
               </div>
             </div>
             <DataTable
-              rows={rows}
+              rows={displayRows}
               columns={columns}
               loading={loading}
               emptyText="No ledger entries found for the selected filters"

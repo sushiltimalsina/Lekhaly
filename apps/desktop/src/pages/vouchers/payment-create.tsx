@@ -149,7 +149,7 @@ export default function PaymentCreatePage() {
     return (
         <div className="space-y-6 animate-fade-in pb-20">
             <div className="flex items-center justify-between">
-                <Button variant="ghost" onClick={() => navigate("/vouchers")} className="rounded-full h-10 px-4 text-slate-500">
+                <Button variant="ghost" onClick={() => navigate("/vouchers")} className="rounded-full h-10 px-4 text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors">
                     <ArrowLeft className="mr-2 h-4 w-4" /> Back to Registry
                 </Button>
                 <div className="flex gap-3">

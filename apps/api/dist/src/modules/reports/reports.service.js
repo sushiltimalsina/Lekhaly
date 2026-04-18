@@ -404,6 +404,22 @@ let ReportsService = class ReportsService {
             toBs: filters.toBs
         });
         const voucherDate = this.applyDateFilter(range);
+        let openingBalance = new client_1.Prisma.Decimal(0);
+        if (range.from) {
+            const prevSummaries = await this.prisma.voucherLine.aggregate({
+                where: {
+                    companyId,
+                    accountId: filters.accountId || undefined,
+                    partyId: filters.partyId || undefined,
+                    voucher: {
+                        status: "posted",
+                        voucherDate: { lt: range.from }
+                    }
+                },
+                _sum: { debit: true, credit: true }
+            });
+            openingBalance = (prevSummaries._sum.debit || new client_1.Prisma.Decimal(0)).sub(prevSummaries._sum.credit || new client_1.Prisma.Decimal(0));
+        }
         const whereClause = {
             companyId,
             voucher: {
@@ -419,24 +435,31 @@ let ReportsService = class ReportsService {
             where: whereClause,
             include: { voucher: true, account: true, party: true }
         });
-        let running = new client_1.Prisma.Decimal(0);
+        let running = openingBalance;
         const rows = lines
             .sort((a, b) => a.voucher.voucherDate.getTime() - b.voucher.voucherDate.getTime())
             .map((line) => {
             const debit = line.debit;
             const credit = line.credit;
             running = running.add(debit).sub(credit);
+            const memo = line.voucher.memo || line.account.name + (line.party ? ` — ${line.party.name}` : "");
             return {
                 date: line.voucher.voucherDate,
                 dateBs: line.voucher.voucherDateBs || null,
                 ref: line.voucher.voucherNumber,
-                memo: line.account.name + (line.party ? ` — ${line.party.name}` : ""),
+                memo,
                 debit,
                 credit,
                 balance: running
             };
         });
-        return { accountId: filters.accountId, partyId: filters.partyId, rows, balance: running };
+        return {
+            accountId: filters.accountId,
+            partyId: filters.partyId,
+            openingBalance,
+            rows,
+            balance: running
+        };
     }
     async exportPdf(companyId, input) {
         const filters = { from: input.from, to: input.to };

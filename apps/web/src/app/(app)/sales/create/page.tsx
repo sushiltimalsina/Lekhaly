@@ -519,7 +519,8 @@ export default function SalesCreatePage() {
               memo: inv.memo || "",
               notes: inv.additionalNote || "",
               partyName: inv.party?.name || "",
-              salesType: inv.salesType || "vat_13"
+              salesType: inv.salesType || "vat_13",
+              paymentMethod: inv.paymentMethod || ""
             }));
 
             if (inv.items && inv.items.length > 0) {
@@ -773,7 +774,7 @@ export default function SalesCreatePage() {
           <Button
             variant="ghost"
             onClick={() => router.push("/sales")}
-            className="rounded-full h-10 px-4 text-slate-500 hover:text-slate-900 transition-colors"
+            className="rounded-full h-10 px-4 text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Registry
@@ -793,7 +794,7 @@ export default function SalesCreatePage() {
                 className="rounded-2xl bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-500/20 h-11 px-8 font-black text-xs uppercase tracking-widest transition-all active:scale-95 border-none"
               >
                 <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 0 002 2h11a2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
                 Edit
               </Button>
@@ -815,7 +816,6 @@ export default function SalesCreatePage() {
           ) : null}
         </div>
 
-
         {/* Top area */}
         <section className="relative mb-6">
           <div className="absolute right-0 top-0 hidden w-[260px] flex-col gap-3 lg:flex">
@@ -826,7 +826,7 @@ export default function SalesCreatePage() {
               accentColor="bg-blue-600"
               onChange={(next) => setForm((f) => ({ ...f, invoiceDate: next }))}
               onEnterNext={() => safeFocus(dueDateRef.current)}
-              disabled={!isEditMode || !!invoiceStatus && invoiceStatus !== "draft"}
+              disabled={!isEditMode || (!!invoiceStatus && invoiceStatus !== "draft")}
             />
             <DualDateInput
               ref={dueDateRef}

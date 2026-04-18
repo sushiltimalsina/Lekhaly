@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import * as React from "react";
 import PageHeader from "@/components/app/page-header";
@@ -39,6 +39,7 @@ export default function LedgerPage() {
 
   const [loading, setLoading] = React.useState(false);
   const [rows, setRows] = React.useState<Row[]>([]);
+  const [openingBalance, setOpeningBalance] = React.useState(0);
   const [error, setError] = React.useState<string | null>(null);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [hasFetched, setHasFetched] = React.useState(false);
@@ -78,6 +79,7 @@ export default function LedgerPage() {
 
       const data = Array.isArray(res) ? res : res?.rows ?? res?.data ?? res?.items ?? [];
       setRows(data as Row[]);
+      setOpeningBalance(Number(res?.openingBalance || 0));
       setHasFetched(true);
     } catch (e: any) {
       setError(e?.message ?? "Failed to load ledger");
@@ -101,12 +103,21 @@ export default function LedgerPage() {
 
   const totalDebit = rows.reduce((acc, r) => acc + (r.debit ?? 0), 0);
   const totalCredit = rows.reduce((acc, r) => acc + (r.credit ?? 0), 0);
-  const closingBalance = rows.length > 0 ? (rows[rows.length - 1].balance ?? 0) : 0;
-  const openingBalance = rows.length > 0 ? ((rows[0].balance ?? 0) - (rows[0].debit ?? 0) + (rows[0].credit ?? 0)) : 0;
+  const closingBalance = rows.length > 0 ? (rows[rows.length - 1].balance ?? 0) : openingBalance;
+
+  // Final rows to display (including opening balance row)
+  const displayRows: Row[] = [
+    {
+      date: from?.toISOString(),
+      memo: "Opening Balance",
+      balance: openingBalance,
+    },
+    ...rows
+  ];
 
   const selectedLabel = (accountId && accounts.find(a => a.id === accountId)?.name)
     || (partyId && parties.find(p => p.id === partyId)?.name)
-    || "â€”";
+    || "—";
 
   const columns: Column<Row>[] = [
     {
@@ -122,14 +133,14 @@ export default function LedgerPage() {
       cell: (r) => (
         <div className="flex items-center gap-2">
           <div className="h-2 w-2 rounded-full bg-primary/40" />
-          <span className="mono-numbers font-medium text-slate-700 dark:text-slate-300">{r.ref ?? "â€”"}</span>
+          <span className="mono-numbers font-medium text-slate-700 dark:text-slate-300">{r.ref ?? "—"}</span>
         </div>
       )
     },
     {
       key: "memo",
       header: "Memo / Description",
-      cell: (r) => <div className="text-sm text-slate-600 dark:text-slate-400 max-w-md truncate">{r.memo ?? "â€”"}</div>
+      cell: (r) => <div className="text-sm text-slate-600 dark:text-slate-400 max-w-md truncate">{r.memo ?? "—"}</div>
     },
     {
       key: "debit",
@@ -351,7 +362,7 @@ export default function LedgerPage() {
               </div>
             </div>
             <DataTable
-              rows={rows}
+              rows={displayRows}
               columns={columns}
               loading={loading}
               emptyText="No ledger entries found for the selected filters"

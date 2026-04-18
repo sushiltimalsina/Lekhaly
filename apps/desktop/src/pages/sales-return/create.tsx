@@ -30,8 +30,9 @@ import {
     Eye,
     Printer,
     ChevronRight,
+    ArrowLeft,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toBs } from "@/lib/dates/bs";
 
 type Line = { itemId: string; qty: string; rate: string; description?: string };
@@ -308,6 +309,8 @@ function isoAddDays(iso: string, days: number) {
 }
 
 export default function SalesReturnCreatePage() {
+    const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const [mounted, setMounted] = React.useState(false);
 
     const invoiceDateRef = React.useRef<HTMLInputElement>(null);
@@ -652,6 +655,16 @@ export default function SalesReturnCreatePage() {
     return (
         <div className="space-y-6">
             <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                <div className="mb-4">
+                    <Button
+                        variant="ghost"
+                        onClick={() => navigate("/sales-return")}
+                        className="rounded-full h-10 px-4 text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors"
+                    >
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Back to Registry
+                    </Button>
+                </div>
                 <PageHeader title="Create New Sales Return" description="Fill in the details below to create a new sales return (credit note)." />
 
                 {/* Alerts */}
