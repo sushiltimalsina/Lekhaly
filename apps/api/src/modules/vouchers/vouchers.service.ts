@@ -678,6 +678,10 @@ export class VouchersService {
       });
       if (!voucher) throw new NotFoundException("Voucher not found");
       if (voucher.status !== VoucherStatus.posted) throw new ForbiddenException("Only posted vouchers can be voided");
+      
+      const company = await tx.company.findUnique({ where: { id: user.companyId } });
+      if (!company) throw new BadRequestException("Company not found");
+      this.ensureVoucherDate(company, voucher.voucherDate);
 
       const reversal = await tx.voucher.create({
         data: {

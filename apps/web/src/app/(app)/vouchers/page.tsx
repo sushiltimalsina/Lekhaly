@@ -209,13 +209,33 @@ export default function VouchersListPage() {
       {/* Content */}
       <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl shadow-slate-200/40 dark:border-slate-800 dark:bg-slate-950 dark:shadow-none flex flex-col">
         {loading && vouchers.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 space-y-4">
-            {/* ... Spinner ... */}
-            <div className="relative h-12 w-12">
-              <div className="absolute inset-0 rounded-full border-4 border-indigo-100 dark:border-indigo-900/30"></div>
-              <div className="absolute inset-0 rounded-full border-4 border-indigo-600 border-t-transparent animate-spin"></div>
-            </div>
-            <p className="text-sm font-medium text-slate-500 animate-pulse uppercase tracking-widest text-[10px]">Loading Ledger...</p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead>
+                <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30">
+                  <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Date Identity</th>
+                  <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Voucher Reference</th>
+                  <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Category</th>
+                  <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Party Context</th>
+                  <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Amount</th>
+                  <th className="px-6 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-center">Status</th>
+                  <th className="px-6 w-10 py-4"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <tr key={i}>
+                    <td className="px-6 py-5"><Skeleton className="h-8 w-24" /></td>
+                    <td className="px-6 py-5"><Skeleton className="h-8 w-32" /></td>
+                    <td className="px-6 py-5"><Skeleton className="h-6 w-20 rounded-full" /></td>
+                    <td className="px-6 py-5"><Skeleton className="h-8 w-40" /></td>
+                    <td className="px-6 py-5"><Skeleton className="h-8 w-20 ml-auto" /></td>
+                    <td className="px-6 py-5"><Skeleton className="h-6 w-16 mx-auto rounded-full" /></td>
+                    <td className="px-6 py-5"><Skeleton className="h-4 w-4" /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         ) : vouchers.length > 0 ? (
           <>

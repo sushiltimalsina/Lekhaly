@@ -56,3 +56,17 @@ export async function exportReport(body: Record<string, any>) {
     body,
   });
 }
+
+export async function getDashboardStats() {
+  return apiRequest<any>({
+    method: "GET",
+    path: "/reports/dashboard/stats",
+  });
+}
+
+export async function getDashboardCharts() {
+  return apiRequest<any>({
+    method: "GET",
+    path: "/reports/dashboard/charts",
+  });
+}

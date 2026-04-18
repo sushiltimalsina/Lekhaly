@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { MoneyText } from "@/components/app/money";
 import {
   Activity,
@@ -16,7 +17,32 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { RevenueChart, ExpenseDistribution } from "@/components/app/dashboard-charts";
 
+import { getDashboardStats, getDashboardCharts } from "@/lib/api/reports";
+import { Skeleton } from "@lekhaly/ui/src/components/ui/skeleton";
+
 export default function DashboardPage() {
+  const [stats, setStats] = React.useState<any>(null);
+  const [charts, setCharts] = React.useState<any>(null);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    async function fetchData() {
+      try {
+        const [statsData, chartsData] = await Promise.all([
+          getDashboardStats(),
+          getDashboardCharts()
+        ]);
+        setStats(statsData);
+        setCharts(chartsData);
+      } catch (error) {
+        console.error("Failed to fetch dashboard data:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
+
   return (
     <div className="space-y-8">
       {/* Header Section */}
@@ -39,29 +65,33 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           title="Total Revenue"
-          value={210000}
+          value={stats?.revenue || 0}
           icon={DollarSign}
+          loading={loading}
           trend="+20.1% from last month"
           trendUp={true}
         />
         <MetricCard
           title="Receivables"
-          value={84500}
+          value={stats?.receivables || 0}
           icon={Users}
+          loading={loading}
           trend="+180.1% from last month"
           trendUp={true}
         />
         <MetricCard
           title="Payables"
-          value={43200}
+          value={stats?.payables || 0}
           icon={CreditCard}
+          loading={loading}
           trend="-5.4% from last month"
-          trendUp={false} // Good for payables? Or means it went down? Let's assume down is good for payables contextually, but usually red means alarming. Let's stick to standard arrow logic.
+          trendUp={false}
         />
         <MetricCard
           title="Cash at Hand"
-          value={125000}
+          value={stats?.cashAtHand || 0}
           icon={Activity}
+          loading={loading}
           trend="+12% since last hour"
           trendUp={true}
         />
@@ -74,7 +104,11 @@ export default function DashboardPage() {
             <CardDescription>Visualizing your monthly cash flow (Revenue vs Expenses).</CardDescription>
           </CardHeader>
           <CardContent>
-            <RevenueChart />
+            {loading ? (
+              <Skeleton className="h-[300px] w-full" />
+            ) : (
+              <RevenueChart data={charts} />
+            )}
           </CardContent>
         </Card>
 
@@ -86,30 +120,29 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
-              <ActivityItem
-                title="Sales Invoice #INV-1021"
-                subtitle="Sold to John Doe"
-                amount={12500}
-                icon={FileText}
-              />
-              <ActivityItem
-                title="Receipt from ABC Traders"
-                subtitle="Bank Deposit"
-                amount={12500}
-                icon={DollarSign}
-              />
-              <ActivityItem
-                title="Office Supplies"
-                subtitle="Stationery Purchase"
-                amount={-2500}
-                icon={CreditCard}
-              />
-              <ActivityItem
-                title="Consulting Receipt"
-                subtitle="Service Income"
-                amount={50000}
-                icon={DollarSign}
-              />
+              {loading ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="flex items-center">
+                    <Skeleton className="h-9 w-9 rounded-full" />
+                    <div className="ml-4 space-y-1">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-24" />
+                    </div>
+                  </div>
+                ))
+              ) : stats?.recentActivity?.length > 0 ? (
+                stats.recentActivity.map((item: any) => (
+                  <ActivityItem
+                    key={item.id}
+                    title={`${item.type.replace('_', ' ').replace(/\b\w/g, (l: any) => l.toUpperCase())} #${item.number || 'Draft'}`}
+                    subtitle={item.partyName}
+                    amount={item.amount}
+                    icon={FileText}
+                  />
+                ))
+              ) : (
+                <div className="text-center py-10 text-muted-foreground">No recent activity</div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -122,7 +155,11 @@ export default function DashboardPage() {
             <CardDescription>Breakdown of where your money is going.</CardDescription>
           </CardHeader>
           <CardContent>
-            <ExpenseDistribution />
+            {loading ? (
+              <Skeleton className="h-[200px] w-full rounded-full" />
+            ) : (
+              <ExpenseDistribution />
+            )}
             <div className="mt-4 grid grid-cols-2 gap-2">
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-blue-500" />
@@ -135,10 +172,6 @@ export default function DashboardPage() {
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-indigo-500" />
                 <span className="text-xs text-muted-foreground">Payroll</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-amber-500" />
-                <span className="text-xs text-muted-foreground">Utilities</span>
               </div>
             </div>
           </CardContent>
@@ -156,21 +189,21 @@ export default function DashboardPage() {
                   <div className="text-sm font-medium">Quick Ratio</div>
                   <div className="text-xs text-muted-foreground">Liquid assets vs current liabilities</div>
                 </div>
-                <div className="text-xl font-bold font-mono">1.8</div>
+                {loading ? <Skeleton className="h-6 w-12" /> : <div className="text-xl font-bold font-mono">1.8</div>}
               </div>
               <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/10 flex items-center justify-between">
                 <div>
                   <div className="text-sm font-medium">Burn Rate</div>
                   <div className="text-xs text-muted-foreground">Monthly cash outflow average</div>
                 </div>
-                <div className="text-xl font-bold font-mono text-emerald-600"><MoneyText value={12400} /></div>
+                {loading ? <Skeleton className="h-6 w-12" /> : <div className="text-xl font-bold font-mono text-emerald-600"><MoneyText value={12400} /></div>}
               </div>
               <div className="p-4 rounded-xl bg-indigo-500/5 border border-indigo-500/10 flex items-center justify-between">
                 <div>
                   <div className="text-sm font-medium">Runway</div>
                   <div className="text-xs text-muted-foreground">Estimated months of operation</div>
                 </div>
-                <div className="text-xl font-bold font-mono text-indigo-600">14 Months</div>
+                {loading ? <Skeleton className="h-6 w-12" /> : <div className="text-xl font-bold font-mono text-indigo-600">14 Months</div>}
               </div>
             </div>
           </CardContent>
@@ -180,7 +213,7 @@ export default function DashboardPage() {
   );
 }
 
-function MetricCard({ title, value, icon: Icon, trend, trendUp }: any) {
+function MetricCard({ title, value, icon: Icon, trend, trendUp, loading }: any) {
   return (
     <Card className="overflow-hidden relative glass-card group hover:-translate-y-1 transition-transform duration-300">
       <div className="absolute right-0 top-0 h-24 w-24 bg-gradient-to-br from-primary/10 to-transparent blur-2xl rounded-bl-full -z-10 group-hover:from-primary/20 transition-colors" />
@@ -192,12 +225,16 @@ function MetricCard({ title, value, icon: Icon, trend, trendUp }: any) {
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold font-mono tracking-tight">
-          <MoneyText value={value} />
+          {loading ? <Skeleton className="h-8 w-3/4" /> : <MoneyText value={value} />}
         </div>
-        <p className={cn("text-xs mt-1 flex items-center", trendUp ? "text-green-600" : "text-red-500")}>
-          {trendUp ? <ArrowUpRight className="mr-1 h-3 w-3" /> : <ArrowDownRight className="mr-1 h-3 w-3" />}
-          {trend}
-        </p>
+        {loading ? (
+          <Skeleton className="h-3 w-1/2 mt-2" />
+        ) : (
+          <p className={cn("text-xs mt-1 flex items-center", trendUp ? "text-green-600" : "text-red-500")}>
+            {trendUp ? <ArrowUpRight className="mr-1 h-3 w-3" /> : <ArrowDownRight className="mr-1 h-3 w-3" />}
+            {trend}
+          </p>
+        )}
       </CardContent>
     </Card>
   )

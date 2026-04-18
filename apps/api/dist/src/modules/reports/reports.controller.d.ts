@@ -1,8 +1,29 @@
 import type { AuthUser } from "../../common/auth/auth.types";
 import { ReportsService } from "./reports.service";
+import { DashboardService } from "./dashboard.service";
 export declare class ReportsController {
     private reports;
-    constructor(reports: ReportsService);
+    private dashboard;
+    constructor(reports: ReportsService, dashboard: DashboardService);
+    getDashboardStats(user: AuthUser): Promise<{
+        revenue: import("@prisma/client/runtime/client").Decimal;
+        receivables: import("@prisma/client/runtime/client").Decimal;
+        payables: import("@prisma/client/runtime/client").Decimal;
+        cashAtHand: import("@prisma/client/runtime/client").Decimal;
+        recentActivity: {
+            id: string;
+            type: import("@prisma/client").$Enums.VoucherType;
+            number: string | null;
+            partyName: string;
+            amount: number;
+            date: Date;
+        }[];
+    }>;
+    getDashboardCharts(user: AuthUser): Promise<{
+        name: string;
+        revenue: import("@prisma/client/runtime/client").Decimal;
+        expense: import("@prisma/client/runtime/client").Decimal;
+    }[]>;
     trialBalance(user: AuthUser, query: any): Promise<{
         rows: {
             accountCode: string;

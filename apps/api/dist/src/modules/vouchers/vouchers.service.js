@@ -591,6 +591,10 @@ let VouchersService = class VouchersService {
                 throw new common_1.NotFoundException("Voucher not found");
             if (voucher.status !== client_1.VoucherStatus.posted)
                 throw new common_1.ForbiddenException("Only posted vouchers can be voided");
+            const company = await tx.company.findUnique({ where: { id: user.companyId } });
+            if (!company)
+                throw new common_1.BadRequestException("Company not found");
+            this.ensureVoucherDate(company, voucher.voucherDate);
             const reversal = await tx.voucher.create({
                 data: {
                     companyId: voucher.companyId,

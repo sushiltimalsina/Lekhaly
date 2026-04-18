@@ -38,6 +38,8 @@ export class AuditInterceptor implements NestInterceptor {
         return this.prisma.chartOfAccount.findUnique({ where: { id: entityId } });
       case "tax":
         return this.prisma.taxCode.findUnique({ where: { id: entityId } });
+      case "company":
+        return this.prisma.company.findUnique({ where: { id: entityId } });
       case "device":
         return this.prisma.device.findUnique({
           where: { id: entityId },

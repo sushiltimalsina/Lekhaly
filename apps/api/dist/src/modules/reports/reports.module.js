@@ -11,6 +11,7 @@ const common_1 = require("@nestjs/common");
 const outbox_module_1 = require("../outbox/outbox.module");
 const reports_controller_1 = require("./reports.controller");
 const reports_service_1 = require("./reports.service");
+const dashboard_service_1 = require("./dashboard.service");
 let ReportsModule = class ReportsModule {
 };
 exports.ReportsModule = ReportsModule;
@@ -18,7 +19,7 @@ exports.ReportsModule = ReportsModule = __decorate([
     (0, common_1.Module)({
         imports: [outbox_module_1.OutboxModule],
         controllers: [reports_controller_1.ReportsController],
-        providers: [reports_service_1.ReportsService]
+        providers: [reports_service_1.ReportsService, dashboard_service_1.DashboardService]
     })
 ], ReportsModule);
 //# sourceMappingURL=reports.module.js.map

@@ -5,12 +5,22 @@ import Topbar from "@/components/app/topbar";
 import QuickActionsRail from "@/components/app/quick-actions";
 import CommandPalette from "@/components/app/command-palette";
 import OfflineSyncBanner from "@/components/app/offline-sync-banner";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useShortcuts } from "@/hooks/use-shortcuts";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const isCreationPage = false;
+
+  useShortcuts({
+    "alt+d": () => router.push("/dashboard"),
+    "alt+v": () => router.push("/vouchers"),
+    "alt+s": () => router.push("/configuration"),
+    "alt+p": () => router.push("/parties"),
+    "alt+i": () => router.push("/items"),
+  });
 
   return (
     <div className="min-h-screen bg-background text-foreground flex overflow-hidden">

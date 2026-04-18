@@ -18,10 +18,19 @@ const auth_decorator_1 = require("../../common/auth/auth.decorator");
 const zod_pipe_1 = require("../../common/zod/zod.pipe");
 const report_schemas_1 = require("./dto/report.schemas");
 const reports_service_1 = require("./reports.service");
+const dashboard_service_1 = require("./dashboard.service");
 let ReportsController = class ReportsController {
     reports;
-    constructor(reports) {
+    dashboard;
+    constructor(reports, dashboard) {
         this.reports = reports;
+        this.dashboard = dashboard;
+    }
+    getDashboardStats(user) {
+        return this.dashboard.getStats(user.companyId);
+    }
+    getDashboardCharts(user) {
+        return this.dashboard.getChartData(user.companyId);
     }
     trialBalance(user, query) {
         return this.reports.trialBalance(user.companyId, query);
@@ -43,6 +52,22 @@ let ReportsController = class ReportsController {
     }
 };
 exports.ReportsController = ReportsController;
+__decorate([
+    (0, common_1.Get)("dashboard/stats"),
+    (0, auth_decorator_1.RequirePerm)("reports.view"),
+    __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], ReportsController.prototype, "getDashboardStats", null);
+__decorate([
+    (0, common_1.Get)("dashboard/charts"),
+    (0, auth_decorator_1.RequirePerm)("reports.view"),
+    __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], ReportsController.prototype, "getDashboardCharts", null);
 __decorate([
     (0, common_1.Get)("trial-balance"),
     (0, auth_decorator_1.RequirePerm)("reports.view"),
@@ -100,6 +125,6 @@ __decorate([
 ], ReportsController.prototype, "export", null);
 exports.ReportsController = ReportsController = __decorate([
     (0, common_1.Controller)("reports"),
-    __metadata("design:paramtypes", [reports_service_1.ReportsService])
+    __metadata("design:paramtypes", [reports_service_1.ReportsService, dashboard_service_1.DashboardService])
 ], ReportsController);
 //# sourceMappingURL=reports.controller.js.map

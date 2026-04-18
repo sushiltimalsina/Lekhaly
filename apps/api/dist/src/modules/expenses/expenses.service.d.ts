@@ -8,17 +8,17 @@ export declare class ExpensesService {
     private buildVoucherLines;
     createDraft(user: AuthUser, input: any): Promise<{
         id: string;
-        companyId: string;
-        status: string;
-        createdAt: Date;
-        updatedAt: Date;
-        taxCodeId: string | null;
-        description: string | null;
-        voucherId: string | null;
         date: Date;
         dateBs: string | null;
         amount: Prisma.Decimal;
+        description: string | null;
+        status: string;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+        voucherId: string | null;
         vendorId: string | null;
+        taxCodeId: string | null;
         attachmentId: string | null;
     }>;
     preview(user: AuthUser, input: any): Promise<{
@@ -42,17 +42,17 @@ export declare class ExpensesService {
     }>;
     post(user: AuthUser, expenseId: string, input: any): Promise<{
         id: string;
-        companyId: string;
-        status: string;
-        createdAt: Date;
-        updatedAt: Date;
-        taxCodeId: string | null;
-        description: string | null;
-        voucherId: string | null;
         date: Date;
         dateBs: string | null;
         amount: Prisma.Decimal;
+        description: string | null;
+        status: string;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+        voucherId: string | null;
         vendorId: string | null;
+        taxCodeId: string | null;
         attachmentId: string | null;
     }>;
     list(user: AuthUser, filters: {
@@ -63,17 +63,17 @@ export declare class ExpensesService {
         take?: number;
     }): Promise<{
         id: string;
-        companyId: string;
-        status: string;
-        createdAt: Date;
-        updatedAt: Date;
-        taxCodeId: string | null;
-        description: string | null;
-        voucherId: string | null;
         date: Date;
         dateBs: string | null;
         amount: Prisma.Decimal;
+        description: string | null;
+        status: string;
+        createdAt: Date;
+        updatedAt: Date;
+        companyId: string;
+        voucherId: string | null;
         vendorId: string | null;
+        taxCodeId: string | null;
         attachmentId: string | null;
     }[]>;
 }

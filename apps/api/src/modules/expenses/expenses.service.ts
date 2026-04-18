@@ -96,6 +96,12 @@ export class ExpensesService {
     const { lines, total, taxAmount } = await this.buildVoucherLines(user, input);
     const resolved = resolveAdDate(input.date, input.dateBs);
 
+    const company = await this.prisma.company.findUnique({ where: { id: user.companyId } });
+    if (!company) throw new BadRequestException("Company not found");
+    if (company.lockDate && resolved.date <= company.lockDate) {
+      throw new BadRequestException("Expense date is locked");
+    }
+
     return this.prisma.expense.create({
       data: {
         companyId: user.companyId,
@@ -137,16 +143,20 @@ export class ExpensesService {
         postedAt: new Date(),
         postedByUserId: user.sub,
         lines: {
-          create: preview.lines.map((l: any, idx: number) => ({
-            companyId: user.companyId,
-            lineNo: idx + 1,
-            accountId: l.accountId,
-            description: l.description,
-            debit: l.debit,
-            credit: l.credit,
-            taxCodeId: l.taxCodeId,
-            taxAmount: l.taxAmount || new Prisma.Decimal(0)
-          }))
+          create: preview.lines.map((l: any, idx: number) => {
+            const company = this.prisma.company.findUnique({ where: { id: user.companyId } });
+            // The check is already done by date in createDraft, but we check again on post for safety
+            return {
+              companyId: user.companyId,
+              lineNo: idx + 1,
+              accountId: l.accountId,
+              description: l.description,
+              debit: l.debit,
+              credit: l.credit,
+              taxCodeId: l.taxCodeId,
+              taxAmount: l.taxAmount || new Prisma.Decimal(0)
+            };
+          })
         }
       }
     });

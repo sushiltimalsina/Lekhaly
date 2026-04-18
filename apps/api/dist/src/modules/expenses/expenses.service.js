@@ -96,6 +96,12 @@ let ExpensesService = class ExpensesService {
         await this.validateRefs(user, input);
         const { lines, total, taxAmount } = await this.buildVoucherLines(user, input);
         const resolved = (0, nepali_date_1.resolveAdDate)(input.date, input.dateBs);
+        const company = await this.prisma.company.findUnique({ where: { id: user.companyId } });
+        if (!company)
+            throw new common_1.BadRequestException("Company not found");
+        if (company.lockDate && resolved.date <= company.lockDate) {
+            throw new common_1.BadRequestException("Expense date is locked");
+        }
         return this.prisma.expense.create({
             data: {
                 companyId: user.companyId,
@@ -135,16 +141,19 @@ let ExpensesService = class ExpensesService {
                 postedAt: new Date(),
                 postedByUserId: user.sub,
                 lines: {
-                    create: preview.lines.map((l, idx) => ({
-                        companyId: user.companyId,
-                        lineNo: idx + 1,
-                        accountId: l.accountId,
-                        description: l.description,
-                        debit: l.debit,
-                        credit: l.credit,
-                        taxCodeId: l.taxCodeId,
-                        taxAmount: l.taxAmount || new client_1.Prisma.Decimal(0)
-                    }))
+                    create: preview.lines.map((l, idx) => {
+                        const company = this.prisma.company.findUnique({ where: { id: user.companyId } });
+                        return {
+                            companyId: user.companyId,
+                            lineNo: idx + 1,
+                            accountId: l.accountId,
+                            description: l.description,
+                            debit: l.debit,
+                            credit: l.credit,
+                            taxCodeId: l.taxCodeId,
+                            taxAmount: l.taxAmount || new client_1.Prisma.Decimal(0)
+                        };
+                    })
                 }
             }
         });

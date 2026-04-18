@@ -4,10 +4,23 @@ import { ZodValidationPipe } from "../../common/zod/zod.pipe";
 import type { AuthUser } from "../../common/auth/auth.types";
 import { ExportReportSchema, PartyAgingQuerySchema, LedgerQuerySchema, ReportQuerySchema } from "./dto/report.schemas";
 import { ReportsService } from "./reports.service";
+import { DashboardService } from "./dashboard.service";
 
 @Controller("reports")
 export class ReportsController {
-  constructor(private reports: ReportsService) {}
+  constructor(private reports: ReportsService, private dashboard: DashboardService) {}
+
+  @Get("dashboard/stats")
+  @RequirePerm("reports.view")
+  getDashboardStats(@CurrentUser() user: AuthUser) {
+    return this.dashboard.getStats(user.companyId);
+  }
+
+  @Get("dashboard/charts")
+  @RequirePerm("reports.view")
+  getDashboardCharts(@CurrentUser() user: AuthUser) {
+    return this.dashboard.getChartData(user.companyId);
+  }
 
   @Get("trial-balance")
   @RequirePerm("reports.view")
