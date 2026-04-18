@@ -1,4 +1,4 @@
-// apps/web/src/lib/api/client.ts
+// apps/desktop/src/lib/api/client.ts
 
 export type ApiErrorResponse = {
   statusCode?: number;
@@ -70,7 +70,6 @@ export function buildUrl(path: string, query?: RequestOptions["query"]) {
 }
 
 function getToken() {
-  // Later you can move to httpOnly cookies. For now keep simple.
   if (typeof window === "undefined") return null;
   return localStorage.getItem("lekhaly_token");
 }
@@ -287,7 +286,6 @@ export async function apiRequest<T>(opts: RequestOptions): Promise<T> {
     throw error;
   }
 
-  // Try parsing json, but don’t crash if empty
   let data: any = null;
   const text = await res.text();
   if (text) {
@@ -306,6 +304,12 @@ export async function apiRequest<T>(opts: RequestOptions): Promise<T> {
       errObj?.message ||
       errObj?.error ||
       `Request failed with status ${res.status}`;
+
+    // Handle session expiration
+    if (res.status === 401 && typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+      localStorage.removeItem("lekhaly_token");
+      window.location.href = "/login";
+    }
 
     throw new ApiError(msg, res.status, errObj);
   }

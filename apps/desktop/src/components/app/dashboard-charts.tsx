@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import * as React from "react";
 import {
@@ -35,12 +35,13 @@ const pieData = [
 
 const COLORS = ["#3b82f6", "#10b981", "#6366f1", "#f59e0b"];
 
-export function RevenueChart() {
+export function RevenueChart({ data: propData }: { data?: any[] }) {
+    const chartData = propData || data;
     return (
         <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
                 <AreaChart
-                    data={data}
+                    data={chartData}
                     margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
                 >
                     <defs>

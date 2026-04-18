@@ -6,10 +6,17 @@ export declare class ReportsController {
     private dashboard;
     constructor(reports: ReportsService, dashboard: DashboardService);
     getDashboardStats(user: AuthUser): Promise<{
-        revenue: import("@prisma/client/runtime/client").Decimal;
-        receivables: import("@prisma/client/runtime/client").Decimal;
-        payables: import("@prisma/client/runtime/client").Decimal;
-        cashAtHand: import("@prisma/client/runtime/client").Decimal;
+        revenue: number;
+        revenueTrend: number;
+        receivables: number;
+        receivablesTrend: number;
+        payables: number;
+        payablesTrend: number;
+        cashAtHand: number;
+        cashTrend: number;
+        quickRatio: number;
+        burnRate: number;
+        runway: number;
         recentActivity: {
             id: string;
             type: import("@prisma/client").$Enums.VoucherType;

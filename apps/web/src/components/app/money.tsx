@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import * as React from "react";
 import { getCurrencySettings, subscribeUi } from "@/lib/store/ui";
@@ -12,7 +12,9 @@ export function formatMoney(
   const symbol = opts?.symbol ?? "रु.";
   const format = opts?.format ?? "en-IN";
 
-  if (!Number.isFinite(value)) return "—";
+  if (value === undefined || value === null) return "—";
+  const numValue = Number(value);
+  if (!Number.isFinite(numValue)) return "—";
 
   const absValue = Math.abs(value);
   const isNegative = value < 0;

@@ -68,32 +68,32 @@ export default function DashboardPage() {
           value={stats?.revenue || 0}
           icon={DollarSign}
           loading={loading}
-          trend="+20.1% from last month"
-          trendUp={true}
+          trend={`${stats?.revenueTrend >= 0 ? "+" : ""}${stats?.revenueTrend?.toFixed(1) || 0}% from last month`}
+          trendUp={stats?.revenueTrend >= 0}
         />
         <MetricCard
           title="Receivables"
           value={stats?.receivables || 0}
           icon={Users}
           loading={loading}
-          trend="+180.1% from last month"
-          trendUp={true}
+          trend={`${stats?.receivablesTrend >= 0 ? "+" : ""}${stats?.receivablesTrend?.toFixed(1) || 0}% from last month`}
+          trendUp={stats?.receivablesTrend >= 0}
         />
         <MetricCard
           title="Payables"
           value={stats?.payables || 0}
           icon={CreditCard}
           loading={loading}
-          trend="-5.4% from last month"
-          trendUp={false}
+          trend={`${stats?.payablesTrend >= 0 ? "+" : ""}${stats?.payablesTrend?.toFixed(1) || 0}% from last month`}
+          trendUp={stats?.payablesTrend <= 0} // Less payables is usually good
         />
         <MetricCard
           title="Cash at Hand"
           value={stats?.cashAtHand || 0}
           icon={Activity}
           loading={loading}
-          trend="+12% since last hour"
-          trendUp={true}
+          trend={`${stats?.cashTrend >= 0 ? "+" : ""}${stats?.cashTrend?.toFixed(1) || 0}% since last month`}
+          trendUp={stats?.cashTrend >= 0}
         />
       </div>
 
@@ -189,21 +189,21 @@ export default function DashboardPage() {
                   <div className="text-sm font-medium">Quick Ratio</div>
                   <div className="text-xs text-muted-foreground">Liquid assets vs current liabilities</div>
                 </div>
-                {loading ? <Skeleton className="h-6 w-12" /> : <div className="text-xl font-bold font-mono">1.8</div>}
+                {loading ? <Skeleton className="h-6 w-12" /> : <div className="text-xl font-bold font-mono">{stats?.quickRatio || 0}</div>}
               </div>
               <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/10 flex items-center justify-between">
                 <div>
                   <div className="text-sm font-medium">Burn Rate</div>
                   <div className="text-xs text-muted-foreground">Monthly cash outflow average</div>
                 </div>
-                {loading ? <Skeleton className="h-6 w-12" /> : <div className="text-xl font-bold font-mono text-emerald-600"><MoneyText value={12400} /></div>}
+                {loading ? <Skeleton className="h-6 w-12" /> : <div className="text-xl font-bold font-mono text-emerald-600"><MoneyText value={stats?.burnRate || 0} /></div>}
               </div>
               <div className="p-4 rounded-xl bg-indigo-500/5 border border-indigo-500/10 flex items-center justify-between">
                 <div>
                   <div className="text-sm font-medium">Runway</div>
                   <div className="text-xs text-muted-foreground">Estimated months of operation</div>
                 </div>
-                {loading ? <Skeleton className="h-6 w-12" /> : <div className="text-xl font-bold font-mono text-indigo-600">14 Months</div>}
+                {loading ? <Skeleton className="h-6 w-12" /> : <div className="text-xl font-bold font-mono text-indigo-600">{stats?.runway || 0} Months</div>}
               </div>
             </div>
           </CardContent>
