@@ -94,16 +94,41 @@ model Company {
 
   // numbering + lock settings
   invoicePrefix       String    @default("INV")
+  purchasePrefix      String    @default("PUR")
+  salesReturnPrefix   String    @default("SR")
+  purchaseReturnPrefix String   @default("PR")
   orderPrefix         String    @default("SO")
   quotationPrefix     String    @default("QT")
   purchaseOrderPrefix String    @default("PO")
-  nextInvoiceNumber Int       @default(1)
-  nextOrderNumber   Int       @default(1)
+  receiptPrefix       String    @default("REC")
+  paymentPrefix       String    @default("PAY")
+  journalPrefix       String    @default("JV")
+
+  invoiceSuffix       String    @default("")
+  purchaseSuffix      String    @default("")
+  salesReturnSuffix   String    @default("")
+  purchaseReturnSuffix String   @default("")
+  orderSuffix         String    @default("")
+  quotationSuffix     String    @default("")
+  purchaseOrderSuffix String    @default("")
+  receiptSuffix       String    @default("")
+  paymentSuffix       String    @default("")
+  journalSuffix       String    @default("")
+
+  nextInvoiceNumber   Int       @default(1)
+  nextPurchaseNumber  Int       @default(1)
+  nextSalesReturnNumber Int     @default(1)
+  nextPurchaseReturnNumber Int   @default(1)
+  nextOrderNumber     Int       @default(1)
+  nextQuotationNumber Int       @default(1)
   nextPurchaseOrderNumber Int @default(1)
-  nextQuotationNumber Int     @default(1)
-  lockDate          DateTime?
-  creditLimitAmount Decimal   @default(0) @db.Decimal(14, 2)
-  printLogo         Boolean   @default(true)
+  nextReceiptNumber   Int       @default(1)
+  nextPaymentNumber   Int       @default(1)
+  nextJournalNumber   Int       @default(1)
+
+  lockDate            DateTime?
+  creditLimitAmount   Decimal   @default(0) @db.Decimal(14, 2)
+  printLogo           Boolean   @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -509,30 +509,58 @@ export class VouchersService {
       // Determine correct sequence and prefix based on voucher type
       let sequence: number;
       let prefix: string;
+      let suffix: string;
       const seqUpdate: Record<string, number> = {};
 
       switch (voucher.voucherType) {
         case VoucherType.sales_invoice:
-        case VoucherType.sales_return:
           sequence = company.nextInvoiceNumber;
           prefix = company.invoicePrefix;
+          suffix = company.invoiceSuffix || "";
           seqUpdate.nextInvoiceNumber = sequence + 1;
           break;
         case VoucherType.purchase:
-        case VoucherType.purchase_return:
-          sequence = company.nextPurchaseOrderNumber;
-          prefix = company.purchaseOrderPrefix;
-          seqUpdate.nextPurchaseOrderNumber = sequence + 1;
+          sequence = company.nextPurchaseNumber;
+          prefix = company.purchasePrefix;
+          suffix = company.purchaseSuffix || "";
+          seqUpdate.nextPurchaseNumber = sequence + 1;
           break;
+        case VoucherType.sales_return:
+          sequence = company.nextSalesReturnNumber;
+          prefix = company.salesReturnPrefix;
+          suffix = company.salesReturnSuffix || "";
+          seqUpdate.nextSalesReturnNumber = sequence + 1;
+          break;
+        case VoucherType.purchase_return:
+          sequence = company.nextPurchaseReturnNumber;
+          prefix = company.purchaseReturnPrefix;
+          suffix = company.purchaseReturnSuffix || "";
+          seqUpdate.nextPurchaseReturnNumber = sequence + 1;
+          break;
+        case VoucherType.receipt:
+          sequence = company.nextReceiptNumber;
+          prefix = company.receiptPrefix;
+          suffix = company.receiptSuffix || "";
+          seqUpdate.nextReceiptNumber = sequence + 1;
+          break;
+        case VoucherType.payment:
+          sequence = company.nextPaymentNumber;
+          prefix = company.paymentPrefix;
+          suffix = company.paymentSuffix || "";
+          seqUpdate.nextPaymentNumber = sequence + 1;
+          break;
+        case VoucherType.journal:
+        case VoucherType.opening:
+        case VoucherType.reversal:
         default:
-          // For journal, opening, reversal, receipt, payment — use invoice sequence as fallback
-          sequence = company.nextInvoiceNumber;
-          prefix = voucher.voucherType.replace("_", "-").toUpperCase();
-          seqUpdate.nextInvoiceNumber = sequence + 1;
+          sequence = company.nextJournalNumber;
+          prefix = company.journalPrefix;
+          suffix = company.journalSuffix || "";
+          seqUpdate.nextJournalNumber = sequence + 1;
           break;
       }
 
-      const voucherNumber = `${prefix}-${sequence}`;
+      const voucherNumber = `${prefix}-${sequence}${suffix}`;
 
       const posted = await tx.voucher.update({
         where: { id: voucher.id },

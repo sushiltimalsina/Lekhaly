@@ -441,27 +441,56 @@ let VouchersService = class VouchersService {
             }, voucher.voucherType);
             let sequence;
             let prefix;
+            let suffix;
             const seqUpdate = {};
             switch (voucher.voucherType) {
                 case client_1.VoucherType.sales_invoice:
-                case client_1.VoucherType.sales_return:
                     sequence = company.nextInvoiceNumber;
                     prefix = company.invoicePrefix;
+                    suffix = company.invoiceSuffix || "";
                     seqUpdate.nextInvoiceNumber = sequence + 1;
                     break;
                 case client_1.VoucherType.purchase:
-                case client_1.VoucherType.purchase_return:
-                    sequence = company.nextPurchaseOrderNumber;
-                    prefix = company.purchaseOrderPrefix;
-                    seqUpdate.nextPurchaseOrderNumber = sequence + 1;
+                    sequence = company.nextPurchaseNumber;
+                    prefix = company.purchasePrefix;
+                    suffix = company.purchaseSuffix || "";
+                    seqUpdate.nextPurchaseNumber = sequence + 1;
                     break;
+                case client_1.VoucherType.sales_return:
+                    sequence = company.nextSalesReturnNumber;
+                    prefix = company.salesReturnPrefix;
+                    suffix = company.salesReturnSuffix || "";
+                    seqUpdate.nextSalesReturnNumber = sequence + 1;
+                    break;
+                case client_1.VoucherType.purchase_return:
+                    sequence = company.nextPurchaseReturnNumber;
+                    prefix = company.purchaseReturnPrefix;
+                    suffix = company.purchaseReturnSuffix || "";
+                    seqUpdate.nextPurchaseReturnNumber = sequence + 1;
+                    break;
+                case client_1.VoucherType.receipt:
+                    sequence = company.nextReceiptNumber;
+                    prefix = company.receiptPrefix;
+                    suffix = company.receiptSuffix || "";
+                    seqUpdate.nextReceiptNumber = sequence + 1;
+                    break;
+                case client_1.VoucherType.payment:
+                    sequence = company.nextPaymentNumber;
+                    prefix = company.paymentPrefix;
+                    suffix = company.paymentSuffix || "";
+                    seqUpdate.nextPaymentNumber = sequence + 1;
+                    break;
+                case client_1.VoucherType.journal:
+                case client_1.VoucherType.opening:
+                case client_1.VoucherType.reversal:
                 default:
-                    sequence = company.nextInvoiceNumber;
-                    prefix = voucher.voucherType.replace("_", "-").toUpperCase();
-                    seqUpdate.nextInvoiceNumber = sequence + 1;
+                    sequence = company.nextJournalNumber;
+                    prefix = company.journalPrefix;
+                    suffix = company.journalSuffix || "";
+                    seqUpdate.nextJournalNumber = sequence + 1;
                     break;
             }
-            const voucherNumber = `${prefix}-${sequence}`;
+            const voucherNumber = `${prefix}-${sequence}${suffix}`;
             const posted = await tx.voucher.update({
                 where: { id: voucher.id },
                 data: {

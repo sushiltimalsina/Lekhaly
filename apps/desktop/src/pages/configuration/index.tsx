@@ -17,6 +17,68 @@ import { getCurrencySettings, setCurrencySymbol, setNumberFormat, subscribeUi } 
 import { MoneyText } from "@/components/app/money";
 import { getCompany, updateCompany } from "@/lib/api/auth";
 
+function NumberingRow({ 
+  label, 
+  prefix, 
+  seq, 
+  suffix,
+  onPrefixChange, 
+  onSeqChange, 
+  onSuffixChange,
+  onSave 
+}: { 
+  label: string; 
+  prefix?: string; 
+  seq?: number; 
+  suffix?: string;
+  onPrefixChange: (v: string) => void; 
+  onSeqChange: (v: number) => void; 
+  onSuffixChange: (v: string) => void;
+  onSave: () => void; 
+}) {
+  const preview = `${prefix || ""}${String(seq || 1).padStart(5, '0')}${suffix || ""}`;
+  
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <label className="text-[10px] font-extrabold uppercase tracking-tight text-muted-foreground/80">{label}</label>
+        <span className="text-[10px] font-mono bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded-md font-bold">
+          {preview}
+        </span>
+      </div>
+      <div className="grid grid-cols-7 gap-2">
+        <div className="col-span-2">
+          <Input 
+            value={prefix || ""} 
+            placeholder="PRE"
+            onChange={e => onPrefixChange(e.target.value)}
+            onBlur={onSave}
+            className="h-9 rounded-xl font-mono text-xs text-center border-dashed"
+          />
+        </div>
+        <div className="col-span-3">
+          <Input 
+            type="number"
+            value={seq || 1} 
+            onChange={e => onSeqChange(parseInt(e.target.value) || 1)}
+            onBlur={onSave}
+            className="h-9 rounded-xl font-mono text-xs text-center"
+          />
+        </div>
+        <div className="col-span-2">
+          <Input 
+            value={suffix || ""} 
+            placeholder="SUF"
+            onChange={e => onSuffixChange(e.target.value)}
+            onBlur={onSave}
+            className="h-9 rounded-xl font-mono text-xs text-center border-dashed"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ConfigurationPage() {
   const [searchParams] = useSearchParams();
   const focus = searchParams.get("focus");
@@ -41,9 +103,7 @@ export default function ConfigurationPage() {
   const [editSundry, setEditSundry] = React.useState<BillSundryRecord | undefined>();
 
   // Visibility state
-  const [showUnits, setShowUnits] = React.useState(false);
-  const [showGroups, setShowGroups] = React.useState(false);
-  const [showSundries, setShowSundries] = React.useState(false);
+  const [expandedSection, setExpandedSection] = React.useState<string | null>("numbering");
 
   // Search state
   const [qUnits, setQUnits] = React.useState("");
@@ -56,12 +116,6 @@ export default function ConfigurationPage() {
   const [numberFormat, setNumberFormatState] = React.useState(getCurrencySettings().numberFormat);
   const [calendarPreference, setCalendarPreferenceState] = React.useState<"BS" | "AD">("BS");
   const [defaultDateRange, setDefaultDateRangeState] = React.useState<string>("this_month");
-
-  // Visibility for Preferences
-  const [showRegional, setShowRegional] = React.useState(false);
-  const [showNumbering, setShowNumbering] = React.useState(false);
-  const [showSecurity, setShowSecurity] = React.useState(false);
-  const [showCredit, setShowCredit] = React.useState(false);
 
   // Company Settings State
   const [company, setCompany] = React.useState<any>(null);
@@ -133,15 +187,15 @@ export default function ConfigurationPage() {
   React.useEffect(() => {
     if (!loading) {
       if (focus === "units") {
-        setShowUnits(true);
+        setExpandedSection("units");
         unitsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       }
       if (focus === "groups") {
-        setShowGroups(true);
+        setExpandedSection("groups");
         groupsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       }
       if (focus === "sundries") {
-        setShowSundries(true);
+        setExpandedSection("sundries");
         sundriesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       }
     }
@@ -242,12 +296,12 @@ export default function ConfigurationPage() {
         {/* Units Section */}
         <Card ref={unitsRef} className={cn("glass-card overflow-hidden", focus === "units" && "ring-2 ring-blue-500/50")}>
           <CardHeader 
-            onClick={() => setShowUnits(!showUnits)}
-            className={cn("flex flex-row items-center justify-between cursor-pointer hover:bg-accent/10 transition-colors select-none", showUnits ? "pb-2" : "pb-4")}
+            onClick={() => setExpandedSection(expandedSection === "units" ? null : "units")}
+            className={cn("flex flex-row items-center justify-between cursor-pointer hover:bg-accent/10 transition-colors select-none", expandedSection === "units" ? "pb-2" : "pb-4")}
           >
             <div className="flex items-center gap-3">
                <div className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-accent transition-colors">
-                 {showUnits ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
+                 {expandedSection === "units" ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
                </div>
               <div>
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -263,7 +317,7 @@ export default function ConfigurationPage() {
               </Button>
             </div>
           </CardHeader>
-          {showUnits && (
+          {expandedSection === "units" && (
             <CardContent className="animate-in fade-in slide-in-from-top-1 duration-200">
               <div className="mb-4 relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -316,12 +370,12 @@ export default function ConfigurationPage() {
         {/* Groups Section */}
         <Card ref={groupsRef} className={cn("glass-card overflow-hidden", focus === "groups" && "ring-2 ring-orange-500/50")}>
           <CardHeader 
-            onClick={() => setShowGroups(!showGroups)}
-            className={cn("flex flex-row items-center justify-between cursor-pointer hover:bg-accent/10 transition-colors select-none", showGroups ? "pb-2" : "pb-4")}
+            onClick={() => setExpandedSection(expandedSection === "groups" ? null : "groups")}
+            className={cn("flex flex-row items-center justify-between cursor-pointer hover:bg-accent/10 transition-colors select-none", expandedSection === "groups" ? "pb-2" : "pb-4")}
           >
             <div className="flex items-center gap-3">
                <div className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-accent transition-colors">
-                 {showGroups ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
+                 {expandedSection === "groups" ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
                </div>
               <div>
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -337,10 +391,10 @@ export default function ConfigurationPage() {
               </Button>
             </div>
           </CardHeader>
-          {showGroups && (
+          {expandedSection === "groups" && (
             <CardContent className="animate-in fade-in slide-in-from-top-1 duration-200">
               <div className="mb-4 relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 h-4 w-1 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Search groups..."
                   value={qGroups}
@@ -390,12 +444,12 @@ export default function ConfigurationPage() {
         {/* Bill Sundries Section */}
         <Card ref={sundriesRef} className={cn("glass-card overflow-hidden lg:col-span-2", focus === "sundries" && "ring-2 ring-indigo-500/50")}>
           <CardHeader 
-            onClick={() => setShowSundries(!showSundries)}
-            className={cn("flex flex-row items-center justify-between cursor-pointer hover:bg-accent/10 transition-colors select-none", showSundries ? "pb-2" : "pb-4")}
+            onClick={() => setExpandedSection(expandedSection === "sundries" ? null : "sundries")}
+            className={cn("flex flex-row items-center justify-between cursor-pointer hover:bg-accent/10 transition-colors select-none", expandedSection === "sundries" ? "pb-2" : "pb-4")}
           >
             <div className="flex items-center gap-3">
                <div className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-accent transition-colors">
-                 {showSundries ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
+                 {expandedSection === "sundries" ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
                </div>
               <div>
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -411,7 +465,7 @@ export default function ConfigurationPage() {
               </Button>
             </div>
           </CardHeader>
-          {showSundries && (
+          {expandedSection === "sundries" && (
             <CardContent className="animate-in fade-in slide-in-from-top-1 duration-200">
               <div className="mb-4 relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -435,14 +489,14 @@ export default function ConfigurationPage() {
                         )}>
                           {s.type === "add" ? <Plus className="h-5 w-5" /> : <Calculator className="h-5 w-5" />}
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2 font-semibold text-foreground">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 font-semibold text-foreground truncate">
                             {s.name}
                             {["Discount", "Shipping & Handling", "Packaging Charges", "Insurance", "Round Off", "VAT"].includes(s.name) && (
-                               <span className="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 text-[10px] px-1.5 py-0.5 rounded-md font-medium">System</span>
+                               <span className="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 text-[10px] px-1.5 py-0.5 rounded-md font-medium shrink-0">System</span>
                             )}
                           </div>
-                          <div className="font-mono text-xs uppercase tracking-tight text-muted-foreground">
+                          <div className="font-mono text-xs uppercase tracking-tight text-muted-foreground truncate">
                             {s.rate ? `${s.rate}%` : "Manual"} • {s.type} {s.account?.name ? `• ${s.account.name}` : ""}
                           </div>
                         </div>
@@ -484,12 +538,12 @@ export default function ConfigurationPage() {
         {/* System & Regional Preferences Section */}
         <Card className={cn("glass-card overflow-hidden lg:col-span-2")}>
           <CardHeader 
-            onClick={() => setShowRegional(!showRegional)}
-            className={cn("flex flex-row items-center justify-between cursor-pointer hover:bg-accent/10 transition-colors select-none", showRegional ? "pb-2" : "pb-4")}
+            onClick={() => setExpandedSection(expandedSection === "regional" ? null : "regional")}
+            className={cn("flex flex-row items-center justify-between cursor-pointer hover:bg-accent/10 transition-colors select-none", expandedSection === "regional" ? "pb-2" : "pb-4")}
           >
             <div className="flex items-center gap-3">
                <div className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-accent transition-colors">
-                 {showRegional ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
+                 {expandedSection === "regional" ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
                </div>
               <div>
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -500,7 +554,7 @@ export default function ConfigurationPage() {
               </div>
             </div>
           </CardHeader>
-          {showRegional && (
+          {expandedSection === "regional" && (
             <CardContent className="animate-in fade-in slide-in-from-top-1 duration-200 lg:p-8">
               <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
                 {/* Calendar preference */}
@@ -647,202 +701,239 @@ export default function ConfigurationPage() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Voucher Numbering Section */}
-        <Card className="glass-card overflow-hidden">
-          <CardHeader onClick={() => setShowNumbering(!showNumbering)} className="cursor-pointer hover:bg-accent/10 transition-colors select-none">
+        <Card className="glass-card overflow-hidden lg:col-span-2">
+          <CardHeader onClick={() => setExpandedSection(expandedSection === "numbering" ? null : "numbering")} className="cursor-pointer hover:bg-accent/10 transition-colors select-none border-b border-border/10">
             <CardTitle className="text-lg flex items-center gap-2">
               <Hash className="h-5 w-5 text-indigo-500" />
               Voucher Numbering
             </CardTitle>
-            <CardDescription>Setup prefixes and sequences</CardDescription>
+            <CardDescription>Setup prefixes and sequences for all document series</CardDescription>
           </CardHeader>
-          {showNumbering && (
-            <CardContent className="space-y-4 animate-in fade-in slide-in-from-top-1">
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold uppercase text-muted-foreground">Invoice Prefix</label>
-                    <Input 
-                      value={companyForm.invoicePrefix || ""} 
-                      onChange={e => setCompanyForm({...companyForm, invoicePrefix: e.target.value.toUpperCase()})}
-                      onBlur={() => saveCompanySettings({ invoicePrefix: companyForm.invoicePrefix })}
-                      className="h-9 rounded-xl"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold uppercase text-muted-foreground">Next No.</label>
-                    <Input 
-                      type="number"
-                      value={companyForm.nextInvoiceNumber || 1} 
-                      onChange={e => setCompanyForm({...companyForm, nextInvoiceNumber: parseInt(e.target.value)})}
-                      onBlur={() => saveCompanySettings({ nextInvoiceNumber: companyForm.nextInvoiceNumber })}
-                      className="h-9 rounded-xl"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold uppercase text-muted-foreground">Order Prefix</label>
-                    <Input 
-                      value={companyForm.orderPrefix || ""} 
-                      onChange={e => setCompanyForm({...companyForm, orderPrefix: e.target.value.toUpperCase()})}
-                      onBlur={() => saveCompanySettings({ orderPrefix: companyForm.orderPrefix })}
-                      className="h-9 rounded-xl"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold uppercase text-muted-foreground">Next No.</label>
-                    <Input 
-                      type="number"
-                      value={companyForm.nextOrderNumber || 1} 
-                      onChange={e => setCompanyForm({...companyForm, nextOrderNumber: parseInt(e.target.value)})}
-                      onBlur={() => saveCompanySettings({ nextOrderNumber: companyForm.nextOrderNumber })}
-                      className="h-9 rounded-xl"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold uppercase text-muted-foreground">Quota Prefix</label>
-                    <Input 
-                      value={companyForm.quotationPrefix || ""} 
-                      onChange={e => setCompanyForm({...companyForm, quotationPrefix: e.target.value.toUpperCase()})}
-                      onBlur={() => saveCompanySettings({ quotationPrefix: companyForm.quotationPrefix })}
-                      className="h-9 rounded-xl"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold uppercase text-muted-foreground">Next No.</label>
-                    <Input 
-                      type="number"
-                      value={companyForm.nextQuotationNumber || 1} 
-                      onChange={e => setCompanyForm({...companyForm, nextQuotationNumber: parseInt(e.target.value)})}
-                      onBlur={() => saveCompanySettings({ nextQuotationNumber: companyForm.nextQuotationNumber })}
-                      className="h-9 rounded-xl"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold uppercase text-muted-foreground">PO Prefix</label>
-                    <Input 
-                      value={companyForm.purchaseOrderPrefix || ""} 
-                      onChange={e => setCompanyForm({...companyForm, purchaseOrderPrefix: e.target.value.toUpperCase()})}
-                      onBlur={() => saveCompanySettings({ purchaseOrderPrefix: companyForm.purchaseOrderPrefix })}
-                      className="h-9 rounded-xl"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold uppercase text-muted-foreground">Next No.</label>
-                    <Input 
-                      type="number"
-                      value={companyForm.nextPurchaseOrderNumber || 1} 
-                      onChange={e => setCompanyForm({...companyForm, nextPurchaseOrderNumber: parseInt(e.target.value)})}
-                      onBlur={() => saveCompanySettings({ nextPurchaseOrderNumber: companyForm.nextPurchaseOrderNumber })}
-                      className="h-9 rounded-xl"
-                    />
-                  </div>
-                </div>
+          {expandedSection === "numbering" && (
+            <CardContent className="space-y-6 animate-in fade-in slide-in-from-top-1 pt-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-8">
+                {/* Sales Invoice */}
+                <NumberingRow 
+                  label="Sales Invoice" 
+                  prefix={companyForm.invoicePrefix}
+                  seq={companyForm.nextInvoiceNumber}
+                  suffix={companyForm.invoiceSuffix}
+                  onPrefixChange={v => setCompanyForm({...companyForm, invoicePrefix: v.toUpperCase()})}
+                  onSeqChange={v => setCompanyForm({...companyForm, nextInvoiceNumber: v})}
+                  onSuffixChange={v => setCompanyForm({...companyForm, invoiceSuffix: v})}
+                  onSave={() => saveCompanySettings({ invoicePrefix: companyForm.invoicePrefix, nextInvoiceNumber: companyForm.nextInvoiceNumber, invoiceSuffix: companyForm.invoiceSuffix })}
+                />
+                
+                {/* Purchase Invoice */}
+                <NumberingRow 
+                  label="Purchase Invoice" 
+                  prefix={companyForm.purchasePrefix}
+                  seq={companyForm.nextPurchaseNumber}
+                  suffix={companyForm.purchaseSuffix}
+                  onPrefixChange={v => setCompanyForm({...companyForm, purchasePrefix: v.toUpperCase()})}
+                  onSeqChange={v => setCompanyForm({...companyForm, nextPurchaseNumber: v})}
+                  onSuffixChange={v => setCompanyForm({...companyForm, purchaseSuffix: v})}
+                  onSave={() => saveCompanySettings({ purchasePrefix: companyForm.purchasePrefix, nextPurchaseNumber: companyForm.nextPurchaseNumber, purchaseSuffix: companyForm.purchaseSuffix })}
+                />
+
+                {/* Sales Return */}
+                <NumberingRow 
+                  label="Sales Return" 
+                  prefix={companyForm.salesReturnPrefix}
+                  seq={companyForm.nextSalesReturnNumber}
+                  suffix={companyForm.salesReturnSuffix}
+                  onPrefixChange={v => setCompanyForm({...companyForm, salesReturnPrefix: v.toUpperCase()})}
+                  onSeqChange={v => setCompanyForm({...companyForm, nextSalesReturnNumber: v})}
+                  onSuffixChange={v => setCompanyForm({...companyForm, salesReturnSuffix: v})}
+                  onSave={() => saveCompanySettings({ salesReturnPrefix: companyForm.salesReturnPrefix, nextSalesReturnNumber: companyForm.nextSalesReturnNumber, salesReturnSuffix: companyForm.salesReturnSuffix })}
+                />
+
+                {/* Purchase Return */}
+                <NumberingRow 
+                  label="Purchase Return" 
+                  prefix={companyForm.purchaseReturnPrefix}
+                  seq={companyForm.nextPurchaseReturnNumber}
+                  suffix={companyForm.purchaseReturnSuffix}
+                  onPrefixChange={v => setCompanyForm({...companyForm, purchaseReturnPrefix: v.toUpperCase()})}
+                  onSeqChange={v => setCompanyForm({...companyForm, nextPurchaseReturnNumber: v})}
+                  onSuffixChange={v => setCompanyForm({...companyForm, purchaseReturnSuffix: v})}
+                  onSave={() => saveCompanySettings({ purchaseReturnPrefix: companyForm.purchaseReturnPrefix, nextPurchaseReturnNumber: companyForm.nextPurchaseReturnNumber, purchaseReturnSuffix: companyForm.purchaseReturnSuffix })}
+                />
+
+                {/* Receipt Voucher */}
+                <NumberingRow 
+                  label="Receipt Voucher" 
+                  prefix={companyForm.receiptPrefix}
+                  seq={companyForm.nextReceiptNumber}
+                  suffix={companyForm.receiptSuffix}
+                  onPrefixChange={v => setCompanyForm({...companyForm, receiptPrefix: v.toUpperCase()})}
+                  onSeqChange={v => setCompanyForm({...companyForm, nextReceiptNumber: v})}
+                  onSuffixChange={v => setCompanyForm({...companyForm, receiptSuffix: v})}
+                  onSave={() => saveCompanySettings({ receiptPrefix: companyForm.receiptPrefix, nextReceiptNumber: companyForm.nextReceiptNumber, receiptSuffix: companyForm.receiptSuffix })}
+                />
+
+                {/* Payment Voucher */}
+                <NumberingRow 
+                  label="Payment Voucher" 
+                  prefix={companyForm.paymentPrefix}
+                  seq={companyForm.nextPaymentNumber}
+                  suffix={companyForm.paymentSuffix}
+                  onPrefixChange={v => setCompanyForm({...companyForm, paymentPrefix: v.toUpperCase()})}
+                  onSeqChange={v => setCompanyForm({...companyForm, nextPaymentNumber: v})}
+                  onSuffixChange={v => setCompanyForm({...companyForm, paymentSuffix: v})}
+                  onSave={() => saveCompanySettings({ paymentPrefix: companyForm.paymentPrefix, nextPaymentNumber: companyForm.nextPaymentNumber, paymentSuffix: companyForm.paymentSuffix })}
+                />
+
+                {/* Journal Voucher */}
+                <NumberingRow 
+                  label="Journal Voucher" 
+                  prefix={companyForm.journalPrefix}
+                  seq={companyForm.nextJournalNumber}
+                  suffix={companyForm.journalSuffix}
+                  onPrefixChange={v => setCompanyForm({...companyForm, journalPrefix: v.toUpperCase()})}
+                  onSeqChange={v => setCompanyForm({...companyForm, nextJournalNumber: v})}
+                  onSuffixChange={v => setCompanyForm({...companyForm, journalSuffix: v})}
+                  onSave={() => saveCompanySettings({ journalPrefix: companyForm.journalPrefix, nextJournalNumber: companyForm.nextJournalNumber, journalSuffix: companyForm.journalSuffix })}
+                />
+
+                {/* Quotation */}
+                <NumberingRow 
+                  label="Quotation" 
+                  prefix={companyForm.quotationPrefix}
+                  seq={companyForm.nextQuotationNumber}
+                  suffix={companyForm.quotationSuffix}
+                  onPrefixChange={v => setCompanyForm({...companyForm, quotationPrefix: v.toUpperCase()})}
+                  onSeqChange={v => setCompanyForm({...companyForm, nextQuotationNumber: v})}
+                  onSuffixChange={v => setCompanyForm({...companyForm, quotationSuffix: v})}
+                  onSave={() => saveCompanySettings({ quotationPrefix: companyForm.quotationPrefix, nextQuotationNumber: companyForm.nextQuotationNumber, quotationSuffix: companyForm.quotationSuffix })}
+                />
+
+                {/* Sales Order */}
+                <NumberingRow 
+                  label="Sales Order" 
+                  prefix={companyForm.orderPrefix}
+                  seq={companyForm.nextOrderNumber}
+                  suffix={companyForm.orderSuffix}
+                  onPrefixChange={v => setCompanyForm({...companyForm, orderPrefix: v.toUpperCase()})}
+                  onSeqChange={v => setCompanyForm({...companyForm, nextOrderNumber: v})}
+                  onSuffixChange={v => setCompanyForm({...companyForm, orderSuffix: v})}
+                  onSave={() => saveCompanySettings({ orderPrefix: companyForm.orderPrefix, nextOrderNumber: companyForm.nextOrderNumber, orderSuffix: companyForm.orderSuffix })}
+                />
+
+                {/* Purchase Order */}
+                <NumberingRow 
+                  label="Purchase Order" 
+                  prefix={companyForm.purchaseOrderPrefix}
+                  seq={companyForm.nextPurchaseOrderNumber}
+                  suffix={companyForm.purchaseOrderSuffix}
+                  onPrefixChange={v => setCompanyForm({...companyForm, purchaseOrderPrefix: v.toUpperCase()})}
+                  onSeqChange={v => setCompanyForm({...companyForm, nextPurchaseOrderNumber: v})}
+                  onSuffixChange={v => setCompanyForm({...companyForm, purchaseOrderSuffix: v})}
+                  onSave={() => saveCompanySettings({ purchaseOrderPrefix: companyForm.purchaseOrderPrefix, nextPurchaseOrderNumber: companyForm.nextPurchaseOrderNumber, purchaseOrderSuffix: companyForm.purchaseOrderSuffix })}
+                />
               </div>
             </CardContent>
           )}
         </Card>
 
-        {/* Fiscal Year & Security Section */}
-        <Card className="glass-card overflow-hidden">
-          <CardHeader onClick={() => setShowSecurity(!showSecurity)} className="cursor-pointer hover:bg-accent/10 transition-colors select-none">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Shield className="h-5 w-5 text-red-500" />
-              Fiscal & Security
-            </CardTitle>
-            <CardDescription>Lock dates and start month</CardDescription>
-          </CardHeader>
-          {showSecurity && (
-            <CardContent className="space-y-4 animate-in fade-in slide-in-from-top-1">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    Account Lock Date
-                  </label>
-                  <Input 
-                    type="date"
-                    value={companyForm.lockDate ? new Date(companyForm.lockDate).toISOString().split('T')[0] : ""}
-                    onChange={e => {
-                      const d = e.target.value;
-                      setCompanyForm({...companyForm, lockDate: d || null});
-                      saveCompanySettings({ lockDate: d || null });
-                    }}
-                    className="rounded-xl h-11"
-                  />
-                  <p className="text-[10px] text-muted-foreground italic">No vouchers can be added/modified on or before this date.</p>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
-                    <Monitor className="h-4 w-4" />
-                    FY Start Month
-                  </label>
-                  <select 
-                    value={companyForm.fiscalYearStartMonth || 4} 
-                    onChange={e => {
-                      const v = parseInt(e.target.value);
-                      setCompanyForm({...companyForm, fiscalYearStartMonth: v});
-                      saveCompanySettings({ fiscalYearStartMonth: v });
-                    }}
-                    className="w-full h-11 rounded-xl border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
-                      <option key={m} value={m}>{new Date(2000, m-1).toLocaleString('default', { month: 'long' })}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </CardContent>
-          )}
-        </Card>
-
-        {/* Global Credit Management */}
-        <Card className="glass-card overflow-hidden">
-          <CardHeader onClick={() => setShowCredit(!showCredit)} className="cursor-pointer hover:bg-accent/10 transition-colors select-none">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <CreditCard className="h-5 w-5 text-emerald-500" />
-              Credit Management
-            </CardTitle>
-            <CardDescription>Global business credit safety</CardDescription>
-          </CardHeader>
-          {showCredit && (
-            <CardContent className="space-y-4 animate-in fade-in slide-in-from-top-1">
-              <div className="space-y-3">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase text-muted-foreground">Default Credit Limit (Rs.)</label>
-                  <div className="relative">
-                    <CreditCard className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <div className="space-y-6">
+          {/* Fiscal Year & Security Section */}
+          <Card className="glass-card overflow-hidden">
+            <CardHeader onClick={() => setExpandedSection(expandedSection === "security" ? null : "security")} className="cursor-pointer hover:bg-accent/10 transition-colors select-none">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Shield className="h-5 w-5 text-red-500" />
+                Fiscal & Security
+              </CardTitle>
+              <CardDescription>Lock dates and start month</CardDescription>
+            </CardHeader>
+            {expandedSection === "security" && (
+              <CardContent className="space-y-4 animate-in fade-in slide-in-from-top-1">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      Account Lock Date
+                    </label>
                     <Input 
-                      type="number"
-                      value={companyForm.creditLimitAmount || 0} 
-                      onChange={e => setCompanyForm({...companyForm, creditLimitAmount: parseFloat(e.target.value)})}
-                      onBlur={() => saveCompanySettings({ creditLimitAmount: companyForm.creditLimitAmount })}
-                      className="pl-9 h-11 rounded-xl font-bold text-emerald-600"
-                      placeholder="0.00"
+                      type="date"
+                      value={companyForm.lockDate ? new Date(companyForm.lockDate).toISOString().split('T')[0] : ""}
+                      onChange={e => {
+                        const d = e.target.value;
+                        setCompanyForm({...companyForm, lockDate: d || null});
+                        saveCompanySettings({ lockDate: d || null });
+                      }}
+                      className="rounded-xl h-11"
+                    />
+                    <p className="text-[10px] text-muted-foreground italic">No vouchers can be added/modified on or before this date.</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
+                      <Monitor className="h-4 w-4" />
+                      FY Start Month
+                    </label>
+                    <select 
+                      value={companyForm.fiscalYearStartMonth || 4} 
+                      onChange={e => {
+                        const v = parseInt(e.target.value);
+                        setCompanyForm({...companyForm, fiscalYearStartMonth: v});
+                        saveCompanySettings({ fiscalYearStartMonth: v });
+                      }}
+                      className="w-full h-11 rounded-xl border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    >
+                      {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
+                        <option key={m} value={m}>{new Date(2000, m-1).toLocaleString('default', { month: 'long' })}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </CardContent>
+            )}
+          </Card>
+
+          {/* Global Credit Management */}
+          <Card className="glass-card overflow-hidden">
+            <CardHeader onClick={() => setExpandedSection(expandedSection === "credit" ? null : "credit")} className="cursor-pointer hover:bg-accent/10 transition-colors select-none">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <CreditCard className="h-5 w-5 text-emerald-500" />
+                Credit Management
+              </CardTitle>
+              <CardDescription>Global business credit safety</CardDescription>
+            </CardHeader>
+            {expandedSection === "credit" && (
+              <CardContent className="space-y-4 animate-in fade-in slide-in-from-top-1">
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase text-muted-foreground">Default Credit Limit (Rs.)</label>
+                    <div className="relative">
+                      <CreditCard className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input 
+                        type="number"
+                        value={companyForm.creditLimitAmount || 0} 
+                        onChange={e => setCompanyForm({...companyForm, creditLimitAmount: parseFloat(e.target.value)})}
+                        onBlur={() => saveCompanySettings({ creditLimitAmount: companyForm.creditLimitAmount })}
+                        className="pl-9 h-11 rounded-xl font-bold text-emerald-600"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">This is the default limit for new customers unless overridden individually.</p>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40">
+                    <div className="text-xs font-medium text-emerald-800 dark:text-emerald-300">Print Logo on Documents</div>
+                    <Switch 
+                      checked={companyForm.printLogo ?? true} 
+                      onCheckedChange={(v) => {
+                        setCompanyForm({...companyForm, printLogo: v});
+                        saveCompanySettings({ printLogo: v });
+                      }}
                     />
                   </div>
-                  <p className="text-[10px] text-muted-foreground">This is the default limit for new customers unless overridden individually.</p>
                 </div>
-
-                <div className="flex items-center justify-between p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40">
-                  <div className="text-xs font-medium text-emerald-800 dark:text-emerald-300">Print Logo on Documents</div>
-                  <Switch 
-                    checked={companyForm.printLogo ?? true} 
-                    onCheckedChange={(v) => {
-                      setCompanyForm({...companyForm, printLogo: v});
-                      saveCompanySettings({ printLogo: v });
-                    }}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          )}
-        </Card>
+              </CardContent>
+            )}
+          </Card>
+        </div>
       </div>
 
       <AddUnitDialog
