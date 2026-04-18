@@ -712,11 +712,18 @@ export default function ConfigurationPage() {
         {/* Voucher Numbering Section */}
         <Card className="glass-card overflow-hidden lg:col-span-2">
           <CardHeader onClick={() => setExpandedSection(expandedSection === "numbering" ? null : "numbering")} className="cursor-pointer hover:bg-accent/10 transition-colors select-none">
-            <div className="flex items-center gap-2">
-              <Hash className="h-5 w-5 text-indigo-500" />
-              <div>
-                <CardTitle className="text-lg">Voucher Numbering</CardTitle>
-                <CardDescription>Setup prefixes and sequences for all document series</CardDescription>
+            <div className="flex items-center gap-4">
+              {expandedSection === "numbering" ? (
+                <ChevronDown className="h-5 w-5 text-muted-foreground animate-in fade-in" />
+              ) : (
+                <ChevronRight className="h-5 w-5 text-muted-foreground animate-in fade-in" />
+              )}
+              <div className="flex items-center gap-2">
+                <Hash className="h-5 w-5 text-indigo-500" />
+                <div>
+                  <CardTitle className="text-lg">Voucher Numbering</CardTitle>
+                  <CardDescription>Setup prefixes and sequences for all document series</CardDescription>
+                </div>
               </div>
             </div>
           </CardHeader>
