@@ -12,8 +12,11 @@ export class ReportsController {
 
   @Get("dashboard/stats")
   @RequirePerm("reports.view")
-  getDashboardStats(@CurrentUser() user: AuthUser) {
-    return this.dashboard.getStats(user.companyId);
+  getDashboardStats(
+    @CurrentUser() user: AuthUser,
+    @Query("calendar") calendar?: "AD" | "BS"
+  ) {
+    return this.dashboard.getStats(user.companyId, calendar);
   }
 
   @Get("dashboard/charts")

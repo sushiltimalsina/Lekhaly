@@ -26,8 +26,8 @@ let ReportsController = class ReportsController {
         this.reports = reports;
         this.dashboard = dashboard;
     }
-    getDashboardStats(user) {
-        return this.dashboard.getStats(user.companyId);
+    getDashboardStats(user, calendar) {
+        return this.dashboard.getStats(user.companyId, calendar);
     }
     getDashboardCharts(user) {
         return this.dashboard.getChartData(user.companyId);
@@ -56,8 +56,9 @@ __decorate([
     (0, common_1.Get)("dashboard/stats"),
     (0, auth_decorator_1.RequirePerm)("reports.view"),
     __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Query)("calendar")),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", void 0)
 ], ReportsController.prototype, "getDashboardStats", null);
 __decorate([

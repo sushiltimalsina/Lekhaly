@@ -7,19 +7,39 @@ import { bsFiscalYearRange, getCurrentBsDate } from "../../common/date/nepali-da
 export class DashboardService {
   constructor(private prisma: PrismaService) {}
 
-  async getStats(companyId: string) {
+  async getStats(companyId: string, calendar: "AD" | "BS" = "BS") {
     const company = await this.prisma.company.findUnique({ where: { id: companyId } });
     if (!company) throw new Error("Company not found");
 
     const now = new Date();
-    
-    // Current Period (MTD)
-    const curStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const curEnd = now;
+    let curStart, curEnd, prevStart, prevEnd;
 
-    // Previous Period (Last Month)
-    const prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const prevEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+    if (calendar === "BS") {
+      const { year, month } = parseBsDate(adToBsDate(now));
+      
+      // Current BS Month
+      curStart = bsToAdDate(`${year}-${month.toString().padStart(2, '0')}-01`);
+      curEnd = now;
+
+      // Previous BS Month
+      let pYear = year;
+      let pMonth = month - 1;
+      if (pMonth === 0) {
+        pMonth = 12;
+        pYear -= 1;
+      }
+      prevStart = bsToAdDate(`${pYear}-${pMonth.toString().padStart(2, '0')}-01`);
+      // Last day of previous month is the day before the start of the current month
+      prevEnd = new Date(curStart.getTime() - 1);
+    } else {
+      // Current Gregorian Month
+      curStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      curEnd = now;
+
+      // Previous Gregorian Month
+      prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      prevEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+    }
 
     const [curData, prevData] = await Promise.all([
       this.getPeriodSummary(companyId, curStart, curEnd),
@@ -32,7 +52,7 @@ export class DashboardService {
       return cur.sub(prev).div(prev).mul(100).toNumber();
     };
 
-    // Current Balances (Snapshot - ignored periods)
+    // Current Balances (Snapshot - ignores periods)
     const snapshot = await this.getCurrentBalances(companyId);
 
     // Recent Activity with amounts
@@ -122,11 +142,14 @@ export class DashboardService {
       if (line.account.type === "expense") expenses = expenses.add(val);
       
       if (line.account.type === "asset") {
-          if (line.account.code.startsWith("11")) receivables = receivables.add(val);
-          if (line.account.code.startsWith("10")) cash = cash.add(val);
+          // Cash/Bank: 10, 11
+          if (line.account.code.startsWith("10") || line.account.code.startsWith("11")) cash = cash.add(val);
+          // Receivables: 11, 12, 13
+          if (line.account.code.startsWith("11") || line.account.code.startsWith("12") || line.account.code.startsWith("13")) receivables = receivables.add(val);
       }
       if (line.account.type === "liability") {
-          if (line.account.code.startsWith("20")) payables = payables.add(absVal);
+          // Payables: 20, 21
+          if (line.account.code.startsWith("20") || line.account.code.startsWith("21")) payables = payables.add(absVal);
       }
     }
 
@@ -152,10 +175,13 @@ export class DashboardService {
        const liabBal = line.credit.sub(line.debit);
 
        if (line.account.type === "asset") {
-           if (line.account.code.startsWith("11")) receivables = receivables.add(assetBal);
-           if (line.account.code.startsWith("10")) cashAtHand = cashAtHand.add(assetBal);
+           // Receivables: 11, 12, 13
+           if (line.account.code.startsWith("11") || line.account.code.startsWith("12") || line.account.code.startsWith("13")) receivables = receivables.add(assetBal);
+           // Cash/Bank: 10, 11
+           if (line.account.code.startsWith("10") || line.account.code.startsWith("11")) cashAtHand = cashAtHand.add(assetBal);
        } else if (line.account.type === "liability") {
-           if (line.account.code.startsWith("20")) payables = payables.add(liabBal);
+           // Payables: 20, 21
+           if (line.account.code.startsWith("20") || line.account.code.startsWith("21")) payables = payables.add(liabBal);
        }
     }
 

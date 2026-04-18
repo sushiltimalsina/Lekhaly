@@ -19,6 +19,7 @@ import { RevenueChart, ExpenseDistribution } from "@/components/app/dashboard-ch
 
 import { getDashboardStats, getDashboardCharts } from "@/lib/api/reports";
 import { Skeleton } from "@lekhaly/ui/src/components/ui/skeleton";
+import { getSettings } from "@/lib/store/settings";
 
 export default function DashboardPage() {
   const [stats, setStats] = React.useState<any>(null);
@@ -28,8 +29,9 @@ export default function DashboardPage() {
   React.useEffect(() => {
     async function fetchData() {
       try {
+        const { calendarPreference } = getSettings();
         const [statsData, chartsData] = await Promise.all([
-          getDashboardStats(),
+          getDashboardStats({ calendar: calendarPreference }),
           getDashboardCharts()
         ]);
         setStats(statsData);

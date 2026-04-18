@@ -23,6 +23,8 @@ import {
 } from "@lekhaly/ui";
 import { MoneyText } from "@/components/app/money";
 
+import { getSettings } from "@/lib/store/settings";
+
 export default function DashboardPage() {
   const [stats, setStats] = React.useState<any>(null);
   const [charts, setCharts] = React.useState<any>(null);
@@ -31,8 +33,9 @@ export default function DashboardPage() {
   React.useEffect(() => {
     async function fetchData() {
       try {
+        const { calendarPreference } = getSettings();
         const [statsData, chartsData] = await Promise.all([
-          getDashboardStats(),
+          getDashboardStats({ calendar: calendarPreference }),
           getDashboardCharts()
         ]);
         setStats(statsData);

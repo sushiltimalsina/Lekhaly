@@ -49,10 +49,11 @@ export async function exportReport(body: Record<string, any>) {
   });
 }
 
-export async function getDashboardStats() {
+export async function getDashboardStats(params?: { calendar?: string }) {
   return apiRequest<any>({
     method: "GET",
     path: "/reports/dashboard/stats",
+    query: params,
   });
 }
 

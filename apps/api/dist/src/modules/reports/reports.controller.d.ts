@@ -5,7 +5,7 @@ export declare class ReportsController {
     private reports;
     private dashboard;
     constructor(reports: ReportsService, dashboard: DashboardService);
-    getDashboardStats(user: AuthUser): Promise<{
+    getDashboardStats(user: AuthUser, calendar?: "AD" | "BS"): Promise<{
         revenue: number;
         revenueTrend: number;
         receivables: number;
