@@ -57,6 +57,7 @@ export declare class AuthService {
             receiptPrefix: string;
             paymentPrefix: string;
             journalPrefix: string;
+            contraPrefix: string;
             invoiceSuffix: string;
             purchaseSuffix: string;
             salesReturnSuffix: string;
@@ -67,6 +68,7 @@ export declare class AuthService {
             receiptSuffix: string;
             paymentSuffix: string;
             journalSuffix: string;
+            contraSuffix: string;
             nextInvoiceNumber: number;
             nextPurchaseNumber: number;
             nextSalesReturnNumber: number;
@@ -77,6 +79,7 @@ export declare class AuthService {
             nextReceiptNumber: number;
             nextPaymentNumber: number;
             nextJournalNumber: number;
+            nextContraNumber: number;
             startDate: Date;
             endDate: Date;
             isLocked: boolean;
@@ -186,6 +189,7 @@ export declare class AuthService {
             receiptPrefix: string;
             paymentPrefix: string;
             journalPrefix: string;
+            contraPrefix: string;
             invoiceSuffix: string;
             purchaseSuffix: string;
             salesReturnSuffix: string;
@@ -196,6 +200,7 @@ export declare class AuthService {
             receiptSuffix: string;
             paymentSuffix: string;
             journalSuffix: string;
+            contraSuffix: string;
             nextInvoiceNumber: number;
             nextPurchaseNumber: number;
             nextSalesReturnNumber: number;
@@ -206,6 +211,7 @@ export declare class AuthService {
             nextReceiptNumber: number;
             nextPaymentNumber: number;
             nextJournalNumber: number;
+            nextContraNumber: number;
             startDate: Date;
             endDate: Date;
             isLocked: boolean;
@@ -225,6 +231,7 @@ export declare class AuthService {
             receiptPrefix: string;
             paymentPrefix: string;
             journalPrefix: string;
+            contraPrefix: string;
             invoiceSuffix: string;
             purchaseSuffix: string;
             salesReturnSuffix: string;
@@ -235,6 +242,7 @@ export declare class AuthService {
             receiptSuffix: string;
             paymentSuffix: string;
             journalSuffix: string;
+            contraSuffix: string;
             nextInvoiceNumber: number;
             nextPurchaseNumber: number;
             nextSalesReturnNumber: number;
@@ -245,6 +253,7 @@ export declare class AuthService {
             nextReceiptNumber: number;
             nextPaymentNumber: number;
             nextJournalNumber: number;
+            nextContraNumber: number;
             startDate: Date;
             endDate: Date;
             isLocked: boolean;
@@ -1368,6 +1377,7 @@ export declare class AuthService {
             receiptPrefix: string;
             paymentPrefix: string;
             journalPrefix: string;
+            contraPrefix: string;
             invoiceSuffix: string;
             purchaseSuffix: string;
             salesReturnSuffix: string;
@@ -1378,6 +1388,7 @@ export declare class AuthService {
             receiptSuffix: string;
             paymentSuffix: string;
             journalSuffix: string;
+            contraSuffix: string;
             nextInvoiceNumber: number;
             nextPurchaseNumber: number;
             nextSalesReturnNumber: number;
@@ -1388,6 +1399,7 @@ export declare class AuthService {
             nextReceiptNumber: number;
             nextPaymentNumber: number;
             nextJournalNumber: number;
+            nextContraNumber: number;
             startDate: Date;
             endDate: Date;
             isLocked: boolean;
@@ -1497,6 +1509,7 @@ export declare class AuthService {
             receiptPrefix: string;
             paymentPrefix: string;
             journalPrefix: string;
+            contraPrefix: string;
             invoiceSuffix: string;
             purchaseSuffix: string;
             salesReturnSuffix: string;
@@ -1507,6 +1520,7 @@ export declare class AuthService {
             receiptSuffix: string;
             paymentSuffix: string;
             journalSuffix: string;
+            contraSuffix: string;
             nextInvoiceNumber: number;
             nextPurchaseNumber: number;
             nextSalesReturnNumber: number;
@@ -1517,6 +1531,7 @@ export declare class AuthService {
             nextReceiptNumber: number;
             nextPaymentNumber: number;
             nextJournalNumber: number;
+            nextContraNumber: number;
             startDate: Date;
             endDate: Date;
             isLocked: boolean;
@@ -1536,6 +1551,7 @@ export declare class AuthService {
             receiptPrefix: string;
             paymentPrefix: string;
             journalPrefix: string;
+            contraPrefix: string;
             invoiceSuffix: string;
             purchaseSuffix: string;
             salesReturnSuffix: string;
@@ -1546,6 +1562,7 @@ export declare class AuthService {
             receiptSuffix: string;
             paymentSuffix: string;
             journalSuffix: string;
+            contraSuffix: string;
             nextInvoiceNumber: number;
             nextPurchaseNumber: number;
             nextSalesReturnNumber: number;
@@ -1556,6 +1573,7 @@ export declare class AuthService {
             nextReceiptNumber: number;
             nextPaymentNumber: number;
             nextJournalNumber: number;
+            nextContraNumber: number;
             startDate: Date;
             endDate: Date;
             isLocked: boolean;

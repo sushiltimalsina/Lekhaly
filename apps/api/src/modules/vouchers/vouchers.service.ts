@@ -54,7 +54,8 @@ export class VouchersService {
     const forbidsParty: VoucherType[] = [
       VoucherType.journal,
       VoucherType.opening,
-      VoucherType.reversal
+      VoucherType.reversal,
+      VoucherType.contra
     ];
 
     if (requiresParty.includes(voucherType) && !partyId) {
@@ -215,7 +216,8 @@ export class VouchersService {
     if (
       voucherType === VoucherType.journal ||
       voucherType === VoucherType.opening ||
-      voucherType === VoucherType.reversal
+      voucherType === VoucherType.reversal ||
+      voucherType === VoucherType.contra
     ) {
       throw new BadRequestException("Tax codes are not allowed for this voucher type");
     }
@@ -566,6 +568,12 @@ export class VouchersService {
           prefix = activeSession.paymentPrefix;
           suffix = activeSession.paymentSuffix || "";
           seqUpdate.nextPaymentNumber = sequence + 1;
+          break;
+        case VoucherType.contra:
+          sequence = activeSession.nextContraNumber;
+          prefix = activeSession.contraPrefix;
+          suffix = activeSession.contraSuffix || "";
+          seqUpdate.nextContraNumber = sequence + 1;
           break;
         case VoucherType.journal:
         case VoucherType.opening:

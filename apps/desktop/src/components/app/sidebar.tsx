@@ -31,7 +31,8 @@ import {
   Scale,
   ShoppingCart,
   ClipboardList,
-  KeyRoundIcon
+  KeyRoundIcon,
+  ArrowRightLeft
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -106,6 +107,14 @@ const navData: NavItem[] = [
         children: [
           { label: "Add (Create)", href: "/journals/create", icon: Plus },
           { label: "List", href: "/journals", icon: List },
+        ]
+      },
+      {
+        label: "Contra",
+        icon: ArrowRightLeft,
+        children: [
+          { label: "Add (Create)", href: "/contras/create", icon: Plus },
+          { label: "List", href: "/vouchers?type=contra", icon: List },
         ]
       }
     ]

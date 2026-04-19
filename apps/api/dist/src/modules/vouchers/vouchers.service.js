@@ -33,7 +33,8 @@ let VouchersService = class VouchersService {
         const forbidsParty = [
             client_1.VoucherType.journal,
             client_1.VoucherType.opening,
-            client_1.VoucherType.reversal
+            client_1.VoucherType.reversal,
+            client_1.VoucherType.contra
         ];
         if (requiresParty.includes(voucherType) && !partyId) {
             throw new common_1.BadRequestException("Party is required for this voucher type");
@@ -168,7 +169,8 @@ let VouchersService = class VouchersService {
             return [];
         if (voucherType === client_1.VoucherType.journal ||
             voucherType === client_1.VoucherType.opening ||
-            voucherType === client_1.VoucherType.reversal) {
+            voucherType === client_1.VoucherType.reversal ||
+            voucherType === client_1.VoucherType.contra) {
             throw new common_1.BadRequestException("Tax codes are not allowed for this voucher type");
         }
         const taxCodes = await this.prisma.taxCode.findMany({
@@ -492,6 +494,12 @@ let VouchersService = class VouchersService {
                     prefix = activeSession.paymentPrefix;
                     suffix = activeSession.paymentSuffix || "";
                     seqUpdate.nextPaymentNumber = sequence + 1;
+                    break;
+                case client_1.VoucherType.contra:
+                    sequence = activeSession.nextContraNumber;
+                    prefix = activeSession.contraPrefix;
+                    suffix = activeSession.contraSuffix || "";
+                    seqUpdate.nextContraNumber = sequence + 1;
                     break;
                 case client_1.VoucherType.journal:
                 case client_1.VoucherType.opening:

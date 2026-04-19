@@ -35,6 +35,7 @@ const VOUCHER_TYPE_METADATA: Record<string, { label: string; icon: any; color: s
   journal: { label: "Journal", icon: ArrowRightLeft, color: "text-slate-600 bg-slate-50 dark:bg-slate-900/20" },
   opening: { label: "Opening", icon: Info, color: "text-violet-600 bg-violet-50 dark:bg-violet-900/20" },
   reversal: { label: "Reversal", icon: History, color: "text-red-600 bg-red-50 dark:bg-red-900/20" },
+  contra: { label: "Contra", icon: ArrowRightLeft, color: "text-cyan-600 bg-cyan-50 dark:bg-cyan-900/20" },
 };
 
 export default function VouchersListPage() {

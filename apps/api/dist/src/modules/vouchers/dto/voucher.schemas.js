@@ -27,7 +27,8 @@ const VoucherDraftBaseSchema = zod_1.z.object({
         "payment",
         "journal",
         "opening",
-        "reversal"
+        "reversal",
+        "contra"
     ]),
     voucherDate: zod_1.z.coerce.date().optional(),
     voucherDateBs: zod_1.z.string().trim().max(20).optional(),
@@ -44,7 +45,7 @@ exports.CreateVoucherDraftSchema = VoucherDraftBaseSchema.superRefine((data, ctx
         ctx.addIssue({ code: "custom", message: "voucherDate or voucherDateBs is required", path: ["voucherDate"] });
     }
     const requiresParty = ["sales_invoice", "sales_return", "purchase", "purchase_return"];
-    const forbidsParty = ["journal", "opening", "reversal"];
+    const forbidsParty = ["journal", "opening", "reversal", "contra"];
     if (requiresParty.includes(data.voucherType) && !data.partyId) {
         ctx.addIssue({ code: "custom", message: "Party is required for this voucher type", path: ["partyId"] });
     }
@@ -66,7 +67,8 @@ exports.ListVoucherQuerySchema = zod_1.z.object({
         "payment",
         "journal",
         "opening",
-        "reversal"
+        "reversal",
+        "contra"
     ]).optional(),
     partyId: zod_1.z.string().uuid().optional(),
     createdByUserId: zod_1.z.string().uuid().optional(),

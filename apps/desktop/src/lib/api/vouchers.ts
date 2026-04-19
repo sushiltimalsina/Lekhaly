@@ -9,6 +9,7 @@ export type VoucherType =
   | "receipt"
   | "payment"
   | "journal"
+  | "contra"
   | "opening"
   | "reversal";
 

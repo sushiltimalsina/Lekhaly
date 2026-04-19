@@ -35,6 +35,7 @@ enum VoucherType {
   journal
   opening
   reversal
+  contra
 }
 
 enum VoucherStatus {
@@ -103,6 +104,7 @@ model Company {
   receiptPrefix       String    @default("RV")
   paymentPrefix       String    @default("PV")
   journalPrefix       String    @default("JV")
+  contraPrefix        String    @default("CV")
 
   invoiceSuffix       String    @default("80/81")
   purchaseSuffix      String    @default("80/81")
@@ -114,6 +116,7 @@ model Company {
   receiptSuffix       String    @default("80/81")
   paymentSuffix       String    @default("80/81")
   journalSuffix       String    @default("80/81")
+  contraSuffix        String    @default("80/81")
 
   nextInvoiceNumber   Int       @default(1)
   nextPurchaseNumber  Int       @default(1)
@@ -125,6 +128,7 @@ model Company {
   nextReceiptNumber   Int       @default(1)
   nextPaymentNumber   Int       @default(1)
   nextJournalNumber   Int       @default(1)
+  nextContraNumber    Int       @default(1)
 
   lockDate            DateTime?
   creditLimitAmount   Decimal   @default(0) @db.Decimal(14, 2)
@@ -1295,6 +1299,7 @@ model FiscalSession {
   receiptPrefix       String    @default("RV")
   paymentPrefix       String    @default("PV")
   journalPrefix       String    @default("JV")
+  contraPrefix        String    @default("CV")
 
   invoiceSuffix       String    @default("80/81")
   purchaseSuffix      String    @default("80/81")
@@ -1306,6 +1311,7 @@ model FiscalSession {
   receiptSuffix       String    @default("80/81")
   paymentSuffix       String    @default("80/81")
   journalSuffix       String    @default("80/81")
+  contraSuffix        String    @default("80/81")
 
   nextInvoiceNumber   Int       @default(1)
   nextPurchaseNumber  Int       @default(1)
@@ -1317,6 +1323,7 @@ model FiscalSession {
   nextReceiptNumber   Int       @default(1)
   nextPaymentNumber   Int       @default(1)
   nextJournalNumber   Int       @default(1)
+  nextContraNumber    Int       @default(1)
 
   vouchers Voucher[]
 

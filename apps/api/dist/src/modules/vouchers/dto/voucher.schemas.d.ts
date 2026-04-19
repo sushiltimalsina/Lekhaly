@@ -21,6 +21,7 @@ export declare const CreateVoucherDraftSchema: z.ZodObject<{
         journal: "journal";
         opening: "opening";
         reversal: "reversal";
+        contra: "contra";
     }>;
     voucherDate: z.ZodOptional<z.ZodCoercedDate<unknown>>;
     voucherDateBs: z.ZodOptional<z.ZodString>;
@@ -53,6 +54,7 @@ export declare const UpdateVoucherDraftSchema: z.ZodObject<{
         journal: "journal";
         opening: "opening";
         reversal: "reversal";
+        contra: "contra";
     }>>;
     voucherDate: z.ZodOptional<z.ZodOptional<z.ZodCoercedDate<unknown>>>;
     voucherDateBs: z.ZodOptional<z.ZodOptional<z.ZodString>>;
@@ -76,9 +78,9 @@ export declare const UpdateVoucherDraftSchema: z.ZodObject<{
 }, z.core.$strip>;
 export declare const ListVoucherQuerySchema: z.ZodObject<{
     status: z.ZodOptional<z.ZodEnum<{
+        void: "void";
         draft: "draft";
         posted: "posted";
-        void: "void";
     }>>;
     voucherType: z.ZodOptional<z.ZodEnum<{
         sales_invoice: "sales_invoice";
@@ -90,6 +92,7 @@ export declare const ListVoucherQuerySchema: z.ZodObject<{
         journal: "journal";
         opening: "opening";
         reversal: "reversal";
+        contra: "contra";
     }>>;
     partyId: z.ZodOptional<z.ZodString>;
     createdByUserId: z.ZodOptional<z.ZodString>;

@@ -104,7 +104,10 @@ export default function PaymentCreatePage() {
     React.useEffect(() => {
         listAccounts().then(setAccounts).catch(console.error);
         listParties().then(setParties).catch(console.error);
-        listVouchers({ type: "payment", take: 5 }).then(setRecentVouchers).catch(console.error);
+        listVouchers({ type: "payment", take: 5 }).then((res: any) => {
+            const list = Array.isArray(res) ? res : res?.items ?? res?.data ?? [];
+            setRecentVouchers(list);
+        }).catch(console.error);
     }, []);
 
     const ledgerOptions = React.useMemo<LedgerOption[]>(() => {

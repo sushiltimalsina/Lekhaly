@@ -1,4 +1,4 @@
-﻿// apps/desktop/src/app.tsx
+// apps/desktop/src/app.tsx
 import React from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { getToken } from "@/lib/store/auth";
@@ -71,6 +71,9 @@ import PaymentsListPage from "@/pages/payments/index";
 import PaymentCreatePage from "@/pages/payments/create";
 import JournalsListPage from "@/pages/journals/index";
 import JournalCreatePage from "@/pages/journals/create";
+
+// Contra
+import ContraCreatePage from "@/pages/contras/create";
 
 // Configuration & Settings
 import CoaPage from "@/pages/coa";
@@ -219,6 +222,7 @@ export default function App() {
                 <Route path="/payments/create" element={<PaymentCreatePage />} />
                 <Route path="/journals" element={<JournalsListPage />} />
                 <Route path="/journals/create" element={<JournalCreatePage />} />
+                <Route path="/contras/create" element={<ContraCreatePage />} />
 
                 {/* Configuration & Settings */}
                 <Route path="/coa" element={<CoaPage />} />

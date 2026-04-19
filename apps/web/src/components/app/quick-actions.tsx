@@ -14,7 +14,8 @@ import {
   RefreshCcw, 
   BookOpen, 
   Building2,
-  ClipboardList 
+  ClipboardList,
+  ArrowRightLeft
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -64,6 +65,7 @@ const groups: ActionGroup[] = [
           { label: "Receipt", href: "/receipts/create", icon: Receipt },
           { label: "Payment", href: "/payments/create", icon: Wallet },
           { label: "Journal", href: "/journals/create", icon: BookOpen },
+          { label: "Contra", href: "/contras/create", icon: ArrowRightLeft },
         ]
       },
       { 

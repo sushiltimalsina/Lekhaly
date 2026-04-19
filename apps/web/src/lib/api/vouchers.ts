@@ -10,7 +10,8 @@ export type VoucherType =
   | "payment"
   | "journal"
   | "opening"
-  | "reversal";
+  | "reversal"
+  | "contra";
 
 export type VoucherRecord = {
   id: string;
