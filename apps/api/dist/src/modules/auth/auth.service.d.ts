@@ -1,11 +1,13 @@
 import { JwtService } from "@nestjs/jwt";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { Prisma } from "@prisma/client";
+import { FiscalSessionsService } from "../fiscal-sessions/fiscal-sessions.service";
 export declare class AuthService {
     private prisma;
     private jwt;
+    private fiscalSessions;
     private readonly logger;
-    constructor(prisma: PrismaService, jwt: JwtService);
+    constructor(prisma: PrismaService, jwt: JwtService, fiscalSessions: FiscalSessionsService);
     private getUserWithPerms;
     private getUserWithPermsById;
     private signAccessToken;

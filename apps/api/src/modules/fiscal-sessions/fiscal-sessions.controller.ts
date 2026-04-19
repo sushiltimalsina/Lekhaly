@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, Post, Put, Query } from "@nestjs/common";
 import { CurrentUser, RequirePerm } from "../../common/auth/auth.decorator";
 import { ZodValidationPipe } from "../../common/zod/zod.pipe";
-import { AuthUser } from "../../common/auth/auth.types";
+import type { AuthUser } from "../../common/auth/auth.types";
 import { CreateFiscalSessionSchema } from "./dto/fiscal-session.schemas";
 import { FiscalSessionsService } from "./fiscal-sessions.service";
 

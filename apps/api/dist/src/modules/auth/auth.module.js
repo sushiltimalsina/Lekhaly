@@ -16,6 +16,7 @@ const step_guard_1 = require("../../common/auth/step.guard");
 const auth_controller_1 = require("./auth.controller");
 const auth_controller_v1_1 = require("./auth.controller.v1");
 const auth_service_1 = require("./auth.service");
+const fiscal_sessions_module_1 = require("../fiscal-sessions/fiscal-sessions.module");
 let AuthModule = class AuthModule {
 };
 exports.AuthModule = AuthModule;
@@ -34,7 +35,8 @@ exports.AuthModule = AuthModule = __decorate([
                         options.audience = audience;
                     return options;
                 })()
-            })
+            }),
+            fiscal_sessions_module_1.FiscalSessionsModule,
         ],
         controllers: [auth_controller_1.AuthController, auth_controller_v1_1.AuthV1Controller],
         providers: [

@@ -8,6 +8,7 @@ import { StepUpGuard } from "../../common/auth/step.guard";
 import { AuthController } from "./auth.controller";
 import { AuthV1Controller } from "./auth.controller.v1";
 import { AuthService } from "./auth.service";
+import { FiscalSessionsModule } from "../fiscal-sessions/fiscal-sessions.module";
 
 @Module({
   imports: [
@@ -21,7 +22,8 @@ import { AuthService } from "./auth.service";
         if (audience) options.audience = audience;
         return options;
       })()
-    })
+    }),
+    FiscalSessionsModule,
   ],
   controllers: [AuthController, AuthV1Controller],
   providers: [

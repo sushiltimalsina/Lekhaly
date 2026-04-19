@@ -94,4 +94,28 @@ export class FiscalSessionsService {
       data: { isLocked: lock },
     });
   }
+
+  async findSessionByDate(companyId: string, date: Date) {
+    return this.prisma.fiscalSession.findFirst({
+      where: {
+        companyId,
+        startDate: { lte: date },
+        endDate: { gte: date },
+      },
+    });
+  }
+
+  async initActiveSession(companyId: string) {
+    const today = new Date();
+    const session = await this.findSessionByDate(companyId, today);
+    
+    if (session) {
+      await this.prisma.company.update({
+        where: { id: companyId },
+        data: { activeFiscalSessionId: session.id },
+      });
+      return session.id;
+    }
+    return null;
+  }
 }

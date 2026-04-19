@@ -3,6 +3,7 @@ import { JwtService } from "@nestjs/jwt";
 import type { JwtSignOptions } from "@nestjs/jwt";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { Prisma } from "@prisma/client";
+import { FiscalSessionsService } from "../fiscal-sessions/fiscal-sessions.service";
 import argon2 from "argon2";
 import * as speakeasy from "speakeasy";
 import * as qrcode from "qrcode";
@@ -27,7 +28,11 @@ type JwtRefreshPayload = {
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
-  constructor(private prisma: PrismaService, private jwt: JwtService) { }
+  constructor(
+    private prisma: PrismaService,
+    private jwt: JwtService,
+    private fiscalSessions: FiscalSessionsService
+  ) { }
 
   private async getUserWithPerms(companyId: string, email: string) {
     const user = await this.prisma.user.findUnique({
@@ -740,6 +745,9 @@ export class AuthService {
 
       this.logger.debug('Updating last login...');
       await this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+
+      this.logger.debug('Auto-detecting fiscal session...');
+      await this.fiscalSessions.initActiveSession(user.companyId);
 
       this.logger.log(`Login successful for user ${user.id}`);
       return { accessToken: access, refreshToken: refresh, userId: user.id, companyId: user.companyId, perms, deviceId };

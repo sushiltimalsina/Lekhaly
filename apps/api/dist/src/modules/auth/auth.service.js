@@ -51,6 +51,7 @@ const common_1 = require("@nestjs/common");
 const jwt_1 = require("@nestjs/jwt");
 const prisma_service_1 = require("../../common/prisma/prisma.service");
 const client_1 = require("@prisma/client");
+const fiscal_sessions_service_1 = require("../fiscal-sessions/fiscal-sessions.service");
 const argon2_1 = __importDefault(require("argon2"));
 const speakeasy = __importStar(require("speakeasy"));
 const qrcode = __importStar(require("qrcode"));
@@ -59,10 +60,12 @@ const totp_crypto_1 = require("../../common/auth/totp-crypto");
 let AuthService = AuthService_1 = class AuthService {
     prisma;
     jwt;
+    fiscalSessions;
     logger = new common_1.Logger(AuthService_1.name);
-    constructor(prisma, jwt) {
+    constructor(prisma, jwt, fiscalSessions) {
         this.prisma = prisma;
         this.jwt = jwt;
+        this.fiscalSessions = fiscalSessions;
     }
     async getUserWithPerms(companyId, email) {
         const user = await this.prisma.user.findUnique({
@@ -677,6 +680,8 @@ let AuthService = AuthService_1 = class AuthService {
             });
             this.logger.debug('Updating last login...');
             await this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+            this.logger.debug('Auto-detecting fiscal session...');
+            await this.fiscalSessions.initActiveSession(user.companyId);
             this.logger.log(`Login successful for user ${user.id}`);
             return { accessToken: access, refreshToken: refresh, userId: user.id, companyId: user.companyId, perms, deviceId };
         }
@@ -811,6 +816,8 @@ let AuthService = AuthService_1 = class AuthService {
 exports.AuthService = AuthService;
 exports.AuthService = AuthService = AuthService_1 = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService, jwt_1.JwtService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        jwt_1.JwtService,
+        fiscal_sessions_service_1.FiscalSessionsService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

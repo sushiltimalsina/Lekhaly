@@ -14,8 +14,10 @@ import AddUnitDialog from "@/components/app/add-unit-dialog";
 import AddGroupDialog from "@/components/app/add-group-dialog";
 import AddBillSundryDialog from "@/components/app/add-bill-sundry-dialog";
 import ConfirmDialog from "@/components/app/confirm-dialog";
+import AddFiscalSessionDialog from "./components/AddFiscalSessionDialog";
 
 import { getCompany, updateCompany } from "@/lib/api/auth";
+import { listFiscalSessions, switchFiscalSession, lockFiscalSession, type FiscalSessionRecord } from "@/lib/api/fiscal-sessions";
 
 // Refactored Components
 import { UnitsPanel } from "./components/UnitsPanel";
@@ -24,6 +26,7 @@ import { SundriesPanel } from "./components/SundriesPanel";
 import { RegionalPreferences } from "./components/RegionalPreferences";
 import { VoucherNumbering } from "./components/VoucherNumbering";
 import { FiscalSecurityPanel, CreditManagementPanel } from "./components/SecurityCreditPanels";
+import { FiscalSessionsPanel } from "./components/FiscalSessionsPanel";
 
 export default function ConfigurationPage() {
   const searchParams = useSearchParams();
@@ -36,6 +39,7 @@ export default function ConfigurationPage() {
   const [units, setUnits] = React.useState<UnitRecord[]>([]);
   const [groups, setGroups] = React.useState<ItemGroupRecord[]>([]);
   const [sundries, setSundries] = React.useState<BillSundryRecord[]>([]);
+  const [sessions, setSessions] = React.useState<FiscalSessionRecord[]>([]);
 
   const [loading, setLoading] = React.useState(true);
   const [busy, setBusy] = React.useState(false);
@@ -44,6 +48,7 @@ export default function ConfigurationPage() {
   const [addUnitOpen, setAddUnitOpen] = React.useState(false);
   const [addGroupOpen, setAddGroupOpen] = React.useState(false);
   const [addSundryOpen, setAddSundryOpen] = React.useState(false);
+  const [addSessionOpen, setAddSessionOpen] = React.useState(false);
 
   const [editUnit, setEditUnit] = React.useState<UnitRecord | undefined>();
   const [editGroup, setEditGroup] = React.useState<ItemGroupRecord | undefined>();
@@ -75,11 +80,12 @@ export default function ConfigurationPage() {
       return obj?.items ?? obj?.data ?? [];
     };
     try {
-      const [uRes, gRes, sRes, cRes] = await Promise.all([
+      const [uRes, gRes, sRes, cRes, sessRes] = await Promise.all([
         listUnits({ take: 200 }),
         listItemGroups({ take: 200 }),
         listBillSundries({ take: 200 }),
-        getCompany()
+        getCompany(),
+        listFiscalSessions()
       ]);
       setUnits(normalizeList<UnitRecord>(uRes));
       setGroups(normalizeList<ItemGroupRecord>(gRes));
@@ -89,6 +95,7 @@ export default function ConfigurationPage() {
       })));
       setCompany(cRes);
       setCompanyForm(cRes);
+      setSessions(normalizeList<FiscalSessionRecord>(sessRes));
     } catch (e: any) {
       setError(e?.message ?? "Failed to load configuration data.");
     } finally {
@@ -215,6 +222,38 @@ export default function ConfigurationPage() {
           forwardedRef={sundriesRef}
         />
 
+        <FiscalSessionsPanel 
+          sessions={sessions}
+          activeSessionId={company?.activeFiscalSessionId}
+          loading={loading}
+          busy={busy}
+          expanded={expandedSection === "sessions"}
+          onToggle={() => setExpandedSection(expandedSection === "sessions" ? null : "sessions")}
+          onAdd={() => setAddSessionOpen(true)}
+          onSwitch={async (id) => {
+            setBusy(true);
+            try {
+              await switchFiscalSession(id);
+              await fetchData();
+            } catch (e: any) {
+              setError(e.message);
+            } finally {
+              setBusy(false);
+            }
+          }}
+          onToggleLock={async (id, lock) => {
+            setBusy(true);
+            try {
+              await lockFiscalSession(id, lock);
+              await fetchData();
+            } catch (e: any) {
+              setError(e.message);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        />
+
         <RegionalPreferences 
           expanded={expandedSection === "regional"}
           onToggle={() => setExpandedSection(expandedSection === "regional" ? null : "regional")}
@@ -273,6 +312,12 @@ export default function ConfigurationPage() {
         onClose={() => { setAddSundryOpen(false); setEditSundry(undefined); }}
         onSuccess={() => fetchData()}
         sundry={editSundry}
+      />
+
+      <AddFiscalSessionDialog
+        open={addSessionOpen}
+        onClose={() => setAddSessionOpen(false)}
+        onSuccess={() => fetchData()}
       />
 
       <ConfirmDialog
