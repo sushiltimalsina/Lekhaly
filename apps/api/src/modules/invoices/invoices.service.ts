@@ -105,6 +105,8 @@ export class InvoicesService {
       sundries?: Array<{ billSundryId?: string; name: string; type: "add" | "less"; rate?: number | null; amount: number }>;
       memo?: string;
       additionalNote?: string;
+      paymentMethodId?: string;
+      saleTypeId?: string;
     }
   ) {
     await this.validateItems(user.companyId, input.items);
@@ -379,7 +381,9 @@ export class InvoicesService {
       dueDateBs: resolvedDue?.bs || input.dueDateBs,
       referenceNo: input.referenceNo,
       memo: input.memo,
-      additionalNote: input.additionalNote
+      additionalNote: input.additionalNote,
+      paymentMethodId: input.paymentMethodId,
+      saleTypeId: input.saleTypeId
     };
   }
 
@@ -398,6 +402,8 @@ export class InvoicesService {
       sundries?: Array<{ billSundryId?: string; name: string; type: "add" | "less"; rate?: number | null; amount: number }>;
       memo?: string;
       additionalNote?: string;
+      paymentMethodId?: string;
+      saleTypeId?: string;
     }
   ) {
     try {
@@ -421,6 +427,8 @@ export class InvoicesService {
           status: "draft",
           memo: input.memo,
           additionalNote: input.additionalNote,
+          paymentMethodId: input.paymentMethodId,
+          saleTypeId: input.saleTypeId,
           items: {
             create: preview.items.map((item: any) => ({
               itemId: item.itemId,
@@ -660,6 +668,8 @@ export class InvoicesService {
       sundries?: Array<{ billSundryId?: string; name: string; type: "add" | "less"; rate?: number | null; amount: number }>;
       memo?: string;
       additionalNote?: string;
+      paymentMethodId?: string;
+      saleTypeId?: string;
     }
   ) {
     const existing = await this.prisma.invoice.findFirst({
@@ -693,6 +703,8 @@ export class InvoicesService {
           total: totals.total,
           memo: input.memo,
           additionalNote: input.additionalNote,
+          paymentMethodId: input.paymentMethodId,
+          saleTypeId: input.saleTypeId,
           items: {
             create: preview.items.map((item: any) => ({
               itemId: item.itemId,

@@ -32,6 +32,8 @@ import { QuotationsModule } from "./modules/quotations/quotations.module";
 import { PurchaseOrdersModule } from "./modules/purchase-orders/purchase-orders.module";
 import { ProformaModule } from "./modules/proforma/proforma.module";
 import { FiscalSessionsModule } from "./modules/fiscal-sessions/fiscal-sessions.module";
+import { PaymentMethodsModule } from "./modules/payment-methods/payment-methods.module";
+import { SaleTypesModule } from "./modules/sale-types/sale-types.module";
 
 @Module({
   imports: [
@@ -68,6 +70,8 @@ import { FiscalSessionsModule } from "./modules/fiscal-sessions/fiscal-sessions.
     BillSundriesModule,
     ProformaModule,
     FiscalSessionsModule,
+    PaymentMethodsModule,
+    SaleTypesModule,
   ],
   controllers: [AppController],
   providers: [

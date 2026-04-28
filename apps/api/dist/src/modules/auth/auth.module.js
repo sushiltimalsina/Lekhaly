@@ -39,6 +39,7 @@ exports.AuthModule = AuthModule = __decorate([
             }),
             fiscal_sessions_module_1.FiscalSessionsModule,
             accounts_module_1.AccountsModule,
+            ItemsModule,
         ],
         controllers: [auth_controller_1.AuthController, auth_controller_v1_1.AuthV1Controller],
         providers: [

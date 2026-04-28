@@ -316,3 +316,11 @@ export async function apiRequest<T>(opts: RequestOptions): Promise<T> {
 
   return data as T;
 }
+
+export const apiClient = {
+  get: (path: string, opts?: any) => apiRequest({ method: "GET", path, query: opts?.params, ...opts }),
+  post: (path: string, body: any, opts?: any) => apiRequest({ method: "POST", path, body, ...opts }),
+  patch: (path: string, body: any, opts?: any) => apiRequest({ method: "PATCH", path, body, ...opts }),
+  put: (path: string, body: any, opts?: any) => apiRequest({ method: "PUT", path, body, ...opts }),
+  delete: (path: string, opts?: any) => apiRequest({ method: "DELETE", path, ...opts }),
+};

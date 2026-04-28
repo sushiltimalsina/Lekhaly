@@ -9,8 +9,8 @@ export declare const InvoiceItemSchema: z.ZodObject<{
 }, z.core.$strip>;
 export declare const CreateInvoiceDraftSchema: z.ZodObject<{
     type: z.ZodEnum<{
-        sales_return: "sales_return";
         sales: "sales";
+        sales_return: "sales_return";
     }>;
     partyId: z.ZodString;
     date: z.ZodOptional<z.ZodCoercedDate<unknown>>;
@@ -21,6 +21,8 @@ export declare const CreateInvoiceDraftSchema: z.ZodObject<{
     receivableAccountId: z.ZodString;
     memo: z.ZodOptional<z.ZodString>;
     additionalNote: z.ZodOptional<z.ZodString>;
+    paymentMethodId: z.ZodNullable<z.ZodOptional<z.ZodString>>;
+    saleTypeId: z.ZodNullable<z.ZodOptional<z.ZodString>>;
     items: z.ZodArray<z.ZodObject<{
         itemId: z.ZodOptional<z.ZodString>;
         description: z.ZodOptional<z.ZodString>;
@@ -33,8 +35,8 @@ export declare const CreateInvoiceDraftSchema: z.ZodObject<{
         billSundryId: z.ZodOptional<z.ZodString>;
         name: z.ZodString;
         type: z.ZodEnum<{
-            less: "less";
             add: "add";
+            less: "less";
         }>;
         rate: z.ZodNullable<z.ZodOptional<z.ZodNumber>>;
         amount: z.ZodNumber;
@@ -42,13 +44,13 @@ export declare const CreateInvoiceDraftSchema: z.ZodObject<{
 }, z.core.$strip>;
 export declare const InvoiceListQuerySchema: z.ZodObject<{
     type: z.ZodOptional<z.ZodEnum<{
-        sales_return: "sales_return";
         sales: "sales";
+        sales_return: "sales_return";
     }>>;
     status: z.ZodOptional<z.ZodEnum<{
+        void: "void";
         draft: "draft";
         posted: "posted";
-        void: "void";
     }>>;
     from: z.ZodOptional<z.ZodCoercedDate<unknown>>;
     to: z.ZodOptional<z.ZodCoercedDate<unknown>>;

@@ -172,6 +172,8 @@ model Company {
   proformaInvoices   ProformaInvoice[]
 
   changeLog ChangeLog[]
+  paymentMethods PaymentMethod[]
+  saleTypes      SaleType[]
 }
 
 model User {
@@ -639,6 +641,12 @@ model Invoice {
 
   items     InvoiceItem[]
   sundries  InvoiceSundry[]
+
+  paymentMethodId String?
+  paymentMethod   PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
+
+  saleTypeId      String?
+  saleType        SaleType?      @relation(fields: [saleTypeId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1334,4 +1342,36 @@ model FiscalSession {
 
   @@unique([companyId, name])
   @@index([companyId, isLocked])
+}
+
+model PaymentMethod {
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+  
+  name      String
+  isActive  Boolean @default(true)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  invoices  Invoice[]
+
+  @@unique([companyId, name])
+}
+
+model SaleType {
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+  
+  name      String
+  isActive  Boolean @default(true)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  invoices  Invoice[]
+
+  @@unique([companyId, name])
 }

@@ -11,6 +11,7 @@ const common_1 = require("@nestjs/common");
 const inventory_module_1 = require("../inventory/inventory.module");
 const items_controller_1 = require("./items.controller");
 const items_service_1 = require("./items.service");
+const items_seeder_service_1 = require("./items-seeder.service");
 let ItemsModule = class ItemsModule {
 };
 exports.ItemsModule = ItemsModule;
@@ -18,7 +19,8 @@ exports.ItemsModule = ItemsModule = __decorate([
     (0, common_1.Module)({
         imports: [inventory_module_1.InventoryModule],
         controllers: [items_controller_1.ItemsController],
-        providers: [items_service_1.ItemsService]
+        providers: [items_service_1.ItemsService, items_seeder_service_1.ItemsSeederService],
+        exports: [items_service_1.ItemsService, items_seeder_service_1.ItemsSeederService]
     })
 ], ItemsModule);
 //# sourceMappingURL=items.module.js.map

@@ -53,6 +53,7 @@ const prisma_service_1 = require("../../common/prisma/prisma.service");
 const client_1 = require("@prisma/client");
 const fiscal_sessions_service_1 = require("../fiscal-sessions/fiscal-sessions.service");
 const coa_seeder_service_1 = require("../accounts/coa-seeder.service");
+const items_seeder_service_1 = require("../items/items-seeder.service");
 const argon2_1 = __importDefault(require("argon2"));
 const speakeasy = __importStar(require("speakeasy"));
 const qrcode = __importStar(require("qrcode"));
@@ -63,12 +64,14 @@ let AuthService = AuthService_1 = class AuthService {
     jwt;
     fiscalSessions;
     coaSeeder;
+    itemsSeeder;
     logger = new common_1.Logger(AuthService_1.name);
-    constructor(prisma, jwt, fiscalSessions, coaSeeder) {
+    constructor(prisma, jwt, fiscalSessions, coaSeeder, itemsSeeder) {
         this.prisma = prisma;
         this.jwt = jwt;
         this.fiscalSessions = fiscalSessions;
         this.coaSeeder = coaSeeder;
+        this.itemsSeeder = itemsSeeder;
     }
     async getUserWithPerms(companyId, email) {
         const user = await this.prisma.user.findUnique({
@@ -150,7 +153,7 @@ let AuthService = AuthService_1 = class AuthService {
     async createDefaultMasterData(tx, companyId) {
         const coa = await this.coaSeeder.seedNfrs(tx, companyId);
         const { vatReceivable, vatPayable, discountGiven, sales, } = coa;
-        await tx.taxCode.create({
+        const vat13 = await tx.taxCode.create({
             data: {
                 companyId,
                 name: "VAT 13%",
@@ -213,6 +216,7 @@ let AuthService = AuthService_1 = class AuthService {
         await tx.party.create({
             data: { companyId, type: "customer", name: "Walk-in Customer" }
         });
+        await this.itemsSeeder.seedDefaults(tx, companyId, coa, vat13.id);
         return coa;
     }
     async register(dto) {
@@ -758,6 +762,7 @@ exports.AuthService = AuthService = AuthService_1 = __decorate([
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
         jwt_1.JwtService,
         fiscal_sessions_service_1.FiscalSessionsService,
-        coa_seeder_service_1.CoaSeederService])
+        coa_seeder_service_1.CoaSeederService,
+        items_seeder_service_1.ItemsSeederService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

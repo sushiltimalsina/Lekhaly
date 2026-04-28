@@ -4,12 +4,16 @@ import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, Inpu
 import { deleteUnit, listUnits, type UnitRecord } from "@/lib/api/units";
 import { deleteItemGroup, listItemGroups, type ItemGroupRecord } from "@/lib/api/item-groups";
 import { listBillSundries, deleteBillSundry, type BillSundryRecord } from "@/lib/api/bill-sundries";
-import { Trash2, Ruler, Layers, Calculator, Plus, AlertCircle, ChevronDown, ChevronRight, Search, Pencil, Monitor, Hash, Shield, CreditCard, Calendar } from "lucide-react";
+import { listPaymentMethods, deletePaymentMethod } from "@/lib/api/payment-methods";
+import { listSaleTypes, deleteSaleType } from "@/lib/api/sale-types";
+import { Trash2, Ruler, Layers, Calculator, Plus, AlertCircle, ChevronDown, ChevronRight, Search, Pencil, Monitor, Hash, Shield, CreditCard, Calendar, Tag } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import AddUnitDialog from "@/components/app/add-unit-dialog";
 import AddItemGroupDialog from "@/components/app/add-item-group-dialog";
 import AddBillSundryDialog from "@/components/app/add-bill-sundry-dialog";
+import AddPaymentMethodDialog from "@/components/app/add-payment-method-dialog";
+import AddSaleTypeDialog from "@/components/app/add-sale-type-dialog";
 import ConfirmDialog from "@/components/app/confirm-dialog";
 import { useDateFormat } from "@/lib/date-format";
 import { getSettings, setCalendarPreference, setDefaultDateRange, subscribeSettings } from "@/lib/store/settings";
@@ -94,6 +98,8 @@ export default function ConfigurationPage() {
   const [units, setUnits] = React.useState<UnitRecord[]>([]);
   const [groups, setGroups] = React.useState<ItemGroupRecord[]>([]);
   const [sundries, setSundries] = React.useState<BillSundryRecord[]>([]);
+  const [paymentMethods, setPaymentMethods] = React.useState<any[]>([]);
+  const [saleTypes, setSaleTypes] = React.useState<any[]>([]);
 
   const [loading, setLoading] = React.useState(true);
   const [busy, setBusy] = React.useState(false);
@@ -102,10 +108,14 @@ export default function ConfigurationPage() {
   const [addUnitOpen, setAddUnitOpen] = React.useState(false);
   const [addGroupOpen, setAddGroupOpen] = React.useState(false);
   const [addSundryOpen, setAddSundryOpen] = React.useState(false);
+  const [addPaymentMethodOpen, setAddPaymentMethodOpen] = React.useState(false);
+  const [addSaleTypeOpen, setAddSaleTypeOpen] = React.useState(false);
 
   const [editUnit, setEditUnit] = React.useState<UnitRecord | undefined>();
   const [editGroup, setEditGroup] = React.useState<ItemGroupRecord | undefined>();
   const [editSundry, setEditSundry] = React.useState<BillSundryRecord | undefined>();
+  const [editPaymentMethod, setEditPaymentMethod] = React.useState<any | undefined>();
+  const [editSaleType, setEditSaleType] = React.useState<any | undefined>();
 
   // Visibility state
   const [expandedSection, setExpandedSection] = React.useState<string | null>(null);
@@ -114,6 +124,8 @@ export default function ConfigurationPage() {
   const [qUnits, setQUnits] = React.useState("");
   const [qGroups, setQGroups] = React.useState("");
   const [qSundries, setQSundries] = React.useState("");
+  const [qPaymentMethods, setQPaymentMethods] = React.useState("");
+  const [qSaleTypes, setQSaleTypes] = React.useState("");
 
   // System Preferences State
   const { dateFormat, setDateFormat } = useDateFormat();
@@ -130,7 +142,7 @@ export default function ConfigurationPage() {
   const [confirmState, setConfirmState] = React.useState<{
     id: string;
     name: string;
-    type: "unit" | "group" | "sundry";
+    type: "unit" | "group" | "sundry" | "payment-method" | "sale-type";
     open: boolean;
   }>({ id: "", name: "", type: "unit", open: false });
 
@@ -148,15 +160,19 @@ export default function ConfigurationPage() {
       return obj?.items ?? obj?.data ?? [];
     };
     try {
-      const [uRes, gRes, sRes, cRes] = await Promise.all([
+      const [uRes, gRes, sRes, pmRes, stRes, cRes] = await Promise.all([
         listUnits({ take: 200 }),
         listItemGroups({ take: 200 }),
         listBillSundries({ take: 200 }),
+        listPaymentMethods({ take: 200 }),
+        listSaleTypes({ take: 200 }),
         getCompany()
       ]);
       setUnits(normalizeList<UnitRecord>(uRes));
       setGroups(normalizeList<ItemGroupRecord>(gRes));
       setSundries(normalizeList<BillSundryRecord>(sRes));
+      setPaymentMethods(normalizeList<any>(pmRes));
+      setSaleTypes(normalizeList<any>(stRes));
       setCompany(cRes);
       setCompanyForm(cRes);
     } catch (e: any) {
@@ -233,6 +249,18 @@ export default function ConfigurationPage() {
     }
     setConfirmState({ id, name: item.name, type: "sundry", open: true });
   };
+  
+  const onRemovePaymentMethod = (id: string) => {
+    const item = paymentMethods.find(pm => pm.id === id);
+    if (!item) return;
+    setConfirmState({ id, name: item.name, type: "payment-method", open: true });
+  };
+  
+  const onRemoveSaleType = (id: string) => {
+    const item = saleTypes.find(st => st.id === id);
+    if (!item) return;
+    setConfirmState({ id, name: item.name, type: "sale-type", open: true });
+  };
 
   const saveCompanySettings = async (updates: any) => {
     setBusy(true);
@@ -262,6 +290,12 @@ export default function ConfigurationPage() {
       } else if (type === "sundry") {
         await deleteBillSundry(id);
         setSundries(prev => prev.filter(s => s.id !== id));
+      } else if (type === "payment-method") {
+        await deletePaymentMethod(id);
+        setPaymentMethods(prev => prev.filter(pm => pm.id !== id));
+      } else if (type === "sale-type") {
+        await deleteSaleType(id);
+        setSaleTypes(prev => prev.filter(st => st.id !== id));
       }
     } catch (e: any) {
        const readableType = type.charAt(0).toUpperCase() + type.slice(1);
@@ -278,6 +312,8 @@ export default function ConfigurationPage() {
   const filteredUnits = units.filter(u => u.name.toLowerCase().includes(qUnits.toLowerCase()));
   const filteredGroups = groups.filter(g => g.name.toLowerCase().includes(qGroups.toLowerCase()));
   const filteredSundries = sundries.filter(s => s.name.toLowerCase().includes(qSundries.toLowerCase()));
+  const filteredPaymentMethods = paymentMethods.filter(pm => pm.name.toLowerCase().includes(qPaymentMethods.toLowerCase()));
+  const filteredSaleTypes = saleTypes.filter(st => st.name.toLowerCase().includes(qSaleTypes.toLowerCase()));
 
   return (
     <div className="space-y-6">
@@ -533,6 +569,160 @@ export default function ConfigurationPage() {
                 ) : (
                   <div className="col-span-2 py-8 text-center text-sm text-muted-foreground border-2 border-dashed rounded-2xl">
                     {qSundries ? `No sundries matching "${qSundries}"` : "No predefined sundries found."}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          )}
+        </Card>
+
+        {/* Payment Methods Section */}
+        <Card className={cn("glass-card overflow-hidden", expandedSection === "payment-methods" && "ring-2 ring-emerald-500/50")}>
+          <CardHeader 
+            onClick={() => setExpandedSection(expandedSection === "payment-methods" ? null : "payment-methods")}
+            className={cn("flex flex-row items-center justify-between cursor-pointer hover:bg-accent/10 transition-colors select-none", expandedSection === "payment-methods" ? "pb-2" : "pb-4")}
+          >
+            <div className="flex items-center gap-3">
+               <div className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-accent transition-colors">
+                 {expandedSection === "payment-methods" ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
+               </div>
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <CreditCard className="h-5 w-5 text-emerald-500" />
+                  Payment Methods
+                </CardTitle>
+                <CardDescription>Manage available payment options</CardDescription>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setEditPaymentMethod(undefined); setAddPaymentMethodOpen(true); }} className="rounded-xl">
+                <Plus className="h-4 w-4 mr-1" /> Add New
+              </Button>
+            </div>
+          </CardHeader>
+          {expandedSection === "payment-methods" && (
+            <CardContent className="animate-in fade-in slide-in-from-top-1 duration-200">
+              <div className="mb-4 relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search payment methods..."
+                  value={qPaymentMethods}
+                  onChange={e => setQPaymentMethods(e.target.value)}
+                  className="pl-9 rounded-xl border-border"
+                />
+              </div>
+              <div className="grid gap-2">
+                {loading ? (
+                  <div className="py-8 text-center text-sm text-muted-foreground">Loading...</div>
+                ) : filteredPaymentMethods.length ? (
+                  filteredPaymentMethods.map(pm => (
+                    <div key={pm.id} className="flex items-center justify-between rounded-2xl border bg-muted/20 px-4 py-3 text-sm transition-all hover:bg-muted/40">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-foreground">{pm.name}</span>
+                        {!pm.isActive && <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-md">Inactive</span>}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => { e.stopPropagation(); setEditPaymentMethod(pm); setAddPaymentMethodOpen(true); }}
+                          disabled={busy}
+                          className="h-8 w-8 text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-950/30"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => { e.stopPropagation(); onRemovePaymentMethod(pm.id); }}
+                          disabled={busy}
+                          className="h-8 w-8 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="py-8 text-center text-sm text-muted-foreground border-2 border-dashed rounded-2xl">
+                    No payment methods found.
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          )}
+        </Card>
+
+        {/* Sale Types Section */}
+        <Card className={cn("glass-card overflow-hidden", expandedSection === "sale-types" && "ring-2 ring-indigo-500/50")}>
+          <CardHeader 
+            onClick={() => setExpandedSection(expandedSection === "sale-types" ? null : "sale-types")}
+            className={cn("flex flex-row items-center justify-between cursor-pointer hover:bg-accent/10 transition-colors select-none", expandedSection === "sale-types" ? "pb-2" : "pb-4")}
+          >
+            <div className="flex items-center gap-3">
+               <div className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-accent transition-colors">
+                 {expandedSection === "sale-types" ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
+               </div>
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Tag className="h-5 w-5 text-indigo-500" />
+                  Sale Types
+                </CardTitle>
+                <CardDescription>Manage available sale categories</CardDescription>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setEditSaleType(undefined); setAddSaleTypeOpen(true); }} className="rounded-xl">
+                <Plus className="h-4 w-4 mr-1" /> Add New
+              </Button>
+            </div>
+          </CardHeader>
+          {expandedSection === "sale-types" && (
+            <CardContent className="animate-in fade-in slide-in-from-top-1 duration-200">
+              <div className="mb-4 relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search sale types..."
+                  value={qSaleTypes}
+                  onChange={e => setQSaleTypes(e.target.value)}
+                  className="pl-9 rounded-xl border-border"
+                />
+              </div>
+              <div className="grid gap-2">
+                {loading ? (
+                  <div className="py-8 text-center text-sm text-muted-foreground">Loading...</div>
+                ) : filteredSaleTypes.length ? (
+                  filteredSaleTypes.map(st => (
+                    <div key={st.id} className="flex items-center justify-between rounded-2xl border bg-muted/20 px-4 py-3 text-sm transition-all hover:bg-muted/40">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-foreground">{st.name}</span>
+                        {!st.isActive && <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-md">Inactive</span>}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => { e.stopPropagation(); setEditSaleType(st); setAddSaleTypeOpen(true); }}
+                          disabled={busy}
+                          className="h-8 w-8 text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-950/30"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => { e.stopPropagation(); onRemoveSaleType(st.id); }}
+                          disabled={busy}
+                          className="h-8 w-8 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="py-8 text-center text-sm text-muted-foreground border-2 border-dashed rounded-2xl">
+                    No sale types found.
                   </div>
                 )}
               </div>
@@ -981,9 +1171,23 @@ export default function ConfigurationPage() {
         sundry={editSundry}
       />
 
+      <AddPaymentMethodDialog
+        open={addPaymentMethodOpen}
+        onClose={() => { setAddPaymentMethodOpen(false); setEditPaymentMethod(undefined); }}
+        onSuccess={() => { fetchData(); setEditPaymentMethod(undefined); }}
+        initialData={editPaymentMethod}
+      />
+
+      <AddSaleTypeDialog
+        open={addSaleTypeOpen}
+        onClose={() => { setAddSaleTypeOpen(false); setEditSaleType(undefined); }}
+        onSuccess={() => { fetchData(); setEditSaleType(undefined); }}
+        initialData={editSaleType}
+      />
+
       <ConfirmDialog
         open={confirmState.open}
-        title={`Delete ${confirmState.type.charAt(0).toUpperCase() + confirmState.type.slice(1)}`}
+        title={`Delete ${confirmState.type.split("-").map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(" ")}`}
         description={`Are you sure you want to delete '${confirmState.name}'? This action cannot be undone.`}
         variant="danger"
         confirmText="Delete"

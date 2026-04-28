@@ -5,6 +5,7 @@ import { PrismaService } from "../../common/prisma/prisma.service";
 import { Prisma } from "@prisma/client";
 import { FiscalSessionsService } from "../fiscal-sessions/fiscal-sessions.service";
 import { CoaSeederService } from "../accounts/coa-seeder.service";
+import { ItemsSeederService } from "../items/items-seeder.service";
 import argon2 from "argon2";
 import * as speakeasy from "speakeasy";
 import * as qrcode from "qrcode";
@@ -33,7 +34,8 @@ export class AuthService {
     private prisma: PrismaService,
     private jwt: JwtService,
     private fiscalSessions: FiscalSessionsService,
-    private coaSeeder: CoaSeederService
+    private coaSeeder: CoaSeederService,
+    private itemsSeeder: ItemsSeederService
   ) { }
 
   private async getUserWithPerms(companyId: string, email: string) {
@@ -126,7 +128,7 @@ export class AuthService {
     } = coa;
 
     // Create default Tax Codes
-    await tx.taxCode.create({
+    const vat13 = await tx.taxCode.create({
       data: {
         companyId,
         name: "VAT 13%",
@@ -194,6 +196,9 @@ export class AuthService {
     await tx.party.create({
       data: { companyId, type: "customer", name: "Walk-in Customer" }
     });
+
+    // Seed default items, units, payment methods, and sale types
+    await this.itemsSeeder.seedDefaults(tx, companyId, coa, vat13.id);
 
     return coa;
   }

@@ -333,7 +333,9 @@ let InvoicesService = class InvoicesService {
             dueDateBs: resolvedDue?.bs || input.dueDateBs,
             referenceNo: input.referenceNo,
             memo: input.memo,
-            additionalNote: input.additionalNote
+            additionalNote: input.additionalNote,
+            paymentMethodId: input.paymentMethodId,
+            saleTypeId: input.saleTypeId
         };
     }
     async createDraft(user, input) {
@@ -357,6 +359,8 @@ let InvoicesService = class InvoicesService {
                     status: "draft",
                     memo: input.memo,
                     additionalNote: input.additionalNote,
+                    paymentMethodId: input.paymentMethodId,
+                    saleTypeId: input.saleTypeId,
                     items: {
                         create: preview.items.map((item) => ({
                             itemId: item.itemId,
@@ -603,6 +607,8 @@ let InvoicesService = class InvoicesService {
                     total: totals.total,
                     memo: input.memo,
                     additionalNote: input.additionalNote,
+                    paymentMethodId: input.paymentMethodId,
+                    saleTypeId: input.saleTypeId,
                     items: {
                         create: preview.items.map((item) => ({
                             itemId: item.itemId,

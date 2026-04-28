@@ -41,6 +41,8 @@ const quotations_module_1 = require("./modules/quotations/quotations.module");
 const purchase_orders_module_1 = require("./modules/purchase-orders/purchase-orders.module");
 const proforma_module_1 = require("./modules/proforma/proforma.module");
 const fiscal_sessions_module_1 = require("./modules/fiscal-sessions/fiscal-sessions.module");
+const payment_methods_module_1 = require("./modules/payment-methods/payment-methods.module");
+const sale_types_module_1 = require("./modules/sale-types/sale-types.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -79,6 +81,8 @@ exports.AppModule = AppModule = __decorate([
             bill_sundries_module_1.BillSundriesModule,
             proforma_module_1.ProformaModule,
             fiscal_sessions_module_1.FiscalSessionsModule,
+            payment_methods_module_1.PaymentMethodsModule,
+            sale_types_module_1.SaleTypesModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [

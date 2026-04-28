@@ -218,6 +218,26 @@ async function createDemoCompany(permAll: string[]) {
     data: { companyId: company.id, type: PartyType.customer, name: "Walk-in Customer" }
   });
 
+  // Create default Payment Methods
+  await prisma.paymentMethod.createMany({
+    data: [
+      { companyId: company.id, name: "Cash" },
+      { companyId: company.id, name: "Bank Transfer" },
+      { companyId: company.id, name: "Online Wallet / Gateway" },
+      { companyId: company.id, name: "Cheque" },
+      { companyId: company.id, name: "Credit (Pay later)" }
+    ]
+  });
+
+  // Create default Sale Types
+  await prisma.saleType.createMany({
+    data: [
+      { companyId: company.id, name: "VAT 13% Sales" },
+      { companyId: company.id, name: "Exempt Sales" },
+      { companyId: company.id, name: "Export Sales" }
+    ]
+  });
+
   return { company, adminUser, cash, bank, ar, sales };
 }
 

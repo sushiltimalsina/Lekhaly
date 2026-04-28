@@ -26,6 +26,7 @@ import { AccountsModule } from "../accounts/accounts.module";
     }),
     FiscalSessionsModule,
     AccountsModule,
+    ItemsModule,
   ],
   controllers: [AuthController, AuthV1Controller],
   providers: [

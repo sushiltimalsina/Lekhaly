@@ -21,6 +21,8 @@ exports.CreateInvoiceDraftSchema = zod_1.z.object({
     receivableAccountId: zod_1.z.string().uuid(),
     memo: zod_1.z.string().trim().max(500).optional(),
     additionalNote: zod_1.z.string().trim().max(2000).optional(),
+    paymentMethodId: zod_1.z.string().uuid().optional().nullable(),
+    saleTypeId: zod_1.z.string().uuid().optional().nullable(),
     items: zod_1.z.array(exports.InvoiceItemSchema).min(1),
     sundries: zod_1.z.array(zod_1.z.object({
         billSundryId: zod_1.z.string().uuid().optional(),

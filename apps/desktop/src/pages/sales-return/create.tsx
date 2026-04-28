@@ -16,8 +16,12 @@ import { listAccounts, type AccountRecord } from "@/lib/api/accounts";
 import { listItems, type ItemRecord } from "@/lib/api/items";
 import AddItemDialog from "@/components/app/add-item-dialog";
 import AddCustomerDialog from "@/components/app/add-customer-dialog";
-import AddBillSundryDialog from "@/components/app/add-bill-sundry-dialog";
 import { listBillSundries, type BillSundryRecord } from "@/lib/api/bill-sundries";
+import { listPaymentMethods } from "@/lib/api/payment-methods";
+import { listSaleTypes } from "@/lib/api/sale-types";
+import AddPaymentMethodDialog from "@/components/app/add-payment-method-dialog";
+import AddSaleTypeDialog from "@/components/app/add-sale-type-dialog";
+import AddBillSundryDialog from "@/components/app/add-bill-sundry-dialog";
 
 import {
     Plus,
@@ -74,6 +78,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
     className?: string;
     buttonClassName?: string;
     emptyText?: string;
+    onAdd?: () => void;
     buttonRef?: React.Ref<HTMLButtonElement>;
     onEnterNext?: () => void;
     onKeyDownCustom?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
@@ -293,7 +298,23 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                                     );
                                 })
                             ) : (
-                                <div className="px-3 py-3 text-sm text-muted-foreground">{emptyText}</div>
+                                <div className="px-3 py-3 text-center">
+                                    <div className="text-sm text-muted-foreground mb-3">{emptyText}</div>
+                                    {props.onAdd && (
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            onClick={() => {
+                                                setOpen(false);
+                                                props.onAdd?.();
+                                            }}
+                                            className="rounded-full h-8 bg-emerald-600 text-white hover:bg-emerald-700 border-none"
+                                        >
+                                            <Plus className="mr-1.5 h-3.5 w-3.5" />
+                                            Add New
+                                        </Button>
+                                    )}
+                                </div>
                             )}
                         </div>
                     </div>,
@@ -318,8 +339,8 @@ export default function SalesReturnCreatePage() {
     const invoiceDateRef = React.useRef<HTMLInputElement>(null);
     const dueDateRef = React.useRef<HTMLInputElement>(null);
     const invoiceNoRef = React.useRef<HTMLInputElement>(null);
-    const paymentMethodRef = React.useRef<HTMLSelectElement>(null);
-    const salesTypeRef = React.useRef<HTMLSelectElement>(null);
+    const paymentMethodRef = React.useRef<HTMLButtonElement>(null);
+    const salesTypeRef = React.useRef<HTMLButtonElement>(null);
     const memoRef = React.useRef<HTMLInputElement>(null);
     const referenceNoRef = React.useRef<HTMLInputElement>(null);
     const customerSelectRef = React.useRef<HTMLButtonElement>(null);
@@ -328,6 +349,8 @@ export default function SalesReturnCreatePage() {
     const [addItemOpen, setAddItemOpen] = React.useState(false);
     const [activeLineIdx, setActiveLineIdx] = React.useState<number | null>(null);
     const [addCustomerOpen, setAddCustomerOpen] = React.useState(false);
+    const [addPaymentMethodOpen, setAddPaymentMethodOpen] = React.useState(false);
+    const [addSaleTypeOpen, setAddSaleTypeOpen] = React.useState(false);
     const [addSundryOpen, setAddSundryOpen] = React.useState(false);
     const [activeSundryIdx, setActiveSundryIdx] = React.useState<number | null>(null);
 
@@ -347,6 +370,8 @@ export default function SalesReturnCreatePage() {
     const [accounts, setAccounts] = React.useState<AccountRecord[]>([]);
     const [items, setItems] = React.useState<ItemRecord[]>([]);
     const [sundryOptions, setSundryOptions] = React.useState<BillSundryRecord[]>([]);
+    const [paymentMethods, setPaymentMethods] = React.useState<any[]>([]);
+    const [saleTypes, setSaleTypes] = React.useState<any[]>([]);
 
     const safeFocus = (el: HTMLElement | null) => {
         if (!el) return;
@@ -374,7 +399,9 @@ export default function SalesReturnCreatePage() {
         referenceNo: "",
 
         paymentMethod: "" as any,
+        paymentMethodId: "",
         salesType: "vat_13" as any,
+        saleTypeId: "",
         memo: "",
         notes: "",
         termsOverrideEnabled: false,
@@ -432,18 +459,22 @@ export default function SalesReturnCreatePage() {
         };
 
         Promise.all([
-            listParties({ type: "customer", take: 200 }),
-            listAccounts({ type: "asset", take: 200 }),
-            listItems({ take: 200 }),
-            listBillSundries({ take: 100 })
+            listParties({ type: "customer", take: 1000 }),
+            listAccounts({ type: "asset", take: 1000 }),
+            listItems({ take: 1000 }),
+            listBillSundries({ take: 100 }),
+            listPaymentMethods({ isActive: true }),
+            listSaleTypes({ isActive: true })
         ])
-            .then(([p, a, i, s]) => {
+            .then(([p, a, i, s, pm, st]) => {
                 if (!alive) return;
                 setParties(normalizeList<PartyRecord>(p));
                 setAccounts(normalizeList<AccountRecord>(a));
                 setItems(normalizeList<ItemRecord>(i));
                 const opts = normalizeList<BillSundryRecord>(s);
                 setSundryOptions(opts);
+                setPaymentMethods(normalizeList<any>(pm));
+                setSaleTypes(normalizeList<any>(st));
 
                 // Auto-link default sundries if they exist in the options
                 setBillSundries(prev => prev.map(row => {
@@ -597,6 +628,8 @@ export default function SalesReturnCreatePage() {
             dueDate: form.dueDate.ad || undefined,
             dueDateBs: form.dueDate.bs || undefined,
             receivableAccountId: form.receivableAccountId,
+            paymentMethodId: form.paymentMethodId || undefined,
+            saleTypeId: form.saleTypeId || undefined,
             salesType: form.salesType,
             memo: form.memo || undefined,
             items: payloadItems,
@@ -759,26 +792,32 @@ export default function SalesReturnCreatePage() {
                         <div className="lg:col-span-8 flex items-start lg:justify-center">
                             <div className="w-full max-w-[520px]">
                                 <div className="text-xs text-muted-foreground">Payment method <span className="text-red-500">*</span></div>
-                                <select
-                                    ref={paymentMethodRef}
-                                    value={form.paymentMethod}
-                                    onChange={(e) => setForm((f) => ({ ...f, paymentMethod: e.target.value as any }))}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter") {
-                                            if (!form.paymentMethod) return;
-                                            e.preventDefault();
-                                            safeFocus(memoRef.current);
-                                        }
-                                    }}
-                                    className="mt-2 h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900"
-                                >
-                                    <option value="">Select payment method…</option>
-                                    <option value="bank_transfer">Bank Transfer</option>
-                                    <option value="online">Online Wallet / Gateway</option>
-                                    <option value="cheque">Cheque</option>
-                                    <option value="cash">Cash</option>
-                                    <option value="credit">Credit (Pay later)</option>
-                                </select>
+                                    <div className="relative">
+                                        <SearchableSelect
+                                            buttonRef={paymentMethodRef}
+                                            placeholder="Select payment method…"
+                                            valueId={form.paymentMethodId}
+                                            onChange={(id, opt) => setForm((f) => ({ ...f, paymentMethodId: id, paymentMethod: opt?.name }))}
+                                            options={paymentMethods}
+                                            className="mt-2"
+                                            buttonClassName={cn(
+                                                "h-11 rounded-2xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700",
+                                                !form.paymentMethodId ? "pr-[80px]" : "pr-4"
+                                            )}
+                                            onEnterNext={() => safeFocus(memoRef.current)}
+                                            onAdd={() => setAddPaymentMethodOpen(true)}
+                                        />
+                                        {!form.paymentMethodId && (
+                                            <Button
+                                                type="button"
+                                                onClick={() => setAddPaymentMethodOpen(true)}
+                                                className="absolute right-2 top-[calc(50%+4px)] -translate-y-1/2 h-7 rounded-full px-3 text-[10px] bg-emerald-600 text-white border-none hover:bg-emerald-700 shadow-sm transition-all active:scale-95"
+                                            >
+                                                <Plus className="mr-1.5 h-3 w-3" />
+                                                New
+                                            </Button>
+                                        )}
+                                    </div>
 
                                 <div className="mt-4">
                                     <div className="text-xs text-muted-foreground">Memo / Remarks</div>
@@ -799,22 +838,32 @@ export default function SalesReturnCreatePage() {
 
                                 <div className="mt-4">
                                     <div className="text-xs text-muted-foreground">Sales Return Type <span className="text-red-500">*</span></div>
-                                    <select
-                                        ref={salesTypeRef}
-                                        value={form.salesType}
-                                        onChange={(e) => setForm((f) => ({ ...f, salesType: e.target.value as any }))}
-                                        onKeyDown={(e) => {
-                                            if (e.key === "Enter") {
-                                                e.preventDefault();
-                                                safeFocus(referenceNoRef.current);
-                                            }
-                                        }}
-                                        className="mt-2 h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900"
-                                    >
-                                        <option value="vat_13">VAT 13% Return</option>
-                                        <option value="exempt">Exempt Return</option>
-                                        <option value="export">Export Return</option>
-                                    </select>
+                                    <div className="relative">
+                                        <SearchableSelect
+                                            buttonRef={salesTypeRef}
+                                            placeholder="Select sales type…"
+                                            valueId={form.saleTypeId}
+                                            onChange={(id, opt) => setForm((f) => ({ ...f, saleTypeId: id, salesType: opt?.name }))}
+                                            options={saleTypes}
+                                            className="mt-2"
+                                            buttonClassName={cn(
+                                                "h-11 rounded-2xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700",
+                                                !form.saleTypeId ? "pr-[80px]" : "pr-4"
+                                            )}
+                                            onEnterNext={() => safeFocus(referenceNoRef.current)}
+                                            onAdd={() => setAddSaleTypeOpen(true)}
+                                        />
+                                        {!form.saleTypeId && (
+                                            <Button
+                                                type="button"
+                                                onClick={() => setAddSaleTypeOpen(true)}
+                                                className="absolute right-2 top-[calc(50%+4px)] -translate-y-1/2 h-7 rounded-full px-3 text-[10px] bg-emerald-600 text-white border-none hover:bg-emerald-700 shadow-sm transition-all active:scale-95"
+                                            >
+                                                <Plus className="mr-1.5 h-3 w-3" />
+                                                New
+                                            </Button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -856,7 +905,8 @@ export default function SalesReturnCreatePage() {
                                     safeFocus(sundryRefs.current.select[0]);
                                 }
                             }}
-                            buttonClassName="h-12 rounded-2xl bg-white dark:bg-slate-900 pr-[140px]"
+                            buttonClassName={cn("h-12 rounded-2xl bg-white dark:bg-slate-900", !form.partyId ? "pr-[160px]" : "pr-4")}
+                            onAdd={() => setAddCustomerOpen(true)}
                         />
 
                         {!form.partyId && (
@@ -940,8 +990,15 @@ export default function SalesReturnCreatePage() {
                                                                 }
                                                             }}
                                                             leftIcon={<Search className="h-4 w-4" />}
-                                                            buttonClassName="h-11 rounded-2xl bg-white dark:bg-slate-900 pr-[100px]"
+                                                            buttonClassName={cn(
+                                                                "h-11 rounded-2xl bg-white dark:bg-slate-900",
+                                                                !line.itemId ? "pr-[100px]" : "pr-4"
+                                                            )}
                                                             emptyText="No items found"
+                                                            onAdd={() => {
+                                                                setActiveLineIdx(idx);
+                                                                setAddItemOpen(true);
+                                                            }}
                                                         />
                                                         {!line.itemId && (
                                                             <Button
@@ -1439,6 +1496,24 @@ export default function SalesReturnCreatePage() {
                             });
                         }
                     }
+                }}
+            />
+
+            <AddPaymentMethodDialog
+                open={addPaymentMethodOpen}
+                onClose={() => setAddPaymentMethodOpen(false)}
+                onSuccess={(method) => {
+                    setPaymentMethods(prev => [...prev, method]);
+                    setForm(f => ({ ...f, paymentMethodId: method.id, paymentMethod: method.name }));
+                }}
+            />
+
+            <AddSaleTypeDialog
+                open={addSaleTypeOpen}
+                onClose={() => setAddSaleTypeOpen(false)}
+                onSuccess={(st) => {
+                    setSaleTypes(prev => [...prev, st]);
+                    setForm(f => ({ ...f, saleTypeId: st.id, salesType: st.name }));
                 }}
             />
         </div>

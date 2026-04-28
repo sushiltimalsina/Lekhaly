@@ -228,6 +228,22 @@ async function createDemoCompany(permAll) {
     await prisma.party.create({
         data: { companyId: company.id, type: client_1.PartyType.customer, name: "Walk-in Customer" }
     });
+    await prisma.paymentMethod.createMany({
+        data: [
+            { companyId: company.id, name: "Cash" },
+            { companyId: company.id, name: "Bank Transfer" },
+            { companyId: company.id, name: "Online Wallet / Gateway" },
+            { companyId: company.id, name: "Cheque" },
+            { companyId: company.id, name: "Credit (Pay later)" }
+        ]
+    });
+    await prisma.saleType.createMany({
+        data: [
+            { companyId: company.id, name: "VAT 13% Sales" },
+            { companyId: company.id, name: "Exempt Sales" },
+            { companyId: company.id, name: "Export Sales" }
+        ]
+    });
     return { company, adminUser, cash, bank, ar, sales };
 }
 async function seedDummyData(companyId) {
