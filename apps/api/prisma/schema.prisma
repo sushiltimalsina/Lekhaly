@@ -316,6 +316,8 @@ model ChartOfAccount {
   code     String
   name     String
   type     CoaType
+  level    Int      @default(0)
+  isGroup  Boolean  @default(false)
   parentId String?
   parent   ChartOfAccount?  @relation("CoaTree", fields: [parentId], references: [id])
   children ChartOfAccount[] @relation("CoaTree")

@@ -31,6 +31,12 @@ export class AccountsController {
     return this.accounts.get(user, id);
   }
 
+  @Get("tree/summary")
+  @RequirePerm("masters.read")
+  getSummary(@CurrentUser() user: AuthUser) {
+    return this.accounts.getSummary(user);
+  }
+
   @Get()
   @RequirePerm("masters.read")
   list(@CurrentUser() user: AuthUser, @Query(new ZodValidationPipe(ListAccountQuerySchema)) query: any) {

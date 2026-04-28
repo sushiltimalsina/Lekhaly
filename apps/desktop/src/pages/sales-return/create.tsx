@@ -29,8 +29,10 @@ import {
     Check,
     Eye,
     Printer,
+    FileText,
     ChevronRight,
     ArrowLeft,
+    Undo2,
 } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toBs } from "@/lib/dates/bs";
@@ -665,7 +667,21 @@ export default function SalesReturnCreatePage() {
                         Back to Registry
                     </Button>
                 </div>
-                <PageHeader title="Create New Sales Return" description="Fill in the details below to create a new sales return (credit note)." />
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-4">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-600 text-white shadow-xl shadow-rose-500/20">
+                            <Undo2 className="h-6 w-6" />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-bold italic tracking-tight text-slate-900 dark:text-slate-100">
+                                Create New Sales Return
+                            </h1>
+                            <p className="text-xs text-muted-foreground mt-0.5 font-medium">
+                                Fill in the details below to create a new sales return (credit note).
+                            </p>
+                        </div>
+                    </div>
+                </div>
 
                 {/* Alerts */}
                 <div className="mb-4 grid gap-3">
@@ -689,6 +705,7 @@ export default function SalesReturnCreatePage() {
                             ref={invoiceDateRef}
                             label="Return Date"
                             value={form.invoiceDate}
+                            accentColor="bg-rose-600"
                             onChange={(next) => setForm((f) => ({ ...f, invoiceDate: next }))}
                             onEnterNext={() => safeFocus(dueDateRef.current)}
                         />
@@ -696,6 +713,7 @@ export default function SalesReturnCreatePage() {
                             ref={dueDateRef}
                             label="Due Date"
                             value={form.dueDate}
+                            accentColor="bg-rose-600"
                             onChange={(next) => setForm((f) => ({ ...f, dueDate: next }))}
                             onEnterNext={() => safeFocus(invoiceNoRef.current)}
                         />
@@ -805,11 +823,13 @@ export default function SalesReturnCreatePage() {
                             <DualDateInput
                                 label="Return Date"
                                 value={form.invoiceDate}
+                                accentColor="bg-rose-600"
                                 onChange={(next) => setForm((f) => ({ ...f, invoiceDate: next }))}
                             />
                             <DualDateInput
                                 label="Due Date"
                                 value={form.dueDate}
+                                accentColor="bg-rose-600"
                                 onChange={(next) => setForm((f) => ({ ...f, dueDate: next }))}
                             />
                         </div>

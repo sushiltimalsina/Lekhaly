@@ -5,6 +5,7 @@ export const CreateAccountSchema = z.object({
   name: z.string().trim().min(2).max(120),
   type: z.enum(["asset", "liability", "equity", "income", "expense"]),
   parentId: z.string().uuid().optional(),
+  isGroup: z.boolean().optional(),
   isPostable: z.boolean().optional(),
   isActive: z.boolean().optional()
 });

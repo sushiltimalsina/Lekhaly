@@ -9,6 +9,7 @@ import { AuthController } from "./auth.controller";
 import { AuthV1Controller } from "./auth.controller.v1";
 import { AuthService } from "./auth.service";
 import { FiscalSessionsModule } from "../fiscal-sessions/fiscal-sessions.module";
+import { AccountsModule } from "../accounts/accounts.module";
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { FiscalSessionsModule } from "../fiscal-sessions/fiscal-sessions.module"
       })()
     }),
     FiscalSessionsModule,
+    AccountsModule,
   ],
   controllers: [AuthController, AuthV1Controller],
   providers: [

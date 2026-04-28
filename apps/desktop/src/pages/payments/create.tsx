@@ -198,7 +198,7 @@ export default function PaymentCreatePage() {
             <div className="flex flex-col gap-6">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-600 text-white shadow-xl shadow-rose-500/20">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-600 text-white shadow-xl shadow-orange-500/20">
                             <CreditCard className="h-6 w-6" />
                         </div>
                         <div>
@@ -242,7 +242,7 @@ export default function PaymentCreatePage() {
                                         ref={dateRef}
                                         label="Voucher Date"
                                         value={form.date}
-                                        accentColor="bg-rose-600"
+                                        accentColor="bg-orange-600"
                                         onChange={(date) => setForm(f => ({ ...f, date }))}
                                         onEnterNext={() => safeFocus(referenceNoRef.current)}
                                     />

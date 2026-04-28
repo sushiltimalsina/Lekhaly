@@ -2,12 +2,14 @@ import { JwtService } from "@nestjs/jwt";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { Prisma } from "@prisma/client";
 import { FiscalSessionsService } from "../fiscal-sessions/fiscal-sessions.service";
+import { CoaSeederService } from "../accounts/coa-seeder.service";
 export declare class AuthService {
     private prisma;
     private jwt;
     private fiscalSessions;
+    private coaSeeder;
     private readonly logger;
-    constructor(prisma: PrismaService, jwt: JwtService, fiscalSessions: FiscalSessionsService);
+    constructor(prisma: PrismaService, jwt: JwtService, fiscalSessions: FiscalSessionsService, coaSeeder: CoaSeederService);
     private getUserWithPerms;
     private getUserWithPermsById;
     private signAccessToken;
@@ -144,6 +146,8 @@ export declare class AuthService {
             updatedAt: Date;
             code: string;
             type: import("@prisma/client").$Enums.CoaType;
+            level: number;
+            isGroup: boolean;
             parentId: string | null;
             isPostable: boolean;
             isActive: boolean;
@@ -415,6 +419,8 @@ export declare class AuthService {
             updatedAt: Date;
             code: string;
             type: import("@prisma/client").$Enums.CoaType;
+            level: number;
+            isGroup: boolean;
             parentId: string | null;
             isPostable: boolean;
             isActive: boolean;
@@ -426,6 +432,8 @@ export declare class AuthService {
             updatedAt: Date;
             code: string;
             type: import("@prisma/client").$Enums.CoaType;
+            level: number;
+            isGroup: boolean;
             parentId: string | null;
             isPostable: boolean;
             isActive: boolean;
@@ -1464,6 +1472,8 @@ export declare class AuthService {
             updatedAt: Date;
             code: string;
             type: import("@prisma/client").$Enums.CoaType;
+            level: number;
+            isGroup: boolean;
             parentId: string | null;
             isPostable: boolean;
             isActive: boolean;
@@ -1735,6 +1745,8 @@ export declare class AuthService {
             updatedAt: Date;
             code: string;
             type: import("@prisma/client").$Enums.CoaType;
+            level: number;
+            isGroup: boolean;
             parentId: string | null;
             isPostable: boolean;
             isActive: boolean;
@@ -1746,6 +1758,8 @@ export declare class AuthService {
             updatedAt: Date;
             code: string;
             type: import("@prisma/client").$Enums.CoaType;
+            level: number;
+            isGroup: boolean;
             parentId: string | null;
             isPostable: boolean;
             isActive: boolean;

@@ -11,6 +11,8 @@ export declare class AccountsController {
         updatedAt: Date;
         code: string;
         type: import("@prisma/client").$Enums.CoaType;
+        level: number;
+        isGroup: boolean;
         parentId: string | null;
         isPostable: boolean;
         isActive: boolean;
@@ -23,6 +25,8 @@ export declare class AccountsController {
         updatedAt: Date;
         code: string;
         type: import("@prisma/client").$Enums.CoaType;
+        level: number;
+        isGroup: boolean;
         parentId: string | null;
         isPostable: boolean;
         isActive: boolean;
@@ -35,10 +39,13 @@ export declare class AccountsController {
         updatedAt: Date;
         code: string;
         type: import("@prisma/client").$Enums.CoaType;
+        level: number;
+        isGroup: boolean;
         parentId: string | null;
         isPostable: boolean;
         isActive: boolean;
     }>;
+    getSummary(user: AuthUser): Promise<any[]>;
     list(user: AuthUser, query: any): Promise<{
         id: string;
         companyId: string;
@@ -47,6 +54,8 @@ export declare class AccountsController {
         updatedAt: Date;
         code: string;
         type: import("@prisma/client").$Enums.CoaType;
+        level: number;
+        isGroup: boolean;
         parentId: string | null;
         isPostable: boolean;
         isActive: boolean;
@@ -59,6 +68,8 @@ export declare class AccountsController {
         updatedAt: Date;
         code: string;
         type: import("@prisma/client").$Enums.CoaType;
+        level: number;
+        isGroup: boolean;
         parentId: string | null;
         isPostable: boolean;
         isActive: boolean;
@@ -71,6 +82,8 @@ export declare class AccountsController {
         updatedAt: Date;
         code: string;
         type: import("@prisma/client").$Enums.CoaType;
+        level: number;
+        isGroup: boolean;
         parentId: string | null;
         isPostable: boolean;
         isActive: boolean;

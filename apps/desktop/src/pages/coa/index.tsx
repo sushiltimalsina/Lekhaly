@@ -6,8 +6,10 @@ import { Button } from "@lekhaly/ui";
 import { Input } from "@lekhaly/ui";
 import { Plus, Search, MoreHorizontal, Layers, FolderPlus, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { listAccounts, AccountRecord } from "@/lib/api/accounts";
+import { getAccountSummary, AccountRecord } from "@/lib/api/accounts";
 import AddAccountGroupDialog from "@/components/app/add-account-group-dialog";
+import { MoneyText } from "@/components/app/money";
+import { ChevronDown } from "lucide-react";
 
 export default function CoaPage() {
   const [q, setQ] = React.useState("");
@@ -20,7 +22,7 @@ export default function CoaPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await listAccounts();
+      const res = await getAccountSummary();
       setAccounts(Array.isArray(res) ? res : (res as any)?.data || []);
     } catch (err: any) {
       setError(err.message || "Failed to load Chart of Accounts");
@@ -63,25 +65,50 @@ export default function CoaPage() {
       key: "name",
       header: "Account Name",
       cell: (r) => (
-        <div className="flex items-center gap-3 py-1">
-          <div className={cn(
-            "h-2.5 w-2.5 rounded-full ring-4 shadow-sm",
-            r.type === 'asset' ? "bg-blue-500 ring-blue-500/10" :
-              r.type === 'liability' ? "bg-orange-500 ring-orange-500/10" :
-                r.type === 'income' ? "bg-emerald-500 ring-emerald-500/10" :
-                  r.type === 'expense' ? "bg-red-500 ring-red-500/10" : "bg-indigo-500 ring-indigo-500/10"
-          )} />
-          <div>
-            <div className={cn("font-bold text-foreground", !r.isPostable && "text-lg tracking-tight")}>{r.name}</div>
-            <div className="flex items-center gap-2 mt-0.5">
-              {!r.isPostable && (
-                <span className="px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[9px] font-black uppercase text-slate-500 tracking-widest border border-slate-200 dark:border-slate-700">Group</span>
-              )}
-              <span className="text-[10px] uppercase font-bold text-muted-foreground opacity-60">
-                {r.parentId ? "Sub-account" : "Primary Category"}
-              </span>
+        <div className="flex items-center py-1" style={{ paddingLeft: `${(r.level || 0) * 24}px` }}>
+          <div className="flex items-center gap-3">
+            {r.isGroup ? (
+              <div className="flex h-5 w-5 items-center justify-center text-muted-foreground/40">
+                <ChevronDown className="h-4 w-4" />
+              </div>
+            ) : (
+              <div className="h-5 w-5" />
+            )}
+            <div className={cn(
+              "h-2.5 w-2.5 rounded-full ring-4 shadow-sm",
+              r.type === 'asset' ? "bg-blue-500 ring-blue-500/10" :
+                r.type === 'liability' ? "bg-orange-500 ring-orange-500/10" :
+                  r.type === 'income' ? "bg-emerald-500 ring-emerald-500/10" :
+                    r.type === 'expense' ? "bg-red-500 ring-red-500/10" : "bg-indigo-500 ring-indigo-500/10"
+            )} />
+            <div>
+              <div className={cn(
+                "font-bold text-foreground", 
+                r.isGroup ? "text-[15px] tracking-tight text-slate-900 dark:text-slate-100" : "text-sm text-slate-600 dark:text-slate-400"
+              )}>
+                {r.name}
+              </div>
+              <div className="flex items-center gap-2 mt-0.5">
+                {r.isGroup && (
+                  <span className="px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[9px] font-black uppercase text-slate-500 tracking-widest border border-slate-200 dark:border-slate-700">Group</span>
+                )}
+              </div>
             </div>
           </div>
+        </div>
+      )
+    },
+    {
+      key: "balance",
+      header: "Balance",
+      align: "right",
+      width: 180,
+      cell: (r) => (
+        <div className={cn(
+          "font-mono font-bold tracking-tight",
+          r.isGroup ? "text-slate-900 dark:text-slate-100" : "text-slate-500 dark:text-slate-400"
+        )}>
+          <MoneyText value={Number(r.total_balance || 0)} />
         </div>
       )
     },

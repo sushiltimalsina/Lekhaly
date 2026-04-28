@@ -4,6 +4,7 @@ import type { JwtSignOptions } from "@nestjs/jwt";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { Prisma } from "@prisma/client";
 import { FiscalSessionsService } from "../fiscal-sessions/fiscal-sessions.service";
+import { CoaSeederService } from "../accounts/coa-seeder.service";
 import argon2 from "argon2";
 import * as speakeasy from "speakeasy";
 import * as qrcode from "qrcode";
@@ -31,7 +32,8 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwt: JwtService,
-    private fiscalSessions: FiscalSessionsService
+    private fiscalSessions: FiscalSessionsService,
+    private coaSeeder: CoaSeederService
   ) { }
 
   private async getUserWithPerms(companyId: string, email: string) {
@@ -114,53 +116,14 @@ export class AuthService {
   }
 
   private async createDefaultMasterData(tx: Prisma.TransactionClient, companyId: string) {
-    // Create default Chart of Accounts
-    const cash = await tx.chartOfAccount.create({
-      data: { companyId, code: "1010", name: "Cash in Hand", type: "asset" }
-    });
-    const bank = await tx.chartOfAccount.create({
-      data: { companyId, code: "1020", name: "Bank", type: "asset" }
-    });
-    const ar = await tx.chartOfAccount.create({
-      data: { companyId, code: "1100", name: "Accounts Receivable", type: "asset" }
-    });
-    const vatReceivable = await tx.chartOfAccount.create({
-      data: { companyId, code: "1110", name: "VAT Receivable", type: "asset" }
-    });
-    await tx.chartOfAccount.create({
-      data: { companyId, code: "1200", name: "Inventory", type: "asset" }
-    });
-
-    const ap = await tx.chartOfAccount.create({
-      data: { companyId, code: "2000", name: "Accounts Payable", type: "liability" }
-    });
-    const vatPayable = await tx.chartOfAccount.create({
-      data: { companyId, code: "2100", name: "VAT Payable", type: "liability" }
-    });
-
-    await tx.chartOfAccount.create({
-      data: { companyId, code: "3000", name: "Owner's Capital", type: "equity" }
-    });
-
-    const sales = await tx.chartOfAccount.create({
-      data: { companyId, code: "4000", name: "Sales", type: "income" }
-    });
-    const discountGiven = await tx.chartOfAccount.create({
-      data: { companyId, code: "4100", name: "Discount Given", type: "income" }
-    });
-    const shippingIncome = await tx.chartOfAccount.create({
-      data: { companyId, code: "4200", name: "Shipping & Handling Income", type: "income" }
-    });
-
-    const cogs = await tx.chartOfAccount.create({
-      data: { companyId, code: "5000", name: "Cost of Goods Sold", type: "expense" }
-    });
-    const discountReceived = await tx.chartOfAccount.create({
-      data: { companyId, code: "5100", name: "Discount Received", type: "expense" }
-    });
-    const shippingExpense = await tx.chartOfAccount.create({
-      data: { companyId, code: "5200", name: "Shipping & Handling Expense", type: "expense" }
-    });
+    // Create default NFRS-compliant Chart of Accounts
+    const coa = await this.coaSeeder.seedNfrs(tx, companyId);
+    const { 
+      vatReceivable, 
+      vatPayable, 
+      discountGiven, 
+      sales, 
+    } = coa;
 
     // Create default Tax Codes
     await tx.taxCode.create({
@@ -217,30 +180,6 @@ export class AuthService {
         },
         {
           companyId,
-          name: "Shipping & Handling",
-          type: "add",
-          rate: 0,
-          accountId: shippingIncome.id,
-          isActive: true
-        },
-        {
-          companyId,
-          name: "Packaging Charges",
-          type: "add",
-          rate: 0,
-          accountId: shippingIncome.id,
-          isActive: true
-        },
-        {
-          companyId,
-          name: "Insurance",
-          type: "add",
-          rate: 0,
-          accountId: shippingIncome.id,
-          isActive: true
-        },
-        {
-          companyId,
           name: "Round Off",
           type: "add",
           rate: 0,
@@ -256,7 +195,7 @@ export class AuthService {
       data: { companyId, type: "customer", name: "Walk-in Customer" }
     });
 
-    return { cash, bank, ar, ap, sales, cogs };
+    return coa;
   }
 
   async register(dto: { companyCode: string; companyName: string; name: string; email: string; password: string }) {

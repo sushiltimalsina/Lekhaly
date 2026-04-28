@@ -145,6 +145,8 @@ export declare class AuthController {
             updatedAt: Date;
             code: string;
             type: import("@prisma/client").$Enums.CoaType;
+            level: number;
+            isGroup: boolean;
             parentId: string | null;
             isPostable: boolean;
             isActive: boolean;
@@ -416,6 +418,8 @@ export declare class AuthController {
             updatedAt: Date;
             code: string;
             type: import("@prisma/client").$Enums.CoaType;
+            level: number;
+            isGroup: boolean;
             parentId: string | null;
             isPostable: boolean;
             isActive: boolean;
@@ -427,6 +431,8 @@ export declare class AuthController {
             updatedAt: Date;
             code: string;
             type: import("@prisma/client").$Enums.CoaType;
+            level: number;
+            isGroup: boolean;
             parentId: string | null;
             isPostable: boolean;
             isActive: boolean;
@@ -1422,6 +1428,8 @@ export declare class AuthController {
             updatedAt: Date;
             code: string;
             type: import("@prisma/client").$Enums.CoaType;
+            level: number;
+            isGroup: boolean;
             parentId: string | null;
             isPostable: boolean;
             isActive: boolean;
@@ -1693,6 +1701,8 @@ export declare class AuthController {
             updatedAt: Date;
             code: string;
             type: import("@prisma/client").$Enums.CoaType;
+            level: number;
+            isGroup: boolean;
             parentId: string | null;
             isPostable: boolean;
             isActive: boolean;
@@ -1704,6 +1714,8 @@ export declare class AuthController {
             updatedAt: Date;
             code: string;
             type: import("@prisma/client").$Enums.CoaType;
+            level: number;
+            isGroup: boolean;
             parentId: string | null;
             isPostable: boolean;
             isActive: boolean;

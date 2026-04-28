@@ -10,6 +10,7 @@ export declare const CreateAccountSchema: z.ZodObject<{
         income: "income";
     }>;
     parentId: z.ZodOptional<z.ZodString>;
+    isGroup: z.ZodOptional<z.ZodBoolean>;
     isPostable: z.ZodOptional<z.ZodBoolean>;
     isActive: z.ZodOptional<z.ZodBoolean>;
 }, z.core.$strip>;
@@ -24,6 +25,7 @@ export declare const UpdateAccountSchema: z.ZodObject<{
         income: "income";
     }>>;
     parentId: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    isGroup: z.ZodOptional<z.ZodOptional<z.ZodBoolean>>;
     isPostable: z.ZodOptional<z.ZodOptional<z.ZodBoolean>>;
     isActive: z.ZodOptional<z.ZodOptional<z.ZodBoolean>>;
 }, z.core.$strip>;

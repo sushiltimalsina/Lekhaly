@@ -181,7 +181,7 @@ export default function PaymentCreatePage() {
                              <DualDateInput
                                 label="Voucher Date"
                                 value={form.date}
-                                accentColor="bg-rose-600"
+                                accentColor="bg-emerald-600"
                                 onChange={(date) => setForm(f => ({ ...f, date }))}
                             />
                         </div>

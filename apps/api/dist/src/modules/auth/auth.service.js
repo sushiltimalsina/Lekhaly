@@ -52,6 +52,7 @@ const jwt_1 = require("@nestjs/jwt");
 const prisma_service_1 = require("../../common/prisma/prisma.service");
 const client_1 = require("@prisma/client");
 const fiscal_sessions_service_1 = require("../fiscal-sessions/fiscal-sessions.service");
+const coa_seeder_service_1 = require("../accounts/coa-seeder.service");
 const argon2_1 = __importDefault(require("argon2"));
 const speakeasy = __importStar(require("speakeasy"));
 const qrcode = __importStar(require("qrcode"));
@@ -61,11 +62,13 @@ let AuthService = AuthService_1 = class AuthService {
     prisma;
     jwt;
     fiscalSessions;
+    coaSeeder;
     logger = new common_1.Logger(AuthService_1.name);
-    constructor(prisma, jwt, fiscalSessions) {
+    constructor(prisma, jwt, fiscalSessions, coaSeeder) {
         this.prisma = prisma;
         this.jwt = jwt;
         this.fiscalSessions = fiscalSessions;
+        this.coaSeeder = coaSeeder;
     }
     async getUserWithPerms(companyId, email) {
         const user = await this.prisma.user.findUnique({
@@ -145,48 +148,8 @@ let AuthService = AuthService_1 = class AuthService {
         return permissions.map(p => p.code);
     }
     async createDefaultMasterData(tx, companyId) {
-        const cash = await tx.chartOfAccount.create({
-            data: { companyId, code: "1010", name: "Cash in Hand", type: "asset" }
-        });
-        const bank = await tx.chartOfAccount.create({
-            data: { companyId, code: "1020", name: "Bank", type: "asset" }
-        });
-        const ar = await tx.chartOfAccount.create({
-            data: { companyId, code: "1100", name: "Accounts Receivable", type: "asset" }
-        });
-        const vatReceivable = await tx.chartOfAccount.create({
-            data: { companyId, code: "1110", name: "VAT Receivable", type: "asset" }
-        });
-        await tx.chartOfAccount.create({
-            data: { companyId, code: "1200", name: "Inventory", type: "asset" }
-        });
-        const ap = await tx.chartOfAccount.create({
-            data: { companyId, code: "2000", name: "Accounts Payable", type: "liability" }
-        });
-        const vatPayable = await tx.chartOfAccount.create({
-            data: { companyId, code: "2100", name: "VAT Payable", type: "liability" }
-        });
-        await tx.chartOfAccount.create({
-            data: { companyId, code: "3000", name: "Owner's Capital", type: "equity" }
-        });
-        const sales = await tx.chartOfAccount.create({
-            data: { companyId, code: "4000", name: "Sales", type: "income" }
-        });
-        const discountGiven = await tx.chartOfAccount.create({
-            data: { companyId, code: "4100", name: "Discount Given", type: "income" }
-        });
-        const shippingIncome = await tx.chartOfAccount.create({
-            data: { companyId, code: "4200", name: "Shipping & Handling Income", type: "income" }
-        });
-        const cogs = await tx.chartOfAccount.create({
-            data: { companyId, code: "5000", name: "Cost of Goods Sold", type: "expense" }
-        });
-        const discountReceived = await tx.chartOfAccount.create({
-            data: { companyId, code: "5100", name: "Discount Received", type: "expense" }
-        });
-        const shippingExpense = await tx.chartOfAccount.create({
-            data: { companyId, code: "5200", name: "Shipping & Handling Expense", type: "expense" }
-        });
+        const coa = await this.coaSeeder.seedNfrs(tx, companyId);
+        const { vatReceivable, vatPayable, discountGiven, sales, } = coa;
         await tx.taxCode.create({
             data: {
                 companyId,
@@ -238,30 +201,6 @@ let AuthService = AuthService_1 = class AuthService {
                 },
                 {
                     companyId,
-                    name: "Shipping & Handling",
-                    type: "add",
-                    rate: 0,
-                    accountId: shippingIncome.id,
-                    isActive: true
-                },
-                {
-                    companyId,
-                    name: "Packaging Charges",
-                    type: "add",
-                    rate: 0,
-                    accountId: shippingIncome.id,
-                    isActive: true
-                },
-                {
-                    companyId,
-                    name: "Insurance",
-                    type: "add",
-                    rate: 0,
-                    accountId: shippingIncome.id,
-                    isActive: true
-                },
-                {
-                    companyId,
                     name: "Round Off",
                     type: "add",
                     rate: 0,
@@ -274,7 +213,7 @@ let AuthService = AuthService_1 = class AuthService {
         await tx.party.create({
             data: { companyId, type: "customer", name: "Walk-in Customer" }
         });
-        return { cash, bank, ar, ap, sales, cogs };
+        return coa;
     }
     async register(dto) {
         const passwordHash = await argon2_1.default.hash(dto.password);
@@ -818,6 +757,7 @@ exports.AuthService = AuthService = AuthService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
         jwt_1.JwtService,
-        fiscal_sessions_service_1.FiscalSessionsService])
+        fiscal_sessions_service_1.FiscalSessionsService,
+        coa_seeder_service_1.CoaSeederService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

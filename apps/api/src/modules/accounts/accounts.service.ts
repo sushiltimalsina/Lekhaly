@@ -25,6 +25,7 @@ export class AccountsService {
         name: input.name,
         type: input.type,
         parentId: (input as any).parentId || null,
+        isGroup: input.isGroup ?? false,
         isPostable: input.isPostable ?? true,
         isActive: input.isActive ?? true
       }
@@ -101,5 +102,88 @@ export class AccountsService {
       where: { id },
       data: { isActive: true }
     });
+  }
+
+  /**
+   * Fetches the entire COA tree with recursively aggregated balances.
+   */
+  async getSummary(user: AuthUser) {
+    // This uses a PostgreSQL Recursive CTE to calculate the balance of each account
+    // including the sum of all its children (if it's a group).
+    const results = await this.prisma.$queryRaw<any[]>`
+      WITH RECURSIVE coa_hierarchy AS (
+        -- Base case: Leaf accounts (those with no children) or all accounts to start
+        SELECT 
+          id, 
+          "parentId", 
+          name, 
+          code, 
+          type, 
+          "isGroup", 
+          level,
+          "isPostable"
+        FROM "ChartOfAccount"
+        WHERE "companyId" = ${user.companyId} AND "isActive" = true
+      ),
+      balances AS (
+        -- Get raw balances for each account from voucher lines
+        SELECT 
+          "accountId", 
+          SUM(debit - credit) as balance
+        FROM "VoucherLine"
+        WHERE "companyId" = ${user.companyId}
+        GROUP BY "accountId"
+      ),
+      tree_balances AS (
+        -- Map balances to the hierarchy
+        SELECT 
+          h.id,
+          h."parentId",
+          h.name,
+          h.code,
+          h.type,
+          h."isGroup",
+          h.level,
+          COALESCE(b.balance, 0) as direct_balance
+        FROM coa_hierarchy h
+        LEFT JOIN balances b ON h.id = b."accountId"
+      ),
+      rolled_up_balances AS (
+        -- Initial state for recursion: just the direct balances
+        SELECT 
+          id as top_id,
+          id,
+          direct_balance
+        FROM tree_balances
+
+        UNION ALL
+
+        -- Recursive step: propagate child balances up to all ancestors
+        SELECT 
+          t.top_id,
+          h."parentId",
+          t.direct_balance
+        FROM rolled_up_balances t
+        JOIN tree_balances h ON t.id = h.id
+        WHERE h."parentId" IS NOT NULL
+      )
+      SELECT 
+        t.id,
+        t."parentId",
+        t.name,
+        t.code,
+        t.type,
+        t."isGroup",
+        t.level,
+        t.direct_balance,
+        SUM(r.direct_balance) as total_balance
+      FROM tree_balances t
+      JOIN rolled_up_balances r ON t.id = r.id
+      GROUP BY 
+        t.id, t."parentId", t.name, t.code, t.type, t."isGroup", t.level, t.direct_balance
+      ORDER BY t.code ASC;
+    `;
+
+    return results;
   }
 }

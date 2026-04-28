@@ -10,13 +10,15 @@ exports.AccountsModule = void 0;
 const common_1 = require("@nestjs/common");
 const accounts_controller_1 = require("./accounts.controller");
 const accounts_service_1 = require("./accounts.service");
+const coa_seeder_service_1 = require("./coa-seeder.service");
 let AccountsModule = class AccountsModule {
 };
 exports.AccountsModule = AccountsModule;
 exports.AccountsModule = AccountsModule = __decorate([
     (0, common_1.Module)({
         controllers: [accounts_controller_1.AccountsController],
-        providers: [accounts_service_1.AccountsService]
+        providers: [accounts_service_1.AccountsService, coa_seeder_service_1.CoaSeederService],
+        exports: [accounts_service_1.AccountsService, coa_seeder_service_1.CoaSeederService]
     })
 ], AccountsModule);
 //# sourceMappingURL=accounts.module.js.map

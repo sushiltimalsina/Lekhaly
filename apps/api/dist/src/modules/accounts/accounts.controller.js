@@ -32,6 +32,9 @@ let AccountsController = class AccountsController {
     get(user, id) {
         return this.accounts.get(user, id);
     }
+    getSummary(user) {
+        return this.accounts.getSummary(user);
+    }
     list(user, query) {
         return this.accounts.list(user, query);
     }
@@ -71,6 +74,14 @@ __decorate([
     __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", void 0)
 ], AccountsController.prototype, "get", null);
+__decorate([
+    (0, common_1.Get)("tree/summary"),
+    (0, auth_decorator_1.RequirePerm)("masters.read"),
+    __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], AccountsController.prototype, "getSummary", null);
 __decorate([
     (0, common_1.Get)(),
     (0, auth_decorator_1.RequirePerm)("masters.read"),

@@ -33,6 +33,7 @@ import {
   FileText,
   ChevronRight,
   ArrowLeft,
+  Receipt,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toBs } from "@/lib/dates/bs";
@@ -779,15 +780,24 @@ export default function SalesCreatePage() {
             Back to Registry
           </Button>
         </div>
-        <PageHeader
-          title={searchParams.get("id") ? (isEditMode ? "Edit Sales Invoice" : "View Sales Invoice") : "Create New Sales Invoice"}
-          description={
-            searchParams.get("id")
-              ? `${invoiceStatus ? `Status: ${invoiceStatus.charAt(0).toUpperCase() + invoiceStatus.slice(1)}. ` : ""}${isEditMode ? "Modify the details below." : "Click Edit to modify this invoice."}`
-              : "Fill in the details below to create a new sales invoice."
-          }
-          actions={
-            !isEditMode && searchParams.get("id") ? (
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-xl shadow-blue-500/20">
+              <Receipt className="h-6 w-6" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold italic tracking-tight text-slate-900 dark:text-slate-100">
+                {searchParams.get("id") ? (isEditMode ? "Edit Sales Invoice" : "View Sales Invoice") : "Create New Sales Invoice"}
+              </h1>
+              <p className="text-xs text-muted-foreground mt-0.5 font-medium">
+                {searchParams.get("id")
+                  ? `${invoiceStatus ? `Status: ${invoiceStatus.charAt(0).toUpperCase() + invoiceStatus.slice(1)}. ` : ""}${isEditMode ? "Modify the details below." : "Click Edit to modify this invoice."}`
+                  : "Fill in the details below to create a new sales invoice."}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            {!isEditMode && searchParams.get("id") ? (
               <Button
                 onClick={() => setIsEditMode(true)}
                 className="rounded-2xl bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-500/20 h-11 px-8 font-black text-xs uppercase tracking-widest transition-all active:scale-95 border-none"
@@ -797,9 +807,9 @@ export default function SalesCreatePage() {
                 </svg>
                 Edit
               </Button>
-            ) : undefined
-          }
-        />
+            ) : null}
+          </div>
+        </div>
 
         {/* Alerts */}
         <div className="mb-4 grid gap-3">
@@ -823,7 +833,7 @@ export default function SalesCreatePage() {
               ref={invoiceDateRef}
               label="Invoice Date"
               value={form.invoiceDate}
-              accentColor="bg-blue-600"
+              accentColor="bg-emerald-600"
               onChange={(next) => setForm((f) => ({ ...f, invoiceDate: next }))}
               onEnterNext={() => safeFocus(dueDateRef.current)}
               disabled={!isEditMode || !!invoiceStatus && invoiceStatus !== "draft"}
@@ -832,7 +842,7 @@ export default function SalesCreatePage() {
               ref={dueDateRef}
               label="Due Date"
               value={form.dueDate}
-              accentColor="bg-blue-600"
+              accentColor="bg-emerald-600"
               onChange={(next) => setForm((f) => ({ ...f, dueDate: next }))}
               onEnterNext={() => safeFocus(paymentMethodRef.current)}
               disabled={!isEditMode}

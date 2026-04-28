@@ -7,6 +7,7 @@ exports.CreateAccountSchema = zod_1.z.object({
     name: zod_1.z.string().trim().min(2).max(120),
     type: zod_1.z.enum(["asset", "liability", "equity", "income", "expense"]),
     parentId: zod_1.z.string().uuid().optional(),
+    isGroup: zod_1.z.boolean().optional(),
     isPostable: zod_1.z.boolean().optional(),
     isActive: zod_1.z.boolean().optional()
 });
