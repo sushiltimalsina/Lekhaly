@@ -125,7 +125,7 @@ export default function SalesListPage() {
                         </Button>
                         <Button
                             onClick={() => navigate("/sales/create")}
-                            className="rounded-2xl bg-indigo-600 text-white hover:bg-indigo-700 shadow-xl shadow-indigo-500/20 h-11 px-8 font-black text-xs uppercase tracking-widest transition-all active:scale-95 border-none"
+                            className="rounded-2xl bg-emerald-600 text-white hover:bg-emerald-700 shadow-xl shadow-emerald-500/20 h-11 px-8 font-black text-xs uppercase tracking-widest transition-all active:scale-95 border-none"
                         >
                             <Plus className="mr-2 h-4 w-4" />
                             New Invoice
@@ -141,7 +141,7 @@ export default function SalesListPage() {
                 defaultRange={settings.defaultDateRange}
                 columnOptions={columnOptions}
                 onVisibleColumnsChange={setVisibleColumns}
-                className="border-indigo-100 dark:border-indigo-900/50"
+                className="border-emerald-100 dark:border-emerald-900/50"
             />
 
             <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl shadow-slate-200/40 dark:border-slate-800 dark:bg-slate-950 dark:shadow-none">
@@ -149,7 +149,7 @@ export default function SalesListPage() {
                     <div className="flex flex-col items-center justify-center py-24 space-y-4">
                         <div className="relative h-12 w-12">
                             <div className="absolute inset-0 rounded-full border-4 border-slate-100 dark:border-slate-800"></div>
-                            <div className="absolute inset-0 rounded-full border-4 border-indigo-600 border-t-transparent animate-spin"></div>
+                            <div className="absolute inset-0 rounded-full border-4 border-emerald-600 border-t-transparent animate-spin"></div>
                         </div>
                         <p className="text-sm font-black text-slate-400 animate-pulse uppercase tracking-widest text-[10px]">Registry Audit...</p>
                     </div>
@@ -202,7 +202,7 @@ export default function SalesListPage() {
                                         <tr
                                             key={item.id}
                                             onClick={() => navigate(`/sales/create?id=${item.id}`)}
-                                            className="group cursor-pointer hover:bg-indigo-50/20 dark:hover:bg-indigo-900/10 transition-colors"
+                                            className="group cursor-pointer hover:bg-emerald-50/20 dark:hover:bg-emerald-900/10 transition-colors"
                                         >
                                             {isVisible("date") && (
                                                 <td className="px-6 py-5 whitespace-nowrap">
@@ -273,7 +273,7 @@ export default function SalesListPage() {
                                             )}
                                             {isVisible("amount") && (
                                                 <td className="px-6 py-5 text-right whitespace-nowrap">
-                                                    <span className="font-black text-indigo-600 dark:text-indigo-400 text-base tabular-nums">
+                                                    <span className="font-black text-emerald-600 dark:text-emerald-400 text-base tabular-nums">
                                                         <MoneyText value={Number(item.total || 0)} />
                                                     </span>
                                                 </td>
@@ -317,7 +317,7 @@ export default function SalesListPage() {
                                                 </td>
                                             )}
                                             <td className="px-6 py-5 text-right">
-                                                <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-indigo-400 group-hover:translate-x-1 transition-all" />
+                                                <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-emerald-400 group-hover:translate-x-1 transition-all" />
                                             </td>
                                         </tr>
                                     );
@@ -331,12 +331,12 @@ export default function SalesListPage() {
                             <FileText className="h-10 w-10 text-slate-200" />
                         </div>
                         <div className="max-w-xs space-y-1">
-                            <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-widest text-sm text-indigo-600">No Invoices Found</h3>
+                            <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-widest text-sm text-emerald-600">No Invoices Found</h3>
                             <p className="text-sm text-slate-500 font-medium leading-relaxed">No sales records match your current audit filters. Try searching by customer name or adjusting the date range.</p>
                         </div>
                         <Button
                             onClick={() => setFilters({ q: "", status: "all", from: null, to: null })}
-                            className="bg-indigo-600 rounded-2xl h-11 px-8 font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-500/20"
+                            className="bg-emerald-600 rounded-2xl h-11 px-8 font-black text-xs uppercase tracking-widest shadow-xl shadow-emerald-500/20"
                         >
                             Reset Audit Filters
                         </Button>
@@ -347,8 +347,8 @@ export default function SalesListPage() {
             {data.length > 0 && (
                 <div className="flex items-center justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">
                     <p>Audit Trail: {data.length} records in view</p>
-                    <div className="flex items-center gap-1.5 font-bold text-indigo-600">
-                        <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                    <div className="flex items-center gap-1.5 font-bold text-emerald-600">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                         <span>Verified with Customer Ledger</span>
                     </div>
                 </div>

@@ -805,8 +805,9 @@ export default function SalesCreatePage() {
       <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
         <div className="mb-4">
           <Button
+            variant="outline"
             onClick={() => navigate("/sales")}
-            className="rounded-full h-10 px-4 bg-emerald-600 text-white hover:bg-emerald-700 transition-colors border-none"
+            className="rounded-full h-10 px-4 bg-white text-slate-900 border border-slate-200 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Registry

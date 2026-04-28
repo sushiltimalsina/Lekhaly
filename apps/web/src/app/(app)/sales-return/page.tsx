@@ -154,12 +154,14 @@ export default function SalesReturnListPage() {
                 />
                 <div className="flex items-center gap-2">
                     <Button
-                        variant={compactMode ? "secondary" : "ghost"}
                         size="sm"
                         onClick={() => setCompactMode(!compactMode)}
-                        className="rounded-xl h-9 px-3 text-xs font-bold uppercase tracking-wider hidden md:flex"
+                        className={cn(
+                            "rounded-xl h-9 px-3 text-xs font-bold uppercase tracking-wider hidden md:flex transition-all active:scale-95",
+                            compactMode ? "bg-rose-600 text-white hover:bg-rose-700" : "bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-950 dark:text-rose-400"
+                        )}
                     >
-                        {compactMode ? "Comfortable" : "Compact"}
+                        {compactMode ? "Comfortable View" : "Compact View"}
                     </Button>
                     <div className="h-4 w-px bg-slate-200 dark:bg-slate-800 mx-2 hidden md:block" />
                     <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
@@ -424,20 +426,16 @@ export default function SalesReturnListPage() {
                         </span>
                         <div className="flex gap-2">
                             <Button
-                                variant="outline"
-                                size="sm"
                                 onClick={() => setPage(p => Math.max(1, p - 1))}
                                 disabled={page === 1}
-                                className="h-8 w-8 p-0 rounded-lg"
+                                className="h-8 w-8 p-0 rounded-lg bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-50 disabled:bg-slate-200 dark:disabled:bg-slate-800"
                             >
                                 <ChevronRight className="h-4 w-4 rotate-180" />
                             </Button>
                             <Button
-                                variant="outline"
-                                size="sm"
                                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                                 disabled={page === totalPages}
-                                className="h-8 w-8 p-0 rounded-lg"
+                                className="h-8 w-8 p-0 rounded-lg bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-50 disabled:bg-slate-200 dark:disabled:bg-slate-800"
                             >
                                 <ChevronRight className="h-4 w-4" />
                             </Button>

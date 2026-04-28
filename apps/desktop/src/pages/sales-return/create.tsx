@@ -692,9 +692,9 @@ export default function SalesReturnCreatePage() {
             <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
                 <div className="mb-4">
                     <Button
-                        variant="ghost"
+                        variant="outline"
                         onClick={() => navigate("/sales-return")}
-                        className="rounded-full h-10 px-4 text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors"
+                        className="rounded-full h-10 px-4 bg-white text-slate-900 border border-slate-200 hover:bg-rose-600 hover:text-white hover:border-rose-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm"
                     >
                         <ArrowLeft className="mr-2 h-4 w-4" />
                         Back to Registry
@@ -811,7 +811,7 @@ export default function SalesReturnCreatePage() {
                                             <Button
                                                 type="button"
                                                 onClick={() => setAddPaymentMethodOpen(true)}
-                                                className="absolute right-2 top-[calc(50%+4px)] -translate-y-1/2 h-7 rounded-full px-3 text-[10px] bg-emerald-600 text-white border-none hover:bg-emerald-700 shadow-sm transition-all active:scale-95"
+                                                className="absolute right-2 top-[calc(50%+4px)] -translate-y-1/2 h-7 rounded-full px-3 text-[10px] bg-rose-600 text-white border-none hover:bg-rose-700 shadow-sm transition-all active:scale-95"
                                             >
                                                 <Plus className="mr-1.5 h-3 w-3" />
                                                 New
@@ -857,7 +857,7 @@ export default function SalesReturnCreatePage() {
                                             <Button
                                                 type="button"
                                                 onClick={() => setAddSaleTypeOpen(true)}
-                                                className="absolute right-2 top-[calc(50%+4px)] -translate-y-1/2 h-7 rounded-full px-3 text-[10px] bg-emerald-600 text-white border-none hover:bg-emerald-700 shadow-sm transition-all active:scale-95"
+                                                className="absolute right-2 top-[calc(50%+4px)] -translate-y-1/2 h-7 rounded-full px-3 text-[10px] bg-rose-600 text-white border-none hover:bg-rose-700 shadow-sm transition-all active:scale-95"
                                             >
                                                 <Plus className="mr-1.5 h-3 w-3" />
                                                 New
@@ -912,9 +912,8 @@ export default function SalesReturnCreatePage() {
                         {!form.partyId && (
                             <Button
                                 type="button"
-                                variant="outline"
                                 onClick={() => setAddCustomerOpen(true)}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 h-9 rounded-full px-4 text-xs"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 h-9 rounded-full px-4 text-xs bg-rose-600 text-white hover:bg-rose-700 shadow-sm transition-all active:scale-95 border-none"
                             >
                                 <Plus className="mr-2 h-3.5 w-3.5" />
                                 New Customer
@@ -929,7 +928,7 @@ export default function SalesReturnCreatePage() {
                         ref={addLineButtonRef}
                         type="button"
                         onClick={addLine}
-                        className="rounded-full bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm transition-all active:scale-95"
+                        className="rounded-full bg-rose-600 text-white hover:bg-rose-700 shadow-sm transition-all active:scale-95"
                     >
                         <Plus className="mr-2 h-4 w-4" />
                         Add Column
@@ -1003,12 +1002,11 @@ export default function SalesReturnCreatePage() {
                                                         {!line.itemId && (
                                                             <Button
                                                                 type="button"
-                                                                variant="outline"
                                                                 onClick={() => {
                                                                     setActiveLineIdx(idx);
                                                                     setAddItemOpen(true);
                                                                 }}
-                                                                className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 rounded-xl px-3 text-[10px] font-medium bg-slate-50 dark:bg-slate-800"
+                                                                className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 rounded-xl px-3 text-[10px] font-medium bg-rose-600 text-white border-none hover:bg-rose-700 shadow-sm transition-all active:scale-95"
                                                             >
                                                                 <Plus className="mr-1 h-3 w-3" />
                                                                 Add item
@@ -1156,7 +1154,7 @@ export default function SalesReturnCreatePage() {
                 <div className="mb-4 flex flex-col items-end gap-2 text-right">
 
 
-                    <Button type="button" variant="outline" onClick={addSundry} className="rounded-full bg-indigo-600 text-white hover:bg-indigo-700">
+                    <Button type="button" onClick={addSundry} className="rounded-full bg-rose-600 text-white hover:bg-rose-700 shadow-sm transition-all active:scale-95">
                         <Plus className="mr-2 h-4 w-4" />
                         Add Sundry Column
                     </Button>
@@ -1212,12 +1210,11 @@ export default function SalesReturnCreatePage() {
                                                     {!r.sundryId && r.id !== "discount" && r.id !== "vat" && (
                                                         <Button
                                                             type="button"
-                                                            variant="outline"
                                                             onClick={() => {
                                                                 setActiveSundryIdx(i);
                                                                 setAddSundryOpen(true);
                                                             }}
-                                                            className="absolute z-10 right-7 top-1/2 -translate-y-1/2 h-7 rounded-lg px-1.5 text-[10px] font-medium bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                                                            className="absolute z-10 right-7 top-1/2 -translate-y-1/2 h-7 rounded-lg px-1.5 text-[10px] font-medium bg-rose-600 text-white border-none hover:bg-rose-700 shadow-sm transition-all active:scale-95"
                                                         >
                                                             <Plus className="h-3 w-3" />
                                                             Define New
@@ -1423,22 +1420,21 @@ export default function SalesReturnCreatePage() {
                         />
 
                         <div className="mt-5 flex flex-wrap items-center justify-end gap-2">
-                            <Button type="button" variant="outline" onClick={onPreview} className="rounded-full px-5">
+                            <Button type="button" variant="outline" onClick={onPreview} className="rounded-full px-5 border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800">
                                 <Eye className="mr-2 h-4 w-4" />
                                 Preview
                             </Button>
 
-                            <Button type="button" variant="outline" onClick={onPrint} className="rounded-full px-5">
+                            <Button type="button" variant="outline" onClick={onPrint} className="rounded-full px-5 border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800">
                                 <Printer className="mr-2 h-4 w-4" />
                                 Print
                             </Button>
 
                             <Button
                                 type="button"
-                                variant="outline"
                                 onClick={onSave}
                                 disabled={loading || sending}
-                                className="rounded-full px-6"
+                                className="rounded-full bg-rose-100 px-6 text-rose-700 hover:bg-rose-200 border-none"
                             >
                                 <Save className="mr-2 h-4 w-4" />
                                 {loading ? "Saving..." : "Save"}
@@ -1448,7 +1444,7 @@ export default function SalesReturnCreatePage() {
                                 type="button"
                                 onClick={onSend}
                                 disabled={loading || sending}
-                                className="rounded-full bg-indigo-600 px-7 text-white hover:bg-indigo-700"
+                                className="rounded-full bg-rose-600 px-7 text-white hover:bg-rose-700 shadow-lg shadow-rose-500/20"
                             >
                                 <Send className="mr-2 h-4 w-4" />
                                 {sending ? "Sending..." : "Send"}
