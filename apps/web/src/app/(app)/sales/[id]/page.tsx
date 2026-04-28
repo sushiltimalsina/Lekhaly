@@ -103,7 +103,7 @@ export default function SalesDetailPage() {
     if (loading) return (
         <div className="min-h-[400px] flex items-center justify-center">
             <div className="flex flex-col items-center gap-4">
-                <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"></div>
+                <div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent"></div>
                 <p className="text-sm font-medium text-muted-foreground animate-pulse">Loading invoice details...</p>
             </div>
         </div>
@@ -246,7 +246,7 @@ export default function SalesDetailPage() {
                                     <div className="h-px bg-slate-50 dark:bg-slate-800/50 my-2" />
                                     <div className="flex justify-between items-center py-2">
                                         <span className="text-base font-bold text-foreground">Grand Total</span>
-                                        <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400 font-heading">
+                                        <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-heading">
                                             <MoneyText value={Number(invoice.total || 0)} />
                                         </span>
                                     </div>
@@ -261,7 +261,7 @@ export default function SalesDetailPage() {
                             <div className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-6">Customer & Schedule</div>
                             <div className="space-y-6">
                                 <div className="flex items-start gap-4">
-                                    <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400 shrink-0">
+                                    <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 shrink-0">
                                         <Building2 className="h-5 w-5" />
                                     </div>
                                     <div>

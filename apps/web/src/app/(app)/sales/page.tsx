@@ -125,7 +125,7 @@ export default function SalesListPage() {
                         </Button>
                         <Button
                             onClick={() => router.push("/sales/create")}
-                            className="rounded-2xl bg-emerald-600 text-white hover:bg-emerald-700 shadow-xl shadow-emerald-500/20 h-11 px-8 font-black text-xs uppercase tracking-widest transition-all active:scale-95 border-none"
+                            className="rounded-full h-10 px-6 text-xs bg-white text-slate-900 border border-slate-200 hover:!bg-emerald-600 hover:!text-white hover:!border-emerald-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95"
                         >
                             <Plus className="mr-2 h-4 w-4" />
                             New Invoice
@@ -144,7 +144,7 @@ export default function SalesListPage() {
                 className="border-emerald-100 dark:border-emerald-900/50"
             />
 
-            <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl shadow-slate-200/40 dark:border-slate-800 dark:bg-slate-950 dark:shadow-none">
+            <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl shadow-slate-200/40 dark:border-zinc-800 dark:bg-zinc-950 dark:shadow-none">
                 {loading && data.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-24 space-y-4">
                         <div className="relative h-12 w-12">

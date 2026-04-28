@@ -261,7 +261,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                                         }
                                     }}
                                     placeholder="Type to search…"
-                                    className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-8 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-950"
+                                    className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-8 pr-3 text-sm outline-none focus:ring-2 focus:ring-rose-500/20 dark:border-slate-700 dark:bg-slate-950"
                                 />
                             </div>
                         </div>
@@ -289,11 +289,11 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                                             className={cn(
                                                 "flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition",
                                                 isActive ? "bg-slate-100 dark:bg-slate-800" : "hover:bg-slate-50 dark:hover:bg-slate-800/40",
-                                                isSelected && "text-primary font-medium"
+                                                isSelected && "text-rose-600 font-medium"
                                             )}
                                         >
                                             <span className="min-w-0 flex-1 truncate">{labelText}</span>
-                                            {isSelected ? <Check className="h-4 w-4 text-primary" /> : null}
+                                            {isSelected ? <Check className="h-4 w-4 text-rose-600" /> : null}
                                         </button>
                                     );
                                 })
@@ -692,9 +692,8 @@ export default function SalesReturnCreatePage() {
             <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
                 <div className="mb-4">
                     <Button
-                        variant="outline"
                         onClick={() => navigate("/sales-return")}
-                        className="rounded-full h-10 px-4 bg-white text-slate-900 border border-slate-200 hover:bg-rose-600 hover:text-white hover:border-rose-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm"
+                        className="rounded-full h-10 px-4 bg-white text-slate-900 border border-slate-200 hover:bg-rose-600 hover:text-white hover:border-rose-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 dark:hover:bg-rose-600 dark:hover:text-white dark:hover:border-rose-600 transition-colors shadow-sm"
                     >
                         <ArrowLeft className="mr-2 h-4 w-4" />
                         Back to Registry
@@ -724,7 +723,7 @@ export default function SalesReturnCreatePage() {
                         </div>
                     ) : null}
                     {success ? (
-                        <div className="rounded-xl border border-emerald-600/30 bg-emerald-600/10 px-3 py-2 text-sm text-emerald-700">
+                        <div className="rounded-xl border border-rose-600/30 bg-rose-600/10 px-3 py-2 text-sm text-rose-700">
                             {success}
                         </div>
                     ) : null}
@@ -913,7 +912,7 @@ export default function SalesReturnCreatePage() {
                             <Button
                                 type="button"
                                 onClick={() => setAddCustomerOpen(true)}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 h-9 rounded-full px-4 text-xs bg-rose-600 text-white hover:bg-rose-700 shadow-sm transition-all active:scale-95 border-none"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 h-10 rounded-full px-4 text-xs bg-white text-slate-900 border border-slate-200 hover:bg-rose-600 hover:text-white hover:border-rose-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 dark:hover:bg-rose-600 dark:hover:text-white dark:hover:border-rose-600 transition-colors shadow-sm active:scale-95"
                             >
                                 <Plus className="mr-2 h-3.5 w-3.5" />
                                 New Customer
@@ -1334,7 +1333,7 @@ export default function SalesReturnCreatePage() {
                                 onChange={(e) => setForm((f) => ({ ...f, termsText: e.target.value }))}
                                 disabled={!form.termsOverrideEnabled}
                                 className={cn(
-                                    "min-h-[110px] w-full rounded-2xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-950",
+                                    "min-h-[110px] w-full rounded-2xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-2 focus:ring-rose-600/20 dark:border-slate-700 dark:bg-slate-950",
                                     !form.termsOverrideEnabled && "opacity-70"
                                 )}
                             />

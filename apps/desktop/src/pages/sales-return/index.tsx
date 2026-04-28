@@ -194,7 +194,7 @@ export default function SalesReturnListPage() {
                 <div className="bg-gradient-to-br from-rose-600 to-rose-700 text-white p-5 rounded-2xl shadow-lg shadow-rose-500/20 flex flex-col justify-center">
                     <span className="text-[10px] uppercase font-black tracking-widest text-rose-200">Return Workflow</span>
                     <div className="flex items-center gap-2 mt-2">
-                        <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                        <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
                         <span className="font-bold text-sm">Credit Sync Active</span>
                     </div>
                 </div>
@@ -315,7 +315,7 @@ export default function SalesReturnListPage() {
                                                             const postedInfo = getDateDisplay({ ad: item.voucher.postedAt, format: calendarFmt });
                                                             return (
                                                                 <div className="flex flex-col">
-                                                                    <span className="font-bold text-slate-800 dark:text-slate-100 text-xs text-emerald-600 dark:text-emerald-400 uppercase tracking-tighter">
+                                                                    <span className="font-bold text-slate-800 dark:text-slate-100 text-xs text-rose-600 dark:text-rose-400 uppercase tracking-tighter">
                                                                         {postedInfo.primary}
                                                                     </span>
                                                                     <span className="text-[10px] text-slate-400 font-black tracking-widest">

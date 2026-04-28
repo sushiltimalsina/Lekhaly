@@ -145,7 +145,7 @@ export default function SalesReturnListPage() {
                     actions={
                         <Button
                             onClick={() => router.push("/sales-return/create")}
-                            className="rounded-2xl bg-rose-600 hover:bg-rose-700 text-white shadow-lg shadow-rose-500/20 px-8 h-11 transition-all active:scale-95 border-none"
+                            className="rounded-full h-10 px-6 text-xs bg-white text-slate-900 border border-slate-200 hover:!bg-rose-600 hover:!text-white hover:!border-rose-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95"
                         >
                             <Plus className="mr-2 h-4 w-4" />
                             New Return
@@ -194,7 +194,7 @@ export default function SalesReturnListPage() {
                 <div className="bg-gradient-to-br from-rose-600 to-rose-700 text-white p-5 rounded-2xl shadow-lg shadow-rose-500/20 flex flex-col justify-center">
                     <span className="text-[10px] uppercase font-black tracking-widest text-rose-200">Return Workflow</span>
                     <div className="flex items-center gap-2 mt-2">
-                        <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                        <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
                         <span className="font-bold text-sm">Credit Sync Active</span>
                     </div>
                 </div>
@@ -209,7 +209,7 @@ export default function SalesReturnListPage() {
                 className="border-rose-100 dark:border-rose-900/50"
             />
 
-            <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl shadow-slate-200/40 dark:border-slate-800 dark:bg-slate-950 dark:shadow-none">
+            <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl shadow-slate-200/40 dark:border-zinc-800 dark:bg-zinc-950 dark:shadow-none">
                 {loading && data.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-24 space-y-4">
                         <div className="relative h-12 w-12">
@@ -315,7 +315,7 @@ export default function SalesReturnListPage() {
                                                             const postedInfo = getDateDisplay({ ad: item.voucher.postedAt, format: calendarFmt });
                                                             return (
                                                                 <div className="flex flex-col">
-                                                                    <span className="font-bold text-slate-800 dark:text-slate-100 text-xs text-emerald-600 dark:text-emerald-400 uppercase tracking-tighter">
+                                                                    <span className="font-bold text-slate-800 dark:text-slate-100 text-xs text-rose-600 dark:text-rose-400 uppercase tracking-tighter">
                                                                         {postedInfo.primary}
                                                                     </span>
                                                                     <span className="text-[10px] text-slate-400 font-black tracking-widest">

@@ -838,7 +838,7 @@ export default function SalesReturnCreatePage() {
                         </div>
                     ) : null}
                     {success ? (
-                        <div className="rounded-xl border border-emerald-600/30 bg-emerald-600/10 px-3 py-2 text-sm text-emerald-700">
+                        <div className="rounded-xl border border-rose-600/30 bg-rose-600/10 px-3 py-2 text-sm text-rose-700">
                             {success}
                         </div>
                     ) : null}
@@ -852,7 +852,7 @@ export default function SalesReturnCreatePage() {
                             ref={invoiceDateRef}
                             label="Return Date"
                             value={form.invoiceDate}
-                            accentColor="bg-blue-600"
+                            accentColor="bg-rose-600"
                             onChange={(next) => setForm((f) => ({ ...f, invoiceDate: next }))}
                             onEnterNext={() => safeFocus(dueDateRef.current)}
                             disabled={!isEditMode || (!!invoiceStatus && invoiceStatus !== "draft")}
@@ -861,7 +861,7 @@ export default function SalesReturnCreatePage() {
                             ref={dueDateRef}
                             label="Due Date"
                             value={form.dueDate}
-                            accentColor="bg-blue-600"
+                            accentColor="bg-rose-600"
                             onChange={(next) => setForm((f) => ({ ...f, dueDate: next }))}
                             onEnterNext={() => safeFocus(paymentMethodRef.current)}
                             disabled={!isEditMode}
@@ -1692,7 +1692,7 @@ export default function SalesReturnCreatePage() {
                                 }
                             }}
                             placeholder="Add overall remarks or terms for this return..."
-                            className="min-h-[120px] w-full rounded-2xl border-2 border-slate-100 bg-slate-50/30 p-5 text-sm outline-none ring-indigo-500/10 focus:border-indigo-500 focus:bg-white focus:ring-4 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 transition-all font-medium leading-relaxed"
+                            className="min-h-[120px] w-full rounded-2xl border-2 border-slate-100 bg-slate-50/30 p-5 text-sm outline-none ring-rose-500/10 focus:border-rose-500 focus:bg-white focus:ring-4 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 transition-all font-medium leading-relaxed"
                             disabled={!isEditMode}
                         />
                     </div>

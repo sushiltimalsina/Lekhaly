@@ -276,7 +276,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                     }
                   }}
                   placeholder="Type to search…"
-                  className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-8 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-950"
+                  className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-8 pr-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-950"
                 />
               </div>
             </div>
@@ -305,18 +305,18 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                       className={cn(
                         "flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition",
                         isActive ? "bg-slate-100 dark:bg-slate-800" : "hover:bg-slate-50 dark:hover:bg-slate-800/40",
-                        isSelected && "text-primary font-medium"
+                        isSelected && "text-emerald-600 font-medium"
                       )}
                     >
                       <div className="flex flex-1 items-center justify-between gap-2 overflow-hidden">
                         <span className="truncate">{labelText}</span>
                         {detailText ? (
-                          <span className={cn("text-xs whitespace-nowrap", isSelected ? "text-primary/80" : "text-muted-foreground")}>
+                          <span className={cn("text-xs whitespace-nowrap", isSelected ? "text-emerald-600/80" : "text-muted-foreground")}>
                             {detailText}
                           </span>
                         ) : null}
                       </div>
-                      {isSelected ? <Check className="h-4 w-4 text-primary" /> : null}
+                      {isSelected ? <Check className="h-4 w-4 text-emerald-600" /> : null}
                     </button>
                   );
                 })
@@ -805,9 +805,8 @@ export default function SalesCreatePage() {
       <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
         <div className="mb-4">
           <Button
-            variant="outline"
             onClick={() => navigate("/sales")}
-            className="rounded-full h-10 px-4 bg-white text-slate-900 border border-slate-200 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm"
+            className="rounded-full h-10 px-4 bg-white text-slate-900 border border-slate-200 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 dark:hover:bg-emerald-600 dark:hover:text-white dark:hover:border-emerald-600 transition-colors shadow-sm"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Registry
@@ -1054,7 +1053,7 @@ export default function SalesCreatePage() {
               <Button
                 type="button"
                 onClick={() => setAddCustomerOpen(true)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 h-9 rounded-full px-4 text-xs bg-emerald-600 text-white hover:bg-emerald-700 border-none"
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-10 rounded-full px-4 text-xs bg-white text-slate-900 border border-slate-200 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 dark:hover:bg-emerald-600 dark:hover:text-white dark:hover:border-emerald-600 transition-colors shadow-sm active:scale-95"
               >
                 <Plus className="mr-2 h-3.5 w-3.5" />
                 New Customer
@@ -1666,7 +1665,7 @@ export default function SalesCreatePage() {
                   }
                 }}
                 className={cn(
-                  "min-h-[110px] w-full rounded-2xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-950",
+                  "min-h-[110px] w-full rounded-2xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-600/20 dark:border-slate-700 dark:bg-slate-950",
                   !form.termsOverrideEnabled && "opacity-70"
                 )}
               />
@@ -1755,7 +1754,7 @@ export default function SalesCreatePage() {
                 }
               }}
               placeholder="Add overall remarks or terms for this sale..."
-              className="min-h-[120px] w-full rounded-2xl border-2 border-slate-100 bg-slate-50/30 p-5 text-sm outline-none ring-indigo-500/10 focus:border-indigo-500 focus:bg-white focus:ring-4 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 transition-all font-medium leading-relaxed"
+              className="min-h-[120px] w-full rounded-2xl border-2 border-slate-100 bg-slate-50/30 p-5 text-sm outline-none ring-emerald-500/10 focus:border-emerald-500 focus:bg-white focus:ring-4 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 transition-all font-medium leading-relaxed"
               disabled={!isEditMode}
             />
           </div>
@@ -1773,8 +1772,8 @@ export default function SalesCreatePage() {
                   </div>
                   <div className="hidden md:block w-px h-10 bg-slate-100 dark:bg-slate-800" />
                   <div className="flex flex-col">
-                    <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-1">Grand Total</span>
-                    <div className="text-2xl font-black text-indigo-600 dark:text-indigo-400">
+                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-1">Grand Total</span>
+                    <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
                       <MoneyText value={total} />
                     </div>
                   </div>
