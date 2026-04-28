@@ -18,6 +18,7 @@ const auth_controller_v1_1 = require("./auth.controller.v1");
 const auth_service_1 = require("./auth.service");
 const fiscal_sessions_module_1 = require("../fiscal-sessions/fiscal-sessions.module");
 const accounts_module_1 = require("../accounts/accounts.module");
+const items_module_1 = require("../items/items.module");
 let AuthModule = class AuthModule {
 };
 exports.AuthModule = AuthModule;
@@ -39,7 +40,7 @@ exports.AuthModule = AuthModule = __decorate([
             }),
             fiscal_sessions_module_1.FiscalSessionsModule,
             accounts_module_1.AccountsModule,
-            ItemsModule,
+            items_module_1.ItemsModule,
         ],
         controllers: [auth_controller_1.AuthController, auth_controller_v1_1.AuthV1Controller],
         providers: [

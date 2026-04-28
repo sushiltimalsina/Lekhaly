@@ -174,6 +174,7 @@ model Company {
   changeLog ChangeLog[]
   paymentMethods PaymentMethod[]
   saleTypes      SaleType[]
+  purchaseTypes  PurchaseType[]
 }
 
 model User {
@@ -1225,6 +1226,9 @@ model PurchaseOrder {
   partyId String
   party   Party @relation(fields: [partyId], references: [id])
 
+  purchaseTypeId String?
+  purchaseType   PurchaseType? @relation(fields: [purchaseTypeId], references: [id])
+
   date    DateTime
   dateBs  String?
   expectedDelivery DateTime?
@@ -1288,6 +1292,7 @@ model PurchaseOrderSundry {
 
   createdAt   DateTime      @default(now())
 }
+
 model FiscalSession {
   id        String  @id @default(uuid())
   companyId String
@@ -1375,3 +1380,20 @@ model SaleType {
 
   @@unique([companyId, name])
 }
+
+model PurchaseType {
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+  
+  name      String
+  isActive  Boolean @default(true)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  purchaseOrders PurchaseOrder[]
+
+  @@unique([companyId, name])
+}
+

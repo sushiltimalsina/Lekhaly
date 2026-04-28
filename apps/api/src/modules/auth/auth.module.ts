@@ -10,6 +10,7 @@ import { AuthV1Controller } from "./auth.controller.v1";
 import { AuthService } from "./auth.service";
 import { FiscalSessionsModule } from "../fiscal-sessions/fiscal-sessions.module";
 import { AccountsModule } from "../accounts/accounts.module";
+import { ItemsModule } from "../items/items.module";
 
 @Module({
   imports: [

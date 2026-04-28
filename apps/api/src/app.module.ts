@@ -34,6 +34,7 @@ import { ProformaModule } from "./modules/proforma/proforma.module";
 import { FiscalSessionsModule } from "./modules/fiscal-sessions/fiscal-sessions.module";
 import { PaymentMethodsModule } from "./modules/payment-methods/payment-methods.module";
 import { SaleTypesModule } from "./modules/sale-types/sale-types.module";
+import { PurchaseTypesModule } from "./modules/purchase-types/purchase-types.module";
 
 @Module({
   imports: [

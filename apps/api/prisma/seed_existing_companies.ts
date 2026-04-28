@@ -47,7 +47,17 @@ async function main() {
         });
       }
 
-      // 4. Seed Template Items
+      // 4. Seed Purchase Types
+      const pts = ["VAT 13% Purchase", "Exempt Purchase", "Import Purchase"];
+      for (const name of pts) {
+        await tx.purchaseType.upsert({
+          where: { companyId_name: { companyId: company.id, name } },
+          update: {},
+          create: { companyId: company.id, name }
+        });
+      }
+
+      // 5. Seed Template Items
       // Find necessary refs
       const salesAccount = await tx.chartOfAccount.findFirst({ 
         where: { companyId: company.id, name: { contains: "Sales", mode: "insensitive" }, isGroup: false } 

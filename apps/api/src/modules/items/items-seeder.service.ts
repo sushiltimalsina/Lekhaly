@@ -33,7 +33,17 @@ export class ItemsSeederService {
       skipDuplicates: true,
     });
 
-    // 4. Seed Template Items
+    // 4. Seed Default Purchase Types
+    await tx.purchaseType.createMany({
+      data: [
+        { companyId, name: "VAT 13% Purchase" },
+        { companyId, name: "Exempt Purchase" },
+        { companyId, name: "Import Purchase" },
+      ],
+      skipDuplicates: true,
+    });
+
+    // 5. Seed Template Items
     const items = [
       { name: "General Service", type: ItemType.services, salesPrice: 0 },
       { name: "Standard Product", type: ItemType.goods, salesPrice: 0, unit: "Pcs" },
