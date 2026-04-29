@@ -37,7 +37,10 @@ import {
     RotateCcw,
     PackageMinus,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { listPaymentMethods } from "@/lib/api/payment-methods";
+import { listPurchaseTypes } from "../../lib/api/purchase-types";
+import AddPaymentMethodDialog from "@/components/app/add-payment-method-dialog";
+import AddPurchaseTypeDialog from "../../components/app/add-purchase-type-dialog";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toBs } from "@/lib/dates/bs";
 
@@ -83,6 +86,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
     onKeyDownCustom?: (e: React.KeyboardEvent<any>) => void;
     fallbackLabel?: string;
     disabled?: boolean;
+    onAdd?: () => void;
 }) {
     const {
         label,
@@ -97,6 +101,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
         emptyText = "No items found",
         fallbackLabel,
         disabled,
+        onAdd,
     } = props;
 
     const [open, setOpen] = React.useState(false);
@@ -281,17 +286,34 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                                             onMouseEnter={() => setActiveIndex(i)}
                                             className={cn(
                                                 "flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition-colors",
-                                                active ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300" : "hover:bg-slate-50 dark:hover:bg-slate-800/50",
+                                                active ? "bg-sky-50 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300" : "hover:bg-slate-50 dark:hover:bg-slate-800/50",
                                                 selected && !active && "bg-slate-50 dark:bg-slate-800/30"
                                             )}
                                         >
-                                            <span className="min-w-0 flex-1 truncate font-medium">{labelText}</span>
-                                            {selected ? <Check className="h-4 w-4 text-indigo-600" /> : null}
+                                            <div className="flex flex-1 items-center justify-between gap-2 overflow-hidden">
+                                                <span className="truncate font-medium">{labelText}</span>
+                                            </div>
+                                            {selected ? <Check className="h-4 w-4 text-sky-600" /> : null}
                                         </button>
                                     );
                                 })
                             ) : (
-                                <div className="px-4 py-8 text-center text-sm text-muted-foreground">{emptyText}</div>
+                                <div className="px-4 py-8 text-center">
+                                    <div className="text-sm text-muted-foreground">{emptyText}</div>
+                                    {onAdd && (
+                                        <Button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onAdd();
+                                                setOpen(false);
+                                            }}
+                                            className="mt-3 rounded-full h-8 px-4 text-[10px] bg-sky-600 hover:bg-sky-700 text-white border-none shadow-lg shadow-sky-500/20"
+                                        >
+                                            <Plus className="mr-1.5 h-3 w-3" />
+                                            Add New
+                                        </Button>
+                                    )}
+                                </div>
                             )}
                         </div>
                     </div>,
@@ -302,12 +324,6 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
     );
 }
 
-const isoAddDays = (iso: string, days: number) => {
-    const d = new Date(iso);
-    d.setDate(d.getDate() + days);
-    return d.toISOString().slice(0, 10);
-};
-
 export default function PurchaseReturnCreatePage() {
     const [mounted, setMounted] = React.useState(false);
 
@@ -315,10 +331,8 @@ export default function PurchaseReturnCreatePage() {
     const vendorInvoiceDateRef = React.useRef<HTMLInputElement>(null);
     const invoiceNoRef = React.useRef<HTMLInputElement>(null);
     const vendorInvoiceNoRef = React.useRef<HTMLInputElement>(null);
-    const payableAccountRef = React.useRef<HTMLSelectElement>(null);
     const purchaseTypeRef = React.useRef<HTMLSelectElement>(null);
     const memoRef = React.useRef<HTMLInputElement>(null);
-    const referenceNoRef = React.useRef<HTMLInputElement>(null);
     const vendorSelectRef = React.useRef<HTMLButtonElement>(null);
     const addLineButtonRef = React.useRef<HTMLButtonElement>(null);
     const addSundryButtonRef = React.useRef<HTMLButtonElement>(null);
@@ -327,9 +341,9 @@ export default function PurchaseReturnCreatePage() {
     const [activeLineIdx, setActiveLineIdx] = React.useState<number | null>(null);
     const [addVendorOpen, setAddVendorOpen] = React.useState(false);
     const [addSundryOpen, setAddSundryOpen] = React.useState(false);
+    const [addPurchaseTypeOpen, setAddPurchaseTypeOpen] = React.useState(false);
     const [activeSundryIdx, setActiveSundryIdx] = React.useState<number | null>(null);
 
-    // For item table navigation
     const rowRefs = React.useRef<{
         select: (HTMLButtonElement | null)[];
         qty: (HTMLInputElement | null)[];
@@ -348,17 +362,12 @@ export default function PurchaseReturnCreatePage() {
     const [accounts, setAccounts] = React.useState<AccountRecord[]>([]);
     const [items, setItems] = React.useState<ItemRecord[]>([]);
     const [sundryOptions, setSundryOptions] = React.useState<BillSundryRecord[]>([]);
+    const [purchaseTypes, setPurchaseTypes] = React.useState<{ id: string, name: string }[]>([]);
 
     const safeFocus = (el: HTMLElement | null) => {
         if (!el) return;
         el.focus({ preventScroll: true });
     };
-
-    React.useEffect(() => {
-        if (mounted) {
-            setTimeout(() => safeFocus(purchaseDateRef.current), 100);
-        }
-    }, [mounted]);
 
     const [loading, setLoading] = React.useState(false);
     const [sending, setSending] = React.useState(false);
@@ -372,7 +381,8 @@ export default function PurchaseReturnCreatePage() {
         vendorInvoiceDate: { bs: "", ad: "" },
         referenceNo: "",
         vendorInvoiceNo: "",
-        purchaseType: "vat_13" as any,
+        purchaseTypeId: "",
+        purchaseType: "",
         memo: "",
         notes: "",
         partyName: "",
@@ -381,7 +391,6 @@ export default function PurchaseReturnCreatePage() {
 
     const [lines, setLines] = React.useState<Line[]>([{ itemId: "", qty: "", rate: "" }]);
 
-    // Clean up refs when lines change
     React.useEffect(() => {
         rowRefs.current.select = rowRefs.current.select.slice(0, lines.length);
         rowRefs.current.qty = rowRefs.current.qty.slice(0, lines.length);
@@ -424,7 +433,6 @@ export default function PurchaseReturnCreatePage() {
 
     React.useEffect(() => {
         let alive = true;
-
         const normalizeList = <T,>(input: unknown): T[] => {
             if (Array.isArray(input)) return input as T[];
             const obj = input as { items?: T[]; data?: T[] } | null;
@@ -435,17 +443,18 @@ export default function PurchaseReturnCreatePage() {
             listParties({ type: "supplier", take: 200 }),
             listAccounts({ type: "liability", take: 200 }),
             listItems({ take: 200 }),
-            listBillSundries({ take: 100 })
+            listBillSundries({ take: 100 }),
+            listPurchaseTypes()
         ])
-            .then(([p, a, i, s]) => {
+            .then(([p, a, i, s, pt]) => {
                 if (!alive) return;
                 setParties(normalizeList<PartyRecord>(p));
                 setAccounts(normalizeList<AccountRecord>(a));
                 setItems(normalizeList<ItemRecord>(i));
+                setPurchaseTypes(normalizeList<{ id: string, name: string }>(pt));
                 const opts = normalizeList<BillSundryRecord>(s);
                 setSundryOptions(opts);
 
-                // Auto-link default sundries if they exist in the options
                 setBillSundries(prev => prev.map(row => {
                     if (row.sundryId) return row;
                     const match = opts.find(o => o.name.toLowerCase() === row.name.toLowerCase());
@@ -460,7 +469,6 @@ export default function PurchaseReturnCreatePage() {
                     return row;
                 }));
 
-                // Load Edit ID if present
                 const editId = searchParams.get("id");
                 if (editId) {
                     setIsEditMode(false);
@@ -490,7 +498,6 @@ export default function PurchaseReturnCreatePage() {
                             voucherNumber: v.voucherNumber || ""
                         }));
 
-                        // Items
                         const itemLines = (v.lines || []).filter((l: any) => l.itemId).map((l: any) => ({
                             itemId: l.itemId,
                             qty: String(Number(l.qty || 0)),
@@ -500,7 +507,6 @@ export default function PurchaseReturnCreatePage() {
                         }));
                         if (itemLines.length > 0) setLines(itemLines);
 
-                        // Sundries (this is a bit complex for vouchers, but let's try)
                         const sundryLines = (v.lines || []).filter((l: any) => !l.itemId && l.accountId);
                         const mappedSundries: BillSundryRow[] = [];
                         sundryLines.forEach((l: any) => {
@@ -556,23 +562,17 @@ export default function PurchaseReturnCreatePage() {
         return lines.reduce((sum, l) => sum + Number(l.qty || 0), 0);
     }, [lines]);
 
-    const totalRate = React.useMemo(() => {
-        return lines.reduce((sum, l) => sum + Number(l.rate || 0), 0);
-    }, [lines]);
-
     const taxableAmount = React.useMemo(() => {
         return lines.reduce((sum, l) => {
             const item = items.find((it) => it.id === l.itemId);
-            const isTaxable = !!item?.taxCodeId;
-            return isTaxable ? sum + Number(l.qty || 0) * Number(l.rate || 0) : sum;
+            return item?.taxCodeId ? sum + Number(l.qty || 0) * Number(l.rate || 0) : sum;
         }, 0);
     }, [lines, items]);
 
     const nonTaxableAmount = React.useMemo(() => {
         return lines.reduce((sum, l) => {
             const item = items.find((it) => it.id === l.itemId);
-            const isTaxable = !!item?.taxCodeId;
-            return !isTaxable ? sum + Number(l.qty || 0) * Number(l.rate || 0) : sum;
+            return !item?.taxCodeId ? sum + Number(l.qty || 0) * Number(l.rate || 0) : sum;
         }, 0);
     }, [lines, items]);
 
@@ -620,29 +620,16 @@ export default function PurchaseReturnCreatePage() {
     const removeSundry = (id: string) => setBillSundries((prev) => prev.filter((r) => r.id !== id));
 
     const buildPayload = (): VoucherDraftInput => {
-        if (!form.vendorInvoiceNo) {
-            throw new Error("Vendor Invoice No. is required.");
-        }
-        if (!form.partyId) {
-            throw new Error("Vendor is required.");
-        }
-        if (!form.payableAccountId) {
-            throw new Error("Payable account is required. Please ensure liability accounts are set up.");
-        }
+        if (!form.vendorInvoiceNo) throw new Error("Vendor Invoice No. is required.");
+        if (!form.partyId) throw new Error("Vendor is required.");
+        if (!form.payableAccountId) throw new Error("Payable account is required.");
 
-        // Validate Items lines
         lines.forEach((l, idx) => {
-            if (!l.itemId) {
-                throw new Error(`Line ${idx + 1}: Item is required.`);
-            }
+            if (!l.itemId) throw new Error(`Line ${idx + 1}: Item is required.`);
             const qty = Number(l.qty);
             const rate = Number(l.rate);
-            if (isNaN(qty) || qty <= 0) {
-                throw new Error(`Line ${idx + 1}: Quantity must be greater than zero.`);
-            }
-            if (isNaN(rate) || rate <= 0) {
-                throw new Error(`Line ${idx + 1}: Rate is required and must be greater than zero.`);
-            }
+            if (isNaN(qty) || qty <= 0) throw new Error(`Line ${idx + 1}: Quantity must be greater than zero.`);
+            if (isNaN(rate) || rate <= 0) throw new Error(`Line ${idx + 1}: Rate is required.`);
         });
 
         const payloadLines = lines.map((l) => {
@@ -652,51 +639,31 @@ export default function PurchaseReturnCreatePage() {
             return {
                 itemId: l.itemId,
                 accountId: l.expenseAccountId || item?.expenseAccountId || "",
-                debit: qty * rate,
+                credit: qty * rate,
                 qty,
-                description: l.description || "Purchase",
+                description: l.description || "Purchase Return",
             };
         });
 
-        if (!payloadLines.length) throw new Error("Add at least one item line.");
-
-        // Validate and Add Sundry lines
         billSundryComputed.rows.forEach(r => {
-            // Validate Sundry Name/Selection
-            if (!r.sundryId) {
-                throw new Error(`Bill Sundry '${r.name || "Unknown"}': Name is required.`);
-            }
-
-            if (Math.abs(r.amount) < 0.01 && !r.isManual) return; // Skip zero amount rows unless manual? Actually usually skip 0 effect. 
-            // Wait, if validation is mandatory "if column is added", we should throw error even if amount is 0?
-            // User requirement: "make ... sundry name mandatory if column is added"
-            // So if checking sundryId above handles it.
-
-            // Re-check amount for posting
+            if (!r.sundryId) throw new Error(`Bill Sundry '${r.name || "Unknown"}': Name is required.`);
             if (Math.abs(r.amount) < 0.01) return;
-
-            // Find the account for this sundry
             const sundryOpt = sundryOptions.find(o => o.id === r.sundryId);
             const accountId = sundryOpt?.accountId;
-
-            if (!accountId) {
-                throw new Error(`Bill Sundry '${r.name}': No linked account found.`);
-            }
-
+            if (!accountId) throw new Error(`Bill Sundry '${r.name}': No linked account found.`);
             payloadLines.push({
                 accountId: accountId,
-                debit: r.type === "add" ? r.amount : 0,
-                credit: r.type === "less" ? r.amount : 0,
+                credit: r.type === "add" ? r.amount : 0,
+                debit: r.type === "less" ? r.amount : 0,
                 description: r.name,
             } as any);
         });
 
-        // Add Credit line for Payable
         payloadLines.push({
             accountId: form.payableAccountId,
-            credit: total,
-            debit: 0,
-            description: form.memo || "Purchase from vendor",
+            debit: total,
+            credit: 0,
+            description: form.memo || "Purchase Return to vendor",
         } as any);
 
         return {
@@ -704,7 +671,7 @@ export default function PurchaseReturnCreatePage() {
             voucherDate: form.purchaseDate.ad || undefined,
             voucherDateBs: form.purchaseDate.bs || undefined,
             partyId: form.partyId,
-            memo: form.memo || "Purchase from vendor",
+            memo: form.memo || "Purchase Return to vendor",
             additionalNote: form.notes || undefined,
             referenceNo: form.referenceNo || undefined,
             vendorInvoiceNo: form.vendorInvoiceNo || undefined,
@@ -714,53 +681,103 @@ export default function PurchaseReturnCreatePage() {
     };
 
     const onSave = async () => {
-        setError(null);
-        setSuccess(null);
-        setLoading(true);
+        setError(null); setSuccess(null); setLoading(true);
         try {
             const editId = searchParams.get("id");
             let res: any;
-            if (editId) {
-                res = await updateVoucherDraft(editId, buildPayload());
-            } else {
-                res = await createVoucherDraft(buildPayload());
-            }
-            if (isOfflineQueuedResponse(res)) {
-                setSuccess(res.message);
-                return;
-            }
+            if (editId) res = await updateVoucherDraft(editId, buildPayload());
+            else res = await createVoucherDraft(buildPayload());
+            if (isOfflineQueuedResponse(res)) { setSuccess(res.message); return; }
             const id = res?.id ?? res?.voucherId ?? res?.data?.id;
-            setSuccess(id ? `Saved draft: ${id}` : "Saved draft.");
-            if (!editId && id) {
-                navigate(`/purchase-return/create?id=${id}`, { replace: true });
-            }
-        } catch (e: any) {
-            setError(e?.message ?? "Something went wrong.");
-        } finally {
-            setLoading(false);
-        }
+            setSuccess(id ? `Saved draft successfully.` : "Saved draft.");
+            if (!editId && id) navigate(`/purchase-return/create?id=${id}`, { replace: true });
+        } catch (e: any) { setError(e?.message ?? "Something went wrong."); }
+        finally { setLoading(false); }
     };
 
     const onPost = async () => {
-        setError(null);
-        setSuccess(null);
-        setSending(true);
+        setError(null); setSuccess(null); setSending(true);
         try {
             const editId = searchParams.get("id");
             let res: any;
-            if (editId) {
-                res = await updateVoucherDraft(editId, buildPayload());
-            } else {
-                res = await createVoucherDraft(buildPayload());
-            }
-            if (isOfflineQueuedResponse(res)) {
-                setError("Offline mode: draft saved to local storage. Go online to sync it with the server before posting.");
-                return;
-            }
+            if (editId) res = await updateVoucherDraft(editId, buildPayload());
+            else res = await createVoucherDraft(buildPayload());
+            if (isOfflineQueuedResponse(res)) { setError("Offline mode error."); return; }
             const id = res?.id ?? res?.voucherId ?? res?.data?.id ?? editId;
-            if (!id) throw new Error("Failed to save draft before posting.");
+            if (!id) throw new Error("Failed to save draft.");
+            await postVoucher(id);
+            setSuccess(`Purchase return posted successfully.`);
+            setTimeout(() => navigate("/purchase-return"), 1500);
+        } catch (e: any) { setError(e?.message ?? "Something went wrong."); }
+        finally { setSending(false); }
+    };
 
+    const onPreview = () => setSuccess("Preview loading...");
+    const onPrint = () => setSuccess("Printing...");
+
+    if (!mounted) return <div className="min-h-screen" />;
+
+    return (
+        <div className="space-y-6">
+            <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                <div className="mb-4">
+                    <Button
+                        onClick={() => navigate("/purchase-return")}
+                        className="rounded-full h-10 px-4 bg-white text-slate-900 border border-slate-200 hover:bg-sky-600 hover:text-white hover:border-sky-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 dark:hover:bg-sky-600 dark:hover:text-white dark:hover:border-sky-600 transition-colors shadow-sm"
+                    >
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Back to Registry
+                    </Button>
+                </div>
+
+                <PageHeader
+                    icon={PackageMinus}
+                    iconContainerClassName="bg-sky-600 shadow-sky-500/20"
+                    title={searchParams.get("id") ? (isEditMode ? "Edit Purchase Return" : "View Purchase Return") : "New Purchase Return"}
+                    description={
+                        searchParams.get("id")
+                            ? `${voucherStatus ? `Status: ${voucherStatus.charAt(0).toUpperCase() + voucherStatus.slice(1)}. ` : ""}${isEditMode ? "Modify the details below." : "Click Edit to modify this return."}`
+                            : "Fill in the details below to record a new purchase return (debit note)."
+                    }
+                    actions={
+                        !isEditMode && searchParams.get("id") ? (
+                            <Button
+                                onClick={() => setIsEditMode(true)}
+                                className="rounded-full h-10 px-8 bg-white text-slate-900 border border-slate-200 hover:!bg-sky-600 hover:!text-white hover:!border-sky-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95 text-xs font-bold uppercase tracking-widest"
+                            >
+                                <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 0 002 2h11a2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                                Edit
+                            </Button>
+                        ) : undefined
+                    }
+                />
+
+                <div className="mb-4 grid gap-3">
+                    {error && <div className="rounded-xl border border-red-600/30 bg-red-600/10 px-3 py-2 text-sm text-red-700 whitespace-pre-line">{error}</div>}
+                    {success && <div className="rounded-xl border border-emerald-600/30 bg-emerald-600/10 px-3 py-2 text-sm text-emerald-700">{success}</div>}
+                </div>
+
+                <section className="relative mb-6">
+                    <div className="absolute right-0 top-0 hidden w-[260px] flex-col gap-3 lg:flex">
+                        <DualDateInput
+                            ref={purchaseDateRef}
+                            label="Return Date"
+                            value={form.purchaseDate}
+                            accentColor="bg-sky-600"
+                            onChange={(next) => setForm((f) => ({ ...f, purchaseDate: next }))}
+                            onEnterNext={() => safeFocus(vendorInvoiceDateRef.current)}
+                            disabled={!isEditMode}
+                        />
+                        <DualDateInput
+                            ref={vendorInvoiceDateRef}
+                            label="Original Invoice Date"
+                            value={form.vendorInvoiceDate}
+                            accentColor="bg-sky-600"
+                            onChange={(next) => setForm((f) => ({ ...f, vendorInvoiceDate: next }))}
                             onEnterNext={() => safeFocus(vendorInvoiceNoRef.current)}
+                            disabled={!isEditMode}
                         />
                     </div>
 
@@ -770,42 +787,24 @@ export default function PurchaseReturnCreatePage() {
                                 <span className="text-xs text-muted-foreground">Return No.</span>
                                 <Input
                                     ref={invoiceNoRef}
-                                    value={form.referenceNo}
-                                    onChange={(e) => setForm((f) => ({ ...f, referenceNo: e.target.value }))}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter") {
-                                            e.preventDefault();
-                                            safeFocus(vendorInvoiceNoRef.current);
-                                        }
-                                    }}
-                                    placeholder="System generated"
-                                    className="h-11 rounded-2xl bg-slate-50/60 dark:bg-slate-900/60"
+                                    value={form.referenceNo || form.voucherNumber}
+                                    className="h-11 rounded-2xl bg-slate-50/60 dark:bg-slate-900/60 font-medium"
                                     disabled={true}
                                 />
                             </label>
-
                             <label className="space-y-1 text-sm">
                                 <span className="text-xs text-muted-foreground">Original Invoice No. <span className="text-red-500">*</span></span>
                                 <Input
                                     ref={vendorInvoiceNoRef}
                                     value={form.vendorInvoiceNo}
                                     onChange={(e) => setForm((f) => ({ ...f, vendorInvoiceNo: e.target.value }))}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter") {
-                                            if (!form.vendorInvoiceNo) return;
-                                            e.preventDefault();
-                                            safeFocus(memoRef.current);
-                                        }
-                                    }}
-                                    placeholder="Enter physical invoice number"
-                                    className="h-11 rounded-2xl bg-slate-50/60 dark:bg-slate-900/60"
+                                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); safeFocus(memoRef.current); } }}
+                                    placeholder="Original invoice number"
+                                    className="h-11 rounded-2xl bg-white dark:bg-slate-900"
                                     disabled={!isEditMode}
                                 />
                             </label>
-
-
                         </div>
-
                         <div className="lg:col-span-8 flex items-start lg:justify-center">
                             <div className="w-full max-w-[520px]">
                                 <label className="space-y-1 text-sm block">
@@ -814,113 +813,86 @@ export default function PurchaseReturnCreatePage() {
                                         ref={memoRef}
                                         value={form.memo}
                                         onChange={(e) => setForm((f) => ({ ...f, memo: e.target.value }))}
-                                        onKeyDown={(e) => {
-                                            if (e.key === "Enter") {
-                                                e.preventDefault();
-                                                safeFocus(purchaseTypeRef.current);
-                                            }
-                                        }}
-                                        placeholder="Brief description of purchase"
-                                        className="h-11 rounded-2xl bg-slate-50/60 dark:bg-slate-900/60"
+                                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); vendorSelectRef.current?.focus(); } }}
+                                        placeholder="Reason for return"
+                                        className="h-11 rounded-2xl bg-white dark:bg-slate-900"
+                                        disabled={!isEditMode}
                                     />
                                 </label>
-
                                 <div className="mt-4">
                                     <div className="text-xs text-muted-foreground">Purchase Return Type <span className="text-red-500">*</span></div>
-                                    <select
-                                        ref={purchaseTypeRef}
-                                        value={form.purchaseType}
-                                        onChange={(e) => setForm((f) => ({ ...f, purchaseType: e.target.value as any }))}
-                                        onKeyDown={(e) => {
-                                            if (e.key === "Enter") {
-                                                e.preventDefault();
-                                                vendorSelectRef.current?.focus();
-                                            }
-                                        }}
-                                        className="mt-2 h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900"
-                                    >
-                                        <option value="vat_13">VAT 13% Return</option>
-                                        <option value="exempt">Exempt Return</option>
-                                        <option value="import">Import Return</option>
-                                    </select>
+                                    <div className="relative mt-2">
+                                        <SearchableSelect<{ id: string; name: string }>
+                                            valueId={form.purchaseTypeId}
+                                            fallbackLabel={form.purchaseType}
+                                            onChange={(id, opt) => setForm((f) => ({ ...f, purchaseTypeId: id, purchaseType: opt?.name ?? "" }))}
+                                            options={purchaseTypes}
+                                            getLabel={(t) => t.name}
+                                            disabled={!isEditMode}
+                                            buttonClassName="h-11 rounded-2xl bg-white dark:bg-slate-900 pr-[100px]"
+                                            onAdd={() => setAddPurchaseTypeOpen(true)}
+                                        />
+                                        {!form.purchaseTypeId && isEditMode && (
+                                            <Button
+                                                type="button"
+                                                onClick={() => setAddPurchaseTypeOpen(true)}
+                                                className="absolute z-10 right-1.5 top-1/2 -translate-y-1/2 h-7 rounded-lg px-1.5 text-[10px] font-medium bg-sky-600 text-white hover:bg-sky-700 border-none shadow-sm transition-all active:scale-95"
+                                            >
+                                                <Plus className="mr-1 h-3 w-3" />
+                                                Define New
+                                            </Button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-
-                        <div className="grid gap-3 lg:hidden sm:grid-cols-2">
-                            <DualDateInput
-                                label="Return Date"
-                                value={form.purchaseDate}
-                                onChange={(next) => setForm((f) => ({ ...f, purchaseDate: next }))}
-                                onEnterNext={() => safeFocus(vendorInvoiceDateRef.current)}
-                            />
-                            <DualDateInput
-                                label="Original Invoice Date"
-                                value={form.vendorInvoiceDate}
-                                onChange={(next) => setForm((f) => ({ ...f, vendorInvoiceDate: next }))}
-                                onEnterNext={() => safeFocus(vendorInvoiceNoRef.current)}
-                            />
                         </div>
                     </div>
                 </section>
 
-                {/* Vendor */}
                 <section className="mb-6">
                     <div className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-200">Vendor</div>
-
                     <div className="relative max-w-[980px]">
                         <SearchableSelect<PartyRecord>
                             buttonRef={vendorSelectRef}
                             placeholder="Search vendor…"
                             valueId={form.partyId}
+                            fallbackLabel={form.partyName}
                             onChange={(id) => setForm((f) => ({ ...f, partyId: id }))}
                             options={parties}
                             getLabel={(p) => p.name}
                             leftIcon={<Search className="h-4 w-4" />}
+                            disabled={!isEditMode}
                             onEnterNext={() => safeFocus(rowRefs.current.select[0])}
-                            onKeyDownCustom={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                                if (e.key === "Enter" && e.shiftKey) {
-                                    e.preventDefault();
-                                    safeFocus(sundryRefs.current.select[0]);
-                                }
-                            }}
                             buttonClassName="h-12 rounded-2xl bg-white dark:bg-slate-900 pr-[140px]"
+                            onAdd={() => setAddVendorOpen(true)}
                         />
-
-                        {!form.partyId && (
+                        {!form.partyId && isEditMode && (
                             <Button
                                 type="button"
-                                variant="outline"
                                 onClick={() => setAddVendorOpen(true)}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 h-9 rounded-full px-4 text-xs"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 h-10 rounded-full px-4 text-xs bg-sky-600 text-white hover:bg-sky-700 border-none shadow-lg shadow-sky-500/20 transition-all active:scale-95 font-bold uppercase tracking-widest"
                             >
-                                <Plus className="mr-2 h-3.5 w-3.5" />
-                                New Vendor
+                                <Plus className="mr-2 h-3.5 w-3.5" /> New Vendor
                             </Button>
                         )}
                     </div>
                 </section>
 
-                {/* Add Column */}
-                <div className="mb-3 flex flex-col items-end gap-1.5">
-                    <Button
-                        ref={addLineButtonRef}
-                        type="button"
-                        onClick={addLine}
-                        className="rounded-full bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm transition-all active:scale-95"
-                    >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Column
-                    </Button>
-                    <div className="text-[10px] text-muted-foreground italic pr-2">
-                        Tip: Press <kbd className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border text-[9px] not-italic font-sans">Shift + Enter</kbd> to jump sundry column
+                {isEditMode && (
+                    <div className="mb-3 flex flex-col items-end gap-1.5">
+                        <Button
+                            ref={addLineButtonRef}
+                            type="button"
+                            onClick={addLine}
+                            className="rounded-full bg-sky-600 text-white hover:bg-sky-700 shadow-sm transition-all active:scale-95 border-none h-10 px-6 text-xs font-bold uppercase tracking-widest"
+                        >
+                            <Plus className="mr-2 h-4 w-4" /> Add Column
+                        </Button>
                     </div>
-                </div>
+                )}
 
-                {/* Items Details */}
                 <section className="mb-8 rounded-3xl border bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
                     <div className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-100">Items Details</div>
-
                     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/30">
                         <div className="overflow-x-auto">
                             <table className="min-w-full text-sm">
@@ -928,23 +900,17 @@ export default function PurchaseReturnCreatePage() {
                                     <tr>
                                         <th className="w-[60px] px-4 py-3 text-left text-xs text-muted-foreground">S.No.</th>
                                         <th className="w-[520px] min-w-[420px] px-4 py-3 text-left text-xs text-muted-foreground">Particulars</th>
-                                        <th className="w-[140px] px-4 py-3 text-left text-xs text-muted-foreground">
-                                            Qty <span className="text-red-500">*</span>
-                                        </th>
-                                        <th className="w-[180px] px-4 py-3 text-left text-xs text-muted-foreground">
-                                            Rate <span className="text-red-500">*</span>
-                                        </th>
+                                        <th className="w-[140px] px-4 py-3 text-left text-xs text-muted-foreground">Qty <span className="text-red-500">*</span></th>
+                                        <th className="w-[180px] px-4 py-3 text-left text-xs text-muted-foreground">Rate <span className="text-red-500">*</span></th>
                                         <th className="w-[180px] px-4 py-3 text-right text-xs text-muted-foreground">Amount</th>
                                         <th className="w-[70px] px-4 py-3 text-right text-xs text-muted-foreground" />
                                     </tr>
                                 </thead>
-
                                 <tbody>
                                     {lines.map((line, idx) => {
                                         const qty = Number(line.qty || 0);
                                         const rate = Number(line.rate || 0);
                                         const amt = qty * rate;
-
                                         return (
                                             <tr key={idx} className="border-t border-slate-200/70 dark:border-slate-800/60">
                                                 <td className="px-4 py-3 text-muted-foreground font-medium">{idx + 1}</td>
@@ -962,226 +928,67 @@ export default function PurchaseReturnCreatePage() {
                                                                 });
                                                             }}
                                                             options={items}
-                                                            getLabel={(it) => {
-                                                                const code = it.hsCode ? ` (${it.hsCode})` : "";
-                                                                return `${it.name ?? "Item"}${code}`;
-                                                            }}
+                                                            getLabel={(it) => it.name}
                                                             onEnterNext={() => safeFocus(rowRefs.current.qty[idx])}
-                                                            onKeyDownCustom={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                                                                if (e.key === "Enter" && e.shiftKey) {
-                                                                    e.preventDefault();
-                                                                    safeFocus(sundryRefs.current.rate[0]);
-                                                                    return;
-                                                                }
-                                                                if (e.key === "ArrowRight") {
-                                                                    e.preventDefault();
-                                                                    safeFocus(rowRefs.current.qty[idx]);
-                                                                }
-                                                                if (e.key === "ArrowDown") {
-                                                                    e.preventDefault();
-                                                                    if (rowRefs.current.select[idx + 1]) {
-                                                                        safeFocus(rowRefs.current.select[idx + 1]);
-                                                                    } else {
-                                                                        safeFocus(sundryRefs.current.rate[0]);
-                                                                    }
-                                                                }
-                                                                if (e.key === "ArrowUp") {
-                                                                    e.preventDefault();
-                                                                    if (rowRefs.current.select[idx - 1]) {
-                                                                        safeFocus(rowRefs.current.select[idx - 1]);
-                                                                    } else {
-                                                                        safeFocus(vendorSelectRef.current);
-                                                                    }
-                                                                }
-                                                            }}
                                                             leftIcon={<Search className="h-4 w-4" />}
+                                                            disabled={!isEditMode}
                                                             buttonClassName="h-11 rounded-2xl bg-white dark:bg-slate-900 pr-[100px]"
-                                                            emptyText="No items found"
+                                                            onAdd={() => { setActiveLineIdx(idx); setAddItemOpen(true); }}
                                                         />
-                                                        {!line.itemId && (
+                                                        {!line.itemId && isEditMode && (
                                                             <Button
                                                                 type="button"
-                                                                variant="outline"
-                                                                onClick={() => {
-                                                                    setActiveLineIdx(idx);
-                                                                    setAddItemOpen(true);
-                                                                }}
-                                                                className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 rounded-xl px-3 text-[10px] font-medium bg-slate-50 dark:bg-slate-800"
+                                                                onClick={() => { setActiveLineIdx(idx); setAddItemOpen(true); }}
+                                                                className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 rounded-xl px-3 text-[10px] font-medium bg-sky-600 text-white border-none hover:bg-sky-700 transition-all active:scale-95"
                                                             >
-                                                                <Plus className="mr-1 h-3 w-3" />
-                                                                Add item
+                                                                <Plus className="mr-1 h-3 w-3" /> Add item
                                                             </Button>
                                                         )}
                                                     </div>
                                                 </td>
-
                                                 <td className="px-4 py-3 align-top">
                                                     <Input
                                                         ref={(el) => { rowRefs.current.qty[idx] = el; }}
                                                         type="number"
-                                                        min="0"
-                                                        step="0.01"
                                                         value={line.qty}
                                                         onChange={(e) => {
                                                             updateLine(idx, { qty: e.target.value });
                                                             setLineErrors(prev => ({ ...prev, [idx]: { ...prev[idx], qty: undefined } }));
                                                         }}
-                                                        onKeyDown={(e) => {
-                                                            if (e.key === "ArrowRight") {
-                                                                e.preventDefault();
-                                                                safeFocus(rowRefs.current.rate[idx]);
-                                                            }
-                                                            if (e.key === "ArrowLeft") {
-                                                                e.preventDefault();
-                                                                safeFocus(rowRefs.current.select[idx]);
-                                                            }
-                                                            if (e.key === "ArrowDown") {
-                                                                e.preventDefault();
-                                                                if (rowRefs.current.qty[idx + 1]) {
-                                                                    safeFocus(rowRefs.current.qty[idx + 1]);
-                                                                } else {
-                                                                    safeFocus(sundryRefs.current.rate[0]);
-                                                                }
-                                                            }
-                                                            if (e.key === "ArrowUp") {
-                                                                e.preventDefault();
-                                                                if (rowRefs.current.qty[idx - 1]) {
-                                                                    safeFocus(rowRefs.current.qty[idx - 1]);
-                                                                }
-                                                            }
-                                                            if (e.key === "Enter") {
-                                                                if (e.shiftKey) {
-                                                                    e.preventDefault();
-                                                                    safeFocus(sundryRefs.current.rate[0]);
-                                                                    return;
-                                                                }
-                                                                if (!line.qty || Number(line.qty) <= 0) {
-                                                                    setLineErrors(prev => ({ ...prev, [idx]: { ...prev[idx], qty: "Required" } }));
-                                                                    return;
-                                                                }
-                                                                e.preventDefault();
-                                                                safeFocus(rowRefs.current.rate[idx]);
-                                                            }
-                                                        }}
-                                                        onBlur={() => {
-                                                            if (line.itemId && (!line.qty || Number(line.qty) <= 0)) {
-                                                                setLineErrors(prev => ({ ...prev, [idx]: { ...prev[idx], qty: "Required" } }));
-                                                            }
-                                                        }}
-                                                        className={cn(
-                                                            "h-11 rounded-2xl bg-white text-center dark:bg-slate-900 transition-colors",
-                                                            lineErrors[idx]?.qty && "border-red-500 focus:ring-red-200"
-                                                        )}
+                                                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); safeFocus(rowRefs.current.rate[idx]); } }}
+                                                        disabled={!isEditMode}
+                                                        className={cn("h-11 rounded-2xl bg-white text-center dark:bg-slate-900", lineErrors[idx]?.qty && "border-red-500")}
                                                     />
-                                                    {lineErrors[idx]?.qty && (
-                                                        <div className="mt-1 text-[10px] text-red-500 font-medium text-center">
-                                                            {lineErrors[idx].qty}
-                                                        </div>
-                                                    )}
                                                 </td>
-
                                                 <td className="px-4 py-3 align-top">
                                                     <Input
                                                         ref={(el) => { rowRefs.current.rate[idx] = el; }}
                                                         type="number"
-                                                        min="0"
-                                                        step="0.01"
                                                         value={line.rate}
                                                         onChange={(e) => {
                                                             updateLine(idx, { rate: e.target.value });
                                                             setLineErrors(prev => ({ ...prev, [idx]: { ...prev[idx], rate: undefined } }));
                                                         }}
-                                                        onKeyDown={(e) => {
-                                                            if (e.key === "ArrowLeft") {
-                                                                e.preventDefault();
-                                                                safeFocus(rowRefs.current.qty[idx]);
-                                                            }
-                                                            if (e.key === "ArrowDown") {
-                                                                e.preventDefault();
-                                                                if (rowRefs.current.rate[idx + 1]) {
-                                                                    safeFocus(rowRefs.current.rate[idx + 1]);
-                                                                } else {
-                                                                    safeFocus(sundryRefs.current.rate[0]);
-                                                                }
-                                                            }
-                                                            if (e.key === "ArrowUp") {
-                                                                e.preventDefault();
-                                                                if (rowRefs.current.rate[idx - 1]) {
-                                                                    safeFocus(rowRefs.current.rate[idx - 1]);
-                                                                }
-                                                            }
-                                                            if (e.key === "Enter") {
-                                                                if (e.shiftKey) {
-                                                                    e.preventDefault();
-                                                                    safeFocus(sundryRefs.current.rate[0]);
-                                                                    return;
-                                                                }
-                                                                if (!line.rate || Number(line.rate) <= 0) {
-                                                                    setLineErrors(prev => ({ ...prev, [idx]: { ...prev[idx], rate: "Required" } }));
-                                                                    return;
-                                                                }
-                                                                e.preventDefault();
-                                                                if (rowRefs.current.select[idx + 1]) {
-                                                                    safeFocus(rowRefs.current.select[idx + 1]);
-                                                                } else {
-                                                                    safeFocus(addLineButtonRef.current);
-                                                                }
-                                                            }
-                                                        }}
-                                                        onBlur={() => {
-                                                            if (line.itemId && (!line.rate || Number(line.rate) <= 0)) {
-                                                                setLineErrors(prev => ({ ...prev, [idx]: { ...prev[idx], rate: "Required" } }));
-                                                            }
-                                                        }}
-                                                        className={cn(
-                                                            "h-11 rounded-2xl bg-white text-center dark:bg-slate-900 transition-colors",
-                                                            lineErrors[idx]?.rate && "border-red-500 focus:ring-red-200"
-                                                        )}
-                                                        placeholder="Rate"
+                                                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (rowRefs.current.select[idx+1]) safeFocus(rowRefs.current.select[idx+1]); else addLine(); } }}
+                                                        disabled={!isEditMode}
+                                                        className={cn("h-11 rounded-2xl bg-white text-center dark:bg-slate-900", lineErrors[idx]?.rate && "border-red-500")}
                                                     />
-                                                    {lineErrors[idx]?.rate && (
-                                                        <div className="mt-1 text-[10px] text-red-500 font-medium text-center">
-                                                            {lineErrors[idx].rate}
-                                                        </div>
-                                                    )}
                                                 </td>
-
-                                                <td className="px-4 py-3 text-right font-semibold">
-                                                    <MoneyText value={amt} />
-                                                </td>
-
+                                                <td className="px-4 py-3 text-right font-semibold"><MoneyText value={amt} /></td>
                                                 <td className="px-4 py-3 text-right">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => removeLine(idx)}
-                                                        className={cn(
-                                                            "inline-flex h-10 w-10 items-center justify-center rounded-xl border text-red-600 hover:bg-red-50",
-                                                            lines.length === 1 && "pointer-events-none opacity-50"
-                                                        )}
-                                                        title="Remove line"
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </button>
+                                                    {isEditMode && lines.length > 1 && (
+                                                        <button type="button" onClick={() => removeLine(idx)} className="h-10 w-10 text-red-600 hover:bg-red-50 rounded-xl border border-slate-200">
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </button>
+                                                    )}
                                                 </td>
                                             </tr>
                                         );
                                     })}
-
                                     <tr className="border-t bg-slate-100/60 font-semibold dark:bg-slate-900/40">
-                                        <td />
-                                        <td className="px-4 py-3 text-right">
-                                            Total
-                                        </td>
-                                        <td className="px-4 py-3 text-center">
-                                            {totalQty % 1 === 0 ? totalQty : totalQty.toFixed(2)}
-                                        </td>
-                                        <td className="px-4 py-3 text-center">
-                                            <MoneyText value={totalRate} />
-                                        </td>
-                                        <td className="px-4 py-3 text-right">
-                                            <MoneyText value={itemsSubtotal} />
-                                        </td>
-                                        <td />
+                                        <td /><td className="px-4 py-3 text-right text-slate-500 uppercase text-[10px] tracking-wider">Totals</td>
+                                        <td className="px-4 py-3 text-center text-slate-900 dark:text-slate-100">{totalQty % 1 === 0 ? totalQty : totalQty.toFixed(2)}</td>
+                                        <td /><td className="px-4 py-3 text-right text-sky-600"><MoneyText value={itemsSubtotal} /></td><td />
                                     </tr>
                                 </tbody>
                             </table>
@@ -1189,17 +996,22 @@ export default function PurchaseReturnCreatePage() {
                     </div>
                 </section>
 
-                <div className="mb-4 flex flex-col items-end gap-2 text-right">
-                    <Button ref={addSundryButtonRef} type="button" variant="outline" onClick={addSundry} className="rounded-full bg-indigo-600 text-white hover:bg-indigo-700">
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Sundry Column
-                    </Button>
-                </div>
+                {isEditMode && (
+                    <div className="mb-4 flex flex-col items-end gap-2 text-right">
+                        <Button
+                            ref={addSundryButtonRef}
+                            type="button"
+                            onClick={addSundry}
+                            className="rounded-full bg-sky-600 text-white hover:bg-sky-700 shadow-sm transition-all active:scale-95 border-none h-10 px-6 text-xs font-bold uppercase tracking-widest"
+                        >
+                            <Plus className="mr-2 h-4 w-4" /> Add Sundry
+                        </Button>
+                    </div>
+                )}
 
-                {/* BILL SUNDRY */}
                 <section className="mb-6">
                     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                        <div className="mr-4 text-sm font-semibold text-slate-700 dark:text-slate-200">Bill Sundry Details</div>
+                        <div className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-200">Bill Sundry Details</div>
                         <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
                             <table className="min-w-full text-sm">
                                 <thead className="bg-slate-100/70 dark:bg-slate-900/40">
@@ -1211,7 +1023,6 @@ export default function PurchaseReturnCreatePage() {
                                         <th className="w-[60px] px-3 py-2 text-right text-xs text-muted-foreground" />
                                     </tr>
                                 </thead>
-
                                 <tbody>
                                     {billSundryComputed.rows.map((r, i) => (
                                         <tr key={r.id} className="border-t border-slate-200/70 dark:border-slate-800/60">
@@ -1224,63 +1035,26 @@ export default function PurchaseReturnCreatePage() {
                                                         valueId={r.sundryId || ""}
                                                         fallbackLabel={r.name}
                                                         onChange={(id, opt) => {
-                                                            if (opt) {
-                                                                updateSundry(r.id, {
-                                                                    sundryId: opt.id,
-                                                                    name: opt.name,
-                                                                    type: opt.type as any,
-                                                                    ratePct: opt.rate?.toString() || "0"
-                                                                });
-                                                            } else {
-                                                                updateSundry(r.id, { sundryId: id, name: "" });
-                                                            }
-                                                        }}
-                                                        onKeyDownCustom={(e) => {
-                                                            if (e.key === "Enter" && e.shiftKey) {
-                                                                e.preventDefault();
-                                                                safeFocus(notesRef.current);
-                                                                return;
-                                                            }
-                                                            if (e.key === "ArrowRight") {
-                                                                e.preventDefault();
-                                                                safeFocus(sundryRefs.current.rate[i]);
-                                                            }
-                                                            if (e.key === "ArrowDown") {
-                                                                e.preventDefault();
-                                                                if (sundryRefs.current.select[i + 1]) {
-                                                                    safeFocus(sundryRefs.current.select[i + 1]);
-                                                                } else {
-                                                                    safeFocus(notesRef.current);
-                                                                }
-                                                            }
-                                                            if (e.key === "ArrowUp") {
-                                                                e.preventDefault();
-                                                                if (sundryRefs.current.select[i - 1]) {
-                                                                    safeFocus(sundryRefs.current.select[i - 1]);
-                                                                } else {
-                                                                    const lastItemIdx = lines.length - 1;
-                                                                    safeFocus(rowRefs.current.select[lastItemIdx]);
-                                                                }
-                                                            }
+                                                            if (opt) updateSundry(r.id, { sundryId: opt.id, name: opt.name, type: opt.type as any, ratePct: opt.rate?.toString() || "0" });
+                                                            else updateSundry(r.id, { sundryId: id, name: "" });
                                                         }}
                                                         onEnterNext={() => safeFocus(sundryRefs.current.rate[i])}
                                                         options={sundryOptions}
                                                         getLabel={(s) => s.name}
-                                                        buttonClassName="h-10 rounded-xl pr-[110px]"
-                                                        emptyText="No sundries found"
-                                                        disabled={r.id === "vat" || r.id === "discount"}
+                                                        disabled={!isEditMode || r.id === "vat" || r.id === "discount"}
+                                                        buttonClassName="h-10 rounded-xl pr-[100px]"
+                                                        onAdd={() => { setActiveSundryIdx(i); setAddSundryOpen(true); }}
                                                     />
-                                                    {!r.sundryId && r.id !== "discount" && r.id !== "vat" && (
+                                                    {!r.sundryId && r.id !== "discount" && r.id !== "vat" && isEditMode && (
                                                         <Button
                                                             type="button"
-                                                            variant="outline"
                                                             onClick={() => {
                                                                 setActiveSundryIdx(i);
                                                                 setAddSundryOpen(true);
                                                             }}
-                                                            className="absolute z-10 right-7 top-1/2 -translate-y-1/2 h-7 rounded-lg px-1.5 text-[10px] font-medium bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                                                            className="absolute z-10 right-1.5 top-1/2 -translate-y-1/2 h-7 rounded-lg px-1.5 text-[10px] font-medium bg-sky-600 text-white hover:bg-sky-700 border-none shadow-sm transition-all active:scale-95"
                                                         >
-                                                            <Plus className="h-3 w-3" />
+                                                            <Plus className="mr-1 h-3 w-3" />
                                                             Define New
                                                         </Button>
                                                     )}
@@ -1292,54 +1066,9 @@ export default function PurchaseReturnCreatePage() {
                                                         ref={(el) => { if (el) sundryRefs.current.rate[i] = el; }}
                                                         type="number"
                                                         value={r.ratePct}
-                                                        onChange={(e) => {
-                                                            const val = e.target.value;
-                                                            updateSundry(r.id, {
-                                                                ratePct: val,
-                                                                isManual: false
-                                                            });
-                                                        }}
-                                                        onKeyDown={(e) => {
-                                                            if (e.key === "ArrowRight") {
-                                                                e.preventDefault();
-                                                                safeFocus(sundryRefs.current.amount[i]);
-                                                            }
-                                                            if (e.key === "ArrowLeft") {
-                                                                e.preventDefault();
-                                                                safeFocus(sundryRefs.current.select[i]);
-                                                            }
-                                                            if (e.key === "ArrowDown") {
-                                                                e.preventDefault();
-                                                                if (sundryRefs.current.rate[i + 1]) {
-                                                                    safeFocus(sundryRefs.current.rate[i + 1]);
-                                                                } else {
-                                                                    safeFocus(notesRef.current);
-                                                                }
-                                                            }
-                                                            if (e.key === "ArrowUp") {
-                                                                e.preventDefault();
-                                                                if (sundryRefs.current.rate[i - 1]) {
-                                                                    safeFocus(sundryRefs.current.rate[i - 1]);
-                                                                } else {
-                                                                    const lastItemIdx = lines.length - 1;
-                                                                    safeFocus(rowRefs.current.rate[lastItemIdx]);
-                                                                }
-                                                            }
-                                                            if (e.key === "Enter") {
-                                                                if (e.shiftKey) {
-                                                                    e.preventDefault();
-                                                                    safeFocus(notesRef.current);
-                                                                    return;
-                                                                }
-                                                                e.preventDefault();
-                                                                if (sundryRefs.current.amount[i]) {
-                                                                    safeFocus(sundryRefs.current.amount[i]);
-                                                                } else if (sundryRefs.current.select[i + 1]) {
-                                                                    safeFocus(sundryRefs.current.select[i + 1]);
-                                                                }
-                                                            }
-                                                        }}
-                                                        disabled={r.id === "vat"}
+                                                        onChange={(e) => updateSundry(r.id, { ratePct: e.target.value, isManual: false })}
+                                                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); safeFocus(sundryRefs.current.amount[i]); } }}
+                                                        disabled={!isEditMode || r.id === "vat"}
                                                         className="h-10 w-[110px] rounded-xl bg-white text-right dark:bg-slate-900"
                                                     />
                                                     <span className="text-muted-foreground">%</span>
@@ -1348,84 +1077,33 @@ export default function PurchaseReturnCreatePage() {
                                             <td className="px-3 py-2 text-right font-semibold">
                                                 <div className="inline-flex items-center justify-end gap-1">
                                                     {r.type === "less" ? "(" : null}
-                                                    <div className="flex items-center">
-                                                        <span className="mr-1 text-xs text-muted-foreground font-normal">{ui.currencySymbol}</span>
-                                                        <Input
-                                                            ref={(el) => { sundryRefs.current.amount[i] = el; }}
-                                                            value={r.isManual ? (r.manualAmount || "") : (r.ratePct && Number(r.ratePct) !== 0 ? r.amount.toFixed(2) : "")}
-                                                            onChange={(e) => {
-                                                                const val = e.target.value;
-                                                                const amt = Number(val || 0);
-                                                                const pct = itemsSubtotal > 0 ? (amt / itemsSubtotal) * 100 : 0;
-                                                                updateSundry(r.id, {
-                                                                    manualAmount: val,
-                                                                    ratePct: pct % 1 === 0 ? pct.toString() : pct.toFixed(2),
-                                                                    isManual: true
-                                                                });
-                                                            }}
-                                                            onKeyDown={(e) => {
-                                                                if (e.key === "ArrowLeft") {
-                                                                    e.preventDefault();
-                                                                    safeFocus(sundryRefs.current.rate[i]);
-                                                                }
-                                                                if (e.key === "ArrowDown") {
-                                                                    e.preventDefault();
-                                                                    if (sundryRefs.current.amount[i + 1]) {
-                                                                        safeFocus(sundryRefs.current.amount[i + 1]);
-                                                                    } else {
-                                                                        safeFocus(notesRef.current);
-                                                                    }
-                                                                }
-                                                                if (e.key === "ArrowUp") {
-                                                                    e.preventDefault();
-                                                                    if (sundryRefs.current.amount[i - 1]) {
-                                                                        safeFocus(sundryRefs.current.amount[i - 1]);
-                                                                    } else {
-                                                                        const lastItemIdx = lines.length - 1;
-                                                                        safeFocus(rowRefs.current.rate[lastItemIdx]);
-                                                                    }
-                                                                }
-                                                                if (e.key === "Enter") {
-                                                                    if (e.shiftKey) {
-                                                                        e.preventDefault();
-                                                                        safeFocus(notesRef.current);
-                                                                        return;
-                                                                    }
-                                                                    e.preventDefault();
-                                                                    if (sundryRefs.current.select[i + 1]) {
-                                                                        safeFocus(sundryRefs.current.select[i + 1]);
-                                                                    } else {
-                                                                        safeFocus(addSundryButtonRef.current);
-                                                                    }
-                                                                }
-                                                            }}
-                                                            placeholder="0.00"
-                                                            disabled={r.id === "vat"}
-                                                            className="h-8 w-24 rounded-lg border-slate-200 bg-white px-2 text-right text-sm dark:border-slate-800 dark:bg-slate-900"
-                                                        />
-                                                    </div>
+                                                    <Input
+                                                        ref={(el) => { sundryRefs.current.amount[i] = el; }}
+                                                        value={r.isManual ? (r.manualAmount || "") : (r.ratePct && Number(r.ratePct) !== 0 ? r.amount.toFixed(2) : "")}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            const amt = Number(val || 0);
+                                                            const pct = itemsSubtotal > 0 ? (amt / itemsSubtotal) * 100 : 0;
+                                                            updateSundry(r.id, { manualAmount: val, ratePct: pct % 1 === 0 ? pct.toString() : pct.toFixed(2), isManual: true });
+                                                        }}
+                                                        disabled={!isEditMode || r.id === "vat"}
+                                                        placeholder="0.00"
+                                                        className="h-10 w-24 rounded-xl border-slate-200 bg-white px-2 text-right text-sm dark:border-slate-800 dark:bg-slate-900"
+                                                    />
                                                     {r.type === "less" ? ")" : null}
                                                 </div>
                                             </td>
                                             <td className="px-3 py-2 text-right">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => removeSundry(r.id)}
-                                                    disabled={r.id === "vat" || r.id === "discount"}
-                                                    className={cn(
-                                                        "inline-flex h-9 w-9 items-center justify-center rounded-xl border text-red-600 hover:bg-red-50",
-                                                        (billSundries.length <= 1 || r.id === "vat" || r.id === "discount") && "pointer-events-none opacity-50"
-                                                    )}
-                                                    title="Remove"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </button>
+                                                {isEditMode && r.id !== "vat" && r.id !== "discount" && (
+                                                    <button type="button" onClick={() => removeSundry(r.id)} className="h-9 w-9 text-red-600 hover:bg-red-50 rounded-xl border border-slate-200">
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </button>
+                                                )}
                                             </td>
                                         </tr>
                                     ))}
-
                                     <tr className="border-t bg-slate-50/50 font-bold dark:bg-slate-900/50">
-                                        <td colSpan={3} className="px-3 py-3 text-right text-slate-500">Net Bill Sundry</td>
+                                        <td colSpan={3} className="px-3 py-3 text-right text-slate-500 uppercase text-[10px] tracking-wider">Net Sundry</td>
                                         <td className="px-3 py-3 text-right">
                                             <span className={cn(billSundryComputed.net >= 0 ? "text-emerald-600" : "text-red-600")}>
                                                 {billSundryComputed.net < 0 ? "-" : "+"} <MoneyText value={Math.abs(billSundryComputed.net)} />
@@ -1439,65 +1117,40 @@ export default function PurchaseReturnCreatePage() {
                     </div>
                 </section>
 
-
-
-                {/* BOTTOM SUMMARY ACTIONS */}
                 <section className="grid gap-6 lg:grid-cols-12">
                     <div className="lg:col-span-6 rounded-3xl border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
                         <div className="mb-3 text-sm font-semibold">Summary</div>
-
                         <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-5 dark:border-slate-800 dark:bg-slate-900/30">
                             <div className="space-y-3 text-sm">
                                 <div className="flex items-center justify-between">
                                     <span className="text-muted-foreground">Taxable Total</span>
-                                    <div className="font-medium">
-                                        <MoneyText value={taxableAmount} />
-                                    </div>
+                                    <div className="font-medium"><MoneyText value={taxableAmount} /></div>
                                 </div>
-
                                 <div className="flex items-center justify-between">
                                     <span className="text-muted-foreground">Non-Taxable Total</span>
-                                    <div className="font-medium">
-                                        <MoneyText value={nonTaxableAmount} />
-                                    </div>
+                                    <div className="font-medium"><MoneyText value={nonTaxableAmount} /></div>
                                 </div>
-
                                 <div className="h-px bg-slate-200 dark:bg-slate-800 my-1 op-40" />
-
                                 <div className="flex items-center justify-between">
                                     <span className="text-muted-foreground">Subtotal</span>
-                                    <div className="font-medium">
-                                        <MoneyText value={itemsSubtotal} />
-                                    </div>
+                                    <div className="font-medium"><MoneyText value={itemsSubtotal} /></div>
                                 </div>
-
                                 <div className="flex items-center justify-between">
                                     <span className="text-muted-foreground">Discount</span>
-                                    <div className="font-medium">
-                                        <MoneyText value={billSundryComputed.rows.find((r) => r.id === "discount")?.amount ?? 0} />
-                                    </div>
+                                    <div className="font-medium"><MoneyText value={billSundryComputed.rows.find((r) => r.id === "discount")?.amount ?? 0} /></div>
                                 </div>
-
                                 <div className="flex items-center justify-between">
                                     <span className="text-muted-foreground">VAT</span>
-                                    <div className="font-medium">
-                                        <MoneyText value={billSundryComputed.rows.find((r) => r.id === "vat")?.amount ?? 0} />
-                                    </div>
+                                    <div className="font-medium"><MoneyText value={billSundryComputed.rows.find((r) => r.id === "vat")?.amount ?? 0} /></div>
                                 </div>
-
                                 <div className="flex items-center justify-between">
                                     <span className="text-muted-foreground">Other Sundry</span>
-                                    <div className="font-medium">
-                                        <MoneyText value={otherSundryTotal} />
-                                    </div>
+                                    <div className="font-medium"><MoneyText value={otherSundryTotal} /></div>
                                 </div>
                             </div>
-
                             <div className="mt-5 flex items-center justify-between rounded-2xl bg-white px-4 py-3 shadow-sm dark:bg-slate-950">
                                 <div className="text-sm font-semibold">Total</div>
-                                <div className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">
-                                    <MoneyText value={total} />
-                                </div>
+                                <div className="text-sm font-semibold text-sky-600 dark:text-sky-400"><MoneyText value={total} /></div>
                             </div>
                         </div>
                     </div>
@@ -1505,125 +1158,61 @@ export default function PurchaseReturnCreatePage() {
                     <div className="lg:col-span-6 rounded-3xl border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
                         <div className="mb-2 flex items-center justify-between">
                             <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">Additional notes</div>
-                            <div className="text-xs text-muted-foreground">
-                                BS: <span className="font-medium text-foreground">{form.purchaseDate.bs || "—"}</span>{" "}
-                                <span className="text-muted-foreground">({form.purchaseDate.ad || "—"})</span>
-                            </div>
                         </div>
-
                         <textarea
-                            ref={notesRef}
+                            ref={notesRef as any}
                             value={form.notes}
                             onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                            onKeyDown={(e) => {
-                                if (e.key === "ArrowUp") {
-                                    e.preventDefault();
-                                    const lastSundryIdx = billSundryComputed.rows.length - 1;
-                                    safeFocus(sundryRefs.current.rate[lastSundryIdx]);
-                                }
-                            }}
                             placeholder="Internal record notes..."
-                            className="min-h-[120px] w-full rounded-2xl border-2 border-slate-100 bg-slate-50/30 p-5 text-sm outline-none ring-indigo-500/10 focus:border-indigo-500 focus:bg-white focus:ring-4 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 transition-all font-medium leading-relaxed"
+                            className="min-h-[120px] w-full rounded-2xl border-2 border-slate-100 bg-slate-50/30 p-5 text-sm outline-none focus:border-sky-500 focus:bg-white dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 transition-all font-medium leading-relaxed"
                             disabled={!isEditMode}
                         />
 
                         <div className="mt-8 flex flex-wrap items-center justify-end gap-3">
-                            {!voucherStatus || voucherStatus === "draft" ? (
+                            {(!voucherStatus || voucherStatus === "draft") && isEditMode && (
                                 <>
-                                    {isEditMode ? (
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            onClick={onSave}
-                                            disabled={loading || sending}
-                                            className="flex-1 md:flex-none rounded-2xl h-14 px-8 font-black text-xs uppercase tracking-widest transition-all active:scale-95 bg-white hover:bg-slate-50 border-2"
-                                        >
-                                            <Save className="mr-2 h-4 w-4" />
-                                            {loading ? "..." : "Save Draft"}
-                                        </Button>
-                                    ) : null}
-
+                                    <Button
+                                        type="button"
+                                        onClick={onSave}
+                                        disabled={loading || sending}
+                                        className="flex-1 md:flex-none rounded-2xl h-12 px-8 font-bold text-xs uppercase tracking-widest transition-all active:scale-95 bg-sky-600 text-white hover:bg-sky-700 border-none shadow-lg shadow-sky-500/20"
+                                    >
+                                        <Save className="mr-2 h-4 w-4" />
+                                        {loading ? "..." : "Save Draft"}
+                                    </Button>
                                     <Button
                                         onClick={onPost}
-                                        disabled={loading || sending || !isEditMode}
-                                        className="flex-1 md:flex-none rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-xl shadow-indigo-500/20 h-14 px-10 font-black text-xs uppercase tracking-widest transition-all active:scale-95 border-none"
+                                        disabled={loading || sending}
+                                        className="flex-1 md:flex-none rounded-2xl bg-sky-600 hover:bg-sky-700 text-white shadow-xl shadow-sky-500/20 h-12 px-10 font-black text-xs uppercase tracking-widest transition-all hover:scale-105 active:scale-95 border-none"
                                     >
                                         <Send className="mr-2 h-4 w-4" />
-                                        {sending ? "Posting..." : "Post & Finalize"}
+                                        {sending ? "Posting..." : "Post Return"}
                                     </Button>
                                 </>
-                            ) : (
-                                <div className="flex items-center gap-3">
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={onPrint}
-                                        className="rounded-2xl border-2 h-14 px-8 font-black text-xs uppercase tracking-widest transition-all active:scale-95 bg-white hover:bg-slate-50"
-                                    >
-                                        <Printer className="mr-2 h-4 w-4" />
-                                        Print
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={onPreview}
-                                        className="rounded-2xl border-2 h-14 px-8 font-black text-xs uppercase tracking-widest transition-all active:scale-95 bg-white hover:bg-slate-50"
-                                    >
-                                        <Eye className="mr-2 h-4 w-4" />
-                                        Preview
-                                    </Button>
-                                </div>
                             )}
+                            <Button
+                                type="button"
+                                onClick={onPrint}
+                                className="flex-1 md:flex-none rounded-2xl h-12 px-8 font-bold text-xs uppercase tracking-widest transition-all active:scale-95 bg-sky-600 text-white hover:bg-sky-700 border-none shadow-md shadow-sky-500/10"
+                            >
+                                <Printer className="mr-2 h-4 w-4" /> Print
+                            </Button>
+                            <Button
+                                type="button"
+                                onClick={onPreview}
+                                className="flex-1 md:flex-none rounded-2xl h-12 px-8 font-bold text-xs uppercase tracking-widest transition-all active:scale-95 bg-sky-600 text-white hover:bg-sky-700 border-none shadow-md shadow-sky-500/10"
+                            >
+                                <Eye className="mr-2 h-4 w-4" /> Preview
+                            </Button>
                         </div>
                     </div>
                 </section>
             </div>
 
-            {/* Dialogs */}
-            <AddItemDialog
-                open={addItemOpen}
-                onClose={() => setAddItemOpen(false)}
-                onSuccess={(newItem) => {
-                    setItems(prev => [...prev, newItem]);
-                    if (activeLineIdx !== null) {
-                        updateLine(activeLineIdx, {
-                            itemId: newItem.id,
-                            rate: newItem.purchasePrice?.toString() || ""
-                        });
-                        setTimeout(() => safeFocus(rowRefs.current.qty[activeLineIdx]), 50);
-                    }
-                }}
-            />
-            <AddVendorDialog
-                open={addVendorOpen}
-                onClose={() => setAddVendorOpen(false)}
-                onSuccess={(newVendor) => {
-                    setParties(prev => [...prev, newVendor]);
-                    setForm(f => ({ ...f, partyId: newVendor.id }));
-                    setTimeout(() => safeFocus(rowRefs.current.select[0]), 50);
-                }}
-            />
-            <AddBillSundryDialog
-                open={addSundryOpen}
-                onClose={() => setAddSundryOpen(false)}
-                onSuccess={(newSundry) => {
-                    setSundryOptions(prev => [...prev, newSundry]);
-                    if (activeSundryIdx !== null) {
-                        const r = billSundries[activeSundryIdx];
-                        if (r) {
-                            updateSundry(r.id, {
-                                sundryId: newSundry.id,
-                                name: newSundry.name,
-                                type: newSundry.type as any,
-                                ratePct: newSundry.rate?.toString() || "0"
-                            });
-                        }
-                    }
-                }}
-            />
+            <AddItemDialog open={addItemOpen} onClose={() => setAddItemOpen(false)} onSuccess={(newItem) => { setItems(prev => [...prev, newItem]); if (activeLineIdx !== null) updateLine(activeLineIdx, { itemId: newItem.id, rate: newItem.purchasePrice?.toString() || "" }); }} />
+            <AddVendorDialog open={addVendorOpen} onClose={() => setAddVendorOpen(false)} onSuccess={(newVendor) => { setParties(prev => [...prev, newVendor]); setForm(f => ({ ...f, partyId: newVendor.id })); }} />
+            <AddBillSundryDialog open={addSundryOpen} onClose={() => setAddSundryOpen(false)} onSuccess={(newSundry) => { setSundryOptions(prev => [...prev, newSundry]); if (activeSundryIdx !== null) { const r = billSundries[activeSundryIdx]; if (r) updateSundry(r.id, { sundryId: newSundry.id, name: newSundry.name, type: newSundry.type as any, ratePct: newSundry.rate?.toString() || "0" }); } }} />
+            <AddPurchaseTypeDialog open={addPurchaseTypeOpen} onClose={() => setAddPurchaseTypeOpen(false)} onSuccess={(st) => { setPurchaseTypes(prev => [...prev, st]); setForm(f => ({ ...f, purchaseTypeId: st.id, purchaseType: st.name })); }} />
         </div>
     );
 }
-
-
-

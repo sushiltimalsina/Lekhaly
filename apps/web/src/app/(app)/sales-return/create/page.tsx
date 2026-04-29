@@ -321,7 +321,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                                                 setOpen(false);
                                                 props.onAdd?.();
                                             }}
-                                            className="rounded-full h-8 bg-emerald-600 text-white hover:bg-emerald-700 border-none"
+                                            className="rounded-full h-8 bg-rose-600 text-white hover:bg-rose-700 border-none"
                                         >
                                             <Plus className="mr-1.5 h-3.5 w-3.5" />
                                             Add New
@@ -930,9 +930,9 @@ export default function SalesReturnCreatePage() {
                                         <Button
                                             type="button"
                                             onClick={() => setAddPaymentMethodOpen(true)}
-                                            className="absolute right-2 top-[calc(50%+4px)] -translate-y-1/2 h-7 rounded-full px-3 text-[10px] bg-rose-600 text-white border-none hover:bg-rose-700 shadow-sm transition-all active:scale-95"
+                                            className="absolute right-1.5 top-[calc(50%+4px)] -translate-y-1/2 h-8 rounded-xl px-3 text-[10px] font-medium bg-rose-600 text-white border-none hover:bg-rose-700 shadow-sm transition-all active:scale-95"
                                         >
-                                            <Plus className="mr-1.5 h-3 w-3" />
+                                            <Plus className="mr-1 h-3 w-3" />
                                             New
                                         </Button>
                                     )}
@@ -976,9 +976,9 @@ export default function SalesReturnCreatePage() {
                                             <Button
                                                 type="button"
                                                 onClick={() => setAddSaleTypeOpen(true)}
-                                                className="absolute right-2 top-[calc(50%+4px)] -translate-y-1/2 h-7 rounded-full px-3 text-[10px] bg-rose-600 text-white border-none hover:bg-rose-700 shadow-sm transition-all active:scale-95"
+                                                className="absolute right-1.5 top-[calc(50%+4px)] -translate-y-1/2 h-8 rounded-xl px-3 text-[10px] font-medium bg-rose-600 text-white border-none hover:bg-rose-700 shadow-sm transition-all active:scale-95"
                                             >
-                                                <Plus className="mr-1.5 h-3 w-3" />
+                                                <Plus className="mr-1 h-3 w-3" />
                                                 New
                                             </Button>
                                         )}
@@ -1032,7 +1032,7 @@ export default function SalesReturnCreatePage() {
                             <Button
                                 type="button"
                                 onClick={() => setAddCustomerOpen(true)}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 h-9 rounded-full px-4 text-xs bg-rose-600 text-white hover:bg-rose-700 shadow-sm transition-all active:scale-95 border-none"
+                                className="absolute right-1.5 top-1/2 -translate-y-1/2 h-9 rounded-xl px-4 text-[11px] bg-rose-600 text-white border-none hover:bg-rose-700 shadow-lg shadow-rose-500/20 transition-all active:scale-95 font-bold uppercase tracking-widest"
                             >
                                 <Plus className="mr-2 h-3.5 w-3.5" />
                                 New Customer
@@ -1047,7 +1047,7 @@ export default function SalesReturnCreatePage() {
                         ref={addLineButtonRef}
                         type="button"
                         onClick={addLine}
-                        className="rounded-full bg-rose-600 text-white hover:bg-rose-700 shadow-sm transition-all active:scale-95"
+                        className="rounded-2xl h-11 px-6 bg-rose-600 text-white hover:bg-rose-700 shadow-xl shadow-rose-500/20 transition-all active:scale-95 border-none font-bold text-xs uppercase tracking-widest"
                     >
                         <Plus className="mr-2 h-4 w-4" />
                         Add Column
@@ -1315,7 +1315,12 @@ export default function SalesReturnCreatePage() {
 
 
                 <div className="mb-4 flex flex-col items-end gap-2 text-right">
-                    <Button ref={addSundryButtonRef} type="button" onClick={addSundry} className="rounded-full bg-rose-600 text-white hover:bg-rose-700 shadow-sm transition-all active:scale-95">
+                    <Button
+                        ref={addSundryButtonRef}
+                        type="button"
+                        onClick={addSundry}
+                        className="rounded-2xl h-11 px-6 bg-rose-600 text-white hover:bg-rose-700 shadow-xl shadow-rose-500/20 transition-all active:scale-95 border-none font-bold text-xs uppercase tracking-widest"
+                    >
                         <Plus className="mr-2 h-4 w-4" />
                         Add Sundry Column
                     </Button>
@@ -1398,15 +1403,14 @@ export default function SalesReturnCreatePage() {
                                                     {!r.sundryId && r.id !== "discount" && r.id !== "vat" && (
                                                         <Button
                                                             type="button"
-                                                            variant="outline"
                                                             onClick={() => {
                                                                 setActiveSundryIdx(i);
                                                                 setAddSundryOpen(true);
                                                             }}
-                                                            className="absolute z-10 right-7 top-1/2 -translate-y-1/2 h-7 rounded-lg px-1.5 text-[10px] font-medium bg-rose-50 dark:bg-rose-950 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900 transition-colors"
+                                                            className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 rounded-xl px-3 text-[10px] font-medium bg-rose-600 text-white border-none hover:bg-rose-700 shadow-sm transition-all active:scale-95"
                                                         >
-                                                            <Plus className="h-3 w-3" />
-                                                            Define New
+                                                            <Plus className="mr-1 h-3 w-3" />
+                                                            New
                                                         </Button>
                                                     )}
                                                 </div>

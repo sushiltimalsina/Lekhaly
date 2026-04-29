@@ -18,6 +18,7 @@ import AddItemDialog from "@/components/app/add-item-dialog";
 import AddVendorDialog from "@/components/app/add-vendor-dialog";
 import AddBillSundryDialog from "@/components/app/add-bill-sundry-dialog";
 import { listBillSundries, type BillSundryRecord } from "@/lib/api/bill-sundries";
+import { listPurchaseTypes } from "@/lib/api/purchase-types";
 import { useUiState } from "@/lib/store/ui";
 
 import {
@@ -39,6 +40,7 @@ import {
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toBs } from "@/lib/dates/bs";
+import AddPurchaseTypeDialog from "@/components/app/add-purchase-type-dialog";
 
 type Line = { itemId: string; qty: string; rate: string; description?: string; expenseAccountId?: string };
 type BillSundryRow = { id: string; sundryId?: string; name: string; type: "add" | "less"; ratePct: string; manualAmount?: string; isManual?: boolean };
@@ -82,6 +84,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
     onKeyDownCustom?: (e: React.KeyboardEvent<any>) => void;
     fallbackLabel?: string;
     disabled?: boolean;
+    onAdd?: () => void;
 }) {
     const {
         label,
@@ -96,6 +99,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
         emptyText = "No items found",
         fallbackLabel,
         disabled,
+        onAdd,
     } = props;
 
     const [open, setOpen] = React.useState(false);
@@ -280,17 +284,32 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                                             onMouseEnter={() => setActiveIndex(i)}
                                             className={cn(
                                                 "flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition-colors",
-                                                active ? "bg-cyan-50 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300" : "hover:bg-slate-50 dark:hover:bg-slate-800/50",
+                                                active ? "bg-sky-50 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300" : "hover:bg-slate-50 dark:hover:bg-slate-800/50",
                                                 selected && !active && "bg-slate-50 dark:bg-slate-800/30"
                                             )}
                                         >
                                             <span className="min-w-0 flex-1 truncate font-medium">{labelText}</span>
-                                            {selected ? <Check className="h-4 w-4 text-cyan-600" /> : null}
+                                            {selected ? <Check className="h-4 w-4 text-sky-600" /> : null}
                                         </button>
                                     );
                                 })
                             ) : (
-                                <div className="px-4 py-8 text-center text-sm text-muted-foreground">{emptyText}</div>
+                                <div className="px-4 py-8 text-center">
+                                    <div className="text-sm text-muted-foreground">{emptyText}</div>
+                                    {onAdd && (
+                                        <Button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onAdd();
+                                                setOpen(false);
+                                            }}
+                                            className="mt-3 rounded-full h-8 px-4 text-[10px] bg-sky-600 hover:bg-sky-700 text-white border-none shadow-lg shadow-sky-500/20"
+                                        >
+                                            <Plus className="mr-1.5 h-3 w-3" />
+                                            Add New
+                                        </Button>
+                                    )}
+                                </div>
                             )}
                         </div>
                     </div>,
@@ -318,6 +337,7 @@ export default function PurchaseReturnCreatePage() {
     const [activeLineIdx, setActiveLineIdx] = React.useState<number | null>(null);
     const [addVendorOpen, setAddVendorOpen] = React.useState(false);
     const [addSundryOpen, setAddSundryOpen] = React.useState(false);
+    const [addPurchaseTypeOpen, setAddPurchaseTypeOpen] = React.useState(false);
     const [activeSundryIdx, setActiveSundryIdx] = React.useState<number | null>(null);
 
     const rowRefs = React.useRef<{
@@ -338,6 +358,7 @@ export default function PurchaseReturnCreatePage() {
     const [accounts, setAccounts] = React.useState<AccountRecord[]>([]);
     const [items, setItems] = React.useState<ItemRecord[]>([]);
     const [sundryOptions, setSundryOptions] = React.useState<BillSundryRecord[]>([]);
+    const [purchaseTypes, setPurchaseTypes] = React.useState<{ id: string, name: string }[]>([]);
 
     const safeFocus = (el: HTMLElement | null) => {
         if (!el) return;
@@ -362,7 +383,8 @@ export default function PurchaseReturnCreatePage() {
         vendorInvoiceDate: { bs: "", ad: "" },
         referenceNo: "",
         vendorInvoiceNo: "",
-        purchaseType: "vat_13" as any,
+        purchaseTypeId: "",
+        purchaseType: "",
         memo: "",
         notes: "",
         partyName: "",
@@ -424,13 +446,15 @@ export default function PurchaseReturnCreatePage() {
             listParties({ type: "supplier", take: 200 }),
             listAccounts({ type: "liability", take: 200 }),
             listItems({ take: 200 }),
-            listBillSundries({ take: 100 })
+            listBillSundries({ take: 100 }),
+            listPurchaseTypes()
         ])
-            .then(([p, a, i, s]) => {
+            .then(([p, a, i, s, pt]) => {
                 if (!alive) return;
                 setParties(normalizeList<PartyRecord>(p));
                 setAccounts(normalizeList<AccountRecord>(a));
                 setItems(normalizeList<ItemRecord>(i));
+                setPurchaseTypes(normalizeList<{ id: string, name: string }>(pt));
                 const opts = normalizeList<BillSundryRecord>(s);
                 setSundryOptions(opts);
 
@@ -815,17 +839,28 @@ export default function PurchaseReturnCreatePage() {
 
                                 <div className="mt-4">
                                     <div className="text-xs text-muted-foreground">Purchase Return Type <span className="text-red-500">*</span></div>
-                                    <select
-                                        ref={purchaseTypeRef}
-                                        value={form.purchaseType}
-                                        onChange={(e) => setForm((f) => ({ ...f, purchaseType: e.target.value as any }))}
-                                        className="mt-2 h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900"
-                                        disabled={!isEditMode}
-                                    >
-                                        <option value="vat_13">VAT 13% Return</option>
-                                        <option value="exempt">Exempt Return</option>
-                                        <option value="import">Import Return</option>
-                                    </select>
+                                    <div className="relative mt-2">
+                                        <SearchableSelect<{ id: string; name: string }>
+                                            valueId={form.purchaseTypeId}
+                                            fallbackLabel={form.purchaseType}
+                                            onChange={(id, opt) => setForm((f) => ({ ...f, purchaseTypeId: id, purchaseType: opt?.name ?? "" }))}
+                                            options={purchaseTypes}
+                                            getLabel={(t) => t.name}
+                                            disabled={!isEditMode}
+                                            buttonClassName="h-11 rounded-2xl bg-white dark:bg-slate-900 pr-[100px]"
+                                            onAdd={() => setAddPurchaseTypeOpen(true)}
+                                        />
+                                        {!form.purchaseTypeId && isEditMode && (
+                                            <Button
+                                                type="button"
+                                                onClick={() => setAddPurchaseTypeOpen(true)}
+                                                className="absolute z-10 right-1.5 top-1/2 -translate-y-1/2 h-7 rounded-lg px-1.5 text-[10px] font-medium bg-sky-600 text-white hover:bg-sky-700 border-none shadow-sm transition-all active:scale-95"
+                                            >
+                                                <Plus className="mr-1 h-3 w-3" />
+                                                Define New
+                                            </Button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -851,7 +886,8 @@ export default function PurchaseReturnCreatePage() {
                             <Button
                                 type="button"
                                 onClick={() => setAddVendorOpen(true)}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 h-10 rounded-full px-4 text-xs bg-white text-slate-900 border border-slate-200 hover:!bg-cyan-600 hover:!text-white hover:!border-cyan-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 h-10 rounded-full px-4 text-xs bg-sky-600 text-white hover:bg-sky-700 border-none shadow-lg shadow-sky-500/20 transition-all active:scale-95 font-bold uppercase tracking-widest"
+                                disabled={!isEditMode}
                             >
                                 <Plus className="mr-2 h-3.5 w-3.5" />
                                 New Vendor
@@ -866,7 +902,7 @@ export default function PurchaseReturnCreatePage() {
                             ref={addLineButtonRef}
                             type="button"
                             onClick={addLine}
-                            className="rounded-full h-10 px-4 bg-white text-slate-900 border border-slate-200 hover:!bg-cyan-600 hover:!text-white hover:!border-cyan-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95"
+                            className="rounded-full bg-sky-600 text-white hover:bg-sky-700 shadow-sm transition-all active:scale-95 border-none h-10 px-6 text-xs font-bold uppercase tracking-widest"
                         >
                             <Plus className="mr-2 h-4 w-4" />
                             Add Column
@@ -921,7 +957,7 @@ export default function PurchaseReturnCreatePage() {
                                                             <Button
                                                                 type="button"
                                                                 onClick={() => { setActiveLineIdx(idx); setAddItemOpen(true); }}
-                                                                className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 rounded-xl px-3 text-[10px] font-medium bg-white text-slate-900 border border-slate-200 hover:!bg-cyan-600 hover:!text-white hover:!border-cyan-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95"
+                                                                className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 rounded-xl px-3 text-[10px] font-medium bg-sky-600 text-white border-none hover:bg-sky-700 transition-all active:scale-95"
                                                             >
                                                                 <Plus className="mr-1 h-3 w-3" /> Add item
                                                             </Button>
@@ -979,14 +1015,14 @@ export default function PurchaseReturnCreatePage() {
                 {isEditMode && (
                     <div className="mb-4 flex flex-col items-end gap-2 text-right">
                         <Button
-                            ref={addSundryButtonRef}
-                            type="button"
-                            onClick={addSundry}
-                            className="rounded-full h-10 px-4 bg-white text-slate-900 border border-slate-200 hover:!bg-cyan-600 hover:!text-white hover:!border-cyan-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95"
-                        >
-                            <Plus className="mr-2 h-4 w-4" />
-                            Add Sundry Column
-                        </Button>
+                        ref={addSundryButtonRef}
+                        type="button"
+                        onClick={addSundry}
+                        className="rounded-full bg-sky-600 text-white hover:bg-sky-700 shadow-sm transition-all active:scale-95 border-none h-10 px-6 text-xs font-bold uppercase tracking-widest"
+                    >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Sundry
+                    </Button>
                     </div>
                 )}
 
@@ -1020,9 +1056,23 @@ export default function PurchaseReturnCreatePage() {
                                                         }}
                                                         options={sundryOptions}
                                                         getLabel={(s) => s.name}
-                                                        buttonClassName="h-10 rounded-xl pr-[110px]"
+                                                        buttonClassName="h-10 rounded-xl pr-[100px]"
                                                         disabled={!isEditMode || r.id === "vat" || r.id === "discount"}
+                                                        onAdd={() => { setActiveSundryIdx(i); setAddSundryOpen(true); }}
                                                     />
+                                                    {!r.sundryId && r.id !== "discount" && r.id !== "vat" && isEditMode && (
+                                                        <Button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setActiveSundryIdx(i);
+                                                                setAddSundryOpen(true);
+                                                            }}
+                                                            className="absolute z-10 right-1.5 top-1/2 -translate-y-1/2 h-7 rounded-lg px-1.5 text-[10px] font-medium bg-sky-600 text-white hover:bg-sky-700 border-none shadow-sm transition-all active:scale-95"
+                                                        >
+                                                            <Plus className="mr-1 h-3 w-3" />
+                                                            Define New
+                                                        </Button>
+                                                    )}
                                                 </div>
                                             </td>
                                             <td className="px-3 py-2 text-right">
@@ -1075,10 +1125,11 @@ export default function PurchaseReturnCreatePage() {
                                 <div className="h-px bg-slate-200 dark:bg-slate-800 my-1 op-40" />
                                 <div className="flex items-center justify-between"><span className="text-muted-foreground">Subtotal</span><MoneyText value={itemsSubtotal} /></div>
                                 <div className="flex items-center justify-between"><span className="text-muted-foreground">VAT</span><MoneyText value={billSundryComputed.rows.find(r => r.id === "vat")?.amount ?? 0} /></div>
+                                <div className="flex items-center justify-between"><span className="text-muted-foreground">Other Sundry</span><MoneyText value={otherSundryTotal} /></div>
                             </div>
                             <div className="mt-5 flex items-center justify-between rounded-2xl bg-white px-4 py-3 shadow-sm dark:bg-slate-950">
                                 <div className="text-sm font-semibold">Total</div>
-                                <div className="text-sm font-semibold text-cyan-600 dark:text-cyan-400"><MoneyText value={total} /></div>
+                                <div className="text-sm font-semibold text-sky-600 dark:text-sky-400"><MoneyText value={total} /></div>
                             </div>
                         </div>
                     </div>
@@ -1089,26 +1140,46 @@ export default function PurchaseReturnCreatePage() {
                             ref={notesRef as any}
                             value={form.notes}
                             onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                            className="min-h-[120px] w-full rounded-2xl border-2 border-slate-100 bg-slate-50/30 p-5 text-sm outline-none focus:border-cyan-500 dark:border-slate-800 dark:bg-slate-950 transition-all"
+                            className="min-h-[120px] w-full rounded-2xl border-2 border-slate-100 bg-slate-50/30 p-5 text-sm outline-none focus:border-sky-500 dark:border-slate-800 dark:bg-slate-950 transition-all"
                             disabled={!isEditMode}
                         />
                         <div className="mt-8 flex flex-wrap items-center justify-end gap-3">
                             {(!voucherStatus || voucherStatus === "draft") && isEditMode && (
                                 <>
-                                    <Button onClick={onSave} className="rounded-full h-10 px-6 bg-white text-slate-900 border border-slate-200 hover:!bg-cyan-600 hover:!text-white hover:!border-cyan-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95">
-                                        <Save className="mr-2 h-4 w-4" /> Save Draft
+                                    <Button
+                                        type="button"
+                                        onClick={onSave}
+                                        disabled={loading || sending || !isEditMode}
+                                        className="flex-1 md:flex-none rounded-2xl h-12 px-6 font-bold text-xs uppercase tracking-widest transition-all active:scale-95 bg-sky-600 text-white hover:bg-sky-700 border-none shadow-lg shadow-sky-500/20"
+                                    >
+                                        <Save className="mr-2 h-4 w-4" />
+                                        {loading ? "Saving..." : "Save Draft"}
                                     </Button>
-                                    <Button onClick={onPost} className="flex-1 md:flex-none rounded-2xl h-12 px-10 font-black text-xs uppercase tracking-widest shadow-xl transition-all bg-cyan-600 text-white hover:!bg-cyan-700 hover:scale-105 active:scale-95 shadow-cyan-500/25">
-                                        <Send className="mr-2 h-4 w-4" /> Post Return
+                                    <Button
+                                        onClick={onPost}
+                                        disabled={loading || sending || !isEditMode}
+                                        className="flex-1 md:flex-none rounded-2xl h-12 px-10 font-black text-xs uppercase tracking-widest shadow-xl transition-all hover:scale-105 active:scale-95 shadow-sky-500/25 bg-sky-600 text-white hover:bg-sky-700 border-none"
+                                    >
+                                        <Send className="mr-2 h-4 w-4" />
+                                        {sending ? "Posting..." : "Post Return"}
                                     </Button>
                                 </>
                             )}
-                            <Button onClick={onPreview} className="rounded-full h-10 px-6 bg-white text-slate-900 border border-slate-200 hover:!bg-cyan-600 hover:!text-white hover:!border-cyan-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95">
-                                <Eye className="mr-2 h-4 w-4" /> Preview
-                            </Button>
-                            <Button onClick={onPrint} className="rounded-full h-10 px-6 bg-white text-slate-900 border border-slate-200 hover:!bg-cyan-600 hover:!text-white hover:!border-cyan-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95">
-                                <Printer className="mr-2 h-4 w-4" /> Print
-                            </Button>
+                             <Button
+                                 type="button"
+                                 onClick={onPreview}
+                                 className="flex-1 md:flex-none rounded-2xl h-12 px-6 font-bold text-xs uppercase tracking-widest transition-all active:scale-95 bg-sky-600 text-white hover:bg-sky-700 border-none shadow-md shadow-sky-500/10"
+                             >
+                                 <Eye className="mr-2 h-4 w-4" />
+                                 Preview
+                             </Button>                                       <Button
+                                 type="button"
+                                 onClick={onPrint}
+                                 className="flex-1 md:flex-none rounded-2xl h-12 px-6 font-bold text-xs uppercase tracking-widest transition-all active:scale-95 bg-sky-600 text-white hover:bg-sky-700 border-none shadow-md shadow-sky-500/10"
+                             >
+                                 <Printer className="mr-2 h-4 w-4" />
+                                 Print
+                             </Button>
                         </div>
                     </div>
                 </section>
@@ -1117,6 +1188,7 @@ export default function PurchaseReturnCreatePage() {
             <AddItemDialog open={addItemOpen} onClose={() => setAddItemOpen(false)} onSuccess={(newItem) => { setItems(prev => [...prev, newItem]); if (activeLineIdx !== null) updateLine(activeLineIdx, { itemId: newItem.id, rate: newItem.purchasePrice?.toString() || "" }); }} />
             <AddVendorDialog open={addVendorOpen} onClose={() => setAddVendorOpen(false)} onSuccess={(newVendor) => { setParties(prev => [...prev, newVendor]); setForm(f => ({ ...f, partyId: newVendor.id })); }} />
             <AddBillSundryDialog open={addSundryOpen} onClose={() => setAddSundryOpen(false)} onSuccess={(newSundry) => { setSundryOptions(prev => [...prev, newSundry]); if (activeSundryIdx !== null) { const r = billSundries[activeSundryIdx]; if (r) updateSundry(r.id, { sundryId: newSundry.id, name: newSundry.name, type: newSundry.type as any, ratePct: newSundry.rate?.toString() || "0" }); } }} />
+            <AddPurchaseTypeDialog open={addPurchaseTypeOpen} onClose={() => setAddPurchaseTypeOpen(false)} onSuccess={(st) => { setPurchaseTypes(prev => [...prev, st]); setForm(f => ({ ...f, purchaseTypeId: st.id, purchaseType: st.name })); }} />
         </div>
     );
 }

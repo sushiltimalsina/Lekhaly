@@ -308,7 +308,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                                                 setOpen(false);
                                                 props.onAdd?.();
                                             }}
-                                            className="rounded-full h-8 bg-emerald-600 text-white hover:bg-emerald-700 border-none"
+                                            className="rounded-full h-8 bg-rose-600 text-white hover:bg-rose-700 border-none"
                                         >
                                             <Plus className="mr-1.5 h-3.5 w-3.5" />
                                             Add New
@@ -693,7 +693,7 @@ export default function SalesReturnCreatePage() {
                 <div className="mb-4">
                     <Button
                         onClick={() => navigate("/sales-return")}
-                        className="rounded-full h-10 px-4 bg-white text-slate-900 border border-slate-200 hover:bg-rose-600 hover:text-white hover:border-rose-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 dark:hover:bg-rose-600 dark:hover:text-white dark:hover:border-rose-600 transition-colors shadow-sm"
+                        className="rounded-full h-10 px-4 bg-white text-slate-900 border border-slate-200 hover:bg-rose-600 hover:text-white hover:border-rose-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm"
                     >
                         <ArrowLeft className="mr-2 h-4 w-4" />
                         Back to Registry
@@ -810,9 +810,9 @@ export default function SalesReturnCreatePage() {
                                             <Button
                                                 type="button"
                                                 onClick={() => setAddPaymentMethodOpen(true)}
-                                                className="absolute right-2 top-[calc(50%+4px)] -translate-y-1/2 h-7 rounded-full px-3 text-[10px] bg-rose-600 text-white border-none hover:bg-rose-700 shadow-sm transition-all active:scale-95"
+                                                className="absolute right-1.5 top-[calc(50%+4px)] -translate-y-1/2 h-8 rounded-xl px-3 text-[10px] font-medium bg-rose-600 text-white border-none hover:bg-rose-700 shadow-sm transition-all active:scale-95"
                                             >
-                                                <Plus className="mr-1.5 h-3 w-3" />
+                                                <Plus className="mr-1 h-3 w-3" />
                                                 New
                                             </Button>
                                         )}
@@ -856,9 +856,9 @@ export default function SalesReturnCreatePage() {
                                             <Button
                                                 type="button"
                                                 onClick={() => setAddSaleTypeOpen(true)}
-                                                className="absolute right-2 top-[calc(50%+4px)] -translate-y-1/2 h-7 rounded-full px-3 text-[10px] bg-rose-600 text-white border-none hover:bg-rose-700 shadow-sm transition-all active:scale-95"
+                                                className="absolute right-1.5 top-[calc(50%+4px)] -translate-y-1/2 h-8 rounded-xl px-3 text-[10px] font-medium bg-rose-600 text-white border-none hover:bg-rose-700 shadow-sm transition-all active:scale-95"
                                             >
-                                                <Plus className="mr-1.5 h-3 w-3" />
+                                                <Plus className="mr-1 h-3 w-3" />
                                                 New
                                             </Button>
                                         )}
@@ -888,7 +888,7 @@ export default function SalesReturnCreatePage() {
                 <section className="mb-6">
                     <div className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-200">Customer</div>
 
-                    <div className="relative max-w-[980px]">
+                    <div className="relative max-w-[970px]">
                         <SearchableSelect<PartyRecord>
                             buttonRef={customerSelectRef}
                             placeholder="Search customer…"
@@ -912,7 +912,7 @@ export default function SalesReturnCreatePage() {
                             <Button
                                 type="button"
                                 onClick={() => setAddCustomerOpen(true)}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 h-10 rounded-full px-4 text-xs bg-white text-slate-900 border border-slate-200 hover:bg-rose-600 hover:text-white hover:border-rose-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 dark:hover:bg-rose-600 dark:hover:text-white dark:hover:border-rose-600 transition-colors shadow-sm active:scale-95"
+                                className="absolute right-1.5 top-1/2 -translate-y-1/2 h-9 rounded-xl px-4 text-[11px] bg-rose-600 text-white border-none hover:bg-rose-700 shadow-lg shadow-rose-500/20 transition-all active:scale-95 font-bold uppercase tracking-widest"
                             >
                                 <Plus className="mr-2 h-3.5 w-3.5" />
                                 New Customer
@@ -927,7 +927,7 @@ export default function SalesReturnCreatePage() {
                         ref={addLineButtonRef}
                         type="button"
                         onClick={addLine}
-                        className="rounded-full bg-rose-600 text-white hover:bg-rose-700 shadow-sm transition-all active:scale-95"
+                        className="rounded-2xl h-11 px-6 bg-rose-600 text-white hover:bg-rose-700 shadow-xl shadow-rose-500/20 transition-all active:scale-95 border-none font-bold text-xs uppercase tracking-widest"
                     >
                         <Plus className="mr-2 h-4 w-4" />
                         Add Column
@@ -1213,10 +1213,10 @@ export default function SalesReturnCreatePage() {
                                                                 setActiveSundryIdx(i);
                                                                 setAddSundryOpen(true);
                                                             }}
-                                                            className="absolute z-10 right-7 top-1/2 -translate-y-1/2 h-7 rounded-lg px-1.5 text-[10px] font-medium bg-rose-600 text-white border-none hover:bg-rose-700 shadow-sm transition-all active:scale-95"
+                                                            className="absolute right-1.5 top-1/2 -translate-y-1/2 h-7 rounded-lg px-2 text-[10px] font-medium bg-rose-600 text-white border-none hover:bg-rose-700 shadow-sm transition-all active:scale-95"
                                                         >
-                                                            <Plus className="h-3 w-3" />
-                                                            Define New
+                                                            <Plus className="mr-1 h-3 w-3" />
+                                                            New
                                                         </Button>
                                                     )}
                                                 </div>
@@ -1418,13 +1418,13 @@ export default function SalesReturnCreatePage() {
                             className="h-11 rounded-2xl bg-slate-50/60"
                         />
 
-                        <div className="mt-5 flex flex-wrap items-center justify-end gap-2">
-                            <Button type="button" variant="outline" onClick={onPreview} className="rounded-full px-5 border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800">
+                        <div className="mt-5 flex flex-wrap items-center justify-end gap-3">
+                            <Button type="button" variant="outline" onClick={onPreview} className="rounded-2xl h-12 px-6 border-2 border-rose-100 text-rose-700 hover:bg-rose-50 hover:border-rose-200 transition-all active:scale-95 font-bold text-xs uppercase tracking-widest">
                                 <Eye className="mr-2 h-4 w-4" />
                                 Preview
                             </Button>
 
-                            <Button type="button" variant="outline" onClick={onPrint} className="rounded-full px-5 border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800">
+                            <Button type="button" variant="outline" onClick={onPrint} className="rounded-2xl h-12 px-6 border-2 border-rose-100 text-rose-700 hover:bg-rose-50 hover:border-rose-200 transition-all active:scale-95 font-bold text-xs uppercase tracking-widest">
                                 <Printer className="mr-2 h-4 w-4" />
                                 Print
                             </Button>
@@ -1433,20 +1433,20 @@ export default function SalesReturnCreatePage() {
                                 type="button"
                                 onClick={onSave}
                                 disabled={loading || sending}
-                                className="rounded-full bg-rose-100 px-6 text-rose-700 hover:bg-rose-200 border-none"
+                                className="rounded-2xl h-12 bg-rose-100 px-8 text-rose-700 hover:bg-rose-200 border-none transition-all active:scale-95 font-bold text-xs uppercase tracking-widest"
                             >
                                 <Save className="mr-2 h-4 w-4" />
-                                {loading ? "Saving..." : "Save"}
+                                {loading ? "Saving..." : "Save Draft"}
                             </Button>
 
                             <Button
                                 type="button"
                                 onClick={onSend}
                                 disabled={loading || sending}
-                                className="rounded-full bg-rose-600 px-7 text-white hover:bg-rose-700 shadow-lg shadow-rose-500/20"
+                                className="rounded-2xl h-12 bg-rose-600 px-10 text-white hover:bg-rose-700 shadow-xl shadow-rose-500/25 border-none transition-all hover:scale-105 active:scale-95 font-black text-xs uppercase tracking-widest"
                             >
                                 <Send className="mr-2 h-4 w-4" />
-                                {sending ? "Sending..." : "Send"}
+                                {sending ? "Sending..." : "Post Return"}
                             </Button>
                         </div>
                     </div>

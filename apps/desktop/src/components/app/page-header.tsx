@@ -10,14 +10,18 @@ type PageHeaderProps = {
   breadcrumb?: React.ReactNode;
   className?: string;
   icon?: any;
+  iconContainerClassName?: string;
 };
 
-export default function PageHeader({ title, description, actions, breadcrumb, className, icon: Icon }: PageHeaderProps) {
+export default function PageHeader({ title, description, actions, breadcrumb, className, icon: Icon, iconContainerClassName }: PageHeaderProps) {
   return (
     <div className={cn("mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between", className)}>
       <div className="flex items-center gap-4">
         {Icon && (
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-600 text-white shadow-lg shadow-orange-500/20 shrink-0">
+          <div className={cn(
+            "flex h-12 w-12 items-center justify-center rounded-2xl text-white shrink-0",
+            iconContainerClassName || "bg-orange-600 shadow-lg shadow-orange-500/20"
+          )}>
             <Icon className="h-6 w-6" />
           </div>
         )}

@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   FileText,
+  Gavel,
   BookOpen,
   Users,
   Building2,
@@ -121,7 +122,7 @@ const navData: NavItem[] = [
   },
   {
     label: "Orders",
-    icon: ShoppingCart,
+    icon: Gavel,
     children: [
       {
         label: "Sales Order",
