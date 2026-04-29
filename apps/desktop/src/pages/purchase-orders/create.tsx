@@ -36,6 +36,7 @@ import {
     ChevronRight,
     ArrowLeft,
     RefreshCw,
+    ShoppingBag,
 } from "lucide-react";
 import { toBs } from "@/lib/dates/bs";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -676,6 +677,7 @@ export default function PurchaseOrderCreatePage() {
                     </Button>
                 </div>
                 <PageHeader
+                    icon={ShoppingBag}
                     title={searchParams.get("id") ? (isEditMode ? "Edit Purchase Order" : "View Purchase Order") : "Create New Purchase Order"}
                     description={
                         searchParams.get("id")
@@ -688,7 +690,7 @@ export default function PurchaseOrderCreatePage() {
                             {!isEditMode && searchParams.get("id") && (
                                 <Button
                                     onClick={onConvertToPurchase}
-                                    className="rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg h-10 px-4"
+                                    className="rounded-full h-10 px-8 bg-white text-slate-900 border border-slate-200 hover:!bg-orange-600 hover:!text-white hover:!border-orange-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95 text-xs font-bold uppercase tracking-widest"
                                 >
                                     <RefreshCw className="mr-2 h-4 w-4" />
                                     Convert to Bill
@@ -698,7 +700,7 @@ export default function PurchaseOrderCreatePage() {
                             {!isEditMode && searchParams.get("id") ? (
                                 <Button
                                     onClick={() => setIsEditMode(true)}
-                                    className="rounded-2xl bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-500/20 h-10 px-6 font-black text-xs uppercase tracking-widest transition-all active:scale-95 border-none"
+                                    className="rounded-full h-10 px-8 bg-white text-slate-900 border border-slate-200 hover:!bg-orange-600 hover:!text-white hover:!border-orange-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95 text-xs font-bold uppercase tracking-widest"
                                 >
                                     Edit
                                 </Button>
@@ -845,11 +847,11 @@ export default function PurchaseOrderCreatePage() {
                             <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Items</h3>
                             {isEditMode && (
                                 <div className="flex gap-2">
-                                    <Button size="sm" variant="outline" onClick={() => setAddItemOpen(true)} className="h-8">
+                                    <Button size="sm" variant="outline" onClick={() => setAddItemOpen(true)} className="rounded-full h-8 px-4 text-xs bg-white text-slate-900 border border-slate-200 hover:!bg-orange-600 hover:!text-white hover:!border-orange-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95 font-bold uppercase tracking-widest">
                                         <Plus className="mr-2 h-3.5 w-3.5" />
                                         New Item
                                     </Button>
-                                    <Button size="sm" onClick={addLine} className="h-8">
+                                    <Button size="sm" onClick={addLine} className="rounded-full bg-orange-600 text-white hover:bg-orange-700 shadow-sm transition-all active:scale-95 border-none h-8 px-4 text-xs font-bold uppercase tracking-widest">
                                         Add Line (Alt+A)
                                     </Button>
                                 </div>
@@ -968,7 +970,7 @@ export default function PurchaseOrderCreatePage() {
                         <div className="space-y-4">
                             <label className="text-sm font-semibold">Terms & Conditions</label>
                             <textarea
-                                className="w-full h-32 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-800 dark:bg-slate-900/50"
+                                className="w-full h-32 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm outline-none focus:ring-2 focus:ring-orange-500/20 dark:border-slate-800 dark:bg-slate-900/50"
                                 placeholder="Payment terms, delivery details..."
                                 value={form.terms}
                                 onChange={(e) => setForm(f => ({ ...f, terms: e.target.value }))}
@@ -990,10 +992,10 @@ export default function PurchaseOrderCreatePage() {
                                 <h3 className="font-semibold">Bill Sundries</h3>
                                 {isEditMode && (
                                     <div className="flex gap-2">
-                                        <Button size="sm" variant="outline" onClick={() => setAddSundryOpen(true)} className="h-7 text-xs">
-                                            <Plus className="mr-1 h-3 w-3" /> New
+                                        <Button size="sm" variant="outline" onClick={() => setAddSundryOpen(true)} className="rounded-full h-7 px-4 text-[10px] bg-white text-slate-900 border border-slate-200 hover:!bg-orange-600 hover:!text-white hover:!border-orange-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95 font-bold uppercase tracking-widest">
+                                            <Plus className="mr-1.5 h-3 w-3" /> New
                                         </Button>
-                                        <Button size="sm" variant="ghost" onClick={addSundry} className="h-7 text-xs">
+                                        <Button size="sm" variant="ghost" onClick={addSundry} className="rounded-full h-7 px-4 text-[10px] text-slate-500 hover:text-orange-600 dark:text-slate-400 transition-colors font-bold uppercase tracking-widest">
                                             Add Row
                                         </Button>
                                     </div>
@@ -1055,8 +1057,9 @@ export default function PurchaseOrderCreatePage() {
                 {/* Footer Actions */}
                 {isEditMode && (
                     <div className="mt-8 flex items-center justify-end gap-4 rounded-2xl bg-slate-50 p-4 dark:bg-slate-900/50">
-                        <Button variant="ghost" onClick={() => navigate(-1)}>Cancel</Button>
-                        <Button onClick={onSave} disabled={loading} className="rounded-xl px-8">
+                        <Button variant="ghost" onClick={() => navigate(-1)} className="rounded-2xl h-12 px-6 font-bold text-xs uppercase tracking-widest transition-all active:scale-95">Cancel</Button>
+                        <Button onClick={onSave} disabled={loading} className="flex-1 md:flex-none rounded-2xl h-12 px-10 font-black text-xs uppercase tracking-widest shadow-xl transition-all hover:scale-105 active:scale-95 shadow-orange-500/25 bg-orange-600 text-white hover:bg-orange-700 border-none">
+                            <Save className="mr-2 h-4 w-4" />
                             {loading ? "Saving..." : "Save Purchase Order"}
                         </Button>
                     </div>

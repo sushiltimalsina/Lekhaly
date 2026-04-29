@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
@@ -9,19 +9,27 @@ type PageHeaderProps = {
   actions?: React.ReactNode;
   breadcrumb?: React.ReactNode;
   className?: string;
+  icon?: any;
 };
 
-export default function PageHeader({ title, description, actions, breadcrumb, className }: PageHeaderProps) {
+export default function PageHeader({ title, description, actions, breadcrumb, className, icon: Icon }: PageHeaderProps) {
   return (
     <div className={cn("mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between", className)}>
-      <div className="space-y-1">
-        {breadcrumb ? <div className="mb-2">{breadcrumb}</div> : null}
-        <h1 className="text-2xl font-heading font-bold tracking-tight text-foreground sm:text-3xl">
-          {title}
-        </h1>
-        {description ? (
-          <p className="text-sm text-muted-foreground max-w-2xl">{description}</p>
-        ) : null}
+      <div className="flex items-center gap-4">
+        {Icon && (
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-600 text-white shadow-lg shadow-orange-500/20 shrink-0">
+            <Icon className="h-6 w-6" />
+          </div>
+        )}
+        <div className="space-y-1">
+          {breadcrumb ? <div className="mb-2">{breadcrumb}</div> : null}
+          <h1 className="text-2xl font-heading font-bold tracking-tight text-foreground sm:text-3xl">
+            {title}
+          </h1>
+          {description ? (
+            <p className="text-sm text-muted-foreground max-w-2xl">{description}</p>
+          ) : null}
+        </div>
       </div>
 
       {actions ? (

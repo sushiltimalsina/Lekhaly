@@ -112,12 +112,13 @@ export default function PurchaseListPage() {
     return (
         <div className="space-y-6">
             <PageHeader
+                icon={ShoppingBag}
                 title="Purchase Bills"
                 description="Monitor vendor invoices, stock inward registries, and supplier balances."
                 actions={
                     <Button
                         onClick={() => router.push("/purchase/create")}
-                        className="rounded-full h-10 px-6 bg-white text-slate-900 border border-slate-200 hover:!bg-orange-600 hover:!text-white hover:!border-orange-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95"
+                        className="rounded-full h-10 px-6 text-xs bg-white text-slate-900 border border-slate-200 hover:!bg-orange-600 hover:!text-white hover:!border-orange-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95"
                     >
                         <ShoppingBag className="mr-2 h-4 w-4" />
                         New Bill

@@ -3,6 +3,7 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import DualDateInput from "@/components/app/dual-date-input";
+import PageHeader from "@/components/app/page-header";
 import { Input } from "@lekhaly/ui";
 import { Button } from "@lekhaly/ui";
 import { MoneyText } from "@/components/app/money";
@@ -31,7 +32,7 @@ import {
     FileText,
     ChevronRight,
     ArrowLeft,
-    ShoppingCart,
+    ShoppingBag,
     History,
     Search
 } from "lucide-react";
@@ -281,7 +282,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                                             onMouseEnter={() => setActiveIndex(i)}
                                             className={cn(
                                                 "flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition-colors",
-                                                active ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300" : "hover:bg-slate-50 dark:hover:bg-slate-800/50",
+                                                active ? "bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300" : "hover:bg-slate-50 dark:hover:bg-slate-800/50",
                                                 selected && !active && "bg-slate-50 dark:bg-slate-800/30"
                                             )}
                                         >
@@ -293,7 +294,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                                                     </span>
                                                 )}
                                             </div>
-                                            {selected ? <Check className="h-4 w-4 text-indigo-600" /> : null}
+                                            {selected ? <Check className="h-4 w-4 text-orange-600" /> : null}
                                         </button>
                                     );
                                 })
@@ -800,43 +801,35 @@ export default function PurchaseCreatePage() {
                 <div className="mb-4">
                     <Button
                         onClick={() => router.push("/purchase")}
-                        className="rounded-full h-10 px-4 bg-white text-slate-900 border border-slate-200 hover:!bg-fuchsia-600 hover:!text-white hover:!border-fuchsia-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm"
+                        className="rounded-full h-10 px-4 bg-white text-slate-900 border border-slate-200 hover:!bg-orange-600 hover:!text-white hover:!border-orange-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm"
                     >
                         <ArrowLeft className="mr-2 h-4 w-4" />
                         Back to Registry
                     </Button>
                 </div>
 
-                <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-4">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-fuchsia-600 text-white shadow-xl shadow-fuchsia-500/20">
-                            <ShoppingCart className="h-6 w-6" />
-                        </div>
-                        <div>
-                            <h1 className="text-2xl font-bold italic tracking-tight text-slate-900 dark:text-slate-100">
-                                {searchParams.get("id") ? (isEditMode ? "Edit Purchase Invoice" : "View Purchase Invoice") : "Create New Purchase Invoice"}
-                            </h1>
-                            <p className="text-xs text-muted-foreground mt-0.5 font-medium">
-                                {searchParams.get("id")
-                                    ? `${voucherStatus ? `Status: ${voucherStatus.charAt(0).toUpperCase() + voucherStatus.slice(1)}. ` : ""}${isEditMode ? "Modify the details below." : "Click Edit to modify this invoice."}`
-                                    : "Fill in the details below to record a new purchase."}
-                            </p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        {!isEditMode && searchParams.get("id") ? (
+                <PageHeader
+                    icon={ShoppingBag}
+                    title={searchParams.get("id") ? (isEditMode ? "Edit Purchase Invoice" : "View Purchase Invoice") : "Create New Purchase Invoice"}
+                    description={
+                        searchParams.get("id")
+                            ? `${voucherStatus ? `Status: ${voucherStatus.charAt(0).toUpperCase() + voucherStatus.slice(1)}. ` : ""}${isEditMode ? "Modify the details below." : "Click Edit to modify this invoice."}`
+                            : "Fill in the details below to record a new purchase."
+                    }
+                    actions={
+                        !isEditMode && searchParams.get("id") ? (
                             <Button
                                 onClick={() => setIsEditMode(true)}
-                                className="rounded-full h-10 px-8 bg-white text-slate-900 border border-slate-200 hover:!bg-fuchsia-600 hover:!text-white hover:!border-fuchsia-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95"
+                                className="rounded-full h-10 px-8 bg-white text-slate-900 border border-slate-200 hover:!bg-orange-600 hover:!text-white hover:!border-orange-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95"
                             >
                                 <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 0 002 2h11a2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                 </svg>
                                 Edit
                             </Button>
-                        ) : undefined}
-                    </div>
-                </div>
+                        ) : undefined
+                    }
+                />
 
                 {/* Alerts */}
                 <div className="mb-4 grid gap-3">
@@ -956,7 +949,7 @@ export default function PurchaseCreatePage() {
                             <Button
                                 type="button"
                                 onClick={() => setAddVendorOpen(true)}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 h-10 rounded-full px-4 text-xs bg-white text-slate-900 border border-slate-200 hover:!bg-fuchsia-600 hover:!text-white hover:!border-fuchsia-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 h-10 rounded-full px-4 text-xs bg-white text-slate-900 border border-slate-200 hover:!bg-orange-600 hover:!text-white hover:!border-orange-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95 font-bold uppercase tracking-widest"
                                 disabled={!isEditMode}
                             >
                                 <Plus className="mr-2 h-3.5 w-3.5" />
@@ -973,7 +966,7 @@ export default function PurchaseCreatePage() {
                             ref={addLineButtonRef}
                             type="button"
                             onClick={addLine}
-                            className="rounded-full h-10 px-4 bg-white text-slate-900 border border-slate-200 hover:!bg-fuchsia-600 hover:!text-white hover:!border-fuchsia-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95"
+                            className="rounded-full bg-orange-600 text-white hover:bg-orange-700 shadow-sm transition-all active:scale-95 border-none h-10 px-6 text-xs font-bold uppercase tracking-widest"
                         >
                             <Plus className="mr-2 h-4 w-4" />
                             Add Column
@@ -1571,19 +1564,18 @@ export default function PurchaseCreatePage() {
                         <div className="mt-8 flex flex-wrap items-center justify-end gap-2">
                             <Button
                                 type="button"
-                                variant="outline"
                                 onClick={onSave}
                                 disabled={loading || sending || !isEditMode}
-                                className="rounded-full h-10 px-6 bg-white text-slate-900 border border-slate-200 hover:!bg-orange-600 hover:!text-white hover:!border-orange-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95"
+                                className="flex-1 md:flex-none rounded-2xl h-12 px-6 font-bold text-xs uppercase tracking-widest transition-all active:scale-95 bg-orange-600 text-white hover:bg-orange-700 border-none shadow-lg shadow-orange-500/20"
                             >
                                 <Save className="mr-2 h-4 w-4" />
-                                {loading ? "Saving..." : "Save"}
+                                {loading ? "Saving..." : "Save Draft"}
                             </Button>
 
                             <Button
                                 onClick={onPost}
                                 disabled={loading || sending || !isEditMode}
-                                className="flex-1 md:flex-none rounded-full h-10 px-10 bg-white text-slate-900 border border-slate-200 hover:!bg-orange-600 hover:!text-white hover:!border-orange-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95"
+                                className="flex-1 md:flex-none rounded-2xl h-12 px-10 font-black text-xs uppercase tracking-widest shadow-xl transition-all hover:scale-105 active:scale-95 shadow-orange-500/25 bg-orange-600 text-white hover:bg-orange-700 border-none"
                             >
                                 <Send className="mr-2 h-4 w-4" />
                                 {sending ? "Posting..." : "Post & Finalize"}
@@ -1591,9 +1583,8 @@ export default function PurchaseCreatePage() {
 
                             <Button
                                 type="button"
-                                variant="outline"
                                 onClick={onPreview}
-                                className="rounded-full h-10 px-6 bg-white text-slate-900 border border-slate-200 hover:!bg-orange-600 hover:!text-white hover:!border-orange-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95"
+                                className="flex-1 md:flex-none rounded-2xl h-12 px-6 font-bold text-xs uppercase tracking-widest transition-all active:scale-95 bg-orange-600 text-white hover:bg-orange-700 border-none shadow-md shadow-orange-500/10"
                             >
                                 <Eye className="mr-2 h-4 w-4" />
                                 Preview
@@ -1601,9 +1592,8 @@ export default function PurchaseCreatePage() {
 
                             <Button
                                 type="button"
-                                variant="outline"
                                 onClick={onPrint}
-                                className="rounded-full h-10 px-6 bg-white text-slate-900 border border-slate-200 hover:!bg-orange-600 hover:!text-white hover:!border-orange-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95"
+                                className="flex-1 md:flex-none rounded-2xl h-12 px-6 font-bold text-xs uppercase tracking-widest transition-all active:scale-95 bg-orange-600 text-white hover:bg-orange-700 border-none shadow-md shadow-orange-500/10"
                             >
                                 <Printer className="mr-2 h-4 w-4" />
                                 Print
@@ -1611,9 +1601,8 @@ export default function PurchaseCreatePage() {
 
                             <Button
                                 type="button"
-                                variant="outline"
                                 onClick={onPrintPreview}
-                                className="rounded-full h-10 px-6 bg-white text-slate-900 border border-slate-200 hover:!bg-orange-600 hover:!text-white hover:!border-orange-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95"
+                                className="flex-1 md:flex-none rounded-2xl h-12 px-6 font-bold text-xs uppercase tracking-widest transition-all active:scale-95 bg-orange-600 text-white hover:bg-orange-700 border-none shadow-md shadow-orange-500/10"
                             >
                                 <FileText className="mr-2 h-4 w-4" />
                                 Print Preview

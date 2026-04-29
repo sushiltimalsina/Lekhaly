@@ -4,7 +4,7 @@ import * as React from "react";
 import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import {
-    Plus,
+    ShoppingBag,
     ChevronRight,
     ChevronDown,
     PackageSearch,
@@ -161,14 +161,15 @@ export default function PurchaseOrdersListPage() {
         <div className="space-y-6 pb-20">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <PageHeader
+                    icon={ShoppingBag}
                     title="Purchase Orders"
                     description="Manage vendor orders and track procurement fulfillment."
                     actions={
                         <Button
                             onClick={() => navigate("/purchase-orders/create")}
-                            className="rounded-2xl bg-slate-900 dark:bg-slate-200 dark:text-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-500/20 px-8 h-11 transition-all active:scale-95 border-none"
+                            className="rounded-full h-10 px-6 text-xs bg-white text-slate-900 border border-slate-200 hover:!bg-orange-600 hover:!text-white hover:!border-orange-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95"
                         >
-                            <Plus className="mr-2 h-4 w-4" />
+                            <ShoppingBag className="mr-2 h-4 w-4" />
                             New Order
                         </Button>
                     }
