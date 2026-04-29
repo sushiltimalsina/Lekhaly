@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { createPortal } from "react-dom";
-import PageHeader from "@/components/app/page-header";
 import DualDateInput from "@/components/app/dual-date-input";
 import { Input } from "@lekhaly/ui";
 import { Button } from "@lekhaly/ui";
@@ -25,7 +24,6 @@ import {
     Trash2,
     Save,
     Send,
-    Search,
     ChevronDown,
     Check,
     Eye,
@@ -33,6 +31,9 @@ import {
     FileText,
     ChevronRight,
     ArrowLeft,
+    ShoppingCart,
+    History,
+    Search
 } from "lucide-react";
 import Link from "next/link";
 import { toBs } from "@/lib/dates/bs";
@@ -798,36 +799,44 @@ export default function PurchaseCreatePage() {
             <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
                 <div className="mb-4">
                     <Button
-                        variant="ghost"
                         onClick={() => router.push("/purchase")}
-                        className="rounded-full h-10 px-4 text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors"
+                        className="rounded-full h-10 px-4 bg-white text-slate-900 border border-slate-200 hover:!bg-fuchsia-600 hover:!text-white hover:!border-fuchsia-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm"
                     >
                         <ArrowLeft className="mr-2 h-4 w-4" />
                         Back to Registry
                     </Button>
                 </div>
 
-                <PageHeader
-                    title={searchParams.get("id") ? (isEditMode ? "Edit Purchase Invoice" : "View Purchase Invoice") : "New Purchase Invoice"}
-                    description={
-                        searchParams.get("id")
-                            ? `${voucherStatus ? `Status: ${voucherStatus.charAt(0).toUpperCase() + voucherStatus.slice(1)}. ` : ""}${isEditMode ? "Modify the details below." : "Click Edit to modify this invoice."}`
-                            : "Fill in the details below to record a new purchase."
-                    }
-                    actions={
-                        !isEditMode && searchParams.get("id") ? (
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-4">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-fuchsia-600 text-white shadow-xl shadow-fuchsia-500/20">
+                            <ShoppingCart className="h-6 w-6" />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-bold italic tracking-tight text-slate-900 dark:text-slate-100">
+                                {searchParams.get("id") ? (isEditMode ? "Edit Purchase Invoice" : "View Purchase Invoice") : "Create New Purchase Invoice"}
+                            </h1>
+                            <p className="text-xs text-muted-foreground mt-0.5 font-medium">
+                                {searchParams.get("id")
+                                    ? `${voucherStatus ? `Status: ${voucherStatus.charAt(0).toUpperCase() + voucherStatus.slice(1)}. ` : ""}${isEditMode ? "Modify the details below." : "Click Edit to modify this invoice."}`
+                                    : "Fill in the details below to record a new purchase."}
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        {!isEditMode && searchParams.get("id") ? (
                             <Button
                                 onClick={() => setIsEditMode(true)}
-                                className="rounded-2xl bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-500/20 h-11 px-8 font-black text-xs uppercase tracking-widest transition-all active:scale-95 border-none"
+                                className="rounded-full h-10 px-8 bg-white text-slate-900 border border-slate-200 hover:!bg-fuchsia-600 hover:!text-white hover:!border-fuchsia-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95"
                             >
                                 <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 0 002 2h11a2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                 </svg>
                                 Edit
                             </Button>
-                        ) : undefined
-                    }
-                />
+                        ) : undefined}
+                    </div>
+                </div>
 
                 {/* Alerts */}
                 <div className="mb-4 grid gap-3">
@@ -850,16 +859,16 @@ export default function PurchaseCreatePage() {
                             ref={purchaseDateRef}
                             label="Purchase Date"
                             value={form.purchaseDate}
-                            accentColor="bg-orange-600"
+                            accentColor="bg-fuchsia-600"
                             onChange={(next) => setForm((f) => ({ ...f, purchaseDate: next }))}
                             onEnterNext={() => safeFocus(vendorInvoiceDateRef.current)}
-                            disabled={true} // Purchase date is entry date, non-editable
+                            disabled={true}
                         />
                         <DualDateInput
                             ref={vendorInvoiceDateRef}
                             label="Vendor Invoice Date"
                             value={form.vendorInvoiceDate}
-                            accentColor="bg-orange-600"
+                            accentColor="bg-fuchsia-600"
                             onChange={(next) => setForm((f) => ({ ...f, vendorInvoiceDate: next }))}
                             onEnterNext={() => safeFocus(vendorInvoiceNoRef.current)}
                             disabled={!isEditMode}
@@ -874,15 +883,9 @@ export default function PurchaseCreatePage() {
                                     ref={invoiceNoRef}
                                     value={form.referenceNo}
                                     onChange={(e) => setForm((f) => ({ ...f, referenceNo: e.target.value }))}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter") {
-                                            e.preventDefault();
-                                            safeFocus(vendorInvoiceNoRef.current);
-                                        }
-                                    }}
                                     placeholder="Reference No."
                                     className="h-11 rounded-2xl bg-slate-50/60 dark:bg-slate-900/60"
-                                    disabled={true} // Auto-generated reference number
+                                    disabled={true}
                                 />
                             </label>
 
@@ -892,20 +895,11 @@ export default function PurchaseCreatePage() {
                                     ref={vendorInvoiceNoRef}
                                     value={form.vendorInvoiceNo}
                                     onChange={(e) => setForm((f) => ({ ...f, vendorInvoiceNo: e.target.value }))}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter") {
-                                            if (!form.vendorInvoiceNo) return;
-                                            e.preventDefault();
-                                            safeFocus(memoRef.current);
-                                        }
-                                    }}
                                     placeholder="Enter physical invoice number"
                                     className="h-11 rounded-2xl bg-slate-50/60 dark:bg-slate-900/60"
                                     disabled={!isEditMode}
                                 />
                             </label>
-
-
                         </div>
 
                         <div className="lg:col-span-8 flex items-start lg:justify-center">
@@ -916,12 +910,6 @@ export default function PurchaseCreatePage() {
                                         ref={memoRef}
                                         value={form.memo}
                                         onChange={(e) => setForm((f) => ({ ...f, memo: e.target.value }))}
-                                        onKeyDown={(e) => {
-                                            if (e.key === "Enter") {
-                                                e.preventDefault();
-                                                safeFocus(purchaseTypeRef.current);
-                                            }
-                                        }}
                                         placeholder="Brief description of purchase"
                                         className="h-11 rounded-2xl bg-slate-50/60 dark:bg-slate-900/60"
                                         disabled={!isEditMode}
@@ -934,12 +922,6 @@ export default function PurchaseCreatePage() {
                                         ref={purchaseTypeRef}
                                         value={form.purchaseType}
                                         onChange={(e) => setForm((f) => ({ ...f, purchaseType: e.target.value as any }))}
-                                        onKeyDown={(e) => {
-                                            if (e.key === "Enter") {
-                                                e.preventDefault();
-                                                vendorSelectRef.current?.focus();
-                                            }
-                                        }}
                                         className="mt-2 h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900"
                                         disabled={!isEditMode}
                                     >
@@ -950,32 +932,12 @@ export default function PurchaseCreatePage() {
                                 </div>
                             </div>
                         </div>
-
-                        <div className="grid gap-3 lg:hidden sm:grid-cols-2">
-                            <DualDateInput
-                                label="Purchase Date"
-                                value={form.purchaseDate}
-                                accentColor="bg-orange-600"
-                                onChange={(next) => setForm((f) => ({ ...f, purchaseDate: next }))}
-                                onEnterNext={() => safeFocus(vendorInvoiceDateRef.current)}
-                                disabled={true}
-                            />
-                            <DualDateInput
-                                label="Vendor Invoice Date"
-                                value={form.vendorInvoiceDate}
-                                accentColor="bg-orange-600"
-                                onChange={(next) => setForm((f) => ({ ...f, vendorInvoiceDate: next }))}
-                                onEnterNext={() => safeFocus(vendorInvoiceNoRef.current)}
-                                disabled={!isEditMode}
-                            />
-                        </div>
                     </div>
                 </section>
 
                 {/* Vendor */}
                 <section className="mb-6">
                     <div className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-200">Vendor</div>
-
                     <div className="relative max-w-[980px]">
                         <SearchableSelect<PartyRecord>
                             buttonRef={vendorSelectRef}
@@ -987,22 +949,14 @@ export default function PurchaseCreatePage() {
                             getLabel={(p) => p.name}
                             leftIcon={<Search className="h-4 w-4" />}
                             disabled={!isEditMode}
-                            onEnterNext={() => safeFocus(rowRefs.current.select[0])}
-                            onKeyDownCustom={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                                if (e.key === "Enter" && e.shiftKey) {
-                                    e.preventDefault();
-                                    safeFocus(sundryRefs.current.select[0]);
-                                }
-                            }}
                             buttonClassName="h-12 rounded-2xl bg-white dark:bg-slate-900 pr-[140px]"
                         />
 
                         {!form.partyId && isEditMode && (
                             <Button
                                 type="button"
-                                variant="outline"
                                 onClick={() => setAddVendorOpen(true)}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 h-9 rounded-full px-4 text-xs"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 h-10 rounded-full px-4 text-xs bg-white text-slate-900 border border-slate-200 hover:!bg-fuchsia-600 hover:!text-white hover:!border-fuchsia-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95"
                                 disabled={!isEditMode}
                             >
                                 <Plus className="mr-2 h-3.5 w-3.5" />
@@ -1019,14 +973,11 @@ export default function PurchaseCreatePage() {
                             ref={addLineButtonRef}
                             type="button"
                             onClick={addLine}
-                            className="rounded-full bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm transition-all active:scale-95"
+                            className="rounded-full h-10 px-4 bg-white text-slate-900 border border-slate-200 hover:!bg-fuchsia-600 hover:!text-white hover:!border-fuchsia-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95"
                         >
                             <Plus className="mr-2 h-4 w-4" />
                             Add Column
                         </Button>
-                        <div className="text-[10px] text-muted-foreground italic pr-2">
-                            Tip: Press <kbd className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border text-[9px] not-italic font-sans">Shift + Enter</kbd> to jump sundry column
-                        </div>
                     </div>
                 )}
 
@@ -1041,12 +992,8 @@ export default function PurchaseCreatePage() {
                                     <tr>
                                         <th className="w-[60px] px-4 py-3 text-left text-xs text-muted-foreground">S.No.</th>
                                         <th className="w-[520px] min-w-[420px] px-4 py-3 text-left text-xs text-muted-foreground">Particulars</th>
-                                        <th className="w-[140px] px-4 py-3 text-left text-xs text-muted-foreground">
-                                            Qty <span className="text-red-500">*</span>
-                                        </th>
-                                        <th className="w-[180px] px-4 py-3 text-left text-xs text-muted-foreground">
-                                            Rate <span className="text-red-500">*</span>
-                                        </th>
+                                        <th className="w-[140px] px-4 py-3 text-left text-xs text-muted-foreground">Qty <span className="text-red-500">*</span></th>
+                                        <th className="w-[180px] px-4 py-3 text-left text-xs text-muted-foreground">Rate <span className="text-red-500">*</span></th>
                                         <th className="w-[180px] px-4 py-3 text-right text-xs text-muted-foreground">Amount</th>
                                         <th className="w-[70px] px-4 py-3 text-right text-xs text-muted-foreground" />
                                     </tr>
@@ -1075,56 +1022,20 @@ export default function PurchaseCreatePage() {
                                                                 });
                                                             }}
                                                             options={items}
-                                                            getLabel={(it) => {
-                                                                const sku = it.sku ? ` (${it.sku})` : "";
-                                                                return `${it.name}${sku}`;
-                                                            }}
-                                                            getDetail={(it) => {
-                                                                if (it.type === "services") return "Service";
-                                                                return `${it.stock ?? 0} ${it.unit ?? "Units"}`;
-                                                            }}
+                                                            getLabel={(it) => it.name}
                                                             onEnterNext={() => safeFocus(rowRefs.current.qty[idx])}
-                                                            onKeyDownCustom={(e) => {
-                                                                if (e.key === "Enter" && e.shiftKey) {
-                                                                    e.preventDefault();
-                                                                    safeFocus(sundryRefs.current.rate[0]);
-                                                                    return;
-                                                                }
-                                                                if (e.key === "ArrowRight") {
-                                                                    e.preventDefault();
-                                                                    safeFocus(rowRefs.current.qty[idx]);
-                                                                }
-                                                                if (e.key === "ArrowDown") {
-                                                                    e.preventDefault();
-                                                                    if (rowRefs.current.select[idx + 1]) {
-                                                                        safeFocus(rowRefs.current.select[idx + 1]);
-                                                                    } else {
-                                                                        safeFocus(sundryRefs.current.rate[0]);
-                                                                    }
-                                                                }
-                                                                if (e.key === "ArrowUp") {
-                                                                    e.preventDefault();
-                                                                    if (rowRefs.current.select[idx - 1]) {
-                                                                        safeFocus(rowRefs.current.select[idx - 1]);
-                                                                    } else {
-                                                                        safeFocus(vendorSelectRef.current);
-                                                                    }
-                                                                }
-                                                            }}
                                                             leftIcon={<Search className="h-4 w-4" />}
                                                             buttonClassName="h-11 rounded-2xl bg-white dark:bg-slate-900 pr-[100px]"
-                                                            emptyText="No items found"
                                                             disabled={!isEditMode}
                                                         />
                                                         {!line.itemId && isEditMode && (
                                                             <Button
                                                                 type="button"
-                                                                variant="outline"
                                                                 onClick={() => {
                                                                     setActiveLineIdx(idx);
                                                                     setAddItemOpen(true);
                                                                 }}
-                                                                className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 rounded-xl px-3 text-[10px] font-medium bg-slate-50 dark:bg-slate-800"
+                                                                className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 rounded-xl px-3 text-[10px] font-medium bg-white text-slate-900 border border-slate-200 hover:!bg-fuchsia-600 hover:!text-white hover:!border-fuchsia-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95"
                                                                 disabled={!isEditMode}
                                                             >
                                                                 <Plus className="mr-1 h-3 w-3" />
@@ -1133,7 +1044,6 @@ export default function PurchaseCreatePage() {
                                                         )}
                                                     </div>
                                                 </td>
-
                                                 <td className="px-4 py-3 align-top">
                                                     <Input
                                                         ref={(el) => { rowRefs.current.qty[idx] = el; }}
@@ -1319,7 +1229,12 @@ export default function PurchaseCreatePage() {
 
                 <div className="mb-4 flex flex-col items-end gap-2 text-right">
                     {isEditMode && (
-                        <Button ref={addSundryButtonRef} type="button" variant="outline" onClick={addSundry} className="rounded-full bg-indigo-600 text-white hover:bg-indigo-700">
+                        <Button
+                            ref={addSundryButtonRef}
+                            type="button"
+                            onClick={addSundry}
+                            className="rounded-full h-10 px-4 bg-white text-slate-900 border border-slate-200 hover:!bg-fuchsia-600 hover:!text-white hover:!border-fuchsia-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95"
+                        >
                             <Plus className="mr-2 h-4 w-4" />
                             Add Sundry Column
                         </Button>
@@ -1402,12 +1317,11 @@ export default function PurchaseCreatePage() {
                                                     {!r.sundryId && r.id !== "discount" && r.id !== "vat" && (
                                                         <Button
                                                             type="button"
-                                                            variant="outline"
                                                             onClick={() => {
                                                                 setActiveSundryIdx(i);
                                                                 setAddSundryOpen(true);
                                                             }}
-                                                            className="absolute z-10 right-7 top-1/2 -translate-y-1/2 h-7 rounded-lg px-1.5 text-[10px] font-medium bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                                                            className="absolute z-10 right-7 top-1/2 -translate-y-1/2 h-7 rounded-lg px-1.5 text-[10px] font-medium bg-white text-slate-900 border border-slate-200 hover:!bg-fuchsia-600 hover:!text-white hover:!border-fuchsia-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95"
                                                         >
                                                             <Plus className="h-3 w-3" />
                                                             Define New
@@ -1568,8 +1482,6 @@ export default function PurchaseCreatePage() {
                     </div>
                 </section>
 
-
-
                 {/* BOTTOM SUMMARY ACTIONS */}
                 <section className="grid gap-6 lg:grid-cols-12">
                     <div className="lg:col-span-6 rounded-3xl border bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
@@ -1624,7 +1536,7 @@ export default function PurchaseCreatePage() {
 
                             <div className="mt-5 flex items-center justify-between rounded-2xl bg-white px-4 py-3 shadow-sm dark:bg-zinc-950">
                                 <div className="text-sm font-semibold">Total</div>
-                                <div className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">
+                                <div className="text-sm font-semibold text-orange-600 dark:text-orange-400">
                                     <MoneyText value={total} />
                                 </div>
                             </div>
@@ -1662,7 +1574,7 @@ export default function PurchaseCreatePage() {
                                 variant="outline"
                                 onClick={onSave}
                                 disabled={loading || sending || !isEditMode}
-                                className="rounded-full px-6"
+                                className="rounded-full h-10 px-6 bg-white text-slate-900 border border-slate-200 hover:!bg-orange-600 hover:!text-white hover:!border-orange-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95"
                             >
                                 <Save className="mr-2 h-4 w-4" />
                                 {loading ? "Saving..." : "Save"}
@@ -1671,36 +1583,50 @@ export default function PurchaseCreatePage() {
                             <Button
                                 onClick={onPost}
                                 disabled={loading || sending || !isEditMode}
-                                className="flex-1 md:flex-none rounded-2xl h-12 px-10 font-black text-xs uppercase tracking-widest shadow-xl transition-all bg-indigo-600 text-white hover:bg-indigo-700 hover:scale-105 active:scale-95 shadow-indigo-500/25"
+                                className="flex-1 md:flex-none rounded-full h-10 px-10 bg-white text-slate-900 border border-slate-200 hover:!bg-orange-600 hover:!text-white hover:!border-orange-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95"
                             >
                                 <Send className="mr-2 h-4 w-4" />
                                 {sending ? "Posting..." : "Post & Finalize"}
                             </Button>
 
-                            <Button type="button" variant="outline" onClick={onPreview} className="rounded-full px-6">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={onPreview}
+                                className="rounded-full h-10 px-6 bg-white text-slate-900 border border-slate-200 hover:!bg-orange-600 hover:!text-white hover:!border-orange-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95"
+                            >
                                 <Eye className="mr-2 h-4 w-4" />
                                 Preview
                             </Button>
 
-                            <Button type="button" variant="outline" onClick={onPrint} className="rounded-full px-6">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={onPrint}
+                                className="rounded-full h-10 px-6 bg-white text-slate-900 border border-slate-200 hover:!bg-orange-600 hover:!text-white hover:!border-orange-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95"
+                            >
                                 <Printer className="mr-2 h-4 w-4" />
                                 Print
                             </Button>
 
-                            <Button type="button" variant="outline" onClick={onPrintPreview} className="rounded-full px-6">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={onPrintPreview}
+                                className="rounded-full h-10 px-6 bg-white text-slate-900 border border-slate-200 hover:!bg-orange-600 hover:!text-white hover:!border-orange-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95"
+                            >
                                 <FileText className="mr-2 h-4 w-4" />
                                 Print Preview
                             </Button>
                         </div>
                     </div>
                 </section>
-            </div >
+            </div>
 
             {/* Dialogs */}
-            < AddItemDialog
+            <AddItemDialog
                 open={addItemOpen}
-                onClose={() => setAddItemOpen(false)
-                }
+                onClose={() => setAddItemOpen(false)}
                 onSuccess={(newItem) => {
                     setItems(prev => [...prev, newItem]);
                     if (activeLineIdx !== null) {
@@ -1712,7 +1638,7 @@ export default function PurchaseCreatePage() {
                     }
                 }}
             />
-            < AddVendorDialog
+            <AddVendorDialog
                 open={addVendorOpen}
                 onClose={() => setAddVendorOpen(false)}
                 onSuccess={(newVendor) => {
@@ -1721,7 +1647,7 @@ export default function PurchaseCreatePage() {
                     setTimeout(() => safeFocus(rowRefs.current.select[0]), 50);
                 }}
             />
-            < AddBillSundryDialog
+            <AddBillSundryDialog
                 open={addSundryOpen}
                 onClose={() => setAddSundryOpen(false)}
                 onSuccess={(newSundry) => {
@@ -1739,6 +1665,6 @@ export default function PurchaseCreatePage() {
                     }
                 }}
             />
-        </div >
+        </div>
     );
 }

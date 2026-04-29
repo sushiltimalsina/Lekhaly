@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-    Plus,
+    ShoppingBag,
     ChevronRight,
     ChevronDown,
     PackageSearch,
@@ -166,9 +166,9 @@ export default function PurchaseOrdersListPage() {
                     actions={
                         <Button
                             onClick={() => router.push("/purchase-orders/create")}
-                            className="rounded-2xl bg-slate-900 dark:bg-slate-200 dark:text-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-500/20 px-8 h-11 transition-all active:scale-95 border-none"
+                            className="rounded-full h-10 px-6 bg-white text-slate-900 border border-slate-200 hover:!bg-orange-600 hover:!text-white hover:!border-orange-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95"
                         >
-                            <Plus className="mr-2 h-4 w-4" />
+                            <ShoppingBag className="mr-2 h-4 w-4" />
                             New Order
                         </Button>
                     }
@@ -210,10 +210,10 @@ export default function PurchaseOrdersListPage() {
                         <CheckSquare className="h-5 w-5" />
                     </div>
                 </div>
-                <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-5 rounded-2xl shadow-lg shadow-slate-500/20 flex flex-col justify-center border border-slate-700">
-                    <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">Procurement Engine</span>
+                <div className="bg-gradient-to-br from-orange-600 to-orange-700 text-white p-5 rounded-2xl shadow-lg shadow-orange-500/20 flex flex-col justify-center border border-orange-700">
+                    <span className="text-[10px] uppercase font-black tracking-widest text-orange-200">Procurement Engine</span>
                     <div className="flex items-center gap-2 mt-2">
-                        <div className="h-2 w-2 rounded-full bg-orange-500 animate-pulse" />
+                        <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
                         <span className="font-bold text-sm">Vendor Sync Active</span>
                     </div>
                 </div>
@@ -225,14 +225,14 @@ export default function PurchaseOrdersListPage() {
                 filterOptions={filterOptions}
                 columnOptions={columnOptions}
                 onVisibleColumnsChange={setVisibleColumns}
-                className="border-slate-200 dark:border-slate-800"
+                className="border-orange-100 dark:border-orange-900/50"
             />
 
             <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl shadow-slate-200/40 dark:border-slate-800 dark:bg-slate-950 dark:shadow-none">
                 {loading && data.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-24 space-y-4">
                         <div className="relative h-12 w-12">
-                            <div className="absolute inset-0 rounded-full border-4 border-slate-100 dark:border-slate-900/30"></div>
+                            <div className="absolute inset-0 rounded-full border-4 border-slate-100 dark:border-slate-800"></div>
                             <div className="absolute inset-0 rounded-full border-4 border-orange-600 border-t-transparent animate-spin"></div>
                         </div>
                         <p className="text-sm font-medium text-slate-500 animate-pulse uppercase tracking-widest text-[10px] font-black">Syncing Procurement...</p>
@@ -265,7 +265,7 @@ export default function PurchaseOrdersListPage() {
 
                                     return (
                                         <React.Fragment key={order.id}>
-                                            <tr className="group hover:bg-slate-50/80 dark:hover:bg-slate-900/40 transition-colors">
+                                            <tr className="group hover:bg-orange-50/20 dark:hover:bg-orange-900/10 transition-colors">
                                                 {visibleColumns.includes("sno") && (
                                                     <td className={`px-6 ${py} whitespace-nowrap font-bold text-slate-500`}>
                                                         {sNo}
@@ -425,7 +425,7 @@ export default function PurchaseOrdersListPage() {
                         </div>
                         <Button
                             onClick={() => setFilters({ q: "", status: "all", from: null, to: null })}
-                            className="bg-slate-900 dark:bg-slate-200 dark:text-slate-900 rounded-2xl h-11 px-8 font-black text-xs uppercase tracking-widest shadow-xl shadow-slate-500/20"
+                            className="rounded-full h-10 px-8 bg-white text-slate-900 border border-slate-200 hover:!bg-orange-600 hover:!text-white hover:!border-orange-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95"
                         >
                             Reset Registry Filters
                         </Button>

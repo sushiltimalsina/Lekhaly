@@ -8,7 +8,7 @@ import { listVouchers, type VoucherType } from "@/lib/api/vouchers";
 import StatusBadge, { DocStatus } from "@/components/app/status-badge";
 import { useDateFormat } from "@/lib/date-format";
 import { getDateDisplay } from "@/lib/dates/display";
-import { Plus, ChevronRight, FileText, ShoppingCart } from "lucide-react";
+import { ShoppingBag, ChevronRight, FileText, ShoppingCart } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -117,9 +117,9 @@ export default function PurchaseListPage() {
                 actions={
                     <Button
                         onClick={() => router.push("/purchase/create")}
-                        className="rounded-2xl bg-orange-600 hover:bg-orange-700 text-white shadow-xl shadow-orange-500/20 h-11 px-8 font-black text-xs uppercase tracking-widest transition-all active:scale-95 border-none"
+                        className="rounded-full h-10 px-6 bg-white text-slate-900 border border-slate-200 hover:!bg-orange-600 hover:!text-white hover:!border-orange-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95"
                     >
-                        <Plus className="mr-2 h-4 w-4" />
+                        <ShoppingBag className="mr-2 h-4 w-4" />
                         New Bill
                     </Button>
                 }
@@ -336,7 +336,7 @@ export default function PurchaseListPage() {
                         </div>
                         <Button
                             onClick={() => setFilters({ q: "", status: "all", from: null, to: null })}
-                            className="bg-orange-600 rounded-2xl h-11 px-8 font-black text-xs uppercase tracking-widest shadow-xl shadow-orange-500/20"
+                            className="rounded-full h-10 px-8 bg-white text-slate-900 border border-slate-200 hover:!bg-orange-600 hover:!text-white hover:!border-orange-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95"
                         >
                             Reset Audit Filters
                         </Button>
