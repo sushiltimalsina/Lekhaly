@@ -668,9 +668,8 @@ export default function PurchaseOrderCreatePage() {
             <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
                 <div className="mb-4">
                     <Button
-                        variant="ghost"
                         onClick={() => router.push("/purchase-orders")}
-                        className="rounded-full h-10 px-4 text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors"
+                        className="rounded-full h-10 px-4 bg-white text-slate-900 border border-slate-200 hover:!bg-orange-600 hover:!text-white hover:!border-orange-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm"
                     >
                         <ArrowLeft className="mr-2 h-4 w-4" />
                         Back to Registry

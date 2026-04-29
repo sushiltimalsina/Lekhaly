@@ -8,6 +8,7 @@ import { listItemGroups, type ItemGroupRecord, deleteItemGroup } from "@/lib/api
 import { listBillSundries, type BillSundryRecord, deleteBillSundry } from "@/lib/api/bill-sundries";
 import { listPaymentMethods, deletePaymentMethod } from "@/lib/api/payment-methods";
 import { listSaleTypes, deleteSaleType } from "@/lib/api/sale-types";
+import { listPurchaseTypes, deletePurchaseType } from "@/lib/api/purchase-types";
 import { AlertCircle } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,7 @@ import AddGroupDialog from "@/components/app/add-group-dialog";
 import AddBillSundryDialog from "@/components/app/add-bill-sundry-dialog";
 import AddPaymentMethodDialog from "@/components/app/add-payment-method-dialog";
 import AddSaleTypeDialog from "@/components/app/add-sale-type-dialog";
+import AddPurchaseTypeDialog from "@/components/app/add-purchase-type-dialog";
 import ConfirmDialog from "@/components/app/confirm-dialog";
 import AddFiscalSessionDialog from "./components/AddFiscalSessionDialog";
 
@@ -28,7 +30,7 @@ import { UnitsPanel } from "./components/UnitsPanel";
 import { GroupsPanel } from "./components/GroupsPanel";
 import { SundriesPanel } from "./components/SundriesPanel";
 import { PaymentMethodsPanel } from "./components/PaymentMethodsPanel";
-import { SaleTypesPanel } from "./components/SaleTypesPanel";
+import { TradeTypesPanel } from "./components/TradeTypesPanel";
 import { RegionalPreferences } from "./components/RegionalPreferences";
 import { VoucherNumbering } from "./components/VoucherNumbering";
 import { FiscalSecurityPanel, CreditManagementPanel } from "./components/SecurityCreditPanels";
@@ -47,6 +49,7 @@ export default function ConfigurationPage() {
   const [sundries, setSundries] = React.useState<BillSundryRecord[]>([]);
   const [paymentMethods, setPaymentMethods] = React.useState<any[]>([]);
   const [saleTypes, setSaleTypes] = React.useState<any[]>([]);
+  const [purchaseTypes, setPurchaseTypes] = React.useState<any[]>([]);
   const [sessions, setSessions] = React.useState<FiscalSessionRecord[]>([]);
 
   const [loading, setLoading] = React.useState(true);
@@ -58,6 +61,7 @@ export default function ConfigurationPage() {
   const [addSundryOpen, setAddSundryOpen] = React.useState(false);
   const [addPaymentMethodOpen, setAddPaymentMethodOpen] = React.useState(false);
   const [addSaleTypeOpen, setAddSaleTypeOpen] = React.useState(false);
+  const [addPurchaseTypeOpen, setAddPurchaseTypeOpen] = React.useState(false);
   const [addSessionOpen, setAddSessionOpen] = React.useState(false);
 
   const [editUnit, setEditUnit] = React.useState<UnitRecord | undefined>();
@@ -65,6 +69,7 @@ export default function ConfigurationPage() {
   const [editSundry, setEditSundry] = React.useState<BillSundryRecord | undefined>();
   const [editPaymentMethod, setEditPaymentMethod] = React.useState<any | undefined>();
   const [editSaleType, setEditSaleType] = React.useState<any | undefined>();
+  const [editPurchaseType, setEditPurchaseType] = React.useState<any | undefined>();
 
   const [expandedSection, setExpandedSection] = React.useState<string | null>(null);
 
@@ -74,7 +79,7 @@ export default function ConfigurationPage() {
   const [confirmState, setConfirmState] = React.useState<{
     id: string;
     name: string;
-    type: "unit" | "group" | "sundry" | "payment-method" | "sale-type";
+    type: "unit" | "group" | "sundry" | "payment-method" | "sale-type" | "purchase-type";
     open: boolean;
   }>({ id: "", name: "", type: "unit", open: false });
 
@@ -92,12 +97,13 @@ export default function ConfigurationPage() {
       return obj?.items ?? obj?.data ?? [];
     };
     try {
-      const [uRes, gRes, sRes, pmRes, stRes, cRes, sessRes] = await Promise.all([
+      const [uRes, gRes, sRes, pmRes, stRes, ptRes, cRes, sessRes] = await Promise.all([
         listUnits({ take: 200 }),
         listItemGroups({ take: 200 }),
         listBillSundries({ take: 200 }),
         listPaymentMethods({ take: 200 }),
         listSaleTypes({ take: 200 }),
+        listPurchaseTypes({ take: 200 }),
         getCompany(),
         listFiscalSessions()
       ]);
@@ -109,6 +115,7 @@ export default function ConfigurationPage() {
       })));
       setPaymentMethods(normalizeList<any>(pmRes));
       setSaleTypes(normalizeList<any>(stRes));
+      setPurchaseTypes(normalizeList<any>(ptRes));
       setCompany(cRes);
       setCompanyForm(cRes);
       setSessions(normalizeList<FiscalSessionRecord>(sessRes));
@@ -174,6 +181,9 @@ export default function ConfigurationPage() {
       } else if (type === "sale-type") {
         await deleteSaleType(id);
         setSaleTypes(prev => prev.filter(st => st.id !== id));
+      } else if (type === "purchase-type") {
+        await deletePurchaseType(id);
+        setPurchaseTypes(prev => prev.filter(pt => pt.id !== id));
       }
     } catch (e: any) {
        const readableType = type.charAt(0).toUpperCase() + type.slice(1);
@@ -256,16 +266,20 @@ export default function ConfigurationPage() {
           focus={focus === "payment-methods"}
         />
 
-        <SaleTypesPanel
+        <TradeTypesPanel
           saleTypes={saleTypes}
+          purchaseTypes={purchaseTypes}
           loading={loading}
           busy={busy}
-          expanded={expandedSection === "sale-types"}
-          onToggle={() => setExpandedSection(expandedSection === "sale-types" ? null : "sale-types")}
-          onAdd={() => { setEditSaleType(undefined); setAddSaleTypeOpen(true); }}
-          onEdit={(st) => { setEditSaleType(st); setAddSaleTypeOpen(true); }}
-          onRemove={(id) => setConfirmState({ id, name: saleTypes.find(st => st.id === id)?.name || "", type: "sale-type", open: true })}
-          focus={focus === "sale-types"}
+          expanded={expandedSection === "trade-types"}
+          onToggle={() => setExpandedSection(expandedSection === "trade-types" ? null : "trade-types")}
+          onAddSaleType={() => { setEditSaleType(undefined); setAddSaleTypeOpen(true); }}
+          onEditSaleType={(st) => { setEditSaleType(st); setAddSaleTypeOpen(true); }}
+          onRemoveSaleType={(id) => setConfirmState({ id, name: saleTypes.find(st => st.id === id)?.name || "", type: "sale-type", open: true })}
+          onAddPurchaseType={() => { setEditPurchaseType(undefined); setAddPurchaseTypeOpen(true); }}
+          onEditPurchaseType={(pt) => { setEditPurchaseType(pt); setAddPurchaseTypeOpen(true); }}
+          onRemovePurchaseType={(id) => setConfirmState({ id, name: purchaseTypes.find(pt => pt.id === id)?.name || "", type: "purchase-type", open: true })}
+          focus={focus === "trade-types"}
         />
 
         <FiscalSessionsPanel 
@@ -372,6 +386,13 @@ export default function ConfigurationPage() {
         onClose={() => { setAddSaleTypeOpen(false); setEditSaleType(undefined); }}
         onSuccess={() => { fetchData(); setEditSaleType(undefined); }}
         initialData={editSaleType}
+      />
+
+      <AddPurchaseTypeDialog
+        open={addPurchaseTypeOpen}
+        onClose={() => { setAddPurchaseTypeOpen(false); setEditPurchaseType(undefined); }}
+        onSuccess={() => { fetchData(); setEditPurchaseType(undefined); }}
+        initialData={editPurchaseType}
       />
 
       <AddFiscalSessionDialog

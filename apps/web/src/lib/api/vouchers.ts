@@ -47,6 +47,12 @@ export type VoucherDraftInput = {
   referenceNo?: string;
   vendorInvoiceNo?: string;
   vendorInvoiceDate?: string; // ISO
+  purchaseType?: any;
+  purchaseTypeId?: string;
+  paymentMethod?: any;
+  paymentMethodId?: string;
+  saleType?: any;
+  saleTypeId?: string;
   lines: VoucherLineInput[];
 };
 

@@ -34,10 +34,15 @@ import {
     ChevronRight,
     ArrowLeft,
     ShoppingBag,
+    CreditCard
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toBs } from "@/lib/dates/bs";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { listPaymentMethods } from "@/lib/api/payment-methods";
+import { listPurchaseTypes } from "../../lib/api/purchase-types"; // New API
+import AddPaymentMethodDialog from "@/components/app/add-payment-method-dialog";
+import AddPurchaseTypeDialog from "../../components/app/add-purchase-type-dialog"; // New Dialog
 
 type Line = { itemId: string; qty: string; rate: string; description?: string; expenseAccountId?: string };
 type BillSundryRow = { id: string; sundryId?: string; name: string; type: "add" | "less"; ratePct: string; manualAmount?: string; isManual?: boolean };
@@ -82,6 +87,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
     onKeyDownCustom?: (e: React.KeyboardEvent<any>) => void;
     fallbackLabel?: string;
     disabled?: boolean;
+    onAdd?: () => void;
 }) {
     const {
         label,
@@ -97,6 +103,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
         emptyText = "No items found",
         fallbackLabel,
         disabled,
+        onAdd,
     } = props;
 
     const [open, setOpen] = React.useState(false);
@@ -288,7 +295,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                                             <div className="flex flex-1 items-center justify-between gap-2 overflow-hidden">
                                                 <span className="truncate font-medium">{labelText}</span>
                                                 {getDetail && getDetail(o) && (
-                                                    <span className={cn("text-xs whitespace-nowrap", selected ? "text-indigo-600/80" : "text-muted-foreground")}>
+                                                    <span className={cn("text-xs whitespace-nowrap", selected ? "text-orange-600/80" : "text-muted-foreground")}>
                                                         {getDetail(o)}
                                                     </span>
                                                 )}
@@ -298,7 +305,22 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                                     );
                                 })
                             ) : (
-                                <div className="px-4 py-8 text-center text-sm text-muted-foreground">{emptyText}</div>
+                                <div className="px-4 py-8 text-center">
+                                    <div className="text-sm text-muted-foreground">{emptyText}</div>
+                                    {onAdd && (
+                                        <Button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onAdd();
+                                                setOpen(false);
+                                            }}
+                                            className="mt-3 rounded-full h-8 px-4 text-[10px] bg-orange-600 hover:bg-orange-700 text-white border-none"
+                                        >
+                                            <Plus className="mr-1.5 h-3 w-3" />
+                                            Add New
+                                        </Button>
+                                    )}
+                                </div>
                             )}
                         </div>
                     </div>,
@@ -322,17 +344,20 @@ export default function PurchaseCreatePage() {
     const vendorInvoiceDateRef = React.useRef<HTMLInputElement>(null);
     const invoiceNoRef = React.useRef<HTMLInputElement>(null);
     const vendorInvoiceNoRef = React.useRef<HTMLInputElement>(null);
-    const payableAccountRef = React.useRef<HTMLSelectElement>(null);
-    const purchaseTypeRef = React.useRef<HTMLSelectElement>(null);
+    const payableAccountRef = React.useRef<HTMLButtonElement>(null);
+    const purchaseTypeRef = React.useRef<HTMLButtonElement>(null);
     const memoRef = React.useRef<HTMLInputElement>(null);
     const referenceNoRef = React.useRef<HTMLInputElement>(null);
     const vendorSelectRef = React.useRef<HTMLButtonElement>(null);
+    const paymentMethodRef = React.useRef<HTMLButtonElement>(null);
     const addLineButtonRef = React.useRef<HTMLButtonElement>(null);
     const addSundryButtonRef = React.useRef<HTMLButtonElement>(null);
     const [lineErrors, setLineErrors] = React.useState<Record<number, { qty?: string; rate?: string }>>({});
     const [addItemOpen, setAddItemOpen] = React.useState(false);
     const [activeLineIdx, setActiveLineIdx] = React.useState<number | null>(null);
     const [addVendorOpen, setAddVendorOpen] = React.useState(false);
+    const [addPaymentMethodOpen, setAddPaymentMethodOpen] = React.useState(false);
+    const [addPurchaseTypeOpen, setAddPurchaseTypeOpen] = React.useState(false);
     const [addSundryOpen, setAddSundryOpen] = React.useState(false);
     const [activeSundryIdx, setActiveSundryIdx] = React.useState<number | null>(null);
 
@@ -356,6 +381,8 @@ export default function PurchaseCreatePage() {
     const [accounts, setAccounts] = React.useState<AccountRecord[]>([]);
     const [items, setItems] = React.useState<ItemRecord[]>([]);
     const [sundryOptions, setSundryOptions] = React.useState<BillSundryRecord[]>([]);
+    const [paymentMethods, setPaymentMethods] = React.useState<any[]>([]);
+    const [purchaseTypes, setPurchaseTypes] = React.useState<any[]>([]);
 
     const safeFocus = (el: HTMLElement | null) => {
         if (!el) return;
@@ -380,7 +407,10 @@ export default function PurchaseCreatePage() {
         vendorInvoiceDate: { bs: "", ad: "" },
         referenceNo: "",
         vendorInvoiceNo: "",
+        paymentMethod: "" as any,
+        paymentMethodId: "",
         purchaseType: "vat_13" as any,
+        purchaseTypeId: "",
         memo: "",
         notes: "",
     });
@@ -443,15 +473,19 @@ export default function PurchaseCreatePage() {
             listParties({ type: "supplier", take: 200 }),
             listAccounts({ type: "liability", take: 200 }),
             listItems({ take: 200 }),
-            listBillSundries({ take: 100 })
+            listBillSundries({ take: 100 }),
+            listPaymentMethods({ isActive: true }),
+            listPurchaseTypes({ isActive: true })
         ])
-            .then(([p, a, i, s]) => {
+            .then(([p, a, i, s, pm, pt]) => {
                 if (!alive) return;
                 setParties(normalizeList<PartyRecord>(p));
                 setAccounts(normalizeList<AccountRecord>(a));
                 setItems(normalizeList<ItemRecord>(i));
                 const opts = normalizeList<BillSundryRecord>(s);
                 setSundryOptions(opts);
+                setPaymentMethods(normalizeList<any>(pm));
+                setPurchaseTypes(normalizeList<any>(pt));
 
                 // Auto-link default sundries if they exist in the options
                 setBillSundries(prev => prev.map(row => {
@@ -503,7 +537,11 @@ export default function PurchaseCreatePage() {
                             },
                             memo: v.memo || "",
                             notes: v.additionalNote || "",
-                            partyName: v.party?.name || ""
+                            partyName: v.party?.name || "",
+                            purchaseType: v.purchaseType || "vat_13",
+                            purchaseTypeId: v.purchaseTypeId || "",
+                            paymentMethod: v.paymentMethod || "",
+                            paymentMethodId: v.paymentMethodId || ""
                         }));
 
                         // Populate Lines (Items)
@@ -646,6 +684,9 @@ export default function PurchaseCreatePage() {
         if (!form.payableAccountId) {
             throw new Error("Payable account is required. Please ensure liability accounts are set up.");
         }
+        if (!form.paymentMethodId) {
+            throw new Error("Please select a payment method.");
+        }
 
         // Validate Items lines
         lines.forEach((l, idx) => {
@@ -711,6 +752,7 @@ export default function PurchaseCreatePage() {
         // Add Credit line for Payable
         payloadLines.push({
             accountId: form.payableAccountId,
+            partyId: form.partyId,
             credit: total,
             debit: 0,
             description: form.memo || "Purchase from vendor",
@@ -726,6 +768,10 @@ export default function PurchaseCreatePage() {
             referenceNo: form.referenceNo || undefined,
             vendorInvoiceNo: form.vendorInvoiceNo || undefined,
             vendorInvoiceDate: form.vendorInvoiceDate.ad || undefined,
+            purchaseType: form.purchaseType,
+            purchaseTypeId: form.purchaseTypeId || undefined,
+            paymentMethodId: form.paymentMethodId || undefined,
+            paymentMethod: form.paymentMethod || undefined,
             lines: payloadLines as any,
         };
     };
@@ -801,9 +847,8 @@ export default function PurchaseCreatePage() {
             <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
                 <div className="mb-4">
                     <Button
-                        variant="ghost"
                         onClick={() => navigate("/purchase")}
-                        className="rounded-full h-10 px-4 text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors"
+                        className="rounded-full h-10 px-4 bg-white text-slate-900 border border-slate-200 hover:bg-orange-600 hover:text-white hover:border-orange-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 dark:hover:bg-orange-600 dark:hover:text-white dark:hover:border-orange-600 transition-colors shadow-sm"
                     >
                         <ArrowLeft className="mr-2 h-4 w-4" />
                         Back to Registry
@@ -914,8 +959,37 @@ export default function PurchaseCreatePage() {
 
                         <div className="lg:col-span-8 flex items-start lg:justify-center">
                             <div className="w-full max-w-[520px]">
-                                <label className="space-y-1 text-sm block">
-                                    <span className="text-xs text-muted-foreground">Memo / Remarks</span>
+                                <div className="text-xs text-muted-foreground">Payment method <span className="text-red-500">*</span></div>
+                                <div className="relative">
+                                    <SearchableSelect
+                                        buttonRef={paymentMethodRef}
+                                        placeholder="Select payment method…"
+                                        valueId={form.paymentMethodId}
+                                        onChange={(id, opt) => setForm((f) => ({ ...f, paymentMethodId: id, paymentMethod: opt?.name }))}
+                                        options={paymentMethods}
+                                        className="mt-2"
+                                        buttonClassName={cn(
+                                            "h-11 rounded-2xl bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-700",
+                                            (!form.paymentMethodId && isEditMode) ? "pr-[80px]" : "pr-4"
+                                        )}
+                                        disabled={!isEditMode}
+                                        onEnterNext={() => safeFocus(memoRef.current)}
+                                        onAdd={() => setAddPaymentMethodOpen(true)}
+                                    />
+                                    {!form.paymentMethodId && isEditMode && (
+                                        <Button
+                                            type="button"
+                                            onClick={() => setAddPaymentMethodOpen(true)}
+                                            className="absolute right-2 top-[calc(50%+4px)] -translate-y-1/2 h-7 rounded-full px-3 text-[10px] bg-orange-600 text-white border-none hover:bg-orange-700 shadow-sm transition-all active:scale-95"
+                                        >
+                                            <Plus className="mr-1.5 h-3 w-3" />
+                                            New
+                                        </Button>
+                                    )}
+                                </div>
+
+                                <div className="mt-4">
+                                    <div className="text-xs text-muted-foreground">Memo / Remarks</div>
                                     <Input
                                         ref={memoRef}
                                         value={form.memo}
@@ -927,30 +1001,40 @@ export default function PurchaseCreatePage() {
                                             }
                                         }}
                                         placeholder="Brief description of purchase"
-                                        className="h-11 rounded-2xl bg-slate-50/60 dark:bg-slate-900/60"
+                                        className="mt-2 h-11 rounded-2xl bg-white dark:bg-slate-900 border-slate-200 dark:border-zinc-700"
                                         disabled={!isEditMode}
                                     />
-                                </label>
+                                </div>
 
                                 <div className="mt-4">
                                     <div className="text-xs text-muted-foreground">Purchase Type <span className="text-red-500">*</span></div>
-                                    <select
-                                        ref={purchaseTypeRef}
-                                        value={form.purchaseType}
-                                        onChange={(e) => setForm((f) => ({ ...f, purchaseType: e.target.value as any }))}
-                                        onKeyDown={(e) => {
-                                            if (e.key === "Enter") {
-                                                e.preventDefault();
-                                                vendorSelectRef.current?.focus();
-                                            }
-                                        }}
-                                        className="mt-2 h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900"
-                                        disabled={!isEditMode}
-                                    >
-                                        <option value="vat_13">VAT 13% Purchase</option>
-                                        <option value="exempt">Exempt Purchase</option>
-                                        <option value="import">Import</option>
-                                    </select>
+                                    <div className="relative">
+                                        <SearchableSelect
+                                            buttonRef={purchaseTypeRef}
+                                            placeholder="Select purchase type…"
+                                            valueId={form.purchaseTypeId}
+                                            onChange={(id, opt) => setForm((f) => ({ ...f, purchaseTypeId: id, purchaseType: opt?.name }))}
+                                            options={purchaseTypes}
+                                            className="mt-2"
+                                            buttonClassName={cn(
+                                                "h-11 rounded-2xl bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-700",
+                                                (!form.purchaseTypeId && isEditMode) ? "pr-[80px]" : "pr-4"
+                                            )}
+                                            disabled={!isEditMode}
+                                            onEnterNext={() => safeFocus(vendorSelectRef.current)}
+                                            onAdd={() => setAddPurchaseTypeOpen(true)}
+                                        />
+                                        {!form.purchaseTypeId && isEditMode && (
+                                            <Button
+                                                type="button"
+                                                onClick={() => setAddPurchaseTypeOpen(true)}
+                                                className="absolute right-2 top-[calc(50%+4px)] -translate-y-1/2 h-7 rounded-full px-3 text-[10px] bg-orange-600 text-white border-none hover:bg-orange-700 shadow-sm transition-all active:scale-95"
+                                            >
+                                                <Plus className="mr-1.5 h-3 w-3" />
+                                                New
+                                            </Button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1005,7 +1089,7 @@ export default function PurchaseCreatePage() {
                             <Button
                                 type="button"
                                 onClick={() => setAddVendorOpen(true)}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 h-10 rounded-full px-4 text-xs bg-white text-slate-900 border border-slate-200 hover:!bg-orange-600 hover:!text-white hover:!border-orange-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95 font-bold uppercase tracking-widest"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 h-10 rounded-full px-4 text-xs bg-orange-600 text-white hover:bg-orange-700 border-none shadow-lg shadow-orange-500/20 transition-all active:scale-95 font-bold uppercase tracking-widest"
                             >
                                 <Plus className="mr-2 h-3.5 w-3.5" />
                                 New Vendor
@@ -1121,12 +1205,11 @@ export default function PurchaseCreatePage() {
                                                         {!line.itemId && isEditMode && (
                                                             <Button
                                                                 type="button"
-                                                                variant="outline"
                                                                 onClick={() => {
                                                                     setActiveLineIdx(idx);
                                                                     setAddItemOpen(true);
                                                                 }}
-                                                                className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 rounded-xl px-3 text-[10px] font-medium bg-slate-50 dark:bg-slate-800"
+                                                                className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 rounded-xl px-3 text-[10px] font-medium bg-orange-600 text-white hover:bg-orange-700 border-none shadow-sm transition-all active:scale-95"
                                                                 disabled={!isEditMode}
                                                             >
                                                                 <Plus className="mr-1 h-3 w-3" />
@@ -1404,12 +1487,11 @@ export default function PurchaseCreatePage() {
                                                     {!r.sundryId && r.id !== "discount" && r.id !== "vat" && (
                                                         <Button
                                                             type="button"
-                                                            variant="outline"
                                                             onClick={() => {
                                                                 setActiveSundryIdx(i);
                                                                 setAddSundryOpen(true);
                                                             }}
-                                                            className="absolute z-10 right-7 top-1/2 -translate-y-1/2 h-7 rounded-lg px-1.5 text-[10px] font-medium bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                                                            className="absolute z-10 right-7 top-1/2 -translate-y-1/2 h-7 rounded-lg px-1.5 text-[10px] font-medium bg-orange-600 text-white hover:bg-orange-700 border-none shadow-sm transition-all active:scale-95"
                                                         >
                                                             <Plus className="h-3 w-3" />
                                                             Define New
@@ -1740,6 +1822,22 @@ export default function PurchaseCreatePage() {
                     }
                 }}
             />
-        </div >
+            <AddPurchaseTypeDialog
+                open={addPurchaseTypeOpen}
+                onClose={() => setAddPurchaseTypeOpen(false)}
+                onSuccess={(st) => {
+                    setPurchaseTypes(prev => [...prev, st]);
+                    setForm(f => ({ ...f, purchaseTypeId: st.id, purchaseType: st.name }));
+                }}
+            />
+            <AddPaymentMethodDialog
+                open={addPaymentMethodOpen}
+                onClose={() => setAddPaymentMethodOpen(false)}
+                onSuccess={(method) => {
+                    setPaymentMethods(prev => [...prev, method]);
+                    setForm(f => ({ ...f, paymentMethodId: method.id, paymentMethod: method.name }));
+                }}
+            />
+        </div>
     );
 }

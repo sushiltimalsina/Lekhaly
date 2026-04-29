@@ -34,6 +34,8 @@ import {
     FileText,
     ChevronRight,
     ArrowLeft,
+    RotateCcw,
+    PackageMinus,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -758,66 +760,6 @@ export default function PurchaseReturnCreatePage() {
             const id = res?.id ?? res?.voucherId ?? res?.data?.id ?? editId;
             if (!id) throw new Error("Failed to save draft before posting.");
 
-            await postVoucher(id);
-            setSuccess(`Purchase return posted successfully: ${id}`);
-            setTimeout(() => navigate("/purchase-return"), 1500);
-        } catch (e: any) {
-            setError(e?.message ?? "Something went wrong.");
-        } finally {
-            setSending(false);
-        }
-    };
-
-    const onPreview = () => setSuccess("Preview: connect to your invoice preview route/API.");
-    const onPrint = () => setSuccess("Print: connect to your PDF + print flow.");
-    const onPrintPreview = () => setSuccess("Print Preview: PDF version loading...");
-
-    if (!mounted) return <div className="min-h-screen" />;
-
-    return (
-        <div className="space-y-6">
-            <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                <div className="mb-4">
-                    <Button
-                        variant="ghost"
-                        onClick={() => navigate("/purchase-return")}
-                        className="rounded-full h-10 px-4 text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors"
-                    >
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to Registry
-                    </Button>
-                </div>
-                <PageHeader title="New Purchase Return" description="Fill in the details below to record a new purchase return (debit note)." />
-
-                {/* Alerts */}
-                <div className="mb-4 grid gap-3">
-                    {error ? (
-                        <div className="rounded-xl border border-red-600/30 bg-red-600/10 px-3 py-2 text-sm text-red-700 whitespace-pre-line">
-                            {error}
-                        </div>
-                    ) : null}
-                    {success ? (
-                        <div className="rounded-xl border border-emerald-600/30 bg-emerald-600/10 px-3 py-2 text-sm text-emerald-700">
-                            {success}
-                        </div>
-                    ) : null}
-                </div>
-
-                {/* Top area */}
-                <section className="relative mb-6">
-                    <div className="absolute right-0 top-0 hidden w-[260px] flex-col gap-3 lg:flex">
-                        <DualDateInput
-                            ref={purchaseDateRef}
-                            label="Return Date"
-                            value={form.purchaseDate}
-                            onChange={(next) => setForm((f) => ({ ...f, purchaseDate: next }))}
-                            onEnterNext={() => safeFocus(vendorInvoiceDateRef.current)}
-                        />
-                        <DualDateInput
-                            ref={vendorInvoiceDateRef}
-                            label="Original Invoice Date"
-                            value={form.vendorInvoiceDate}
-                            onChange={(next) => setForm((f) => ({ ...f, vendorInvoiceDate: next }))}
                             onEnterNext={() => safeFocus(vendorInvoiceNoRef.current)}
                         />
                     </div>

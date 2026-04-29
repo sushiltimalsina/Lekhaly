@@ -34,6 +34,7 @@ import {
     ChevronRight,
     ArrowLeft,
     RotateCcw,
+    PackageMinus,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -706,8 +707,9 @@ export default function PurchaseReturnCreatePage() {
             <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
                 <div className="mb-4">
                     <Button
+                        variant="outline"
                         onClick={() => router.push("/purchase-return")}
-                        className="rounded-full h-10 px-4 bg-white text-slate-900 border border-slate-200 hover:!bg-cyan-600 hover:!text-white hover:!border-cyan-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95"
+                        className="h-9 px-3 rounded-xl border-slate-200 text-slate-600 font-bold hover:bg-slate-50 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-900 transition-colors"
                     >
                         <ArrowLeft className="mr-2 h-4 w-4" />
                         Back to Registry
@@ -716,8 +718,8 @@ export default function PurchaseReturnCreatePage() {
 
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-4">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-600 text-white shadow-xl shadow-cyan-500/20">
-                            <RotateCcw className="h-6 w-6" />
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-600 text-white shadow-xl shadow-sky-600/20">
+                            <PackageMinus className="h-6 w-6" />
                         </div>
                         <div>
                             <h1 className="text-2xl font-bold italic tracking-tight text-slate-900 dark:text-slate-100">
@@ -734,7 +736,7 @@ export default function PurchaseReturnCreatePage() {
                         {!isEditMode && searchParams.get("id") ? (
                             <Button
                                 onClick={() => setIsEditMode(true)}
-                                className="rounded-full h-10 px-8 bg-white text-slate-900 border border-slate-200 hover:!bg-cyan-600 hover:!text-white hover:!border-cyan-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95"
+                                className="rounded-2xl h-10 px-6 bg-white text-slate-900 border border-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-all font-bold"
                             >
                                 <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 0 002 2h11a2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -756,7 +758,7 @@ export default function PurchaseReturnCreatePage() {
                             ref={purchaseDateRef}
                             label="Return Date"
                             value={form.purchaseDate}
-                            accentColor="bg-cyan-600"
+                            accentColor="bg-sky-600"
                             onChange={(next) => setForm((f) => ({ ...f, purchaseDate: next }))}
                             onEnterNext={() => safeFocus(vendorInvoiceDateRef.current)}
                             disabled={!isEditMode}
@@ -765,7 +767,7 @@ export default function PurchaseReturnCreatePage() {
                             ref={vendorInvoiceDateRef}
                             label="Original Invoice Date"
                             value={form.vendorInvoiceDate}
-                            accentColor="bg-cyan-600"
+                            accentColor="bg-sky-600"
                             onChange={(next) => setForm((f) => ({ ...f, vendorInvoiceDate: next }))}
                             onEnterNext={() => safeFocus(vendorInvoiceNoRef.current)}
                             disabled={!isEditMode}

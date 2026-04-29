@@ -6,7 +6,8 @@ import { deleteItemGroup, listItemGroups, type ItemGroupRecord } from "@/lib/api
 import { listBillSundries, deleteBillSundry, type BillSundryRecord } from "@/lib/api/bill-sundries";
 import { listPaymentMethods, deletePaymentMethod } from "@/lib/api/payment-methods";
 import { listSaleTypes, deleteSaleType } from "@/lib/api/sale-types";
-import { Trash2, Ruler, Layers, Calculator, Plus, AlertCircle, ChevronDown, ChevronRight, Search, Pencil, Monitor, Hash, Shield, CreditCard, Calendar, Tag } from "lucide-react";
+import { listPurchaseTypes, deletePurchaseType } from "@/lib/api/purchase-types";
+import { Trash2, Ruler, Layers, Calculator, Plus, AlertCircle, ChevronDown, ChevronRight, Search, Pencil, Monitor, Hash, Shield, CreditCard, Calendar, Tag, ShoppingBag } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import AddUnitDialog from "@/components/app/add-unit-dialog";
@@ -14,6 +15,7 @@ import AddItemGroupDialog from "@/components/app/add-item-group-dialog";
 import AddBillSundryDialog from "@/components/app/add-bill-sundry-dialog";
 import AddPaymentMethodDialog from "@/components/app/add-payment-method-dialog";
 import AddSaleTypeDialog from "@/components/app/add-sale-type-dialog";
+import AddPurchaseTypeDialog from "@/components/app/add-purchase-type-dialog";
 import ConfirmDialog from "@/components/app/confirm-dialog";
 import { useDateFormat } from "@/lib/date-format";
 import { getSettings, setCalendarPreference, setDefaultDateRange, subscribeSettings } from "@/lib/store/settings";
@@ -100,6 +102,7 @@ export default function ConfigurationPage() {
   const [sundries, setSundries] = React.useState<BillSundryRecord[]>([]);
   const [paymentMethods, setPaymentMethods] = React.useState<any[]>([]);
   const [saleTypes, setSaleTypes] = React.useState<any[]>([]);
+  const [purchaseTypes, setPurchaseTypes] = React.useState<any[]>([]);
 
   const [loading, setLoading] = React.useState(true);
   const [busy, setBusy] = React.useState(false);
@@ -110,12 +113,14 @@ export default function ConfigurationPage() {
   const [addSundryOpen, setAddSundryOpen] = React.useState(false);
   const [addPaymentMethodOpen, setAddPaymentMethodOpen] = React.useState(false);
   const [addSaleTypeOpen, setAddSaleTypeOpen] = React.useState(false);
+  const [addPurchaseTypeOpen, setAddPurchaseTypeOpen] = React.useState(false);
 
   const [editUnit, setEditUnit] = React.useState<UnitRecord | undefined>();
   const [editGroup, setEditGroup] = React.useState<ItemGroupRecord | undefined>();
   const [editSundry, setEditSundry] = React.useState<BillSundryRecord | undefined>();
   const [editPaymentMethod, setEditPaymentMethod] = React.useState<any | undefined>();
   const [editSaleType, setEditSaleType] = React.useState<any | undefined>();
+  const [editPurchaseType, setEditPurchaseType] = React.useState<any | undefined>();
 
   // Visibility state
   const [expandedSection, setExpandedSection] = React.useState<string | null>(null);
@@ -126,6 +131,7 @@ export default function ConfigurationPage() {
   const [qSundries, setQSundries] = React.useState("");
   const [qPaymentMethods, setQPaymentMethods] = React.useState("");
   const [qSaleTypes, setQSaleTypes] = React.useState("");
+  const [qPurchaseTypes, setQPurchaseTypes] = React.useState("");
 
   // System Preferences State
   const { dateFormat, setDateFormat } = useDateFormat();
@@ -142,7 +148,7 @@ export default function ConfigurationPage() {
   const [confirmState, setConfirmState] = React.useState<{
     id: string;
     name: string;
-    type: "unit" | "group" | "sundry" | "payment-method" | "sale-type";
+    type: "unit" | "group" | "sundry" | "payment-method" | "sale-type" | "purchase-type";
     open: boolean;
   }>({ id: "", name: "", type: "unit", open: false });
 
@@ -160,12 +166,13 @@ export default function ConfigurationPage() {
       return obj?.items ?? obj?.data ?? [];
     };
     try {
-      const [uRes, gRes, sRes, pmRes, stRes, cRes] = await Promise.all([
+      const [uRes, gRes, sRes, pmRes, stRes, ptRes, cRes] = await Promise.all([
         listUnits({ take: 200 }),
         listItemGroups({ take: 200 }),
         listBillSundries({ take: 200 }),
         listPaymentMethods({ take: 200 }),
         listSaleTypes({ take: 200 }),
+        listPurchaseTypes({ take: 200 }),
         getCompany()
       ]);
       setUnits(normalizeList<UnitRecord>(uRes));
@@ -173,6 +180,7 @@ export default function ConfigurationPage() {
       setSundries(normalizeList<BillSundryRecord>(sRes));
       setPaymentMethods(normalizeList<any>(pmRes));
       setSaleTypes(normalizeList<any>(stRes));
+      setPurchaseTypes(normalizeList<any>(ptRes));
       setCompany(cRes);
       setCompanyForm(cRes);
     } catch (e: any) {
@@ -262,6 +270,12 @@ export default function ConfigurationPage() {
     setConfirmState({ id, name: item.name, type: "sale-type", open: true });
   };
 
+  const onRemovePurchaseType = (id: string) => {
+    const item = purchaseTypes.find(pt => pt.id === id);
+    if (!item) return;
+    setConfirmState({ id, name: item.name, type: "purchase-type", open: true });
+  };
+
   const saveCompanySettings = async (updates: any) => {
     setBusy(true);
     setError(null);
@@ -296,6 +310,9 @@ export default function ConfigurationPage() {
       } else if (type === "sale-type") {
         await deleteSaleType(id);
         setSaleTypes(prev => prev.filter(st => st.id !== id));
+      } else if (type === "purchase-type") {
+        await deletePurchaseType(id);
+        setPurchaseTypes(prev => prev.filter(pt => pt.id !== id));
       }
     } catch (e: any) {
        const readableType = type.charAt(0).toUpperCase() + type.slice(1);
@@ -314,6 +331,7 @@ export default function ConfigurationPage() {
   const filteredSundries = sundries.filter(s => s.name.toLowerCase().includes(qSundries.toLowerCase()));
   const filteredPaymentMethods = paymentMethods.filter(pm => pm.name.toLowerCase().includes(qPaymentMethods.toLowerCase()));
   const filteredSaleTypes = saleTypes.filter(st => st.name.toLowerCase().includes(qSaleTypes.toLowerCase()));
+  const filteredPurchaseTypes = purchaseTypes.filter(pt => pt.name.toLowerCase().includes(qPurchaseTypes.toLowerCase()));
 
   return (
     <div className="space-y-6">
@@ -653,78 +671,157 @@ export default function ConfigurationPage() {
           )}
         </Card>
 
-        {/* Sale Types Section */}
-        <Card className={cn("glass-card overflow-hidden", expandedSection === "sale-types" && "ring-2 ring-indigo-500/50")}>
+        {/* Trade Types Section (Sales & Purchase) */}
+        <Card className={cn("glass-card overflow-hidden", expandedSection === "trade-types" && "ring-2 ring-indigo-500/50")}>
           <CardHeader 
-            onClick={() => setExpandedSection(expandedSection === "sale-types" ? null : "sale-types")}
-            className={cn("flex flex-row items-center justify-between cursor-pointer hover:bg-accent/10 transition-colors select-none", expandedSection === "sale-types" ? "pb-2" : "pb-4")}
+            onClick={() => setExpandedSection(expandedSection === "trade-types" ? null : "trade-types")}
+            className={cn("flex flex-row items-center justify-between cursor-pointer hover:bg-accent/10 transition-colors select-none", expandedSection === "trade-types" ? "pb-2" : "pb-4")}
           >
             <div className="flex items-center gap-3">
                <div className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-accent transition-colors">
-                 {expandedSection === "sale-types" ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
+                 {expandedSection === "trade-types" ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
                </div>
               <div>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Tag className="h-5 w-5 text-indigo-500" />
-                  Sale Types
+                  Trade Types
                 </CardTitle>
-                <CardDescription>Manage available sale categories</CardDescription>
+                <CardDescription>Manage available sales and purchase categories</CardDescription>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setEditSaleType(undefined); setAddSaleTypeOpen(true); }} className="rounded-xl">
-                <Plus className="h-4 w-4 mr-1" /> Add New
-              </Button>
             </div>
           </CardHeader>
-          {expandedSection === "sale-types" && (
+          {expandedSection === "trade-types" && (
             <CardContent className="animate-in fade-in slide-in-from-top-1 duration-200">
-              <div className="mb-4 relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search sale types..."
-                  value={qSaleTypes}
-                  onChange={e => setQSaleTypes(e.target.value)}
-                  className="pl-9 rounded-xl border-border"
-                />
-              </div>
-              <div className="grid gap-2">
-                {loading ? (
-                  <div className="py-8 text-center text-sm text-muted-foreground">Loading...</div>
-                ) : filteredSaleTypes.length ? (
-                  filteredSaleTypes.map(st => (
-                    <div key={st.id} className="flex items-center justify-between rounded-2xl border bg-muted/20 px-4 py-3 text-sm transition-all hover:bg-muted/40">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-foreground">{st.name}</span>
-                        {!st.isActive && <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-md">Inactive</span>}
+              <div className="grid gap-6 md:grid-cols-2">
+                
+                {/* Sales Types Section */}
+                <div className="space-y-4 rounded-2xl border border-slate-100 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/20 p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-xl bg-emerald-100 flex items-center justify-center dark:bg-emerald-900/30">
+                        <Tag className="h-4 w-4 text-emerald-600" />
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => { e.stopPropagation(); setEditSaleType(st); setAddSaleTypeOpen(true); }}
-                          disabled={busy}
-                          className="h-8 w-8 text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-950/30"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => { e.stopPropagation(); onRemoveSaleType(st.id); }}
-                          disabled={busy}
-                          className="h-8 w-8 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      <h3 className="font-semibold text-sm">Sales Types</h3>
                     </div>
-                  ))
-                ) : (
-                  <div className="py-8 text-center text-sm text-muted-foreground border-2 border-dashed rounded-2xl">
-                    No sale types found.
+                    <Button size="sm" onClick={() => { setEditSaleType(undefined); setAddSaleTypeOpen(true); }} className="h-8 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 hover:scale-105 active:scale-95 transition-all">
+                      <Plus className="h-4 w-4 mr-1" /> Add
+                    </Button>
                   </div>
-                )}
+                  
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Search sales types..."
+                      value={qSaleTypes}
+                      onChange={e => setQSaleTypes(e.target.value)}
+                      className="pl-9 h-9 rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                    />
+                  </div>
+
+                  <div className="grid gap-2 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin">
+                    {loading ? (
+                      <div className="py-8 text-center text-sm text-muted-foreground">Loading...</div>
+                    ) : filteredSaleTypes.length ? (
+                      filteredSaleTypes.map(st => (
+                        <div key={st.id} className="flex items-center justify-between rounded-xl border bg-white px-3 py-2 text-sm transition-all hover:border-emerald-200 dark:bg-slate-900 dark:border-slate-800 dark:hover:border-emerald-900/50">
+                          <div className="flex flex-col">
+                            <span className="font-medium text-slate-700 dark:text-slate-200">{st.name}</span>
+                            {!st.isActive && <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Inactive</span>}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => { setEditSaleType(st); setAddSaleTypeOpen(true); }}
+                              disabled={busy}
+                              className="h-7 w-7 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => onRemoveSaleType(st.id)}
+                              disabled={busy}
+                              className="h-7 w-7 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="py-8 text-center text-xs text-slate-400 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
+                        {qSaleTypes ? "No matching sales types." : "No sales types added."}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Purchase Types Section */}
+                <div className="space-y-4 rounded-2xl border border-slate-100 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/20 p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-xl bg-orange-100 flex items-center justify-center dark:bg-orange-900/30">
+                        <ShoppingBag className="h-4 w-4 text-orange-600" />
+                      </div>
+                      <h3 className="font-semibold text-sm">Purchase Types</h3>
+                    </div>
+                    <Button size="sm" onClick={() => { setEditPurchaseType(undefined); setAddPurchaseTypeOpen(true); }} className="h-8 rounded-xl bg-orange-600 text-white hover:bg-orange-700 hover:scale-105 active:scale-95 transition-all">
+                      <Plus className="h-4 w-4 mr-1" /> Add
+                    </Button>
+                  </div>
+                  
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Search purchase types..."
+                      value={qPurchaseTypes}
+                      onChange={e => setQPurchaseTypes(e.target.value)}
+                      className="pl-9 h-9 rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                    />
+                  </div>
+
+                  <div className="grid gap-2 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin">
+                    {loading ? (
+                      <div className="py-8 text-center text-sm text-muted-foreground">Loading...</div>
+                    ) : filteredPurchaseTypes.length ? (
+                      filteredPurchaseTypes.map(pt => (
+                        <div key={pt.id} className="flex items-center justify-between rounded-xl border bg-white px-3 py-2 text-sm transition-all hover:border-orange-200 dark:bg-slate-900 dark:border-slate-800 dark:hover:border-orange-900/50">
+                          <div className="flex flex-col">
+                            <span className="font-medium text-slate-700 dark:text-slate-200">{pt.name}</span>
+                            {!pt.isActive && <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Inactive</span>}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => { setEditPurchaseType(pt); setAddPurchaseTypeOpen(true); }}
+                              disabled={busy}
+                              className="h-7 w-7 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => onRemovePurchaseType(pt.id)}
+                              disabled={busy}
+                              className="h-7 w-7 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="py-8 text-center text-xs text-slate-400 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
+                        {qPurchaseTypes ? "No matching purchase types." : "No purchase types added."}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
               </div>
             </CardContent>
           )}
@@ -1183,6 +1280,12 @@ export default function ConfigurationPage() {
         onClose={() => { setAddSaleTypeOpen(false); setEditSaleType(undefined); }}
         onSuccess={() => { fetchData(); setEditSaleType(undefined); }}
         initialData={editSaleType}
+      />
+      <AddPurchaseTypeDialog
+        open={addPurchaseTypeOpen}
+        onClose={() => { setAddPurchaseTypeOpen(false); setEditPurchaseType(undefined); }}
+        onSuccess={() => { fetchData(); setEditPurchaseType(undefined); }}
+        initialData={editPurchaseType}
       />
 
       <ConfirmDialog

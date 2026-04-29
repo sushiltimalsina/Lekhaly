@@ -1053,7 +1053,7 @@ export default function SalesCreatePage() {
               <Button
                 type="button"
                 onClick={() => setAddCustomerOpen(true)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 h-10 rounded-full px-4 text-xs bg-white text-slate-900 border border-slate-200 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 dark:hover:bg-emerald-600 dark:hover:text-white dark:hover:border-emerald-600 transition-colors shadow-sm active:scale-95"
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-10 rounded-full px-4 text-xs bg-emerald-600 text-white hover:bg-emerald-700 border-none shadow-lg shadow-emerald-500/20 transition-all active:scale-95 font-bold uppercase tracking-widest"
               >
                 <Plus className="mr-2 h-3.5 w-3.5" />
                 New Customer

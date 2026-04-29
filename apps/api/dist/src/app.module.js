@@ -43,6 +43,7 @@ const proforma_module_1 = require("./modules/proforma/proforma.module");
 const fiscal_sessions_module_1 = require("./modules/fiscal-sessions/fiscal-sessions.module");
 const payment_methods_module_1 = require("./modules/payment-methods/payment-methods.module");
 const sale_types_module_1 = require("./modules/sale-types/sale-types.module");
+const purchase_types_module_1 = require("./modules/purchase-types/purchase-types.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -83,6 +84,7 @@ exports.AppModule = AppModule = __decorate([
             fiscal_sessions_module_1.FiscalSessionsModule,
             payment_methods_module_1.PaymentMethodsModule,
             sale_types_module_1.SaleTypesModule,
+            purchase_types_module_1.PurchaseTypesModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [

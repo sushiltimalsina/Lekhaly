@@ -73,6 +73,7 @@ import { PurchaseTypesModule } from "./modules/purchase-types/purchase-types.mod
     FiscalSessionsModule,
     PaymentMethodsModule,
     SaleTypesModule,
+    PurchaseTypesModule,
   ],
   controllers: [AppController],
   providers: [

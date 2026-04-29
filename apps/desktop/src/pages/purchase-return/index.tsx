@@ -6,7 +6,7 @@ import {
     Plus,
     ChevronRight,
     ChevronDown,
-    RotateCw,
+    PackageMinus,
     FileText,
     History
 } from "lucide-react";
@@ -150,9 +150,9 @@ export default function PurchaseReturnListPage() {
                     actions={
                         <Button
                             onClick={() => navigate("/purchase-return/create")}
-                            className="rounded-2xl bg-orange-600 hover:bg-orange-700 text-white shadow-lg shadow-orange-500/20 px-8 h-11 transition-all active:scale-95 border-none"
+                            className="rounded-2xl h-12 px-6 bg-sky-600 text-white font-bold hover:bg-sky-700 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 shadow-md shadow-sky-600/20 border-none"
                         >
-                            <Plus className="mr-2 h-4 w-4" />
+                            <PackageMinus className="mr-2 h-5 w-5" />
                             New Return
                         </Button>
                     }
@@ -181,8 +181,8 @@ export default function PurchaseReturnListPage() {
                         <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">Total Return Value</span>
                         <span className="text-xl font-black text-slate-900 dark:text-white mt-1"><MoneyText value={metrics.totalReturn} /></span>
                     </div>
-                    <div className="h-10 w-10 rounded-xl bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center text-orange-600">
-                        <RotateCw className="h-5 w-5" />
+                    <div className="h-10 w-10 rounded-xl bg-sky-50 dark:bg-sky-900/20 flex items-center justify-center text-sky-600">
+                        <PackageMinus className="h-5 w-5" />
                     </div>
                 </div>
                 <div className="bg-white dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center justify-between">
@@ -194,8 +194,8 @@ export default function PurchaseReturnListPage() {
                         <FileText className="h-5 w-5" />
                     </div>
                 </div>
-                <div className="bg-gradient-to-br from-orange-600 to-orange-700 text-white p-5 rounded-2xl shadow-lg shadow-orange-500/20 flex flex-col justify-center">
-                    <span className="text-[10px] uppercase font-black tracking-widest text-orange-200">Return Ledger</span>
+                <div className="bg-gradient-to-br from-sky-600 to-sky-700 text-white p-5 rounded-2xl shadow-lg shadow-sky-500/20 flex flex-col justify-center">
+                    <span className="text-[10px] uppercase font-black tracking-widest text-sky-200">Return Ledger</span>
                     <div className="flex items-center gap-2 mt-2">
                         <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
                         <span className="font-bold text-sm">Vendor Sync Active</span>
@@ -209,7 +209,7 @@ export default function PurchaseReturnListPage() {
                 filterOptions={filterOptions}
                 columnOptions={columnOptions}
                 onVisibleColumnsChange={setVisibleColumns}
-                className="border-orange-100 dark:border-orange-900/50"
+                className="border-sky-100 dark:border-sky-900/50"
             />
 
             <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl shadow-slate-200/40 dark:border-slate-800 dark:bg-slate-950 dark:shadow-none">
@@ -217,7 +217,7 @@ export default function PurchaseReturnListPage() {
                     <div className="flex flex-col items-center justify-center py-24 space-y-4">
                         <div className="relative h-12 w-12">
                             <div className="absolute inset-0 rounded-full border-4 border-slate-100 dark:border-slate-800"></div>
-                            <div className="absolute inset-0 rounded-full border-4 border-orange-600 border-t-transparent animate-spin"></div>
+                            <div className="absolute inset-0 rounded-full border-4 border-sky-600 border-t-transparent animate-spin"></div>
                         </div>
                         <p className="text-sm font-black text-slate-400 animate-pulse uppercase tracking-widest text-[10px]">Processing returns...</p>
                     </div>
@@ -252,7 +252,7 @@ export default function PurchaseReturnListPage() {
 
                                     return (
                                         <React.Fragment key={item.id}>
-                                            <tr className="group hover:bg-orange-50/20 dark:hover:bg-orange-900/10 transition-colors">
+                                            <tr className="group hover:bg-sky-50/20 dark:hover:bg-sky-900/10 transition-colors">
                                                 {visibleColumns.includes("sno") && (
                                                     <td className={`px-6 ${py} whitespace-nowrap font-bold text-slate-500`}>
                                                         {sNo}
@@ -274,7 +274,7 @@ export default function PurchaseReturnListPage() {
                                                     <td className={`px-6 ${py} whitespace-nowrap`}>
                                                         <span
                                                             onClick={() => navigate(`/purchase-return/create?id=${item.id}`)}
-                                                            className="font-black text-slate-900 dark:text-white hover:text-orange-600 transition-colors cursor-pointer"
+                                                            className="font-black text-slate-900 dark:text-white hover:text-sky-600 transition-colors cursor-pointer"
                                                         >
                                                             {item.voucherNumber || `DRAFT-${item.id.slice(0, 4)}`}
                                                         </span>
@@ -286,7 +286,7 @@ export default function PurchaseReturnListPage() {
                                                         onClick={() => setExpandedRow(isExpanded ? null : item.id)}
                                                     >
                                                         <div className="flex flex-col max-w-[250px]">
-                                                            <span className="truncate font-bold text-slate-900 dark:text-white group-hover:text-orange-600 transition-colors">
+                                                            <span className="truncate font-bold text-slate-900 dark:text-white group-hover:text-sky-600 transition-colors">
                                                                 {item.party?.name || "Unknown Vendor"}
                                                             </span>
                                                             {itemLines.length > 0 && (
@@ -322,7 +322,7 @@ export default function PurchaseReturnListPage() {
                                                             const postedInfo = getDateDisplay({ ad: item.postedAt, format: calendarFmt });
                                                             return (
                                                                 <div className="flex flex-col">
-                                                                    <span className="font-bold text-slate-800 dark:text-slate-100 text-xs text-orange-600 dark:text-orange-400 uppercase tracking-tighter">
+                                                                    <span className="font-bold text-slate-800 dark:text-slate-100 text-xs text-sky-600 dark:text-sky-400 uppercase tracking-tighter">
                                                                         {postedInfo.primary}
                                                                     </span>
                                                                     <span className="text-[10px] text-slate-400 font-black tracking-widest">
@@ -336,7 +336,7 @@ export default function PurchaseReturnListPage() {
                                                     </td>
                                                 )}
                                                 <td className={`px-6 ${py} text-right`}>
-                                                    <div className="text-slate-300 group-hover:text-orange-400 transition-all">
+                                                    <div className="text-slate-300 group-hover:text-sky-400 transition-all">
                                                         {isExpanded ? (
                                                             <ChevronDown className="h-4 w-4" />
                                                         ) : (
@@ -398,12 +398,12 @@ export default function PurchaseReturnListPage() {
                             <History className="h-10 w-10 text-slate-300" />
                         </div>
                         <div className="max-w-xs space-y-1">
-                            <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-widest text-sm text-orange-600">No Purchase Returns Found</h3>
+                            <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-widest text-sm text-sky-600">No Purchase Returns Found</h3>
                             <p className="text-sm text-slate-500 font-medium leading-relaxed">Recorded vendor returns and debit notes will appear in this registry.</p>
                         </div>
                         <Button
                             onClick={() => setFilters({ q: "", status: "all", from: null, to: null })}
-                            className="bg-orange-600 rounded-2xl h-11 px-8 font-black text-xs uppercase tracking-widest shadow-xl shadow-orange-500/20"
+                            className="bg-sky-600 rounded-2xl h-11 px-8 font-black text-xs uppercase tracking-widest shadow-xl shadow-sky-500/20 text-white hover:bg-sky-700 transition-all"
                         >
                             Reset Audit Filters
                         </Button>
