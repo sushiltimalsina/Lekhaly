@@ -50,6 +50,7 @@ export class ItemsService {
     if (existing) throw new BadRequestException("Item name already exists");
     await this.validateRefs(user.companyId, input);
     const taxCodeIds = (input as any).taxCodeIds as string[] | undefined;
+    const uomConversions = (input as any).uomConversions as Array<{ unit: string; factor: number; isBase?: boolean }> | undefined;
     const openingQty = (input as any).openingQty as number | undefined;
     const openingPrice = (input as any).openingPrice as number | undefined;
 
@@ -61,15 +62,27 @@ export class ItemsService {
         hsCode: (input as any).hsCode,
         groupId: (input as any).groupId,
         unit: input.unit,
+        baseUnit: (input as any).baseUnit ?? input.unit ?? null,
         type: (input as any).type ?? "goods",
         salesPrice: input.salesPrice,
         purchasePrice: input.purchasePrice,
+        reorderLevel: (input as any).reorderLevel ?? 0,
+        safetyStock: (input as any).safetyStock ?? 0,
         incomeAccountId: (input as any).incomeAccountId,
         expenseAccountId: (input as any).expenseAccountId,
         taxCodeId: (input as any).taxCodeId,
         itemTaxCodes: Array.isArray(taxCodeIds) && taxCodeIds.length
           ? {
             create: taxCodeIds.map((id) => ({ taxCodeId: id }))
+          }
+          : undefined,
+        uomConversions: Array.isArray(uomConversions) && uomConversions.length
+          ? {
+            create: uomConversions.map((c) => ({
+              unit: c.unit,
+              factor: new Prisma.Decimal(c.factor),
+              isBase: Boolean(c.isBase)
+            }))
           }
           : undefined
       }
@@ -113,17 +126,33 @@ export class ItemsService {
     await this.validateRefs(user.companyId, input);
 
     const taxCodeIds = (input as any).taxCodeIds as string[] | undefined;
-    if (Array.isArray(taxCodeIds)) {
+    const uomConversions = (input as any).uomConversions as Array<{ unit: string; factor: number; isBase?: boolean }> | undefined;
+    if (Array.isArray(taxCodeIds) || Array.isArray(uomConversions)) {
       return this.prisma.$transaction(async (tx) => {
         const updated = await tx.item.update({
           where: { id },
           data: input
         });
-        await tx.itemTaxCode.deleteMany({ where: { itemId: id } });
-        if (taxCodeIds.length) {
-          await tx.itemTaxCode.createMany({
-            data: taxCodeIds.map((taxCodeId) => ({ itemId: id, taxCodeId }))
-          });
+        if (Array.isArray(taxCodeIds)) {
+          await tx.itemTaxCode.deleteMany({ where: { itemId: id } });
+          if (taxCodeIds.length) {
+            await tx.itemTaxCode.createMany({
+              data: taxCodeIds.map((taxCodeId) => ({ itemId: id, taxCodeId }))
+            });
+          }
+        }
+        if (Array.isArray(uomConversions)) {
+          await tx.itemUomConversion.deleteMany({ where: { itemId: id } });
+          if (uomConversions.length) {
+            await tx.itemUomConversion.createMany({
+              data: uomConversions.map((c) => ({
+                itemId: id,
+                unit: c.unit,
+                factor: new Prisma.Decimal(c.factor),
+                isBase: Boolean(c.isBase)
+              }))
+            });
+          }
         }
         return updated;
       });

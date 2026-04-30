@@ -30,6 +30,12 @@ let InventoryController = class InventoryController {
     report(user, query) {
         return this.inventory.getStockReport(user, query);
     }
+    transfer(user, body) {
+        return this.inventory.transferStock(user, body);
+    }
+    alerts(user, query) {
+        return this.inventory.getInventoryAlerts(user, query);
+    }
 };
 exports.InventoryController = InventoryController;
 __decorate([
@@ -51,6 +57,25 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", void 0)
 ], InventoryController.prototype, "report", null);
+__decorate([
+    (0, common_1.Post)("transfer"),
+    (0, auth_decorator_1.RequirePerm)("masters.write"),
+    (0, auth_decorator_1.RequireStep)("sensitive"),
+    __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Body)(new zod_pipe_1.ZodValidationPipe(inventory_schemas_1.StockTransferSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], InventoryController.prototype, "transfer", null);
+__decorate([
+    (0, common_1.Get)("alerts"),
+    (0, auth_decorator_1.RequirePerm)("masters.read"),
+    __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Query)(new zod_pipe_1.ZodValidationPipe(inventory_schemas_1.InventoryAlertsQuerySchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], InventoryController.prototype, "alerts", null);
 exports.InventoryController = InventoryController = __decorate([
     (0, common_1.Controller)("inventory"),
     (0, audit_decorator_1.Audit)({ entityType: "inventory", idParam: "id" }),

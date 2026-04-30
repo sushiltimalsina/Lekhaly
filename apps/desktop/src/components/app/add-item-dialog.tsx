@@ -39,6 +39,8 @@ export default function AddItemDialog({ open, onClose, onSuccess }: AddItemDialo
         type: "goods" as ItemType,
         salesPrice: "",
         purchasePrice: "",
+        reorderLevel: "",
+        safetyStock: "",
         openingQty: "",
         openingPrice: "",
         groupId: "",
@@ -104,6 +106,8 @@ export default function AddItemDialog({ open, onClose, onSuccess }: AddItemDialo
                 type: form.type,
                 salesPrice: form.salesPrice ? Number(form.salesPrice) : undefined,
                 purchasePrice: form.purchasePrice ? Number(form.purchasePrice) : undefined,
+                reorderLevel: form.reorderLevel ? Number(form.reorderLevel) : undefined,
+                safetyStock: form.safetyStock ? Number(form.safetyStock) : undefined,
                 openingQty: form.openingQty ? Number(form.openingQty) : undefined,
                 openingPrice: form.openingPrice ? Number(form.openingPrice) : undefined,
                 groupId: form.groupId || undefined,
@@ -116,7 +120,7 @@ export default function AddItemDialog({ open, onClose, onSuccess }: AddItemDialo
             // Reset form
             setForm({
                 name: "", sku: "", hsCode: "", unit: "", type: "goods",
-                salesPrice: "", purchasePrice: "", openingQty: "", openingPrice: "",
+                salesPrice: "", purchasePrice: "", reorderLevel: "", safetyStock: "", openingQty: "", openingPrice: "",
                 groupId: "", incomeAccountId: "", expenseAccountId: "", taxCodeIds: []
             });
             setTaxable(false);
@@ -366,6 +370,28 @@ export default function AddItemDialog({ open, onClose, onSuccess }: AddItemDialo
                                         value={form.openingPrice}
                                         onChange={e => update("openingPrice", e.target.value)}
                                         placeholder="0.00"
+                                        className="h-12 rounded-2xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                                    />
+                                </label>
+                            </div>
+                            <div className="grid grid-cols-2 gap-5">
+                                <label className="space-y-1.5">
+                                    <span className="text-xs font-bold text-slate-600 dark:text-slate-400 ml-1">REORDER LEVEL</span>
+                                    <Input
+                                        type="number"
+                                        value={form.reorderLevel}
+                                        onChange={e => update("reorderLevel", e.target.value)}
+                                        placeholder="0"
+                                        className="h-12 rounded-2xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                                    />
+                                </label>
+                                <label className="space-y-1.5">
+                                    <span className="text-xs font-bold text-slate-600 dark:text-slate-400 ml-1">SAFETY STOCK</span>
+                                    <Input
+                                        type="number"
+                                        value={form.safetyStock}
+                                        onChange={e => update("safetyStock", e.target.value)}
+                                        placeholder="0"
                                         className="h-12 rounded-2xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
                                     />
                                 </label>

@@ -22,6 +22,7 @@ type DualDateInputProps = {
   onEnterNext?: () => void;
   className?: string;
   accentColor?: string; // Optional accent color class e.g. "bg-rose-600"
+  withBackdrop?: boolean;
 };
 
 function useOutsideClick<T extends HTMLElement>(
@@ -59,6 +60,7 @@ const DualDateInput = React.forwardRef<HTMLInputElement, DualDateInputProps>(
       onEnterNext,
       className,
       accentColor = "bg-primary",
+      withBackdrop = false,
     } = props;
 
     const [mounted, setMounted] = React.useState(false);
@@ -92,11 +94,27 @@ const DualDateInput = React.forwardRef<HTMLInputElement, DualDateInputProps>(
       if (open) {
         const rect = buttonRef.current?.parentElement?.getBoundingClientRect();
         if (rect) {
+          const PANEL_WIDTH = 320;
+          const PANEL_HEIGHT = 360;
+          const GAP = 8;
+          const vw = window.innerWidth;
+          const vh = window.innerHeight;
+          const placeBelowTop = rect.bottom + GAP;
+          const placeAboveTop = rect.top - PANEL_HEIGHT - GAP;
+          const top =
+            placeBelowTop + PANEL_HEIGHT <= vh - GAP
+              ? placeBelowTop
+              : Math.max(GAP, placeAboveTop);
+          const left = Math.min(
+            Math.max(GAP, rect.left),
+            Math.max(GAP, vw - PANEL_WIDTH - GAP)
+          );
+
           setMenuStyle({
             position: "fixed",
-            top: rect.bottom + 8,
-            left: rect.left,
-            zIndex: 1000,
+            top,
+            left,
+            zIndex: 1500,
             opacity: 1,
           });
         }
@@ -206,22 +224,30 @@ const DualDateInput = React.forwardRef<HTMLInputElement, DualDateInputProps>(
         </div>
 
         {open && mounted && createPortal(
-          <div
-            ref={panelRef}
-            style={menuStyle}
-            className="w-[320px] dark:shadow-black/50 animate-in fade-in zoom-in-95 duration-150"
-          >
-            <CalendarPicker
-              value={value.ad}
-              onChange={(ad) => {
-                const bs = adToBs(ad);
-                onChange({ ad, bs });
-                setOpen(false);
-                onEnterNext?.();
-              }}
-              accentColor={accentColor}
-            />
-          </div>,
+          <>
+            {withBackdrop ? (
+              <div
+                className="fixed inset-0 z-[990] bg-slate-900/10 backdrop-blur-[2px]"
+                onMouseDown={() => setOpen(false)}
+              />
+            ) : null}
+            <div
+              ref={panelRef}
+              style={menuStyle}
+              className="z-[1500] w-[320px] dark:shadow-black/50 animate-in fade-in zoom-in-95 duration-150"
+            >
+              <CalendarPicker
+                value={value.ad}
+                onChange={(ad) => {
+                  const bs = adToBs(ad);
+                  onChange({ ad, bs });
+                  setOpen(false);
+                  onEnterNext?.();
+                }}
+                accentColor={accentColor}
+              />
+            </div>
+          </>,
           document.body
         )}
       </div>
@@ -233,3 +259,4 @@ DualDateInput.displayName = "DualDateInput";
 
 export { DualDateInput };
 export default DualDateInput;
+

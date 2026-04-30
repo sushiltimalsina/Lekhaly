@@ -7,9 +7,17 @@ exports.CreateItemSchema = zod_1.z.object({
     sku: zod_1.z.string().trim().max(64).optional(),
     hsCode: zod_1.z.string().trim().max(32).optional(),
     unit: zod_1.z.string().trim().max(32).optional(),
+    baseUnit: zod_1.z.string().trim().max(32).optional(),
+    uomConversions: zod_1.z.array(zod_1.z.object({
+        unit: zod_1.z.string().trim().min(1).max(32),
+        factor: zod_1.z.number().positive(),
+        isBase: zod_1.z.boolean().optional()
+    })).optional(),
     type: zod_1.z.enum(["goods", "services"]).optional(),
     salesPrice: zod_1.z.number().nonnegative().optional(),
     purchasePrice: zod_1.z.number().nonnegative().optional(),
+    reorderLevel: zod_1.z.number().nonnegative().optional(),
+    safetyStock: zod_1.z.number().nonnegative().optional(),
     openingQty: zod_1.z.number().optional(),
     openingPrice: zod_1.z.number().nonnegative().optional(),
     groupId: zod_1.z.string().uuid().optional(),

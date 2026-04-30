@@ -4,12 +4,20 @@ export declare const CreateItemSchema: z.ZodObject<{
     sku: z.ZodOptional<z.ZodString>;
     hsCode: z.ZodOptional<z.ZodString>;
     unit: z.ZodOptional<z.ZodString>;
+    baseUnit: z.ZodOptional<z.ZodString>;
+    uomConversions: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        unit: z.ZodString;
+        factor: z.ZodNumber;
+        isBase: z.ZodOptional<z.ZodBoolean>;
+    }, z.core.$strip>>>;
     type: z.ZodOptional<z.ZodEnum<{
         goods: "goods";
         services: "services";
     }>>;
     salesPrice: z.ZodOptional<z.ZodNumber>;
     purchasePrice: z.ZodOptional<z.ZodNumber>;
+    reorderLevel: z.ZodOptional<z.ZodNumber>;
+    safetyStock: z.ZodOptional<z.ZodNumber>;
     openingQty: z.ZodOptional<z.ZodNumber>;
     openingPrice: z.ZodOptional<z.ZodNumber>;
     groupId: z.ZodOptional<z.ZodString>;
@@ -23,12 +31,20 @@ export declare const UpdateItemSchema: z.ZodObject<{
     sku: z.ZodOptional<z.ZodOptional<z.ZodString>>;
     hsCode: z.ZodOptional<z.ZodOptional<z.ZodString>>;
     unit: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    baseUnit: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    uomConversions: z.ZodOptional<z.ZodOptional<z.ZodArray<z.ZodObject<{
+        unit: z.ZodString;
+        factor: z.ZodNumber;
+        isBase: z.ZodOptional<z.ZodBoolean>;
+    }, z.core.$strip>>>>;
     type: z.ZodOptional<z.ZodOptional<z.ZodEnum<{
         goods: "goods";
         services: "services";
     }>>>;
     salesPrice: z.ZodOptional<z.ZodOptional<z.ZodNumber>>;
     purchasePrice: z.ZodOptional<z.ZodOptional<z.ZodNumber>>;
+    reorderLevel: z.ZodOptional<z.ZodOptional<z.ZodNumber>>;
+    safetyStock: z.ZodOptional<z.ZodOptional<z.ZodNumber>>;
     openingQty: z.ZodOptional<z.ZodOptional<z.ZodNumber>>;
     openingPrice: z.ZodOptional<z.ZodOptional<z.ZodNumber>>;
     groupId: z.ZodOptional<z.ZodOptional<z.ZodString>>;

@@ -126,8 +126,14 @@ export declare class AuthService {
             itemId: string;
             amount: Prisma.Decimal;
             rate: Prisma.Decimal;
+            warehouseId: string | null;
+            binId: string | null;
             qtyIn: Prisma.Decimal;
             qtyOut: Prisma.Decimal;
+            batchNo: string | null;
+            lotNo: string | null;
+            expiryDate: Date | null;
+            expiryDateBs: string | null;
         }[] | {
             id: string;
             companyId: string;
@@ -482,8 +488,11 @@ export declare class AuthService {
             groupId: string | null;
             sku: string | null;
             hsCode: string | null;
+            baseUnit: string | null;
             salesPrice: Prisma.Decimal | null;
             purchasePrice: Prisma.Decimal | null;
+            reorderLevel: Prisma.Decimal;
+            safetyStock: Prisma.Decimal;
             incomeAccountId: string | null;
             expenseAccountId: string | null;
         } | {
@@ -499,8 +508,11 @@ export declare class AuthService {
             groupId: string | null;
             sku: string | null;
             hsCode: string | null;
+            baseUnit: string | null;
             salesPrice: Prisma.Decimal | null;
             purchasePrice: Prisma.Decimal | null;
+            reorderLevel: Prisma.Decimal;
+            safetyStock: Prisma.Decimal;
             incomeAccountId: string | null;
             expenseAccountId: string | null;
         })[] | ({
@@ -579,8 +591,14 @@ export declare class AuthService {
             itemId: string;
             amount: Prisma.Decimal;
             rate: Prisma.Decimal;
+            warehouseId: string | null;
+            binId: string | null;
             qtyIn: Prisma.Decimal;
             qtyOut: Prisma.Decimal;
+            batchNo: string | null;
+            lotNo: string | null;
+            expiryDate: Date | null;
+            expiryDateBs: string | null;
         } | {
             id: string;
             companyId: string;
@@ -591,8 +609,48 @@ export declare class AuthService {
             itemId: string;
             amount: Prisma.Decimal;
             rate: Prisma.Decimal;
+            warehouseId: string | null;
+            binId: string | null;
             qtyIn: Prisma.Decimal;
             qtyOut: Prisma.Decimal;
+            batchNo: string | null;
+            lotNo: string | null;
+            expiryDate: Date | null;
+            expiryDateBs: string | null;
+        })[] | ({
+            id: string;
+            companyId: string;
+            name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            code: string | null;
+            isActive: boolean;
+        } | {
+            id: string;
+            companyId: string;
+            name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            code: string | null;
+            isActive: boolean;
+        })[] | ({
+            id: string;
+            companyId: string;
+            name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            code: string | null;
+            isActive: boolean;
+            warehouseId: string;
+        } | {
+            id: string;
+            companyId: string;
+            name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            code: string | null;
+            isActive: boolean;
+            warehouseId: string;
         })[] | ({
             id: string;
             companyId: string;
@@ -864,9 +922,9 @@ export declare class AuthService {
             subtotal: Prisma.Decimal;
             vatAmount: Prisma.Decimal;
             total: Prisma.Decimal;
-            quotationNo: string | null;
             expiryDate: Date | null;
             expiryDateBs: string | null;
+            quotationNo: string | null;
             terms: string | null;
         } | {
             id: string;
@@ -883,9 +941,9 @@ export declare class AuthService {
             subtotal: Prisma.Decimal;
             vatAmount: Prisma.Decimal;
             total: Prisma.Decimal;
-            quotationNo: string | null;
             expiryDate: Date | null;
             expiryDateBs: string | null;
+            quotationNo: string | null;
             terms: string | null;
         })[] | ({
             id: string;
@@ -1140,8 +1198,11 @@ export declare class AuthService {
             groupId: string | null;
             sku: string | null;
             hsCode: string | null;
+            baseUnit: string | null;
             salesPrice: Prisma.Decimal | null;
             purchasePrice: Prisma.Decimal | null;
+            reorderLevel: Prisma.Decimal;
+            safetyStock: Prisma.Decimal;
             incomeAccountId: string | null;
             expenseAccountId: string | null;
         }[] | {
@@ -1177,6 +1238,23 @@ export declare class AuthService {
             accountId: string | null;
             isActive: boolean;
             rate: Prisma.Decimal | null;
+        }[] | {
+            id: string;
+            companyId: string;
+            name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            code: string | null;
+            isActive: boolean;
+        }[] | {
+            id: string;
+            companyId: string;
+            name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            code: string | null;
+            isActive: boolean;
+            warehouseId: string;
         }[] | {
             id: string;
             companyId: string;
@@ -1308,9 +1386,9 @@ export declare class AuthService {
             subtotal: Prisma.Decimal;
             vatAmount: Prisma.Decimal;
             total: Prisma.Decimal;
-            quotationNo: string | null;
             expiryDate: Date | null;
             expiryDateBs: string | null;
+            quotationNo: string | null;
             terms: string | null;
         }[] | {
             id: string;
@@ -1524,8 +1602,14 @@ export declare class AuthService {
             itemId: string;
             amount: Prisma.Decimal;
             rate: Prisma.Decimal;
+            warehouseId: string | null;
+            binId: string | null;
             qtyIn: Prisma.Decimal;
             qtyOut: Prisma.Decimal;
+            batchNo: string | null;
+            lotNo: string | null;
+            expiryDate: Date | null;
+            expiryDateBs: string | null;
         }[] | {
             id: string;
             companyId: string;
@@ -1880,8 +1964,11 @@ export declare class AuthService {
             groupId: string | null;
             sku: string | null;
             hsCode: string | null;
+            baseUnit: string | null;
             salesPrice: Prisma.Decimal | null;
             purchasePrice: Prisma.Decimal | null;
+            reorderLevel: Prisma.Decimal;
+            safetyStock: Prisma.Decimal;
             incomeAccountId: string | null;
             expenseAccountId: string | null;
         } | {
@@ -1897,8 +1984,11 @@ export declare class AuthService {
             groupId: string | null;
             sku: string | null;
             hsCode: string | null;
+            baseUnit: string | null;
             salesPrice: Prisma.Decimal | null;
             purchasePrice: Prisma.Decimal | null;
+            reorderLevel: Prisma.Decimal;
+            safetyStock: Prisma.Decimal;
             incomeAccountId: string | null;
             expenseAccountId: string | null;
         })[] | ({
@@ -1977,8 +2067,14 @@ export declare class AuthService {
             itemId: string;
             amount: Prisma.Decimal;
             rate: Prisma.Decimal;
+            warehouseId: string | null;
+            binId: string | null;
             qtyIn: Prisma.Decimal;
             qtyOut: Prisma.Decimal;
+            batchNo: string | null;
+            lotNo: string | null;
+            expiryDate: Date | null;
+            expiryDateBs: string | null;
         } | {
             id: string;
             companyId: string;
@@ -1989,8 +2085,48 @@ export declare class AuthService {
             itemId: string;
             amount: Prisma.Decimal;
             rate: Prisma.Decimal;
+            warehouseId: string | null;
+            binId: string | null;
             qtyIn: Prisma.Decimal;
             qtyOut: Prisma.Decimal;
+            batchNo: string | null;
+            lotNo: string | null;
+            expiryDate: Date | null;
+            expiryDateBs: string | null;
+        })[] | ({
+            id: string;
+            companyId: string;
+            name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            code: string | null;
+            isActive: boolean;
+        } | {
+            id: string;
+            companyId: string;
+            name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            code: string | null;
+            isActive: boolean;
+        })[] | ({
+            id: string;
+            companyId: string;
+            name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            code: string | null;
+            isActive: boolean;
+            warehouseId: string;
+        } | {
+            id: string;
+            companyId: string;
+            name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            code: string | null;
+            isActive: boolean;
+            warehouseId: string;
         })[] | ({
             id: string;
             companyId: string;
@@ -2262,9 +2398,9 @@ export declare class AuthService {
             subtotal: Prisma.Decimal;
             vatAmount: Prisma.Decimal;
             total: Prisma.Decimal;
-            quotationNo: string | null;
             expiryDate: Date | null;
             expiryDateBs: string | null;
+            quotationNo: string | null;
             terms: string | null;
         } | {
             id: string;
@@ -2281,9 +2417,9 @@ export declare class AuthService {
             subtotal: Prisma.Decimal;
             vatAmount: Prisma.Decimal;
             total: Prisma.Decimal;
-            quotationNo: string | null;
             expiryDate: Date | null;
             expiryDateBs: string | null;
+            quotationNo: string | null;
             terms: string | null;
         })[] | ({
             id: string;
@@ -2538,8 +2674,11 @@ export declare class AuthService {
             groupId: string | null;
             sku: string | null;
             hsCode: string | null;
+            baseUnit: string | null;
             salesPrice: Prisma.Decimal | null;
             purchasePrice: Prisma.Decimal | null;
+            reorderLevel: Prisma.Decimal;
+            safetyStock: Prisma.Decimal;
             incomeAccountId: string | null;
             expenseAccountId: string | null;
         }[] | {
@@ -2575,6 +2714,23 @@ export declare class AuthService {
             accountId: string | null;
             isActive: boolean;
             rate: Prisma.Decimal | null;
+        }[] | {
+            id: string;
+            companyId: string;
+            name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            code: string | null;
+            isActive: boolean;
+        }[] | {
+            id: string;
+            companyId: string;
+            name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            code: string | null;
+            isActive: boolean;
+            warehouseId: string;
         }[] | {
             id: string;
             companyId: string;
@@ -2706,9 +2862,9 @@ export declare class AuthService {
             subtotal: Prisma.Decimal;
             vatAmount: Prisma.Decimal;
             total: Prisma.Decimal;
-            quotationNo: string | null;
             expiryDate: Date | null;
             expiryDateBs: string | null;
+            quotationNo: string | null;
             terms: string | null;
         }[] | {
             id: string;

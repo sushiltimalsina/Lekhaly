@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { createPortal } from "react-dom"
 import { cn } from "@/lib/utils"
 
 const DropdownMenuContext = React.createContext<{
@@ -26,7 +27,7 @@ export function DropdownMenu({ children }: { children: React.ReactNode }) {
 
     return (
         <DropdownMenuContext.Provider value={{ open, setOpen }}>
-            <div className="relative inline-block" ref={containerRef}>
+            <div className="relative inline-block" ref={containerRef} data-dropdown-container>
                 {children}
             </div>
         </DropdownMenuContext.Provider>
@@ -76,19 +77,59 @@ export function DropdownMenuContent({
     const context = React.useContext(DropdownMenuContext)
     if (!context) throw new Error("DropdownMenuContent must be used within DropdownMenu")
 
-    if (!context.open) return null
+    const [position, setPosition] = React.useState<{ top: number; left: number } | null>(null)
+    const contentRef = React.useRef<HTMLDivElement>(null)
 
-    return (
-        <div
-            className={cn(
-                "absolute z-50 overflow-hidden rounded-[20px] border border-slate-200 bg-white p-1 shadow-xl shadow-slate-200/50 outline-none dark:border-slate-800 dark:bg-slate-950 dark:shadow-none animate-in fade-in zoom-in-95 duration-150",
-                align === "end" ? "right-0" : "left-0",
-                className
-            )}
-            style={{ marginTop: sideOffset ? `${sideOffset}px` : '0.5rem' }}
-        >
-            {children}
-        </div>
+    React.useEffect(() => {
+        if (!context.open) return
+
+        const updatePosition = () => {
+            const container = document.querySelector('[data-dropdown-container]')
+            if (!container) return
+
+            const rect = container.getBoundingClientRect()
+            const top = rect.bottom + (sideOffset || 4)
+            const left = align === "end" ? rect.right - 288 : rect.left // 288px is w-72 width
+
+            setPosition({ top, left })
+        }
+
+        updatePosition()
+        window.addEventListener('resize', updatePosition)
+        window.addEventListener('scroll', updatePosition)
+
+        return () => {
+            window.removeEventListener('resize', updatePosition)
+            window.removeEventListener('scroll', updatePosition)
+        }
+    }, [context.open, align, sideOffset])
+
+    if (!context.open || !position) return null
+
+    return createPortal(
+        <>
+            {/* Backdrop */}
+            <div
+                className="fixed inset-0 z-[9999] bg-black/20 backdrop-blur-sm"
+                onClick={() => context.setOpen(false)}
+            />
+            {/* Content */}
+            <div
+                ref={contentRef}
+                className={cn(
+                    "fixed z-[10000] overflow-hidden rounded-[20px] border border-slate-200 bg-white p-1 shadow-xl shadow-slate-200/50 outline-none dark:border-slate-800 dark:bg-slate-950 dark:shadow-none animate-in fade-in zoom-in-95 duration-150",
+                    className
+                )}
+                style={{
+                    top: position.top,
+                    left: position.left,
+                    width: '288px' // w-72
+                }}
+            >
+                {children}
+            </div>
+        </>,
+        document.body
     )
 }
 

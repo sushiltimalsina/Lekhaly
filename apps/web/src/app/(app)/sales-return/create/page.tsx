@@ -222,7 +222,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                 <span className={cn("min-w-0 flex-1 truncate", !selectedLabel && "text-muted-foreground")}>
                     {selectedLabel || placeholder}
                 </span>
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                <ChevronDown className="h-4 w-4 text-muted-foreground -ml-3" />
             </button>
 
             {open
@@ -1024,7 +1024,7 @@ export default function SalesReturnCreatePage() {
                                     safeFocus(sundryRefs.current.select[0]);
                                 }
                             }}
-                            buttonClassName={cn("h-12 rounded-2xl bg-white dark:bg-slate-900", (!form.partyId && isEditMode) ? "pr-[160px]" : "pr-4")}
+                            buttonClassName={cn("h-12 rounded-2xl bg-white dark:bg-slate-900", !form.partyId ? "pr-[160px]" : "pr-4")}
                             onAdd={() => setAddCustomerOpen(true)}
                         />
 
@@ -1032,7 +1032,7 @@ export default function SalesReturnCreatePage() {
                             <Button
                                 type="button"
                                 onClick={() => setAddCustomerOpen(true)}
-                                className="absolute right-1.5 top-1/2 -translate-y-1/2 h-9 rounded-xl px-4 text-[11px] bg-rose-600 text-white border-none hover:bg-rose-700 shadow-lg shadow-rose-500/20 transition-all active:scale-95 font-bold uppercase tracking-widest"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 h-10 rounded-full px-4 text-xs bg-rose-600 text-white hover:bg-rose-700 border-none shadow-lg shadow-rose-500/20 transition-all active:scale-95 font-bold uppercase tracking-widest"
                             >
                                 <Plus className="mr-2 h-3.5 w-3.5" />
                                 New Customer

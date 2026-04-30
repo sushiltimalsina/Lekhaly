@@ -224,7 +224,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
         <span className={cn("min-w-0 flex-1 truncate", !selectedLabel && "text-muted-foreground")}>
           {selectedLabel || placeholder}
         </span>
-        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+        <ChevronDown className="h-4 w-4 text-muted-foreground -ml-3" />
       </button>
 
       {open

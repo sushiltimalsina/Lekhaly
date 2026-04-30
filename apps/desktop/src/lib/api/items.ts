@@ -9,9 +9,13 @@ export type CreateItemInput = {
   sku?: string;
   hsCode?: string;
   unit?: string;
+  baseUnit?: string;
+  uomConversions?: Array<{ unit: string; factor: number; isBase?: boolean }>;
   type?: ItemType;
   salesPrice?: number;
   purchasePrice?: number;
+  reorderLevel?: number;
+  safetyStock?: number;
   openingQty?: number;
   openingPrice?: number;
   groupId?: string;
@@ -28,9 +32,13 @@ export type ItemRecord = {
   code?: string | null; // Alias for SKU or separate field if needed. Using SKU as code in UI often.
   hsCode?: string | null;
   unit?: string | null;
+  baseUnit?: string | null;
+  uomConversions?: Array<{ unit: string; factor: number; isBase?: boolean }>;
   type?: ItemType;
   salesPrice?: number | null;
   purchasePrice?: number | null;
+  reorderLevel?: number | null;
+  safetyStock?: number | null;
   incomeAccountId?: string | null;
   expenseAccountId?: string | null;
   taxCodeId?: string | null;

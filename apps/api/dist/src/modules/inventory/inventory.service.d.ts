@@ -12,16 +12,20 @@ export declare class InventoryService {
         qty: Prisma.Decimal;
         entries: {
             id: string;
-            companyId: string;
-            createdAt: Date;
-            voucherId: string | null;
             date: Date;
             dateBs: string | null;
-            itemId: string;
-            amount: Prisma.Decimal;
-            rate: Prisma.Decimal;
-            qtyIn: Prisma.Decimal;
-            qtyOut: Prisma.Decimal;
+            qtyIn: number;
+            qtyOut: number;
+            rate: number;
+            amount: number;
+            batchNo: string | null;
+            lotNo: string | null;
+            expiryDate: Date | null;
+            expiryDateBs: string | null;
+            voucherId: string | null;
+            voucherNumber: string | null;
+            voucherType: import("@prisma/client").$Enums.VoucherType | null;
+            voucherDate: Date | null;
         }[];
     }>;
     adjustStock(user: AuthUser, input: {
@@ -32,6 +36,12 @@ export declare class InventoryService {
         rate?: number;
         accountId: string;
         memo?: string;
+        batchNo?: string;
+        lotNo?: string;
+        expiryDate?: Date;
+        expiryDateBs?: string;
+        allowNegativeOverride?: boolean;
+        overrideReason?: string;
     }): Promise<{
         ok: boolean;
         voucherId: string;
@@ -47,6 +57,12 @@ export declare class InventoryService {
         unit: string | null;
         type: any;
         parentGroup: string;
+        reorderLevel: number;
+        safetyStock: number;
+        onHandQty: number;
+        reservedQty: number;
+        availableQty: number;
+        isLowStock: boolean;
         openingQty: number;
         openingAvgPrice: number;
         openingAmt: number;
@@ -60,4 +76,68 @@ export declare class InventoryService {
         closingPrice: number;
         closingAmt: number;
     }[]>;
+    transferStock(user: AuthUser, input: {
+        itemId: string;
+        fromWarehouseId: string;
+        fromBinId?: string;
+        toWarehouseId: string;
+        toBinId?: string;
+        qty: number;
+        rate?: number;
+        batchNo?: string;
+        lotNo?: string;
+        expiryDate?: Date;
+        expiryDateBs?: string;
+        date?: Date;
+        dateBs?: string;
+        memo?: string;
+    }): Promise<{
+        ok: boolean;
+        voucherId: string;
+    }>;
+    getInventoryAlerts(user: AuthUser, query: {
+        expiringWithinDays?: number;
+        noMovementDays?: number;
+        limit?: number;
+    }): Promise<{
+        meta: {
+            expiringWithinDays: number;
+            noMovementDays: number;
+        };
+        counts: {
+            belowReorder: number;
+            zeroStock: number;
+            expiringSoon: number;
+            noMovement: number;
+        };
+        belowReorder: {
+            itemId: any;
+            name: any;
+            sku: any;
+            availableQty: any;
+            reorderLevel: any;
+            safetyStock: any;
+        }[];
+        zeroStock: {
+            itemId: any;
+            name: any;
+            sku: any;
+        }[];
+        expiringSoon: {
+            qty: number;
+            itemId: string;
+            batchNo: string | null;
+            lotNo: string | null;
+            expiryDate: Date | null;
+            _sum: {
+                qtyIn: Prisma.Decimal | null;
+                qtyOut: Prisma.Decimal | null;
+            };
+        }[];
+        noMovement: {
+            itemId: any;
+            name: any;
+            sku: any;
+        }[];
+    }>;
 }

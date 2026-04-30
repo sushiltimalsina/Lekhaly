@@ -5,9 +5,17 @@ export const CreateItemSchema = z.object({
   sku: z.string().trim().max(64).optional(),
   hsCode: z.string().trim().max(32).optional(),
   unit: z.string().trim().max(32).optional(),
+  baseUnit: z.string().trim().max(32).optional(),
+  uomConversions: z.array(z.object({
+    unit: z.string().trim().min(1).max(32),
+    factor: z.number().positive(),
+    isBase: z.boolean().optional()
+  })).optional(),
   type: z.enum(["goods", "services"]).optional(),
   salesPrice: z.number().nonnegative().optional(),
   purchasePrice: z.number().nonnegative().optional(),
+  reorderLevel: z.number().nonnegative().optional(),
+  safetyStock: z.number().nonnegative().optional(),
   openingQty: z.number().optional(),
   openingPrice: z.number().nonnegative().optional(),
   groupId: z.string().uuid().optional(),
