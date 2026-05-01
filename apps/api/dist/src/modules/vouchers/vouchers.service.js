@@ -23,6 +23,72 @@ let VouchersService = class VouchersService {
     constructor(prisma) {
         this.prisma = prisma;
     }
+    parseDateOrNull(value) {
+        if (!value)
+            return null;
+        const dt = value instanceof Date ? value : new Date(value);
+        return Number.isNaN(dt.getTime()) ? null : dt;
+    }
+    async allocateOutgoingByBatch(tx, companyId, itemId, requiredQty) {
+        const ledgerRows = await tx.stockLedger.findMany({
+            where: { companyId, itemId },
+            select: {
+                date: true,
+                qtyIn: true,
+                qtyOut: true,
+                batchNo: true,
+                lotNo: true,
+                expiryDate: true
+            },
+            orderBy: { date: "asc" }
+        });
+        const buckets = new Map();
+        for (const row of ledgerRows) {
+            const key = `${row.batchNo ?? ""}__${row.lotNo ?? ""}__${row.expiryDate ? new Date(row.expiryDate).toISOString() : ""}`;
+            const existing = buckets.get(key);
+            if (!existing) {
+                buckets.set(key, {
+                    batchNo: row.batchNo ?? null,
+                    lotNo: row.lotNo ?? null,
+                    expiryDate: row.expiryDate ?? null,
+                    firstDate: row.date,
+                    qty: row.qtyIn.sub(row.qtyOut)
+                });
+            }
+            else {
+                existing.qty = existing.qty.add(row.qtyIn).sub(row.qtyOut);
+            }
+        }
+        const sources = Array.from(buckets.values())
+            .filter((b) => b.qty.gt(0))
+            .sort((a, b) => {
+            if (a.expiryDate && b.expiryDate)
+                return a.expiryDate.getTime() - b.expiryDate.getTime();
+            if (a.expiryDate && !b.expiryDate)
+                return -1;
+            if (!a.expiryDate && b.expiryDate)
+                return 1;
+            return a.firstDate.getTime() - b.firstDate.getTime();
+        });
+        const allocations = [];
+        let remaining = requiredQty;
+        for (const src of sources) {
+            if (remaining.lte(0))
+                break;
+            const take = src.qty.gte(remaining) ? remaining : src.qty;
+            allocations.push({
+                batchNo: src.batchNo,
+                lotNo: src.lotNo,
+                expiryDate: src.expiryDate,
+                qty: take
+            });
+            remaining = remaining.sub(take);
+        }
+        if (remaining.gt(0)) {
+            throw new common_1.BadRequestException("Insufficient batch stock to allocate outgoing quantity");
+        }
+        return allocations;
+    }
     enforceVoucherRules(voucherType, partyId) {
         const requiresParty = [
             client_1.VoucherType.sales_invoice,
@@ -548,7 +614,8 @@ let VouchersService = class VouchersService {
             }
             const itemLines = voucher.lines.filter(l => l.itemId);
             if (itemLines.length > 0) {
-                const stockEntries = itemLines.map(line => {
+                const stockEntries = [];
+                for (const line of itemLines) {
                     const l = line;
                     const isPurchase = voucher.voucherType === client_1.VoucherType.purchase || voucher.voucherType === client_1.VoucherType.purchase_return;
                     const isSale = voucher.voucherType === client_1.VoucherType.sales_invoice || voucher.voucherType === client_1.VoucherType.sales_return;
@@ -567,7 +634,27 @@ let VouchersService = class VouchersService {
                         qtyOut = quantity;
                         rate = quantity.equals(0) ? new client_1.Prisma.Decimal(0) : l.credit.div(quantity);
                     }
-                    return {
+                    if (qtyOut.gt(0)) {
+                        const allocations = await this.allocateOutgoingByBatch(tx, user.companyId, l.itemId, qtyOut);
+                        for (const alloc of allocations) {
+                            stockEntries.push({
+                                companyId: user.companyId,
+                                itemId: l.itemId,
+                                date: voucher.voucherDate,
+                                dateBs: voucher.voucherDateBs || undefined,
+                                voucherId: voucher.id,
+                                qtyIn: new client_1.Prisma.Decimal(0),
+                                qtyOut: alloc.qty,
+                                rate,
+                                amount: alloc.qty.mul(rate),
+                                batchNo: alloc.batchNo ?? undefined,
+                                lotNo: alloc.lotNo ?? undefined,
+                                expiryDate: this.parseDateOrNull(alloc.expiryDate) ?? undefined
+                            });
+                        }
+                        continue;
+                    }
+                    stockEntries.push({
                         companyId: user.companyId,
                         itemId: l.itemId,
                         date: voucher.voucherDate,
@@ -577,8 +664,8 @@ let VouchersService = class VouchersService {
                         qtyOut,
                         rate,
                         amount
-                    };
-                });
+                    });
+                }
                 await tx.stockLedger.createMany({
                     data: stockEntries
                 });

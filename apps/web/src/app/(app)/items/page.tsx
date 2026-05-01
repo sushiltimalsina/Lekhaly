@@ -63,9 +63,9 @@ const STOCK_COLUMN_OPTIONS: { key: StockColumnKey; label: string; defaultVisible
   { key: "type", label: "Type", defaultVisible: true },
   { key: "parentGroup", label: "Group", defaultVisible: true },
   { key: "unit", label: "Unit", defaultVisible: true },
-  { key: "onHandQty", label: "On Hand", defaultVisible: true },
-  { key: "reservedQty", label: "Reserved", defaultVisible: true },
-  { key: "availableQty", label: "Available", defaultVisible: true },
+  { key: "onHandQty", label: "On Hand", defaultVisible: false },
+  { key: "reservedQty", label: "Reserved", defaultVisible: false },
+  { key: "availableQty", label: "Available", defaultVisible: false },
   { key: "openingQty", label: "Opening Qty", defaultVisible: false },
   { key: "openingAvgPrice", label: "Opening Rate", defaultVisible: false },
   { key: "openingAmt", label: "Opening Amount", defaultVisible: false },
@@ -84,6 +84,11 @@ const DEFAULT_VISIBLE_STOCK_COLUMNS = STOCK_COLUMN_OPTIONS
   .filter((column) => column.defaultVisible)
   .map((column) => column.key);
 const ALL_STOCK_COLUMNS = STOCK_COLUMN_OPTIONS.map((column) => column.key);
+const MASTER_STOCK_KEY: StockColumnKey = "availableQty";
+const DEPENDENT_STOCK_KEYS: StockColumnKey[] = ["onHandQty", "reservedQty", "availableQty"];
+const COLUMN_PICKER_OPTIONS = STOCK_COLUMN_OPTIONS.filter(
+  (column) => !["onHandQty", "reservedQty"].includes(column.key)
+);
 
 const TYPE_FILTER_CYCLE: Array<"all" | "goods" | "services"> = ["all", "goods", "services"];
 const DATE_PRESETS = [
@@ -288,6 +293,7 @@ export default function ItemsPage() {
   const [activeDatePreset, setActiveDatePreset] = React.useState<DatePreset | null>(null);
   const [dateMenuOpen, setDateMenuOpen] = React.useState(false);
   const [columnsMenuOpen, setColumnsMenuOpen] = React.useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = React.useState(false);
   const [ledgerOpen, setLedgerOpen] = React.useState(false);
   const [ledgerItem, setLedgerItem] = React.useState<ItemRow | null>(null);
   const [ledgerEntries, setLedgerEntries] = React.useState<StockLedgerEntry[]>([]);
@@ -331,8 +337,9 @@ export default function ItemsPage() {
   });
   const dateMenuWrapRef = React.useRef<HTMLDivElement | null>(null);
   const columnsMenuWrapRef = React.useRef<HTMLDivElement | null>(null);
+  const exportMenuWrapRef = React.useRef<HTMLDivElement | null>(null);
   const importFileRef = React.useRef<HTMLInputElement | null>(null);
-  const popupOpen = dateMenuOpen || columnsMenuOpen || adjustOpen || transferOpen;
+  const popupOpen = dateMenuOpen || columnsMenuOpen || exportMenuOpen || adjustOpen || transferOpen;
 
   React.useEffect(() => {
     if (!popupOpen) return;
@@ -340,6 +347,7 @@ export default function ItemsPage() {
       if (e.key === "Escape") {
         setDateMenuOpen(false);
         setColumnsMenuOpen(false);
+        setExportMenuOpen(false);
       }
     };
     document.addEventListener("keydown", onKeyDown);
@@ -452,6 +460,7 @@ export default function ItemsPage() {
     setVisibleColumnKeys(DEFAULT_VISIBLE_STOCK_COLUMNS);
     setDateMenuOpen(false);
     setColumnsMenuOpen(false);
+    setExportMenuOpen(false);
     setSortBy("alpha_asc");
   };
   const applyDatePreset = (preset: DatePreset) => {
@@ -829,7 +838,16 @@ export default function ItemsPage() {
     },
   };
 
-  const columns: Column<ItemRow>[] = visibleColumnKeys.map((key) => allColumns[key]).filter(Boolean);
+  const computedVisibleKeys = React.useMemo(() => {
+    const selected = new Set(visibleColumnKeys);
+    const base = visibleColumnKeys.filter((key) => !DEPENDENT_STOCK_KEYS.includes(key));
+    if (selected.has(MASTER_STOCK_KEY)) {
+      return [...base, ...DEPENDENT_STOCK_KEYS];
+    }
+    return base;
+  }, [visibleColumnKeys]);
+
+  const columns: Column<ItemRow>[] = computedVisibleKeys.map((key) => allColumns[key]).filter(Boolean);
 
   const goodsRows = rows.filter((r) => r.type === "goods");
 
@@ -912,9 +930,9 @@ export default function ItemsPage() {
     }
   };
 
-  const exportRows = () => {
+  const buildExportRows = () => {
     const columnsForExport = visibleColumnKeys;
-    const header = columnsForExport.map((key) => STOCK_COLUMN_OPTIONS.find((c) => c.key === key)?.label ?? key);
+    const header = columnsForExport.map((key) => STOCK_COLUMN_OPTIONS.find((c) => c.key === key)?.label ?? String(key));
     const lineRows = sorted.map((r, idx) =>
       columnsForExport.map((key) => {
         switch (key) {
@@ -944,17 +962,101 @@ export default function ItemsPage() {
         }
       })
     );
-    const csv = [header, ...lineRows].map((row) => row.map(csvEscape).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    return { header, lineRows };
+  };
+
+  const saveBlob = async (blob: Blob, fileName: string) => {
+    const picker = (window as any).showSaveFilePicker as
+      | ((opts: {
+          suggestedName?: string;
+          types?: Array<{ description?: string; accept: Record<string, string[]> }>;
+        }) => Promise<any>)
+      | undefined;
+
+    if (picker) {
+      try {
+        const ext = fileName.split(".").pop()?.toLowerCase() || "";
+        const mime =
+          ext === "csv"
+            ? "text/csv"
+            : ext === "xlsx"
+            ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            : "application/pdf";
+        const handle = await picker({
+          suggestedName: fileName,
+          types: [{ description: "Export file", accept: { [mime]: [`.${ext}`] } }],
+        });
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        return;
+      } catch {
+        // Fall back to default download behavior if user cancels or API errors.
+      }
+    }
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `inventory_export_${toIsoDate(new Date())}.csv`;
+    a.download = fileName;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    setActionSuccess(`Exported ${sorted.length} rows.`);
+  };
+
+  const exportRowsCsv = async () => {
+    const { header, lineRows } = buildExportRows();
+    const csv = [header, ...lineRows].map((row) => row.map(csvEscape).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    await saveBlob(blob, `inventory_export_${toIsoDate(new Date())}.csv`);
+    setExportMenuOpen(false);
+    setActionSuccess(`Exported ${sorted.length} rows as CSV.`);
+  };
+
+  const exportRowsExcel = async () => {
+    const { header, lineRows } = buildExportRows();
+    const XLSX = await import("xlsx");
+    const data = lineRows.map((row) =>
+      Object.fromEntries(header.map((h, i) => [h, row[i]]))
+    );
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Inventory");
+    const output = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([output], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    await saveBlob(blob, `inventory_export_${toIsoDate(new Date())}.xlsx`);
+    setExportMenuOpen(false);
+    setActionSuccess(`Exported ${sorted.length} rows as Excel.`);
+  };
+
+  const exportRowsPdf = async () => {
+    const { header, lineRows } = buildExportRows();
+    const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+      import("jspdf"),
+      import("jspdf-autotable"),
+    ]);
+    const doc = new jsPDF({
+      orientation: "landscape",
+      unit: "pt",
+      format: "a4",
+    });
+    doc.setFontSize(11);
+    doc.text(`Items Inventory Export - ${toIsoDate(new Date())}`, 40, 32);
+    autoTable(doc, {
+      head: [header],
+      body: lineRows.map((row) => row.map((c) => String(c ?? ""))),
+      startY: 44,
+      styles: { fontSize: 8, cellPadding: 3 },
+      headStyles: { fillColor: [31, 41, 55] },
+      margin: { left: 20, right: 20 },
+    });
+    const pdfBlob = doc.output("blob");
+    await saveBlob(pdfBlob, `inventory_export_${toIsoDate(new Date())}.pdf`);
+    setExportMenuOpen(false);
+    setActionSuccess(`Exported ${sorted.length} rows as PDF.`);
   };
 
   const handleImportFile = async (file?: File | null) => {
@@ -1017,6 +1119,30 @@ export default function ItemsPage() {
     }
   };
 
+  const downloadImportTemplate = async () => {
+    const header = [
+      "Item Name",
+      "SKU",
+      "HS Code",
+      "Unit",
+      "Type",
+      "Sales Price",
+      "Purchase Price",
+      "Reorder Level",
+      "Safety Stock",
+      "Opening Qty",
+      "Opening Price"
+    ];
+    const sampleRows = [
+      ["Premium Rice 25kg", "RICE-25", "100630", "Bag", "goods", "2300", "2100", "15", "10", "120", "2050"],
+      ["Consulting Service", "SERV-CONSULT", "", "Hour", "services", "1500", "0", "0", "0", "0", "0"]
+    ];
+    const csv = [header, ...sampleRows].map((row) => row.map(csvEscape).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    await saveBlob(blob, "inventory_import_template.csv");
+    setActionSuccess("Import template downloaded.");
+  };
+
   return (
     <div className="relative isolate space-y-6">
       {popupOpen ? (
@@ -1025,6 +1151,7 @@ export default function ItemsPage() {
           onClick={() => {
             setDateMenuOpen(false);
             setColumnsMenuOpen(false);
+            setExportMenuOpen(false);
           }}
         />
       ) : null}
@@ -1053,14 +1180,61 @@ export default function ItemsPage() {
               className="rounded-xl border-border/50"
               onClick={() => importFileRef.current?.click()}
               disabled={importing}
+              title="Import CSV"
             >
               <Upload className="mr-2 h-4 w-4" />
-              {importing ? "Importing..." : "Import"}
+              {importing ? "Importing..." : "Import CSV"}
             </Button>
-            <Button variant="outline" className="rounded-xl border-border/50" onClick={exportRows}>
+            <Button
+              variant="outline"
+              className="rounded-xl border-border/50"
+              onClick={() => { void downloadImportTemplate(); }}
+              title="Download CSV import template"
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Template
+            </Button>
+            <div ref={exportMenuWrapRef} className="relative">
+            <Button
+              variant="outline"
+              className="rounded-xl border-border/50"
+              onClick={() => {
+                setDateMenuOpen(false);
+                setColumnsMenuOpen(false);
+                setExportMenuOpen((v) => !v);
+              }}
+              title="Export"
+            >
               <Download className="mr-2 h-4 w-4" />
               Export
             </Button>
+            {exportMenuOpen && createPortal(
+              <div
+                className="fixed z-[1300] w-72 overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-2 shadow-2xl dark:border-slate-800/90 dark:bg-slate-950"
+                style={{
+                  top: (exportMenuWrapRef.current?.getBoundingClientRect().bottom || 0) + window.scrollY,
+                  left: (exportMenuWrapRef.current?.getBoundingClientRect().left || 0) + window.scrollX,
+                }}
+              >
+                <div className="px-3 text-xs uppercase tracking-widest text-muted-foreground">Export Options</div>
+                <div className="h-px bg-slate-200 dark:bg-slate-800 my-2" />
+                <button type="button" onClick={() => { void exportRowsCsv(); }} className="flex w-full items-center justify-between rounded-lg p-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800">
+                  <span>CSV (.csv)</span><Download className="h-4 w-4" />
+                </button>
+                <button type="button" onClick={() => { void exportRowsExcel(); }} className="flex w-full items-center justify-between rounded-lg p-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800">
+                  <span>Excel (.xlsx)</span><Download className="h-4 w-4" />
+                </button>
+                <button type="button" onClick={() => { void exportRowsPdf(); }} className="flex w-full items-center justify-between rounded-lg p-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800">
+                  <span>PDF (.pdf)</span><Download className="h-4 w-4" />
+                </button>
+                <div className="h-px bg-slate-200 dark:bg-slate-800 my-2" />
+                <div className="px-3 pb-1 text-[11px] text-muted-foreground">
+                  You can choose a save location if your browser/desktop runtime supports file picker.
+                </div>
+              </div>,
+              document.body
+            )}
+            </div>
             <Button variant="outline" onClick={() => setAddGroupOpen(true)} className="rounded-xl border-border/50">
               <Plus className="mr-2 h-4 w-4" />
               New Group
@@ -1233,14 +1407,18 @@ export default function ItemsPage() {
                   Columns
                 </Button>
                 {columnsMenuOpen && createPortal(
-                  <div className="fixed z-[1300] w-72 overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-2 shadow-2xl dark:border-slate-800/90 dark:bg-slate-950 opacity-100" style={{top: (columnsMenuWrapRef.current?.getBoundingClientRect().bottom || 0) + window.scrollY, left: (columnsMenuWrapRef.current?.getBoundingClientRect().right || 0) + window.scrollX - 288}} >
+                  <div className="fixed z-[1300] w-72 overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-2 shadow-2xl dark:border-slate-800/90 dark:bg-slate-950 opacity-100" style={{top: (columnsMenuWrapRef.current?.getBoundingClientRect().top || 0) + window.scrollY - 20, left: (columnsMenuWrapRef.current?.getBoundingClientRect().right || 0) + window.scrollX - 288}} >
                     <div className="px-3 text-xs uppercase tracking-widest text-muted-foreground">
                       Visible Columns
                     </div>
                     <div className="h-px bg-slate-200 dark:bg-slate-800 my-2" />
                     <div className="relative max-h-[360px] overflow-y-auto pr-1">
-                      {STOCK_COLUMN_OPTIONS.map((column) => {
+                      {COLUMN_PICKER_OPTIONS.map((column) => {
                         const selected = visibleColumnKeys.includes(column.key);
+                        const displayLabel =
+                          column.key === MASTER_STOCK_KEY
+                            ? "Show Reserved + Available"
+                            : column.label;
                         return (
                           <button
                             key={column.key}
@@ -1249,7 +1427,7 @@ export default function ItemsPage() {
                             className="relative z-10 flex w-full items-center justify-between gap-3 rounded-lg p-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800"
                           >
                             <span className="min-w-0 flex-1 whitespace-normal break-words leading-5 text-sm text-slate-700 dark:text-slate-200">
-                              {column.label}
+                              {displayLabel}
                             </span>
                             <span
                               className={cn(

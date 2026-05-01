@@ -772,7 +772,7 @@ model Warehouse {
   bins        WarehouseBin[]
   stockLedger StockLedger[]
 
-  @@unique([companyId, name])
+  @@unique([companyId, sku])
   @@index([companyId, isActive])
 }
 

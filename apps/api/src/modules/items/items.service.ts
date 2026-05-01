@@ -41,13 +41,16 @@ export class ItemsService {
   }
 
   async create(user: AuthUser, input: Prisma.ItemCreateInput) {
-    const existing = await this.prisma.item.findFirst({
-      where: {
-        companyId: user.companyId,
-        name: { equals: input.name, mode: "insensitive" }
-      }
-    });
-    if (existing) throw new BadRequestException("Item name already exists");
+    const sku = typeof input.sku === "string" ? input.sku.trim() : undefined;
+    if (sku) {
+      const existingSku = await this.prisma.item.findFirst({
+        where: {
+          companyId: user.companyId,
+          sku: { equals: sku, mode: "insensitive" }
+        }
+      });
+      if (existingSku) throw new BadRequestException("SKU/Unique ID already exists");
+    }
     await this.validateRefs(user.companyId, input);
     const taxCodeIds = (input as any).taxCodeIds as string[] | undefined;
     const uomConversions = (input as any).uomConversions as Array<{ unit: string; factor: number; isBase?: boolean }> | undefined;
@@ -58,7 +61,7 @@ export class ItemsService {
       data: {
         companyId: user.companyId,
         name: input.name,
-        sku: input.sku,
+        sku,
         hsCode: (input as any).hsCode,
         groupId: (input as any).groupId,
         unit: input.unit,
@@ -113,15 +116,21 @@ export class ItemsService {
   async update(user: AuthUser, id: string, input: Prisma.ItemUpdateInput) {
     const item = await this.prisma.item.findFirst({ where: { id, companyId: user.companyId } });
     if (!item) throw new NotFoundException("Item not found");
-    if (input.name) {
-      const existing = await this.prisma.item.findFirst({
-        where: {
-          companyId: user.companyId,
-          name: { equals: String(input.name), mode: "insensitive" },
-          NOT: { id }
-        }
-      });
-      if (existing) throw new BadRequestException("Item name already exists");
+    if (typeof input.sku === "string") {
+      const nextSku = input.sku.trim();
+      if (nextSku) {
+        const existing = await this.prisma.item.findFirst({
+          where: {
+            companyId: user.companyId,
+            sku: { equals: nextSku, mode: "insensitive" },
+            NOT: { id }
+          }
+        });
+        if (existing) throw new BadRequestException("SKU/Unique ID already exists");
+        (input as any).sku = nextSku;
+      } else {
+        (input as any).sku = null;
+      }
     }
     await this.validateRefs(user.companyId, input);
 

@@ -26,6 +26,8 @@ type DraftInput = {
 export declare class VouchersService {
     private prisma;
     constructor(prisma: PrismaService);
+    private parseDateOrNull;
+    private allocateOutgoingByBatch;
     private enforceVoucherRules;
     private toJsonSafe;
     private idempotencyGuard;
