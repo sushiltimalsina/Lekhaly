@@ -495,6 +495,11 @@ export declare class AuthService {
             safetyStock: Prisma.Decimal;
             incomeAccountId: string | null;
             expenseAccountId: string | null;
+            trackInventory: boolean;
+            isSerialized: boolean;
+            isKit: boolean;
+            minStockLevel: Prisma.Decimal | null;
+            reorderQty: Prisma.Decimal | null;
         } | {
             id: string;
             companyId: string;
@@ -515,6 +520,11 @@ export declare class AuthService {
             safetyStock: Prisma.Decimal;
             incomeAccountId: string | null;
             expenseAccountId: string | null;
+            trackInventory: boolean;
+            isSerialized: boolean;
+            isKit: boolean;
+            minStockLevel: Prisma.Decimal | null;
+            reorderQty: Prisma.Decimal | null;
         })[] | ({
             id: string;
             companyId: string;
@@ -687,6 +697,46 @@ export declare class AuthService {
             name: string;
             createdAt: Date;
             updatedAt: Date;
+        })[] | ({
+            id: string;
+            companyId: string;
+            createdAt: Date;
+            updatedAt: Date;
+            qty: Prisma.Decimal;
+            parentId: string;
+            componentId: string;
+        } | {
+            id: string;
+            companyId: string;
+            createdAt: Date;
+            updatedAt: Date;
+            qty: Prisma.Decimal;
+            parentId: string;
+            componentId: string;
+        })[] | ({
+            id: string;
+            companyId: string;
+            status: string;
+            createdAt: Date;
+            updatedAt: Date;
+            itemId: string;
+            warehouseId: string | null;
+            binId: string | null;
+            serialNo: string;
+            purchaseInvoiceId: string | null;
+            salesInvoiceId: string | null;
+        } | {
+            id: string;
+            companyId: string;
+            status: string;
+            createdAt: Date;
+            updatedAt: Date;
+            itemId: string;
+            warehouseId: string | null;
+            binId: string | null;
+            serialNo: string;
+            purchaseInvoiceId: string | null;
+            salesInvoiceId: string | null;
         })[] | ({
             id: string;
             companyId: string;
@@ -1233,6 +1283,11 @@ export declare class AuthService {
             safetyStock: Prisma.Decimal;
             incomeAccountId: string | null;
             expenseAccountId: string | null;
+            trackInventory: boolean;
+            isSerialized: boolean;
+            isKit: boolean;
+            minStockLevel: Prisma.Decimal | null;
+            reorderQty: Prisma.Decimal | null;
         }[] | {
             id: string;
             companyId: string;
@@ -1289,6 +1344,26 @@ export declare class AuthService {
             name: string;
             createdAt: Date;
             updatedAt: Date;
+        }[] | {
+            id: string;
+            companyId: string;
+            createdAt: Date;
+            updatedAt: Date;
+            qty: Prisma.Decimal;
+            parentId: string;
+            componentId: string;
+        }[] | {
+            id: string;
+            companyId: string;
+            status: string;
+            createdAt: Date;
+            updatedAt: Date;
+            itemId: string;
+            warehouseId: string | null;
+            binId: string | null;
+            serialNo: string;
+            purchaseInvoiceId: string | null;
+            salesInvoiceId: string | null;
         }[] | {
             id: string;
             companyId: string;
@@ -2013,6 +2088,11 @@ export declare class AuthService {
             safetyStock: Prisma.Decimal;
             incomeAccountId: string | null;
             expenseAccountId: string | null;
+            trackInventory: boolean;
+            isSerialized: boolean;
+            isKit: boolean;
+            minStockLevel: Prisma.Decimal | null;
+            reorderQty: Prisma.Decimal | null;
         } | {
             id: string;
             companyId: string;
@@ -2033,6 +2113,11 @@ export declare class AuthService {
             safetyStock: Prisma.Decimal;
             incomeAccountId: string | null;
             expenseAccountId: string | null;
+            trackInventory: boolean;
+            isSerialized: boolean;
+            isKit: boolean;
+            minStockLevel: Prisma.Decimal | null;
+            reorderQty: Prisma.Decimal | null;
         })[] | ({
             id: string;
             companyId: string;
@@ -2205,6 +2290,46 @@ export declare class AuthService {
             name: string;
             createdAt: Date;
             updatedAt: Date;
+        })[] | ({
+            id: string;
+            companyId: string;
+            createdAt: Date;
+            updatedAt: Date;
+            qty: Prisma.Decimal;
+            parentId: string;
+            componentId: string;
+        } | {
+            id: string;
+            companyId: string;
+            createdAt: Date;
+            updatedAt: Date;
+            qty: Prisma.Decimal;
+            parentId: string;
+            componentId: string;
+        })[] | ({
+            id: string;
+            companyId: string;
+            status: string;
+            createdAt: Date;
+            updatedAt: Date;
+            itemId: string;
+            warehouseId: string | null;
+            binId: string | null;
+            serialNo: string;
+            purchaseInvoiceId: string | null;
+            salesInvoiceId: string | null;
+        } | {
+            id: string;
+            companyId: string;
+            status: string;
+            createdAt: Date;
+            updatedAt: Date;
+            itemId: string;
+            warehouseId: string | null;
+            binId: string | null;
+            serialNo: string;
+            purchaseInvoiceId: string | null;
+            salesInvoiceId: string | null;
         })[] | ({
             id: string;
             companyId: string;
@@ -2751,6 +2876,11 @@ export declare class AuthService {
             safetyStock: Prisma.Decimal;
             incomeAccountId: string | null;
             expenseAccountId: string | null;
+            trackInventory: boolean;
+            isSerialized: boolean;
+            isKit: boolean;
+            minStockLevel: Prisma.Decimal | null;
+            reorderQty: Prisma.Decimal | null;
         }[] | {
             id: string;
             companyId: string;
@@ -2807,6 +2937,26 @@ export declare class AuthService {
             name: string;
             createdAt: Date;
             updatedAt: Date;
+        }[] | {
+            id: string;
+            companyId: string;
+            createdAt: Date;
+            updatedAt: Date;
+            qty: Prisma.Decimal;
+            parentId: string;
+            componentId: string;
+        }[] | {
+            id: string;
+            companyId: string;
+            status: string;
+            createdAt: Date;
+            updatedAt: Date;
+            itemId: string;
+            warehouseId: string | null;
+            binId: string | null;
+            serialNo: string;
+            purchaseInvoiceId: string | null;
+            salesInvoiceId: string | null;
         }[] | {
             id: string;
             companyId: string;

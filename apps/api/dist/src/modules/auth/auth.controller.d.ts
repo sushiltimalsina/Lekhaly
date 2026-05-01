@@ -492,6 +492,11 @@ export declare class AuthController {
             safetyStock: import("@prisma/client/runtime/client").Decimal;
             incomeAccountId: string | null;
             expenseAccountId: string | null;
+            trackInventory: boolean;
+            isSerialized: boolean;
+            isKit: boolean;
+            minStockLevel: import("@prisma/client/runtime/client").Decimal | null;
+            reorderQty: import("@prisma/client/runtime/client").Decimal | null;
         } | {
             id: string;
             companyId: string;
@@ -512,6 +517,11 @@ export declare class AuthController {
             safetyStock: import("@prisma/client/runtime/client").Decimal;
             incomeAccountId: string | null;
             expenseAccountId: string | null;
+            trackInventory: boolean;
+            isSerialized: boolean;
+            isKit: boolean;
+            minStockLevel: import("@prisma/client/runtime/client").Decimal | null;
+            reorderQty: import("@prisma/client/runtime/client").Decimal | null;
         })[] | ({
             id: string;
             companyId: string;
@@ -684,6 +694,46 @@ export declare class AuthController {
             name: string;
             createdAt: Date;
             updatedAt: Date;
+        })[] | ({
+            id: string;
+            companyId: string;
+            createdAt: Date;
+            updatedAt: Date;
+            qty: import("@prisma/client/runtime/client").Decimal;
+            parentId: string;
+            componentId: string;
+        } | {
+            id: string;
+            companyId: string;
+            createdAt: Date;
+            updatedAt: Date;
+            qty: import("@prisma/client/runtime/client").Decimal;
+            parentId: string;
+            componentId: string;
+        })[] | ({
+            id: string;
+            companyId: string;
+            status: string;
+            createdAt: Date;
+            updatedAt: Date;
+            itemId: string;
+            warehouseId: string | null;
+            binId: string | null;
+            serialNo: string;
+            purchaseInvoiceId: string | null;
+            salesInvoiceId: string | null;
+        } | {
+            id: string;
+            companyId: string;
+            status: string;
+            createdAt: Date;
+            updatedAt: Date;
+            itemId: string;
+            warehouseId: string | null;
+            binId: string | null;
+            serialNo: string;
+            purchaseInvoiceId: string | null;
+            salesInvoiceId: string | null;
         })[] | ({
             id: string;
             companyId: string;
@@ -1230,6 +1280,11 @@ export declare class AuthController {
             safetyStock: import("@prisma/client/runtime/client").Decimal;
             incomeAccountId: string | null;
             expenseAccountId: string | null;
+            trackInventory: boolean;
+            isSerialized: boolean;
+            isKit: boolean;
+            minStockLevel: import("@prisma/client/runtime/client").Decimal | null;
+            reorderQty: import("@prisma/client/runtime/client").Decimal | null;
         }[] | {
             id: string;
             companyId: string;
@@ -1286,6 +1341,26 @@ export declare class AuthController {
             name: string;
             createdAt: Date;
             updatedAt: Date;
+        }[] | {
+            id: string;
+            companyId: string;
+            createdAt: Date;
+            updatedAt: Date;
+            qty: import("@prisma/client/runtime/client").Decimal;
+            parentId: string;
+            componentId: string;
+        }[] | {
+            id: string;
+            companyId: string;
+            status: string;
+            createdAt: Date;
+            updatedAt: Date;
+            itemId: string;
+            warehouseId: string | null;
+            binId: string | null;
+            serialNo: string;
+            purchaseInvoiceId: string | null;
+            salesInvoiceId: string | null;
         }[] | {
             id: string;
             companyId: string;
@@ -1967,6 +2042,11 @@ export declare class AuthController {
             safetyStock: import("@prisma/client/runtime/client").Decimal;
             incomeAccountId: string | null;
             expenseAccountId: string | null;
+            trackInventory: boolean;
+            isSerialized: boolean;
+            isKit: boolean;
+            minStockLevel: import("@prisma/client/runtime/client").Decimal | null;
+            reorderQty: import("@prisma/client/runtime/client").Decimal | null;
         } | {
             id: string;
             companyId: string;
@@ -1987,6 +2067,11 @@ export declare class AuthController {
             safetyStock: import("@prisma/client/runtime/client").Decimal;
             incomeAccountId: string | null;
             expenseAccountId: string | null;
+            trackInventory: boolean;
+            isSerialized: boolean;
+            isKit: boolean;
+            minStockLevel: import("@prisma/client/runtime/client").Decimal | null;
+            reorderQty: import("@prisma/client/runtime/client").Decimal | null;
         })[] | ({
             id: string;
             companyId: string;
@@ -2159,6 +2244,46 @@ export declare class AuthController {
             name: string;
             createdAt: Date;
             updatedAt: Date;
+        })[] | ({
+            id: string;
+            companyId: string;
+            createdAt: Date;
+            updatedAt: Date;
+            qty: import("@prisma/client/runtime/client").Decimal;
+            parentId: string;
+            componentId: string;
+        } | {
+            id: string;
+            companyId: string;
+            createdAt: Date;
+            updatedAt: Date;
+            qty: import("@prisma/client/runtime/client").Decimal;
+            parentId: string;
+            componentId: string;
+        })[] | ({
+            id: string;
+            companyId: string;
+            status: string;
+            createdAt: Date;
+            updatedAt: Date;
+            itemId: string;
+            warehouseId: string | null;
+            binId: string | null;
+            serialNo: string;
+            purchaseInvoiceId: string | null;
+            salesInvoiceId: string | null;
+        } | {
+            id: string;
+            companyId: string;
+            status: string;
+            createdAt: Date;
+            updatedAt: Date;
+            itemId: string;
+            warehouseId: string | null;
+            binId: string | null;
+            serialNo: string;
+            purchaseInvoiceId: string | null;
+            salesInvoiceId: string | null;
         })[] | ({
             id: string;
             companyId: string;
@@ -2705,6 +2830,11 @@ export declare class AuthController {
             safetyStock: import("@prisma/client/runtime/client").Decimal;
             incomeAccountId: string | null;
             expenseAccountId: string | null;
+            trackInventory: boolean;
+            isSerialized: boolean;
+            isKit: boolean;
+            minStockLevel: import("@prisma/client/runtime/client").Decimal | null;
+            reorderQty: import("@prisma/client/runtime/client").Decimal | null;
         }[] | {
             id: string;
             companyId: string;
@@ -2761,6 +2891,26 @@ export declare class AuthController {
             name: string;
             createdAt: Date;
             updatedAt: Date;
+        }[] | {
+            id: string;
+            companyId: string;
+            createdAt: Date;
+            updatedAt: Date;
+            qty: import("@prisma/client/runtime/client").Decimal;
+            parentId: string;
+            componentId: string;
+        }[] | {
+            id: string;
+            companyId: string;
+            status: string;
+            createdAt: Date;
+            updatedAt: Date;
+            itemId: string;
+            warehouseId: string | null;
+            binId: string | null;
+            serialNo: string;
+            purchaseInvoiceId: string | null;
+            salesInvoiceId: string | null;
         }[] | {
             id: string;
             companyId: string;

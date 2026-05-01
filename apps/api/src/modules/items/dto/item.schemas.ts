@@ -22,7 +22,18 @@ export const CreateItemSchema = z.object({
   incomeAccountId: z.string().uuid().optional(),
   expenseAccountId: z.string().uuid().optional(),
   taxCodeId: z.string().uuid().optional(),
-  taxCodeIds: z.array(z.string().uuid()).optional()
+  taxCodeIds: z.array(z.string().uuid()).optional(),
+  // Reorder / Low Stock
+  minStockLevel: z.number().nonnegative().optional(),
+  reorderQty: z.number().nonnegative().optional(),
+  // Advanced inventory flags
+  isSerialized: z.boolean().optional(),
+  isKit: z.boolean().optional(),
+  // Bill of Materials (kit components)
+  components: z.array(z.object({
+    componentId: z.string().uuid(),
+    qty: z.number().positive()
+  })).optional()
 });
 
 export const UpdateItemSchema = CreateItemSchema.partial().extend({

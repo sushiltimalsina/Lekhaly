@@ -151,6 +151,8 @@ model Company {
   taxCodes           TaxCode[]
   invoices           Invoice[]
   stockLedger        StockLedger[]
+  itemComponents     ItemComponent[]
+  serialNumbers      SerialNumber[]
   expenses           Expense[]
   vatRegisterLines   VatRegisterLine[]
   bankAccounts       BankAccount[]
@@ -519,6 +521,16 @@ model Item {
   stockLedger StockLedger[]
   stockCountLines StockCountLine[]
 
+  trackInventory Boolean  @default(true)
+  isSerialized   Boolean  @default(false)
+  isKit          Boolean  @default(false)
+  minStockLevel  Decimal? @db.Decimal(14, 2)
+  reorderQty     Decimal? @db.Decimal(14, 2)
+
+  components     ItemComponent[] @relation("KitComponents")
+  usedInKits     ItemComponent[] @relation("ComponentOfKit")
+  serialNumbers  SerialNumber[]
+
   @@unique([companyId, name])
 }
 
@@ -544,6 +556,57 @@ model ItemGroup {
   items Item[]
 
   @@unique([companyId, name])
+}
+
+model ItemComponent {
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  parentId  String
+  parent    Item    @relation("KitComponents", fields: [parentId], references: [id], onDelete: Cascade)
+
+  componentId String
+  component   Item  @relation("ComponentOfKit", fields: [componentId], references: [id], onDelete: Cascade)
+
+  qty       Decimal @db.Decimal(14, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([parentId])
+  @@index([componentId])
+}
+
+model SerialNumber {
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  itemId    String
+  item      Item    @relation(fields: [itemId], references: [id])
+
+  serialNo  String
+
+  warehouseId String?
+  warehouse   Warehouse? @relation(fields: [warehouseId], references: [id])
+
+  binId       String?
+  bin         WarehouseBin? @relation(fields: [binId], references: [id])
+
+  status    String @default("available") // available, sold, returned, reserved
+
+  purchaseInvoiceId String?
+  purchaseInvoice   Invoice? @relation("SerialNumberPurchase", fields: [purchaseInvoiceId], references: [id])
+
+  salesInvoiceId    String?
+  salesInvoice      Invoice? @relation("SerialNumberSales", fields: [salesInvoiceId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([itemId, serialNo])
+  @@index([companyId, status])
 }
 
 model ItemTaxCode {
@@ -600,10 +663,10 @@ model Voucher {
   revisionOfVoucher   Voucher?  @relation("VoucherRevision", fields: [revisionOfVoucherId], references: [id])
   revisions           Voucher[] @relation("VoucherRevision")
 
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-    lines VoucherLine[]
+  lines VoucherLine[]
   attachments VoucherAttachment[]
   bankStatementLines BankStatementLine[]
   invoice Invoice?
@@ -658,6 +721,9 @@ model Invoice {
   saleTypeId      String?
   saleType        SaleType?      @relation(fields: [saleTypeId], references: [id])
 
+  purchasedSerialNumbers SerialNumber[] @relation("SerialNumberPurchase")
+  soldSerialNumbers      SerialNumber[] @relation("SerialNumberSales")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -676,6 +742,7 @@ model InvoiceItem {
   qty         Decimal @db.Decimal(14, 2)
   rate        Decimal @db.Decimal(14, 2)
   amount      Decimal @db.Decimal(14, 2)
+  landedCostAmount Decimal? @db.Decimal(14, 2)
 
   taxCodeId String?
   taxCode   TaxCode? @relation(fields: [taxCodeId], references: [id])
@@ -708,7 +775,7 @@ model InvoiceSundry {
   type      String   // add | less
   rate      Decimal? @db.Decimal(10, 2)
   amount    Decimal  @db.Decimal(14, 2)
-  
+
   accountId String?
   account   ChartOfAccount? @relation(fields: [accountId], references: [id])
 
@@ -775,6 +842,7 @@ model Warehouse {
   bins        WarehouseBin[]
   stockLedger StockLedger[]
   stockCounts StockCount[]
+  serialNumbers SerialNumber[]
 
   @@unique([companyId, name])
   @@index([companyId, isActive])
@@ -795,6 +863,7 @@ model WarehouseBin {
 
   stockLedger StockLedger[]
   stockCountLines StockCountLine[]
+  serialNumbers   SerialNumber[]
 
   @@unique([warehouseId, name])
   @@index([companyId, warehouseId, isActive])
@@ -1424,13 +1493,13 @@ model PaymentMethod {
   id        String  @id @default(uuid())
   companyId String
   company   Company @relation(fields: [companyId], references: [id])
-  
+
   name      String
   isActive  Boolean @default(true)
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   invoices  Invoice[]
 
   @@unique([companyId, name])
@@ -1440,13 +1509,13 @@ model SaleType {
   id        String  @id @default(uuid())
   companyId String
   company   Company @relation(fields: [companyId], references: [id])
-  
+
   name      String
   isActive  Boolean @default(true)
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   invoices  Invoice[]
 
   @@unique([companyId, name])
@@ -1456,13 +1525,13 @@ model PurchaseType {
   id        String  @id @default(uuid())
   companyId String
   company   Company @relation(fields: [companyId], references: [id])
-  
+
   name      String
   isActive  Boolean @default(true)
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   purchaseOrders PurchaseOrder[]
 
   @@unique([companyId, name])

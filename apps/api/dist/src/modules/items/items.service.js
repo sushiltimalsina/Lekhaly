@@ -81,6 +81,10 @@ let ItemsService = class ItemsService {
                 purchasePrice: input.purchasePrice,
                 reorderLevel: input.reorderLevel ?? 0,
                 safetyStock: input.safetyStock ?? 0,
+                minStockLevel: input.minStockLevel ?? null,
+                reorderQty: input.reorderQty ?? null,
+                isSerialized: input.isSerialized ?? false,
+                isKit: input.isKit ?? false,
                 incomeAccountId: input.incomeAccountId,
                 expenseAccountId: input.expenseAccountId,
                 taxCodeId: input.taxCodeId,
@@ -100,6 +104,17 @@ let ItemsService = class ItemsService {
                     : undefined
             }
         });
+        const components = input.components;
+        if (Array.isArray(components) && components.length) {
+            await this.prisma.itemComponent.createMany({
+                data: components.map((c) => ({
+                    companyId: user.companyId,
+                    parentId: created.id,
+                    componentId: c.componentId,
+                    qty: new client_1.Prisma.Decimal(c.qty)
+                }))
+            });
+        }
         if (openingQty && openingQty !== 0 && created.type !== "services") {
             const qty = new client_1.Prisma.Decimal(openingQty);
             const rate = new client_1.Prisma.Decimal(openingPrice ?? 0);
@@ -143,13 +158,31 @@ let ItemsService = class ItemsService {
             }
         }
         await this.validateRefs(user.companyId, input);
+        const components = input.components;
+        if (Array.isArray(components)) {
+            await this.prisma.itemComponent.deleteMany({ where: { parentId: id } });
+            if (components.length) {
+                await this.prisma.itemComponent.createMany({
+                    data: components.map((c) => ({
+                        companyId: user.companyId,
+                        parentId: id,
+                        componentId: c.componentId,
+                        qty: new client_1.Prisma.Decimal(c.qty)
+                    }))
+                });
+            }
+        }
         const taxCodeIds = input.taxCodeIds;
         const uomConversions = input.uomConversions;
         if (Array.isArray(taxCodeIds) || Array.isArray(uomConversions)) {
             return this.prisma.$transaction(async (tx) => {
+                const updateData = { ...input };
+                delete updateData.taxCodeIds;
+                delete updateData.uomConversions;
+                delete updateData.components;
                 const updated = await tx.item.update({
                     where: { id },
-                    data: input
+                    data: updateData
                 });
                 if (Array.isArray(taxCodeIds)) {
                     await tx.itemTaxCode.deleteMany({ where: { itemId: id } });
@@ -175,16 +208,33 @@ let ItemsService = class ItemsService {
                 return updated;
             });
         }
+        const updateData = { ...input };
+        delete updateData.components;
         return this.prisma.item.update({
             where: { id },
-            data: input
+            data: updateData
         });
     }
     async get(user, id) {
-        const item = await this.prisma.item.findFirst({ where: { id, companyId: user.companyId } });
+        const item = await this.prisma.item.findFirst({
+            where: { id, companyId: user.companyId },
+            include: {
+                components: {
+                    include: { component: { select: { id: true, name: true, sku: true, unit: true } } }
+                },
+                itemTaxCodes: { include: { taxCode: true } },
+                uomConversions: true,
+            }
+        });
         if (!item)
             throw new common_1.NotFoundException("Item not found");
-        return item;
+        const ledger = await this.prisma.stockLedger.aggregate({
+            where: { companyId: user.companyId, itemId: id },
+            _sum: { qtyIn: true, qtyOut: true }
+        });
+        const stock = (Number(ledger._sum.qtyIn || 0)) - (Number(ledger._sum.qtyOut || 0));
+        const minStock = item.minStockLevel ? Number(item.minStockLevel) : null;
+        return { ...item, stock, isLowStock: minStock !== null && stock < minStock };
     }
     async list(user, filters) {
         const where = { companyId: user.companyId };
@@ -218,10 +268,143 @@ let ItemsService = class ItemsService {
             const outQty = Number(group._sum.qtyOut || 0);
             stockMap.set(group.itemId, inQty - outQty);
         }
-        return items.map((item) => ({
-            ...item,
-            stock: item.type === "services" ? 0 : (stockMap.get(item.id) || 0)
-        }));
+        return items.map((item) => {
+            const stock = item.type === "services" ? 0 : (stockMap.get(item.id) || 0);
+            const minStock = item.minStockLevel ? Number(item.minStockLevel) : null;
+            return {
+                ...item,
+                stock,
+                isLowStock: minStock !== null && stock < minStock
+            };
+        });
+    }
+    async assemble(user, parentId, qty, memo) {
+        const item = await this.prisma.item.findFirst({
+            where: { id: parentId, companyId: user.companyId, isKit: true },
+            include: { components: true }
+        });
+        if (!item)
+            throw new common_1.NotFoundException("Kit item not found");
+        if (!item.components.length)
+            throw new common_1.BadRequestException("Kit has no components defined");
+        return this.prisma.$transaction(async (tx) => {
+            let totalKitCost = 0;
+            for (const comp of item.components) {
+                const compQty = Number(comp.qty) * qty;
+                const compLedger = await tx.stockLedger.groupBy({
+                    by: ["itemId"],
+                    where: { companyId: user.companyId, itemId: comp.componentId },
+                    _sum: { qtyIn: true, qtyOut: true }
+                });
+                const allEntries = await tx.stockLedger.findMany({
+                    where: { companyId: user.companyId, itemId: comp.componentId },
+                    select: { qtyIn: true, qtyOut: true, amount: true }
+                });
+                let totalQty = 0;
+                let totalValue = 0;
+                for (const entry of allEntries) {
+                    const qIn = Number(entry.qtyIn || 0);
+                    const qOut = Number(entry.qtyOut || 0);
+                    const amt = Number(entry.amount || 0);
+                    if (qIn > 0) {
+                        totalQty += qIn;
+                        totalValue += amt;
+                    }
+                    if (qOut > 0) {
+                        totalQty -= qOut;
+                        totalValue -= amt;
+                    }
+                }
+                const avgCost = totalQty > 0 ? (totalValue / totalQty) : 0;
+                const compAmount = compQty * avgCost;
+                totalKitCost += compAmount;
+                await tx.stockLedger.create({
+                    data: {
+                        companyId: user.companyId,
+                        itemId: comp.componentId,
+                        date: new Date(),
+                        qtyIn: 0,
+                        qtyOut: compQty,
+                        rate: avgCost,
+                        amount: compAmount
+                    }
+                });
+            }
+            const kitRate = qty > 0 ? (totalKitCost / qty) : 0;
+            await tx.stockLedger.create({
+                data: {
+                    companyId: user.companyId,
+                    itemId: parentId,
+                    date: new Date(),
+                    qtyIn: qty,
+                    qtyOut: 0,
+                    rate: kitRate,
+                    amount: totalKitCost
+                }
+            });
+        });
+    }
+    async disassemble(user, parentId, qty) {
+        const item = await this.prisma.item.findFirst({
+            where: { id: parentId, companyId: user.companyId, isKit: true },
+            include: { components: true }
+        });
+        if (!item)
+            throw new common_1.NotFoundException("Kit item not found");
+        if (!item.components.length)
+            throw new common_1.BadRequestException("Kit has no components defined");
+        return this.prisma.$transaction(async (tx) => {
+            const allEntries = await tx.stockLedger.findMany({
+                where: { companyId: user.companyId, itemId: parentId },
+                select: { qtyIn: true, qtyOut: true, amount: true }
+            });
+            let totalKitQty = 0;
+            let totalKitValue = 0;
+            for (const entry of allEntries) {
+                const qIn = Number(entry.qtyIn || 0);
+                const qOut = Number(entry.qtyOut || 0);
+                const amt = Number(entry.amount || 0);
+                if (qIn > 0) {
+                    totalKitQty += qIn;
+                    totalKitValue += amt;
+                }
+                if (qOut > 0) {
+                    totalKitQty -= qOut;
+                    totalKitValue -= amt;
+                }
+            }
+            const avgKitCost = totalKitQty > 0 ? (totalKitValue / totalKitQty) : 0;
+            const totalDisassembledCost = avgKitCost * qty;
+            await tx.stockLedger.create({
+                data: {
+                    companyId: user.companyId,
+                    itemId: parentId,
+                    date: new Date(),
+                    qtyIn: 0,
+                    qtyOut: qty,
+                    rate: avgKitCost,
+                    amount: totalDisassembledCost
+                }
+            });
+            const totalComponentUnits = item.components.reduce((sum, c) => sum + Number(c.qty), 0);
+            for (const comp of item.components) {
+                const compQty = Number(comp.qty) * qty;
+                const costFraction = totalComponentUnits > 0 ? (Number(comp.qty) / totalComponentUnits) : 0;
+                const compAmount = totalDisassembledCost * costFraction;
+                const compRate = compQty > 0 ? (compAmount / compQty) : 0;
+                await tx.stockLedger.create({
+                    data: {
+                        companyId: user.companyId,
+                        itemId: comp.componentId,
+                        date: new Date(),
+                        qtyIn: compQty,
+                        qtyOut: 0,
+                        rate: compRate,
+                        amount: compAmount
+                    }
+                });
+            }
+        });
     }
     async remove(user, id) {
         const item = await this.prisma.item.findFirst({ where: { id, companyId: user.companyId } });

@@ -63,4 +63,24 @@ export class ItemsController {
   restore(@CurrentUser() user: AuthUser, @Param("id") id: string) {
     return this.items.restore(user, id);
   }
+
+  @Post(":id/assemble")
+  @RequirePerm("masters.write")
+  assemble(
+    @CurrentUser() user: AuthUser,
+    @Param("id") id: string,
+    @Body() body: { qty: number; memo?: string }
+  ) {
+    return this.items.assemble(user, id, body.qty, body.memo);
+  }
+
+  @Post(":id/disassemble")
+  @RequirePerm("masters.write")
+  disassemble(
+    @CurrentUser() user: AuthUser,
+    @Param("id") id: string,
+    @Body() body: { qty: number }
+  ) {
+    return this.items.disassemble(user, id, body.qty);
+  }
 }

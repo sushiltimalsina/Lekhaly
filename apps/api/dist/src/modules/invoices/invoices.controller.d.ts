@@ -14,6 +14,7 @@ export declare class InvoicesController {
             taxCodeId: string | null;
             amount: import("@prisma/client/runtime/client").Decimal;
             rate: import("@prisma/client/runtime/client").Decimal;
+            landedCostAmount: import("@prisma/client/runtime/client").Decimal | null;
             invoiceId: string;
         }[];
         sundries: {
@@ -149,28 +150,7 @@ export declare class InvoicesController {
         saleTypeId: string | null;
     }>;
     void(user: AuthUser, id: string): Promise<{
-        id: string;
-        companyId: string;
-        status: string;
-        createdAt: Date;
-        updatedAt: Date;
-        referenceNo: string | null;
-        memo: string | null;
-        additionalNote: string | null;
-        partyId: string;
-        voucherId: string | null;
-        invoiceNo: string | null;
-        type: string;
-        receivableAccountId: string;
-        date: Date;
-        dateBs: string | null;
-        dueDate: Date | null;
-        dueDateBs: string | null;
-        subtotal: import("@prisma/client/runtime/client").Decimal;
-        vatAmount: import("@prisma/client/runtime/client").Decimal;
-        total: import("@prisma/client/runtime/client").Decimal;
-        paymentMethodId: string | null;
-        saleTypeId: string | null;
+        success: boolean;
     }>;
     list(user: AuthUser, query: any): Promise<({
         items: ({
@@ -188,6 +168,7 @@ export declare class InvoicesController {
             taxCodeId: string | null;
             amount: import("@prisma/client/runtime/client").Decimal;
             rate: import("@prisma/client/runtime/client").Decimal;
+            landedCostAmount: import("@prisma/client/runtime/client").Decimal | null;
             invoiceId: string;
         })[];
         party: {

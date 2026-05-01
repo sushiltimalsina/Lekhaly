@@ -156,6 +156,7 @@ const navData: NavItem[] = [
     children: [
       { label: "Dashboard", href: "/inventory", icon: LayoutDashboard },
       { label: "Items", href: "/items", icon: List },
+      { label: "Add Item", href: "/items/new", icon: Plus },
       { label: "Warehouses", href: "/inventory/warehouses", icon: Building2 },
       { label: "Adjust Stock", href: "/inventory/adjust", icon: Plus },
       { label: "Transfer Stock", href: "/inventory/transfer", icon: ArrowRightLeft },

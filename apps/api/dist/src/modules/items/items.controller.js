@@ -48,6 +48,12 @@ let ItemsController = class ItemsController {
     restore(user, id) {
         return this.items.restore(user, id);
     }
+    assemble(user, id, body) {
+        return this.items.assemble(user, id, body.qty, body.memo);
+    }
+    disassemble(user, id, body) {
+        return this.items.disassemble(user, id, body.qty);
+    }
 };
 exports.ItemsController = ItemsController;
 __decorate([
@@ -115,6 +121,26 @@ __decorate([
     __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", void 0)
 ], ItemsController.prototype, "restore", null);
+__decorate([
+    (0, common_1.Post)(":id/assemble"),
+    (0, auth_decorator_1.RequirePerm)("masters.write"),
+    __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)("id")),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, Object]),
+    __metadata("design:returntype", void 0)
+], ItemsController.prototype, "assemble", null);
+__decorate([
+    (0, common_1.Post)(":id/disassemble"),
+    (0, auth_decorator_1.RequirePerm)("masters.write"),
+    __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)("id")),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, Object]),
+    __metadata("design:returntype", void 0)
+], ItemsController.prototype, "disassemble", null);
 exports.ItemsController = ItemsController = __decorate([
     (0, common_1.Controller)("items"),
     __metadata("design:paramtypes", [items_service_1.ItemsService,

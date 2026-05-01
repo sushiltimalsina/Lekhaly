@@ -24,7 +24,15 @@ exports.CreateItemSchema = zod_1.z.object({
     incomeAccountId: zod_1.z.string().uuid().optional(),
     expenseAccountId: zod_1.z.string().uuid().optional(),
     taxCodeId: zod_1.z.string().uuid().optional(),
-    taxCodeIds: zod_1.z.array(zod_1.z.string().uuid()).optional()
+    taxCodeIds: zod_1.z.array(zod_1.z.string().uuid()).optional(),
+    minStockLevel: zod_1.z.number().nonnegative().optional(),
+    reorderQty: zod_1.z.number().nonnegative().optional(),
+    isSerialized: zod_1.z.boolean().optional(),
+    isKit: zod_1.z.boolean().optional(),
+    components: zod_1.z.array(zod_1.z.object({
+        componentId: zod_1.z.string().uuid(),
+        qty: zod_1.z.number().positive()
+    })).optional()
 });
 exports.UpdateItemSchema = exports.CreateItemSchema.partial().extend({
     isActive: zod_1.z.boolean().optional()

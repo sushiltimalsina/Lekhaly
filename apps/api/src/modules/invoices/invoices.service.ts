@@ -550,6 +550,54 @@ export class InvoicesService {
         data: { nextInvoiceNumber: sequence + 1 }
       });
 
+      const stockLedgerData = [];
+      for (const item of invoice.items) {
+        if (!item.itemId) continue;
+        const isOut = invoice.type === "sales" || invoice.type === "purchase_return";
+        const isIn = invoice.type === "purchase" || invoice.type === "sales_return";
+
+        const qty = item.qty.toNumber ? item.qty.toNumber() : Number(item.qty);
+        const rate = item.rate.toNumber ? item.rate.toNumber() : Number(item.rate);
+
+        // Check if this item is a kit — if so, explode into components
+        const itemRecord = await tx.item.findUnique({
+          where: { id: item.itemId },
+          include: { components: true }
+        });
+
+        if (itemRecord?.isKit && itemRecord.components.length > 0 && isOut) {
+          // Deduct components instead of the kit itself
+          for (const comp of itemRecord.components) {
+            const compQty = Number(comp.qty) * qty;
+            stockLedgerData.push({
+              companyId: user.companyId,
+              itemId: comp.componentId,
+              date: invoice.date,
+              voucherId: voucher.id,
+              qtyIn: 0,
+              qtyOut: compQty,
+              rate: 0,
+              amount: 0
+            });
+          }
+        } else {
+          stockLedgerData.push({
+            companyId: user.companyId,
+            itemId: item.itemId,
+            date: invoice.date,
+            voucherId: voucher.id,
+            qtyIn: isIn ? qty : 0,
+            qtyOut: isOut ? qty : 0,
+            rate: rate,
+            amount: qty * rate
+          });
+        }
+      }
+
+      if (stockLedgerData.length > 0) {
+        await tx.stockLedger.createMany({ data: stockLedgerData });
+      }
+
       return tx.invoice.update({
         where: { id: invoice.id },
         data: {
@@ -570,15 +618,25 @@ export class InvoicesService {
       throw new ForbiddenException("Only posted invoices can be voided");
     }
 
-    await this.prisma.voucher.update({
-      where: { id: invoice.voucherId },
-      data: { status: VoucherStatus.void, voidedAt: new Date(), voidedByUserId: user.sub }
+    const voucherId = invoice.voucherId;
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.voucher.update({
+        where: { id: voucherId },
+        data: { status: VoucherStatus.void, voidedAt: new Date(), voidedByUserId: user.sub }
+      });
+
+      await tx.stockLedger.deleteMany({
+        where: { voucherId }
+      });
+
+      await tx.invoice.update({
+        where: { id: invoice.id },
+        data: { status: "void" }
+      });
     });
 
-    return this.prisma.invoice.update({
-      where: { id: invoice.id },
-      data: { status: "void" }
-    });
+    return { success: true };
   }
 
   async list(user: AuthUser, filters: { type?: string; status?: string; q?: string; from?: Date; to?: Date; skip?: number; take?: number }) {

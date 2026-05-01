@@ -25,6 +25,14 @@ export declare const CreateItemSchema: z.ZodObject<{
     expenseAccountId: z.ZodOptional<z.ZodString>;
     taxCodeId: z.ZodOptional<z.ZodString>;
     taxCodeIds: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    minStockLevel: z.ZodOptional<z.ZodNumber>;
+    reorderQty: z.ZodOptional<z.ZodNumber>;
+    isSerialized: z.ZodOptional<z.ZodBoolean>;
+    isKit: z.ZodOptional<z.ZodBoolean>;
+    components: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        componentId: z.ZodString;
+        qty: z.ZodNumber;
+    }, z.core.$strip>>>;
 }, z.core.$strip>;
 export declare const UpdateItemSchema: z.ZodObject<{
     name: z.ZodOptional<z.ZodString>;
@@ -52,6 +60,14 @@ export declare const UpdateItemSchema: z.ZodObject<{
     expenseAccountId: z.ZodOptional<z.ZodOptional<z.ZodString>>;
     taxCodeId: z.ZodOptional<z.ZodOptional<z.ZodString>>;
     taxCodeIds: z.ZodOptional<z.ZodOptional<z.ZodArray<z.ZodString>>>;
+    minStockLevel: z.ZodOptional<z.ZodOptional<z.ZodNumber>>;
+    reorderQty: z.ZodOptional<z.ZodOptional<z.ZodNumber>>;
+    isSerialized: z.ZodOptional<z.ZodOptional<z.ZodBoolean>>;
+    isKit: z.ZodOptional<z.ZodOptional<z.ZodBoolean>>;
+    components: z.ZodOptional<z.ZodOptional<z.ZodArray<z.ZodObject<{
+        componentId: z.ZodString;
+        qty: z.ZodNumber;
+    }, z.core.$strip>>>>;
     isActive: z.ZodOptional<z.ZodBoolean>;
 }, z.core.$strip>;
 export declare const ListItemQuerySchema: z.ZodObject<{

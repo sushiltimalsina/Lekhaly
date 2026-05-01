@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import * as React from "react";
 import { createPortal } from "react-dom";
@@ -13,6 +13,7 @@ import { ArrowUpDown, CalendarDays, Check, Columns, Download, Eye, Plus, RotateC
 import { cn } from "@/lib/utils";
 import { listAccounts } from "@/lib/api/accounts";
 import { createItem, listItems } from "@/lib/api/items";
+import { assembleItem, disassembleItem } from "@/lib/api/items";
 import { createItemGroup, listItemGroups } from "@/lib/api/item-groups";
 import { createUnit, listUnits } from "@/lib/api/units";
 import {
@@ -337,6 +338,13 @@ export default function ItemsPage() {
   const [transferSubmitting, setTransferSubmitting] = React.useState(false);
   const [actionError, setActionError] = React.useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = React.useState<string | null>(null);
+  // Assemble / Disassemble
+  const [assembleOpen, setAssembleOpen] = React.useState(false);
+  const [assembleItem_, setAssembleItem] = React.useState<ItemRow | null>(null);
+  const [assembleQty, setAssembleQty] = React.useState("");
+  const [assembleMemo, setAssembleMemo] = React.useState("");
+  const [assembleMode, setAssembleMode] = React.useState<"assemble" | "disassemble">("assemble");
+  const [assembleSubmitting, setAssembleSubmitting] = React.useState(false);
   const [importing, setImporting] = React.useState(false);
   const [importWizardOpen, setImportWizardOpen] = React.useState(false);
   const [importStep, setImportStep] = React.useState<1 | 2 | 3>(1);
@@ -676,18 +684,57 @@ export default function ItemsPage() {
       ),
       cell: (r) => (
         <div className="flex items-center justify-between gap-2">
-          <div className="font-medium text-foreground">{r.name}</div>
-          <button
-            type="button"
-            onClick={() => openLedger(r)}
-            className="inline-flex h-7 items-center gap-1 rounded-md border border-slate-200 px-2 text-[11px] text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-          >
-            <Eye className="h-3.5 w-3.5" />
-            Ledger
-          </button>
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="font-medium text-foreground truncate">{r.name}</div>
+            {(r as any).isKit && (
+              <span className="shrink-0 inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 ring-1 ring-amber-300/50">
+                KIT
+              </span>
+            )}
+            {(r as any).isSerialized && (
+              <span className="shrink-0 inline-flex items-center rounded-full bg-blue-100 dark:bg-blue-900/30 px-2 py-0.5 text-[10px] font-bold text-blue-700 dark:text-blue-300 ring-1 ring-blue-300/50">
+                S/N
+              </span>
+            )}
+            {(r as any).isLowStock && (
+              <span className="shrink-0 inline-flex items-center rounded-full bg-red-100 dark:bg-red-900/30 px-2 py-0.5 text-[10px] font-bold text-red-700 dark:text-red-400 ring-1 ring-red-300/50">
+                LOW
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            {(r as any).isKit && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => { setAssembleItem(r as any); setAssembleMode("assemble"); setAssembleQty(""); setAssembleMemo(""); setAssembleOpen(true); }}
+                  className="inline-flex h-7 items-center gap-1 rounded-md border border-amber-300 dark:border-amber-700 px-2 text-[11px] text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                  title="Assemble kit"
+                >
+                  ▲ Assemble
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAssembleItem(r as any); setAssembleMode("disassemble"); setAssembleQty(""); setAssembleMemo(""); setAssembleOpen(true); }}
+                  className="inline-flex h-7 items-center gap-1 rounded-md border border-slate-300 dark:border-slate-700 px-2 text-[11px] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  title="Disassemble kit"
+                >
+                  ▼ Disassemble
+                </button>
+              </>
+            )}
+            <button
+              type="button"
+              onClick={() => openLedger(r)}
+              className="inline-flex h-7 items-center gap-1 rounded-md border border-slate-200 px-2 text-[11px] text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              <Eye className="h-3.5 w-3.5" />
+              Ledger
+            </button>
+          </div>
         </div>
       ),
-      width: 220,
+      width: 320,
     },
     hsCode: {
       key: "hsCode",
@@ -845,20 +892,29 @@ export default function ItemsPage() {
     },
     closingQty: {
       key: "closingQty",
-      header: headerSortButton("Closing Quantity", sortBy === "closing_qty_asc" || sortBy === "closing_qty_desc", () =>
+      header: headerSortButton("Closing Qty", sortBy === "closing_qty_asc" || sortBy === "closing_qty_desc", () =>
         setSortBy((prev) => (prev === "closing_qty_asc" ? "closing_qty_desc" : "closing_qty_asc"))
       ),
       align: "right",
-      cell: (r) => (
-        <span className={cn(
-          "inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset mono-numbers",
-          (r.closingQty || 0) < 10
-            ? "bg-red-50 text-red-700 ring-red-600/10 dark:bg-red-900/20 dark:text-red-400"
-            : "bg-green-50 text-green-700 ring-green-600/20 dark:bg-green-900/20 dark:text-green-400"
-        )}>
-          {Number(r.closingQty ?? 0)}
-        </span>
-      ),
+      cell: (r) => {
+        const qty = Number(r.closingQty ?? 0);
+        const minStock = Number((r as any).minStockLevel ?? 0);
+        const isLow = (r as any).isLowStock || (minStock > 0 && qty < minStock);
+        const isZero = qty <= 0;
+        return (
+          <span className={cn(
+            "inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset mono-numbers",
+            isZero
+              ? "bg-red-50 text-red-700 ring-red-600/10 dark:bg-red-900/20 dark:text-red-400"
+              : isLow
+              ? "bg-amber-50 text-amber-700 ring-amber-500/20 dark:bg-amber-900/20 dark:text-amber-400"
+              : "bg-green-50 text-green-700 ring-green-600/20 dark:bg-green-900/20 dark:text-green-400"
+          )}>
+            {qty}
+            {isLow && !isZero && <span className="ml-1 text-[9px] opacity-70">▼min</span>}
+          </span>
+        );
+      },
       width: 140,
     },
     closingPrice: {
@@ -970,6 +1026,32 @@ export default function ItemsPage() {
       setActionError(e?.message ?? "Failed to post stock transfer.");
     } finally {
       setTransferSubmitting(false);
+    }
+  };
+
+  const submitAssemble = async () => {
+    setActionError(null);
+    setActionSuccess(null);
+    const qty = Number(assembleQty);
+    if (!assembleItem_ || !Number.isFinite(qty) || qty <= 0) {
+      setActionError("Select a kit item and enter a valid quantity.");
+      return;
+    }
+    setAssembleSubmitting(true);
+    try {
+      if (assembleMode === "assemble") {
+        await assembleItem(assembleItem_.id, qty, assembleMemo || undefined);
+        setActionSuccess(`Assembled ${qty} unit(s) of ${assembleItem_.name}.`);
+      } else {
+        await disassembleItem(assembleItem_.id, qty);
+        setActionSuccess(`Disassembled ${qty} unit(s) of ${assembleItem_.name}.`);
+      }
+      setAssembleOpen(false);
+      await refresh();
+    } catch (e: any) {
+      setActionError(e?.message ?? `Failed to ${assembleMode}.`);
+    } finally {
+      setAssembleSubmitting(false);
     }
   };
 
@@ -1457,15 +1539,7 @@ export default function ItemsPage() {
               <Upload className="mr-2 h-4 w-4" />
               {importing ? "Importing..." : "Import CSV"}
             </Button>
-            <Button
-              variant="outline"
-              className="rounded-xl border-border/50"
-              onClick={() => { void downloadImportTemplate(); }}
-              title="Download CSV import template"
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Template
-            </Button>
+
             <div ref={exportMenuWrapRef} className="relative">
             <Button
               variant="outline"
@@ -2101,6 +2175,75 @@ export default function ItemsPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* ── Assemble / Disassemble Modal ── */}
+      {assembleOpen && assembleItem_ ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border bg-card p-6 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold">
+                {assembleMode === "assemble" ? "▲ Assemble Kit" : "▼ Disassemble Kit"}
+              </h3>
+              <button type="button" onClick={() => setAssembleOpen(false)} className="text-muted-foreground hover:text-foreground">
+                ✕
+              </button>
+            </div>
+            <div className="rounded-xl bg-muted/40 p-3 text-sm">
+              <span className="font-semibold">{assembleItem_.name}</span>
+              <span className="ml-2 text-muted-foreground">({assembleItem_.sku || 'No SKU'})</span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {assembleMode === "assemble"
+                ? "Components will be deducted from stock and assembled units added."
+                : "Assembled units will be removed and components returned to stock."}
+            </p>
+            <label className="block space-y-1 text-sm">
+              <span className="text-muted-foreground font-medium">Quantity</span>
+              <Input
+                type="number"
+                min="1"
+                step="1"
+                value={assembleQty}
+                onChange={(e) => setAssembleQty(e.target.value)}
+                placeholder="Enter quantity"
+                autoFocus
+              />
+            </label>
+            {assembleMode === "assemble" && (
+              <label className="block space-y-1 text-sm">
+                <span className="text-muted-foreground font-medium">Memo (optional)</span>
+                <Input
+                  value={assembleMemo}
+                  onChange={(e) => setAssembleMemo(e.target.value)}
+                  placeholder="e.g. Production batch #42"
+                />
+              </label>
+            )}
+            {actionError && (
+              <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-700">{actionError}</div>
+            )}
+            <div className="flex justify-end gap-3 pt-2">
+              <Button variant="outline" className="rounded-2xl h-10 px-5" onClick={() => setAssembleOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={submitAssemble}
+                disabled={assembleSubmitting}
+                className={cn(
+                  "rounded-2xl h-10 px-6 text-white shadow-lg",
+                  assembleMode === "assemble"
+                    ? "bg-amber-600 hover:bg-amber-700 shadow-amber-500/20"
+                    : "bg-slate-600 hover:bg-slate-700 shadow-slate-500/20"
+                )}
+              >
+                {assembleSubmitting
+                  ? "Processing..."
+                  : assembleMode === "assemble" ? "▲ Assemble" : "▼ Disassemble"}
+              </Button>
             </div>
           </div>
         </div>

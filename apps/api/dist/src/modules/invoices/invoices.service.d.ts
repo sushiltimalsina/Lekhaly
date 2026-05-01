@@ -124,6 +124,7 @@ export declare class InvoicesService {
             taxCodeId: string | null;
             amount: Prisma.Decimal;
             rate: Prisma.Decimal;
+            landedCostAmount: Prisma.Decimal | null;
             invoiceId: string;
         }[];
         sundries: {
@@ -186,28 +187,7 @@ export declare class InvoicesService {
         saleTypeId: string | null;
     }>;
     void(user: AuthUser, invoiceId: string): Promise<{
-        id: string;
-        companyId: string;
-        status: string;
-        createdAt: Date;
-        updatedAt: Date;
-        referenceNo: string | null;
-        memo: string | null;
-        additionalNote: string | null;
-        partyId: string;
-        voucherId: string | null;
-        invoiceNo: string | null;
-        type: string;
-        receivableAccountId: string;
-        date: Date;
-        dateBs: string | null;
-        dueDate: Date | null;
-        dueDateBs: string | null;
-        subtotal: Prisma.Decimal;
-        vatAmount: Prisma.Decimal;
-        total: Prisma.Decimal;
-        paymentMethodId: string | null;
-        saleTypeId: string | null;
+        success: boolean;
     }>;
     list(user: AuthUser, filters: {
         type?: string;
@@ -233,6 +213,7 @@ export declare class InvoicesService {
             taxCodeId: string | null;
             amount: Prisma.Decimal;
             rate: Prisma.Decimal;
+            landedCostAmount: Prisma.Decimal | null;
             invoiceId: string;
         })[];
         party: {
