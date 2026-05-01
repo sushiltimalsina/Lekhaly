@@ -1,0 +1,585 @@
+openapi: 3.0.3
+info:
+  title: Lekhaly API
+  version: 0.1.0
+servers:
+  - url: http://localhost:3000
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        statusCode: { type: integer }
+        message: { type: string }
+        error: { type: string }
+    IdResponse:
+      type: object
+      properties:
+        id: { type: string }
+    Pagination:
+      type: object
+      properties:
+        skip: { type: integer }
+        take: { type: integer }
+    VoucherLineInput:
+      type: object
+      properties:
+        accountId: { type: string }
+        partyId: { type: string }
+        itemId: { type: string }
+        description: { type: string }
+        debit: { type: number }
+        credit: { type: number }
+        taxCodeId: { type: string }
+        taxAmount: { type: number }
+    VoucherDraftInput:
+      type: object
+      required: [voucherType, lines]
+      properties:
+        voucherType:
+          type: string
+          enum: [sales_invoice, sales_return, purchase, purchase_return, receipt, payment, journal, opening, reversal]
+        voucherDate: { type: string, format: date-time }
+        voucherDateBs: { type: string }
+        partyId: { type: string }
+        memo: { type: string }
+        lines:
+          type: array
+          items: { $ref: "#/components/schemas/VoucherLineInput" }
+    InvoiceItemInput:
+      type: object
+      properties:
+        itemId: { type: string }
+        description: { type: string }
+        qty: { type: number }
+        rate: { type: number }
+        taxCodeId: { type: string }
+    InvoiceDraftInput:
+      type: object
+      required: [type, partyId, receivableAccountId, items]
+      properties:
+        type: { type: string, enum: [sales, sales_return] }
+        partyId: { type: string }
+        date: { type: string, format: date-time }
+        dateBs: { type: string }
+        dueDate: { type: string, format: date-time }
+        dueDateBs: { type: string }
+        receivableAccountId: { type: string }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/InvoiceItemInput" }
+    ExpenseDraftInput:
+      type: object
+      required: [amount, expenseAccountId, paymentAccountId]
+      properties:
+        date: { type: string, format: date-time }
+        dateBs: { type: string }
+        vendorId: { type: string }
+        amount: { type: number }
+        taxCodeId: { type: string }
+        description: { type: string }
+        attachmentId: { type: string }
+        expenseAccountId: { type: string }
+        paymentAccountId: { type: string }
+    BankAccountInput:
+      type: object
+      required: [accountId]
+      properties:
+        accountId: { type: string }
+        bankName: { type: string }
+        accountNumber: { type: string }
+    BankStatementInput:
+      type: object
+      required: [bankAccountId, openingBalance, closingBalance]
+      properties:
+        bankAccountId: { type: string }
+        periodFrom: { type: string, format: date-time }
+        periodFromBs: { type: string }
+        periodTo: { type: string, format: date-time }
+        periodToBs: { type: string }
+        openingBalance: { type: number }
+        closingBalance: { type: number }
+    BankStatementLineInput:
+      type: object
+      required: [amount, debitCredit]
+      properties:
+        date: { type: string, format: date-time }
+        dateBs: { type: string }
+        description: { type: string }
+        amount: { type: number }
+        debitCredit: { type: string, enum: [debit, credit] }
+    StockAdjustmentInput:
+      type: object
+      required: [itemId, qty, accountId]
+      properties:
+        itemId: { type: string }
+        date: { type: string, format: date-time }
+        dateBs: { type: string }
+        qty: { type: number }
+        rate: { type: number }
+        accountId: { type: string }
+        memo: { type: string }
+    ReconcileInput:
+      type: object
+      required: [statementLineId, voucherId]
+      properties:
+        statementLineId: { type: string }
+        voucherId: { type: string }
+        voucherLineId: { type: string }
+    RoleInput:
+      type: object
+      required: [name, permissionCodes]
+      properties:
+        name: { type: string }
+        permissionCodes:
+          type: array
+          items: { type: string }
+    UserInput:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string }
+        name: { type: string }
+        password: { type: string }
+        roleIds:
+          type: array
+          items: { type: string }
+    TaxCodeInput:
+      type: object
+      required: [name, rate]
+      properties:
+        name: { type: string }
+        rate: { type: number }
+        isInclusive: { type: boolean }
+        inputTaxAccountId: { type: string }
+        outputTaxAccountId: { type: string }
+paths:
+  /auth/login:
+    post:
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [companyCode, email, password]
+              properties:
+                companyCode: { type: string }
+                email: { type: string }
+                password: { type: string }
+                totpCode: { type: string }
+                deviceId: { type: string }
+                deviceLabel: { type: string }
+                rememberDevice: { type: boolean }
+      responses:
+        "200": { description: OK }
+  /auth/register:
+    post:
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [companyCode, companyName, name, email, password]
+              properties:
+                companyCode: { type: string }
+                companyName: { type: string }
+                name: { type: string }
+                email: { type: string }
+                password: { type: string }
+      responses:
+        "200": { description: OK }
+  /auth/refresh:
+    post:
+      security: []
+      responses:
+        "200": { description: OK }
+  /auth/logout:
+    post:
+      security: []
+      responses:
+        "200": { description: OK }
+  /auth/profile:
+    get:
+      responses: { "200": { description: OK } }
+    patch:
+      responses: { "200": { description: OK } }
+  /auth/company:
+    get:
+      responses: { "200": { description: OK } }
+    patch:
+      responses: { "200": { description: OK } }
+  /auth/notifications:
+    patch:
+      responses: { "200": { description: OK } }
+  /auth/billing/portal:
+    post:
+      responses: { "200": { description: OK } }
+  /auth/totp/setup:
+    post:
+      responses: { "200": { description: OK } }
+  /auth/totp/enable:
+    post:
+      responses: { "200": { description: OK } }
+  /auth/step-up:
+    post:
+      responses: { "200": { description: OK } }
+  /v1/auth/login:
+    post:
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [companyCode, email, password]
+              properties:
+                companyCode: { type: string }
+                email: { type: string }
+                password: { type: string }
+                totpCode: { type: string }
+                deviceId: { type: string }
+                deviceLabel: { type: string }
+                rememberDevice: { type: boolean }
+      responses: { "200": { description: OK } }
+  /v1/auth/register:
+    post:
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [companyCode, companyName, name, email, password]
+              properties:
+                companyCode: { type: string }
+                companyName: { type: string }
+                name: { type: string }
+                email: { type: string }
+                password: { type: string }
+      responses: { "200": { description: OK } }
+  /v1/auth/refresh:
+    post:
+      security: []
+      responses: { "200": { description: OK } }
+  /v1/auth/logout:
+    post:
+      security: []
+      responses: { "200": { description: OK } }
+  /v1/auth/profile:
+    get:
+      responses: { "200": { description: OK } }
+    patch:
+      responses: { "200": { description: OK } }
+  /v1/auth/company:
+    get:
+      responses: { "200": { description: OK } }
+    patch:
+      responses: { "200": { description: OK } }
+  /v1/auth/notifications:
+    patch:
+      responses: { "200": { description: OK } }
+  /v1/auth/billing/portal:
+    post:
+      responses: { "200": { description: OK } }
+  /v1/auth/totp/setup:
+    post:
+      responses: { "200": { description: OK } }
+  /v1/auth/totp/enable:
+    post:
+      responses: { "200": { description: OK } }
+  /v1/auth/step-up:
+    post:
+      responses: { "200": { description: OK } }
+  /vouchers/draft:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VoucherDraftInput" }
+      responses: { "200": { description: OK } }
+  /vouchers/{id}/draft:
+    put:
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VoucherDraftInput" }
+      responses: { "200": { description: OK } }
+  /vouchers/{id}:
+    get:
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses: { "200": { description: OK } }
+  /vouchers/{id}/preview:
+    get:
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses: { "200": { description: OK } }
+  /vouchers:
+    get:
+      responses: { "200": { description: OK } }
+  /vouchers/{id}/post:
+    post:
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses: { "200": { description: OK } }
+  /vouchers/{id}/void:
+    post:
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses: { "200": { description: OK } }
+  /vouchers/{id}/attachments:
+    get:
+      responses: { "200": { description: OK } }
+    post:
+      responses: { "200": { description: OK } }
+  /vouchers/{id}/attachments/{attachmentId}:
+    delete:
+      responses: { "200": { description: OK } }
+  /vouchers/{id}/attachments/{attachmentId}/url:
+    get:
+      responses: { "200": { description: OK } }
+  /invoices/draft:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/InvoiceDraftInput" }
+      responses: { "200": { description: OK } }
+  /invoices/preview:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/InvoiceDraftInput" }
+      responses: { "200": { description: OK } }
+  /invoices/{id}/post:
+    post:
+      responses: { "200": { description: OK } }
+  /invoices/{id}/void:
+    post:
+      responses: { "200": { description: OK } }
+  /invoices:
+    get:
+      responses: { "200": { description: OK } }
+  /invoices/{id}:
+    get:
+      responses: { "200": { description: OK } }
+  /expenses/draft:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ExpenseDraftInput" }
+      responses: { "200": { description: OK } }
+  /expenses/preview:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ExpenseDraftInput" }
+      responses: { "200": { description: OK } }
+  /expenses/{id}/post:
+    post:
+      responses: { "200": { description: OK } }
+  /expenses:
+    get:
+      responses: { "200": { description: OK } }
+  /banking/accounts:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BankAccountInput" }
+      responses: { "200": { description: OK } }
+  /banking/statements:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BankStatementInput" }
+      responses: { "200": { description: OK } }
+    get:
+      responses: { "200": { description: OK } }
+  /banking/statements/{id}/lines:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BankStatementLineInput" }
+      responses: { "200": { description: OK } }
+  /banking/statements/{id}:
+    get:
+      responses: { "200": { description: OK } }
+  /banking/reconcile:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReconcileInput" }
+      responses: { "200": { description: OK } }
+  /banking/reconcile/{lineId}/unmatch:
+    post:
+      responses: { "200": { description: OK } }
+  /banking/sync/connect:
+    post:
+      responses: { "200": { description: OK } }
+  /banking/sync/status:
+    get:
+      responses: { "200": { description: OK } }
+  /banking/sync/refresh:
+    post:
+      responses: { "200": { description: OK } }
+  /inventory/adjustment:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StockAdjustmentInput" }
+      responses: { "200": { description: OK } }
+  /items/{id}/stock:
+    get:
+      responses: { "200": { description: OK } }
+  /reports/trial-balance:
+    get:
+      responses: { "200": { description: OK } }
+  /reports/profit-loss:
+    get:
+      responses: { "200": { description: OK } }
+  /reports/balance-sheet:
+    get:
+      responses: { "200": { description: OK } }
+  /reports/party-aging:
+    get:
+      responses: { "200": { description: OK } }
+  /reports/ledger:
+    get:
+      responses: { "200": { description: OK } }
+  /reports/export:
+    post:
+      responses: { "200": { description: OK } }
+  /pdf/invoice/{invoiceId}:
+    post:
+      responses: { "200": { description: OK } }
+  /pdf/voucher/{voucherId}:
+    post:
+      responses: { "200": { description: OK } }
+  /pdf/ledger:
+    post:
+      responses: { "200": { description: OK } }
+  /pdf/jobs/{id}:
+    get:
+      responses: { "200": { description: OK } }
+  /pdf/jobs/{id}/url:
+    get:
+      responses: { "200": { description: OK } }
+  /audit:
+    get:
+      responses: { "200": { description: OK } }
+  /audit/export:
+    get:
+      responses: { "200": { description: OK } }
+  /outbox:
+    get:
+      responses: { "200": { description: OK } }
+  /outbox/{id}/ack:
+    post:
+      responses: { "200": { description: OK } }
+  /devices:
+    get:
+      responses: { "200": { description: OK } }
+  /devices/{id}/trust:
+    post:
+      responses: { "200": { description: OK } }
+  /devices/{id}/users/{userId}:
+    delete:
+      responses: { "200": { description: OK } }
+  /roles:
+    get:
+      responses: { "200": { description: OK } }
+    post:
+      responses: { "200": { description: OK } }
+  /roles/permissions:
+    get:
+      responses: { "200": { description: OK } }
+  /roles/{id}:
+    get:
+      responses: { "200": { description: OK } }
+    put:
+      responses: { "200": { description: OK } }
+    delete:
+      responses: { "200": { description: OK } }
+  /roles/{id}/users:
+    post:
+      responses: { "200": { description: OK } }
+  /roles/{id}/users/{userId}:
+    delete:
+      responses: { "200": { description: OK } }
+  /users:
+    get:
+      responses: { "200": { description: OK } }
+    post:
+      responses: { "200": { description: OK } }
+  /users/{id}:
+    get:
+      responses: { "200": { description: OK } }
+    put:
+      responses: { "200": { description: OK } }
+  /taxes:
+    get:
+      responses: { "200": { description: OK } }
+    post:
+      responses: { "200": { description: OK } }
+  /taxes/{id}:
+    get:
+      responses: { "200": { description: OK } }
+    put:
+      responses: { "200": { description: OK } }
+    delete:
+      responses: { "200": { description: OK } }
+  /taxes/reports/vat:
+    get:
+      responses: { "200": { description: OK } }
+  /taxes/reports/vat/summary:
+    get:
+      responses: { "200": { description: OK } }
