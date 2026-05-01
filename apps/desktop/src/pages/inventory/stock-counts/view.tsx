@@ -111,7 +111,7 @@ export default function ViewStockCountPage() {
           {!isReadOnly && <Card className="border-orange-200 dark:border-orange-800/50 shadow-xl"><CardContent className="pt-6 space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-widest text-orange-600 dark:text-orange-400">Complete Count</h3>
             <p className="text-[11px] text-muted-foreground leading-relaxed">Completing finalizing quantities and automatically generate a Journal Voucher to adjust stock for variances.</p>
-            <div><label className="text-xs font-bold text-muted-foreground mb-1.5 block">Adjustment Account *</label><SearchableSelect options={accounts.map((a) => ({ value: a.id, label: `${a.code ? `${a.code} — ` : ""}${a.name}` }))} value={adjustmentAccountId} onChange={setAdjustmentAccountId} placeholder="e.g. Shrinkage" /></div>
+            <div><label className="text-xs font-bold text-muted-foreground mb-1.5 block">Adjustment Account *</label><SearchableSelect options={accounts.map((a) => ({ id: a.id, name: `${a.code ? `${a.code} — ` : ""}${a.name}` }))} valueId={adjustmentAccountId} onChange={(id) => setAdjustmentAccountId(id)} placeholder="e.g. Shrinkage" /></div>
             <Button onClick={handleComplete} disabled={submitting} className="w-full rounded-2xl h-12 font-bold bg-orange-600 hover:bg-orange-700 text-white shadow-lg shadow-orange-500/20 mt-2"><Check className="mr-2 h-4 w-4" /> Finalize</Button>
           </CardContent></Card>}
           {isReadOnly && count.adjustmentVoucherId && <Card className="border-emerald-200 dark:border-emerald-800/50 shadow-xl bg-emerald-50/50 dark:bg-emerald-900/10"><CardContent className="pt-6">

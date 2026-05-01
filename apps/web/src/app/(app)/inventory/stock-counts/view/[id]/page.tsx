@@ -292,11 +292,11 @@ export default function ViewStockCountPage() {
                 </p>
                 <div>
                   <label className="text-xs font-bold text-muted-foreground mb-1.5 block">Adjustment Account *</label>
-                  <SearchableSelect
-                    options={accounts.map((a) => ({ value: a.id, label: `${a.code ? `${a.code} — ` : ""}${a.name}` }))}
-                    value={adjustmentAccountId}
-                    onChange={setAdjustmentAccountId}
-                    placeholder="e.g. Inventory Shrinkage"
+                  <SearchableSelect 
+                    options={accounts.map((a: any) => ({ id: a.id, name: `${a.code ? `${a.code} — ` : ""}${a.name}` }))} 
+                    valueId={adjustmentAccountId} 
+                    onChange={(id) => setAdjustmentAccountId(id)} 
+                    placeholder="e.g. Inventory Shrinkage" 
                   />
                 </div>
                 <Button

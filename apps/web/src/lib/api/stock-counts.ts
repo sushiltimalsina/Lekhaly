@@ -28,6 +28,7 @@ export type StockCount = {
   warehouse?: any;
   createdByUser?: any;
   _count?: { lines: number };
+  adjustmentVoucherId?: string | null;
   createdAt: string;
 };
 

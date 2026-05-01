@@ -1,26 +1,17 @@
-// apps/web/src/lib/api/items.ts
-
 import { apiRequest } from "./client";
 
-export type ItemType = "goods" | "services";
-
-export type CreateItemInput = {
+export type ItemRecord = {
+  id: string;
   name: string;
   sku?: string;
   hsCode?: string;
   unit?: string;
   baseUnit?: string;
-  uomConversions?: Array<{ unit: string; factor: number; isBase?: boolean }>;
-  type?: ItemType;
+  type?: "goods" | "services";
   salesPrice?: number;
   purchasePrice?: number;
   reorderLevel?: number;
   safetyStock?: number;
-  minStockLevel?: number;
-  reorderQty?: number;
-  isSerialized?: boolean;
-  isKit?: boolean;
-  components?: Array<{ componentId: string; qty: number }>;
   openingQty?: number;
   openingPrice?: number;
   groupId?: string;
@@ -28,83 +19,67 @@ export type CreateItemInput = {
   expenseAccountId?: string;
   taxCodeId?: string;
   taxCodeIds?: string[];
-};
-
-export type ItemRecord = {
-  id: string;
-  name: string;
-  sku?: string | null;
-  code?: string | null;
-  hsCode?: string | null;
-  unit?: string | null;
-  baseUnit?: string | null;
-  uomConversions?: Array<{ unit: string; factor: number; isBase?: boolean }>;
-  type?: ItemType;
-  salesPrice?: number | null;
-  purchasePrice?: number | null;
-  reorderLevel?: number | null;
-  safetyStock?: number | null;
-  minStockLevel?: number | null;
-  reorderQty?: number | null;
+  minStockLevel?: number;
+  reorderQty?: number;
   isSerialized?: boolean;
   isKit?: boolean;
-  isLowStock?: boolean;
-  incomeAccountId?: string | null;
-  expenseAccountId?: string | null;
-  taxCodeId?: string | null;
-  isActive?: boolean;
+  components?: Array<{ componentId: string; qty: number }>;
   stock?: number;
-  components?: Array<{
-    id: string;
-    componentId: string;
-    qty: number;
-    component: { id: string; name: string; sku?: string | null; unit?: string | null };
-  }>;
 };
 
-export async function createItem(input: CreateItemInput) {
-  return apiRequest<ItemRecord>({
-    path: "/items",
+export type ItemType = "goods" | "services";
+
+export async function createItem(body: Partial<ItemRecord>) {
+  return apiRequest({ method: "POST", path: "/items", body });
+}
+
+export async function updateItem(id: string, body: Partial<ItemRecord>) {
+  return apiRequest({ method: "PUT", path: `/items/${id}`, body });
+}
+
+export async function getItem(id: string): Promise<ItemRecord> {
+  return apiRequest({ path: `/items/${id}` });
+}
+
+export async function listItems(query?: any): Promise<ItemRecord[] | { items: ItemRecord[]; total: number }> {
+  return apiRequest({ path: "/items", query });
+}
+
+export async function getItemStock(id: string, query?: any) {
+  return apiRequest({ path: `/items/${id}/stock`, query });
+}
+
+export async function removeItem(id: string) {
+  return apiRequest({ method: "DELETE", path: `/items/${id}` });
+}
+
+export async function restoreItem(id: string) {
+  return apiRequest({ method: "POST", path: `/items/${id}/restore` });
+}
+
+export async function assembleItem(
+  id: string,
+  qty: number,
+  memo?: string,
+  components?: Array<{ componentId: string; consumedQty: number }>,
+  sundries?: Array<{ sundryId: string; amount: number }>
+) {
+  return apiRequest({
     method: "POST",
-    body: input,
-  });
-}
-
-export async function getItem(id: string) {
-  return apiRequest<ItemRecord>({
-    path: `/items/${id}`,
-    method: "GET",
-  });
-}
-
-export async function listItems(params?: { q?: string; skip?: number; take?: number }) {
-  const safeParams = params?.take && params.take > 1000 ? { ...params, take: 1000 } : params;
-  return apiRequest<ItemRecord[]>({
-    path: "/items",
-    method: "GET",
-    query: safeParams,
-  });
-}
-
-export async function deleteItem(id: string) {
-  return apiRequest<void>({
-    path: `/items/${id}`,
-    method: "DELETE",
-  });
-}
-
-export async function assembleItem(id: string, qty: number, memo?: string) {
-  return apiRequest<void>({
     path: `/items/${id}/assemble`,
-    method: "POST",
-    body: { qty, memo },
+    body: { qty, memo, components, sundries }
   });
 }
 
-export async function disassembleItem(id: string, qty: number) {
-  return apiRequest<void>({
-    path: `/items/${id}/disassemble`,
+export async function disassembleItem(
+  id: string,
+  qty: number,
+  components?: Array<{ componentId: string; consumedQty: number }>,
+  sundries?: Array<{ sundryId: string; amount: number }>
+) {
+  return apiRequest({
     method: "POST",
-    body: { qty },
+    path: `/items/${id}/disassemble`,
+    body: { qty, components, sundries }
   });
 }

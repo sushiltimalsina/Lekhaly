@@ -150,14 +150,10 @@ export default function CreateStockCountPage() {
                 Warehouse Scope
               </label>
               <SearchableSelect
-                options={[
-                  { value: "", label: "All Warehouses" },
-                  ...warehouses.map((w) => ({ value: w.id, label: w.name })),
-                ]}
-                value={warehouseId}
-                onChange={(v) => {
-                  setWarehouseId(v);
-                  // Reset bins if warehouse changes
+                options={[{ id: "", name: "All Warehouses" }, ...warehouses.map((w) => ({ id: w.id, name: w.name }))]}
+                valueId={warehouseId}
+                onChange={(id) => {
+                  setWarehouseId(id);
                   setLines(lines.map((l) => ({ ...l, binId: "" })));
                 }}
                 placeholder="Select Warehouse"
@@ -202,21 +198,18 @@ export default function CreateStockCountPage() {
                   <tr key={line.id} className="hover:bg-muted/30 transition-colors">
                     <td className="p-2">
                       <SearchableSelect
-                        options={items.map((i) => ({
-                          value: i.id,
-                          label: `${i.name}${i.sku ? ` (${i.sku})` : ""}`,
-                        }))}
-                        value={line.itemId}
-                        onChange={(v) => updateLine(line.id, "itemId", v)}
+                        options={items.map((i) => ({ id: i.id, name: `${i.name}${i.sku ? ` (${i.sku})` : ""}` }))}
+                        valueId={line.itemId}
+                        onChange={(id) => updateLine(line.id, "itemId", id)}
                         placeholder="Select item..."
                       />
                     </td>
                     {whBins.length > 0 && (
                       <td className="p-2">
                         <SearchableSelect
-                          options={[{ value: "", label: "Any" }, ...whBins.map((b: any) => ({ value: b.id, label: b.name }))]}
-                          value={line.binId}
-                          onChange={(v) => updateLine(line.id, "binId", v)}
+                          options={[{ id: "", name: "Any" }, ...whBins.map((b: any) => ({ id: b.id, name: b.name }))]}
+                          valueId={line.binId}
+                          onChange={(id) => updateLine(line.id, "binId", id)}
                           placeholder="Select bin..."
                         />
                       </td>

@@ -69,9 +69,9 @@ export class ItemsController {
   assemble(
     @CurrentUser() user: AuthUser,
     @Param("id") id: string,
-    @Body() body: { qty: number; memo?: string }
+    @Body() body: { qty: number; memo?: string; components?: Array<{ componentId: string; consumedQty: number }>; sundries?: Array<{ sundryId: string; amount: number }> }
   ) {
-    return this.items.assemble(user, id, body.qty, body.memo);
+    return this.items.assemble(user, id, body.qty, body.memo, body.components, body.sundries);
   }
 
   @Post(":id/disassemble")
@@ -79,8 +79,8 @@ export class ItemsController {
   disassemble(
     @CurrentUser() user: AuthUser,
     @Param("id") id: string,
-    @Body() body: { qty: number }
+    @Body() body: { qty: number; components?: Array<{ componentId: string; consumedQty: number }>; sundries?: Array<{ sundryId: string; amount: number }> }
   ) {
-    return this.items.disassemble(user, id, body.qty);
+    return this.items.disassemble(user, id, body.qty, body.components, body.sundries);
   }
 }

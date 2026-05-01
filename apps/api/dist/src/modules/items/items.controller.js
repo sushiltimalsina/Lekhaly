@@ -49,10 +49,10 @@ let ItemsController = class ItemsController {
         return this.items.restore(user, id);
     }
     assemble(user, id, body) {
-        return this.items.assemble(user, id, body.qty, body.memo);
+        return this.items.assemble(user, id, body.qty, body.memo, body.components, body.sundries);
     }
     disassemble(user, id, body) {
-        return this.items.disassemble(user, id, body.qty);
+        return this.items.disassemble(user, id, body.qty, body.components, body.sundries);
     }
 };
 exports.ItemsController = ItemsController;

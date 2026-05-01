@@ -35,6 +35,7 @@ export interface SearchableSelectProps<T> {
     onChange: (id: string, opt?: T) => void;
     options: T[];
     getLabel?: (opt: T) => string;
+    getDetail?: (opt: T) => string;
     leftIcon?: React.ReactNode;
     className?: string;
     buttonClassName?: string;
@@ -54,6 +55,7 @@ export default function SearchableSelect<T extends any>(props: SearchableSelectP
         onChange,
         options,
         getLabel,
+        getDetail,
         leftIcon,
         className,
         buttonClassName,
@@ -256,13 +258,18 @@ export default function SearchableSelect<T extends any>(props: SearchableSelectP
                                             }}
                                             onMouseEnter={() => setActiveIndex(i)}
                                             className={cn(
-                                                "flex cursor-pointer items-center justify-between rounded-xl px-3 py-2 text-sm transition-colors",
+                                                "flex cursor-pointer items-center justify-between rounded-xl px-3 py-2 text-sm transition-colors gap-4",
                                                 isActive ? "bg-slate-100 dark:bg-slate-800" : "",
-                                                isSelected ? "text-primary font-medium" : "text-slate-700 dark:text-slate-300"
+                                                isSelected ? (isActive ? "bg-emerald-100/50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400" : "bg-emerald-50/50 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-500 font-medium") : "text-slate-700 dark:text-slate-300"
                                             )}
                                         >
-                                            <span className="truncate">{getLabel ? getLabel(o) : ((o as any).name ?? (o as any).label)}</span>
-                                            {isSelected && <Check className="h-4 w-4" />}
+                                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                <span className="truncate">{getLabel ? getLabel(o) : ((o as any).name ?? (o as any).label)}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                {getDetail && <span className={cn("text-[11px] font-medium opacity-60", isSelected ? "text-emerald-600/70 dark:text-emerald-400/70" : "text-muted-foreground")}>{getDetail(o)}</span>}
+                                                {isSelected && <Check className="h-4 w-4" />}
+                                            </div>
                                         </div>
                                     );
                                 })
