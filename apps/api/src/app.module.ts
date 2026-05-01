@@ -35,6 +35,7 @@ import { FiscalSessionsModule } from "./modules/fiscal-sessions/fiscal-sessions.
 import { PaymentMethodsModule } from "./modules/payment-methods/payment-methods.module";
 import { SaleTypesModule } from "./modules/sale-types/sale-types.module";
 import { PurchaseTypesModule } from "./modules/purchase-types/purchase-types.module";
+import { WarehousesModule } from "./modules/warehouses/warehouses.module";
 
 @Module({
   imports: [
@@ -74,6 +75,7 @@ import { PurchaseTypesModule } from "./modules/purchase-types/purchase-types.mod
     PaymentMethodsModule,
     SaleTypesModule,
     PurchaseTypesModule,
+    WarehousesModule,
   ],
   controllers: [AppController],
   providers: [

@@ -1,7 +1,7 @@
 // apps/desktop/src/app.tsx
-import React from "react";
-import { Routes, Route, Navigate, useLocation } from "react-router-dom";
-import { getToken } from "@/lib/store/auth";
+import React, { useEffect } from "react";
+import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { clearToken, getToken } from "@/lib/store/auth";
 
 // Shell Components
 import Sidebar from "@/components/app/sidebar";
@@ -36,6 +36,15 @@ import VendorsNewPage from "@/pages/vendors/new";
 // Items
 import ItemsListPage from "@/pages/items/index";
 import NewItemPage from "@/pages/items/new";
+
+// Inventory
+import InventoryDashboardPage from "@/pages/inventory/index";
+import WarehousesPage from "@/pages/inventory/warehouses";
+import StockAdjustPage from "@/pages/inventory/adjust";
+import StockTransferPage from "@/pages/inventory/transfer";
+import StockCountsPage from "@/pages/inventory/stock-counts/index";
+import CreateStockCountPage from "@/pages/inventory/stock-counts/create";
+import ViewStockCountPage from "@/pages/inventory/stock-counts/view";
 
 // Purchase Module
 import PurchaseListPage from "@/pages/purchase/index";
@@ -116,8 +125,45 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AppShell({ children }: { children: React.ReactNode }) {
-  const { pathname } = useLocation();
+  const navigate = useNavigate();
   const isCreationPage = false;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    let timeoutId: ReturnType<typeof window.setTimeout> | null = null;
+
+    const resetIdleTimer = () => {
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+
+      if (!getToken()) return;
+
+      timeoutId = window.setTimeout(() => {
+        clearToken();
+        navigate("/login");
+      }, 30 * 60 * 1000);
+    };
+
+    const events: Array<keyof WindowEventMap> = [
+      "mousemove",
+      "mousedown",
+      "keydown",
+      "touchstart",
+      "scroll",
+    ];
+
+    events.forEach((eventName) => window.addEventListener(eventName, resetIdleTimer, { passive: true }));
+    resetIdleTimer();
+
+    return () => {
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+      events.forEach((eventName) => window.removeEventListener(eventName, resetIdleTimer));
+    };
+  }, [navigate]);
 
   return (
     <div className="min-h-screen bg-background text-foreground flex overflow-hidden">
@@ -187,6 +233,15 @@ export default function App() {
                 {/* Items */}
                 <Route path="/items" element={<ItemsListPage />} />
                 <Route path="/items/new" element={<NewItemPage />} />
+
+                {/* Inventory */}
+                <Route path="/inventory" element={<InventoryDashboardPage />} />
+                <Route path="/inventory/warehouses" element={<WarehousesPage />} />
+                <Route path="/inventory/adjust" element={<StockAdjustPage />} />
+                <Route path="/inventory/transfer" element={<StockTransferPage />} />
+                <Route path="/inventory/stock-counts" element={<StockCountsPage />} />
+                <Route path="/inventory/stock-counts/create" element={<CreateStockCountPage />} />
+                <Route path="/inventory/stock-counts/view/:id" element={<ViewStockCountPage />} />
 
                 {/* Purchase Module */}
                 <Route path="/purchase" element={<PurchaseListPage />} />

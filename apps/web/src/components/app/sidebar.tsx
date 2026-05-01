@@ -150,11 +150,16 @@ const navData: NavItem[] = [
     ]
   },
   {
-    label: "Stock", href: "/items",
+    label: "Inventory",
     icon: Package,
     children: [
-      { label: "Add (Create)", href: "/items/new", icon: Plus },
-      { label: "List", href: "/items", icon: List }
+      { label: "Dashboard", href: "/inventory", icon: LayoutDashboard },
+      { label: "Items", href: "/items", icon: List },
+      { label: "Warehouses", href: "/inventory/warehouses", icon: Building2 },
+      { label: "Adjust Stock", href: "/inventory/adjust", icon: Plus },
+      { label: "Transfer Stock", href: "/inventory/transfer", icon: ArrowRightLeft },
+      { label: "Physical Count", href: "/inventory/stock-counts", icon: ClipboardList },
+      { label: "Stock Ledger", href: "/reports/stock-ledger", icon: Eye },
     ]
   },
   {

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import * as React from "react";
 import { createPortal } from "react-dom";
@@ -46,7 +46,7 @@ export interface SearchableSelectProps<T> {
     disabled?: boolean;
 }
 
-export default function SearchableSelect<T extends { id: string; name?: string }>(props: SearchableSelectProps<T>) {
+export default function SearchableSelect<T extends any>(props: SearchableSelectProps<T>) {
     const {
         label,
         placeholder = "Selectâ€¦",
@@ -84,16 +84,17 @@ export default function SearchableSelect<T extends { id: string; name?: string }
         pointerEvents: "none",
     });
 
-    const selected = React.useMemo(() => options.find((o) => o.id === valueId), [options, valueId]);
+    const selected = React.useMemo(() => options.find((o: any) => (o.id ?? o.value) === valueId), [options, valueId]);
     const selectedLabel = selected
-        ? (getLabel ? getLabel(selected) : selected.name ?? selected.id)
+        ? (getLabel ? getLabel(selected) : ((selected as any).name ?? (selected as any).label ?? (selected as any).id ?? (selected as any).value))
         : (fallbackLabel || "");
 
     const filtered = React.useMemo(() => {
         const q = query.trim().toLowerCase();
         if (!q) return options;
-        return options.filter((o) => {
-            const labelText = (getLabel ? getLabel(o) : o.name ?? o.id).toLowerCase();
+        return options.filter((o: any) => {
+            const val = getLabel ? getLabel(o) : (o.name ?? o.label ?? o.id ?? o.value ?? "");
+            const labelText = String(val).toLowerCase();
             return labelText.includes(q);
         });
     }, [options, query, getLabel]);
@@ -221,7 +222,7 @@ export default function SearchableSelect<T extends { id: string; name?: string }
                                             e.preventDefault();
                                             const item = filtered[activeIndex];
                                             if (item) {
-                                                onChange(item.id, item);
+                                                onChange((item as any).id, item);
                                                 setOpen(false);
                                                 setQuery("");
                                                 setTimeout(() => {
@@ -242,13 +243,14 @@ export default function SearchableSelect<T extends { id: string; name?: string }
                         >
                             {filtered.length ? (
                                 filtered.map((o, i) => {
-                                    const isSelected = o.id === valueId;
+                                    const itemId = (o as any).id ?? (o as any).value;
+                                    const isSelected = itemId === valueId;
                                     const isActive = i === activeIndex;
                                     return (
                                         <div
-                                            key={o.id}
+                                            key={itemId}
                                             onClick={() => {
-                                                onChange(o.id, o);
+                                                onChange(itemId, o);
                                                 setOpen(false);
                                                 setQuery("");
                                             }}
@@ -259,7 +261,7 @@ export default function SearchableSelect<T extends { id: string; name?: string }
                                                 isSelected ? "text-primary font-medium" : "text-slate-700 dark:text-slate-300"
                                             )}
                                         >
-                                            <span className="truncate">{getLabel ? getLabel(o) : o.name}</span>
+                                            <span className="truncate">{getLabel ? getLabel(o) : ((o as any).name ?? (o as any).label)}</span>
                                             {isSelected && <Check className="h-4 w-4" />}
                                         </div>
                                     );

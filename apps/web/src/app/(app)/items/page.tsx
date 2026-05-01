@@ -12,7 +12,9 @@ import { Input } from "@lekhaly/ui";
 import { ArrowUpDown, CalendarDays, Check, Columns, Download, Eye, Plus, RotateCcw, Search, Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { listAccounts } from "@/lib/api/accounts";
-import { createItem } from "@/lib/api/items";
+import { createItem, listItems } from "@/lib/api/items";
+import { createItemGroup, listItemGroups } from "@/lib/api/item-groups";
+import { createUnit, listUnits } from "@/lib/api/units";
 import {
   adjustInventoryStock,
   getInventoryAlerts,
@@ -117,7 +119,35 @@ const DATE_PRESET_LABELS: Record<DatePreset, string> = {
   last_year: "Last Year",
 };
 
+const IMPORT_FIELDS: Array<{ key: ImportFieldKey; label: string; required?: boolean }> = [
+  { key: "name", label: "Item Name", required: true },
+  { key: "sku", label: "SKU (Unique ID)" },
+  { key: "hsCode", label: "HS Code" },
+  { key: "unit", label: "Unit" },
+  { key: "group", label: "Group" },
+  { key: "type", label: "Type (goods/services)" },
+  { key: "salesPrice", label: "Sales Price" },
+  { key: "purchasePrice", label: "Purchase Price" },
+  { key: "reorderLevel", label: "Reorder Level" },
+  { key: "safetyStock", label: "Safety Stock" },
+  { key: "openingQty", label: "Opening Qty" },
+  { key: "openingPrice", label: "Opening Price" },
+];
+
 type InventoryAccount = { id: string; name: string };
+type ImportFieldKey =
+  | "name"
+  | "sku"
+  | "hsCode"
+  | "unit"
+  | "group"
+  | "type"
+  | "salesPrice"
+  | "purchasePrice"
+  | "reorderLevel"
+  | "safetyStock"
+  | "openingQty"
+  | "openingPrice";
 
 function csvEscape(value: unknown) {
   const str = String(value ?? "");
@@ -308,6 +338,19 @@ export default function ItemsPage() {
   const [actionError, setActionError] = React.useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = React.useState<string | null>(null);
   const [importing, setImporting] = React.useState(false);
+  const [importWizardOpen, setImportWizardOpen] = React.useState(false);
+  const [importStep, setImportStep] = React.useState<1 | 2 | 3>(1);
+  const [importHeaders, setImportHeaders] = React.useState<string[]>([]);
+  const [importRows, setImportRows] = React.useState<string[][]>([]);
+  const [fieldMapping, setFieldMapping] = React.useState<Partial<Record<ImportFieldKey, number>>>({});
+  const [duplicateRule, setDuplicateRule] = React.useState<"create_only" | "skip_existing">("skip_existing");
+  const [autoCreateMasters, setAutoCreateMasters] = React.useState(true);
+  const [importSummary, setImportSummary] = React.useState<{ created: number; skipped: number; failed: number } | null>(null);
+  const [importRowIssues, setImportRowIssues] = React.useState<Array<{ row: number; message: string }>>([]);
+  const [importFailedRows, setImportFailedRows] = React.useState<Array<{ row: number; values: string[]; reason: string }>>([]);
+  const [previewPage, setPreviewPage] = React.useState(1);
+  const [previewPageSize, setPreviewPageSize] = React.useState(100);
+  const [previewErrorsOnly, setPreviewErrorsOnly] = React.useState(false);
   const [adjustForm, setAdjustForm] = React.useState({
     itemId: "",
     date: toIsoDate(new Date()),
@@ -339,7 +382,7 @@ export default function ItemsPage() {
   const columnsMenuWrapRef = React.useRef<HTMLDivElement | null>(null);
   const exportMenuWrapRef = React.useRef<HTMLDivElement | null>(null);
   const importFileRef = React.useRef<HTMLInputElement | null>(null);
-  const popupOpen = dateMenuOpen || columnsMenuOpen || exportMenuOpen || adjustOpen || transferOpen;
+  const popupOpen = dateMenuOpen || columnsMenuOpen || exportMenuOpen || adjustOpen || transferOpen || importWizardOpen;
 
   React.useEffect(() => {
     if (!popupOpen) return;
@@ -1059,65 +1102,290 @@ export default function ItemsPage() {
     setActionSuccess(`Exported ${sorted.length} rows as PDF.`);
   };
 
+  const detectMapping = (headers: string[]) => {
+    const normalized = headers.map((h) => h.trim().toLowerCase().replace(/\s+/g, ""));
+    const idx = (keys: string[]) => normalized.findIndex((h) => keys.includes(h));
+    return {
+      name: idx(["name", "itemname"]),
+      sku: idx(["sku", "code", "uniqueid", "unique"]),
+      hsCode: idx(["hscode", "hs"]),
+      unit: idx(["unit"]),
+      group: idx(["group", "groupname", "itemgroup"]),
+      type: idx(["type"]),
+      salesPrice: idx(["salesprice", "saleprice"]),
+      purchasePrice: idx(["purchaseprice", "buyprice"]),
+      reorderLevel: idx(["reorderlevel", "reorder"]),
+      safetyStock: idx(["safetystock", "safety"]),
+      openingQty: idx(["openingqty", "openingquantity"]),
+      openingPrice: idx(["openingprice", "openingrate"]),
+    } as Partial<Record<ImportFieldKey, number>>;
+  };
+
   const handleImportFile = async (file?: File | null) => {
     if (!file) return;
     setActionError(null);
     setActionSuccess(null);
-    setImporting(true);
     try {
       const text = await file.text();
       const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
       if (lines.length < 2) throw new Error("CSV has no data rows.");
-      const headers = parseCsvLine(lines[0]).map((h) => h.trim().toLowerCase().replace(/\s+/g, ""));
-      const idx = (keys: string[]) => headers.findIndex((h) => keys.includes(h));
-      const nameIdx = idx(["name", "itemname"]);
-      if (nameIdx < 0) throw new Error("CSV must include a 'name' or 'item name' column.");
-      const skuIdx = idx(["sku", "code"]);
-      const hsIdx = idx(["hscode", "hs"]);
-      const unitIdx = idx(["unit"]);
-      const typeIdx = idx(["type"]);
-      const salesIdx = idx(["salesprice", "saleprice"]);
-      const purchaseIdx = idx(["purchaseprice", "buyprice"]);
-      const reorderIdx = idx(["reorderlevel", "reorder"]);
-      const safetyIdx = idx(["safetystock", "safety"]);
-      const openingQtyIdx = idx(["openingqty", "openingquantity"]);
-      const openingPriceIdx = idx(["openingprice", "openingrate"]);
-
-      let success = 0;
-      let failed = 0;
-      for (let i = 1; i < lines.length; i += 1) {
-        const cols = parseCsvLine(lines[i]);
-        const name = (cols[nameIdx] || "").trim();
-        if (!name) continue;
-        try {
-          await createItem({
-            name,
-            sku: skuIdx >= 0 ? (cols[skuIdx] || "").trim() || undefined : undefined,
-            hsCode: hsIdx >= 0 ? (cols[hsIdx] || "").trim() || undefined : undefined,
-            unit: unitIdx >= 0 ? (cols[unitIdx] || "").trim() || undefined : undefined,
-            type: typeIdx >= 0 && (cols[typeIdx] || "").trim().toLowerCase() === "services" ? "services" : "goods",
-            salesPrice: salesIdx >= 0 && cols[salesIdx] ? Number(cols[salesIdx]) : undefined,
-            purchasePrice: purchaseIdx >= 0 && cols[purchaseIdx] ? Number(cols[purchaseIdx]) : undefined,
-            reorderLevel: reorderIdx >= 0 && cols[reorderIdx] ? Number(cols[reorderIdx]) : undefined,
-            safetyStock: safetyIdx >= 0 && cols[safetyIdx] ? Number(cols[safetyIdx]) : undefined,
-            openingQty: openingQtyIdx >= 0 && cols[openingQtyIdx] ? Number(cols[openingQtyIdx]) : undefined,
-            openingPrice: openingPriceIdx >= 0 && cols[openingPriceIdx] ? Number(cols[openingPriceIdx]) : undefined,
-          });
-          success += 1;
-        } catch {
-          failed += 1;
-        }
-      }
-      await refresh();
-      setActionSuccess(`Import complete. Created: ${success}, Failed: ${failed}.`);
-      if (failed > 0) setActionError("Some rows failed (likely duplicate name or invalid numeric values).");
+      const headers = parseCsvLine(lines[0]);
+      const rows = lines.slice(1).map((line) => parseCsvLine(line));
+      const mapping = detectMapping(headers);
+      if ((mapping.name ?? -1) < 0) throw new Error("CSV must include a 'name' or 'item name' column.");
+      setImportHeaders(headers);
+      setImportRows(rows);
+      setFieldMapping(mapping);
+      setImportStep(2);
+      setImportSummary(null);
+      setPreviewPage(1);
+      setPreviewErrorsOnly(false);
+      setImportWizardOpen(true);
     } catch (e: any) {
       setActionError(e?.message ?? "Failed to import CSV.");
     } finally {
-      setImporting(false);
       if (importFileRef.current) importFileRef.current.value = "";
     }
   };
+
+  const importPreview = React.useMemo(() => {
+    const nameIdx = fieldMapping.name ?? -1;
+    if (nameIdx < 0) return { valid: 0, invalid: importRows.length };
+    let valid = 0;
+    let invalid = 0;
+    for (const row of importRows) {
+      const name = (row[nameIdx] || "").trim();
+      if (name) valid += 1;
+      else invalid += 1;
+    }
+    return { valid, invalid };
+  }, [fieldMapping, importRows]);
+
+  const preImportIssues = React.useMemo(() => {
+    const issues: Array<{ row: number; message: string }> = [];
+    const nameIdx = fieldMapping.name ?? -1;
+    const skuIdx = fieldMapping.sku ?? -1;
+    const typeIdx = fieldMapping.type ?? -1;
+    const seenSku = new Set<string>();
+    for (let i = 0; i < importRows.length; i += 1) {
+      const row = importRows[i];
+      const rowNo = i + 2;
+      const name = nameIdx >= 0 ? (row[nameIdx] || "").trim() : "";
+      if (!name) {
+        issues.push({ row: rowNo, message: "Missing Item Name" });
+      }
+      const sku = skuIdx >= 0 ? (row[skuIdx] || "").trim() : "";
+      if (skuIdx >= 0 && !sku) {
+        issues.push({ row: rowNo, message: "Missing SKU (required for safe duplicate check)" });
+      }
+      if (sku) {
+        const key = sku.toLowerCase();
+        if (seenSku.has(key)) issues.push({ row: rowNo, message: `Duplicate SKU in file: ${sku}` });
+        seenSku.add(key);
+      }
+      if (typeIdx >= 0) {
+        const t = (row[typeIdx] || "").trim().toLowerCase();
+        if (t && t !== "goods" && t !== "services") {
+          issues.push({ row: rowNo, message: `Invalid type '${row[typeIdx]}'` });
+        }
+      }
+    }
+    return issues;
+  }, [fieldMapping, importRows]);
+
+  const runImportWizard = async () => {
+    const nameIdx = fieldMapping.name ?? -1;
+    if (nameIdx < 0) {
+      setActionError("Item Name mapping is required.");
+      return;
+    }
+    setImporting(true);
+    setActionError(null);
+    setActionSuccess(null);
+    try {
+      const fetchAllItems = async () => {
+        const out: Awaited<ReturnType<typeof listItems>> = [];
+        let skip = 0;
+        const take = 1000;
+        while (true) {
+          const page = await listItems({ skip, take });
+          const rows = Array.isArray(page) ? page : [];
+          out.push(...rows);
+          if (rows.length < take) break;
+          skip += take;
+        }
+        return out;
+      };
+
+      const [existingItems, existingGroups, existingUnits] = await Promise.all([
+        fetchAllItems(),
+        listItemGroups({ take: 1000 }),
+        listUnits({ take: 1000 }),
+      ]);
+      const existingSkuMap = new Map(
+        (Array.isArray(existingItems) ? existingItems : [])
+          .map((i) => [String(i.sku || "").trim().toLowerCase(), i] as const)
+          .filter(([k]) => Boolean(k))
+      );
+      const groupMap = new Map((Array.isArray(existingGroups) ? existingGroups : []).map((g) => [g.name.trim().toLowerCase(), g]));
+      const unitSet = new Set((Array.isArray(existingUnits) ? existingUnits : []).map((u) => u.name.trim().toLowerCase()));
+
+      const toNum = (raw?: string) => {
+        if (!raw) return undefined;
+        const v = Number(raw);
+        return Number.isFinite(v) ? v : undefined;
+      };
+
+      let created = 0;
+      let skipped = 0;
+      let failed = 0;
+      const rowIssues: Array<{ row: number; message: string }> = [];
+      const failedRows: Array<{ row: number; values: string[]; reason: string }> = [];
+      for (let rowIdx = 0; rowIdx < importRows.length; rowIdx += 1) {
+        const row = importRows[rowIdx];
+        const rowNo = rowIdx + 2;
+        const name = (row[nameIdx] || "").trim();
+        if (!name) {
+          skipped += 1;
+          rowIssues.push({ row: rowNo, message: "Missing Item Name" });
+          continue;
+        }
+        const sku = fieldMapping.sku !== undefined && fieldMapping.sku >= 0 ? (row[fieldMapping.sku] || "").trim() : "";
+        if (!sku) {
+          failed += 1;
+          rowIssues.push({ row: rowNo, message: "Missing SKU (required)" });
+          failedRows.push({ row: rowNo, values: row, reason: "Missing SKU (required)" });
+          continue;
+        }
+        const skuKey = sku.toLowerCase();
+        const existingBySku = existingSkuMap.get(skuKey);
+        if (existingBySku) {
+          const incomingType = fieldMapping.type !== undefined && fieldMapping.type >= 0 && (row[fieldMapping.type] || "").trim().toLowerCase() === "services" ? "services" : "goods";
+          const incomingHs = fieldMapping.hsCode !== undefined && fieldMapping.hsCode >= 0 ? ((row[fieldMapping.hsCode] || "").trim() || null) : null;
+          const incomingUnit = fieldMapping.unit !== undefined && fieldMapping.unit >= 0 ? ((row[fieldMapping.unit] || "").trim() || null) : null;
+          const incomingSales = fieldMapping.salesPrice !== undefined && fieldMapping.salesPrice >= 0 ? toNum((row[fieldMapping.salesPrice] || "").trim()) ?? null : null;
+          const incomingPurchase = fieldMapping.purchasePrice !== undefined && fieldMapping.purchasePrice >= 0 ? toNum((row[fieldMapping.purchasePrice] || "").trim()) ?? null : null;
+          const incomingReorder = fieldMapping.reorderLevel !== undefined && fieldMapping.reorderLevel >= 0 ? toNum((row[fieldMapping.reorderLevel] || "").trim()) ?? null : null;
+          const incomingSafety = fieldMapping.safetyStock !== undefined && fieldMapping.safetyStock >= 0 ? toNum((row[fieldMapping.safetyStock] || "").trim()) ?? null : null;
+
+          const sameData =
+            String(existingBySku.name || "").trim() === name &&
+            String(existingBySku.hsCode || "") === String(incomingHs || "") &&
+            String(existingBySku.unit || "") === String(incomingUnit || "") &&
+            String(existingBySku.type || "goods") === incomingType &&
+            Number(existingBySku.salesPrice ?? 0) === Number(incomingSales ?? 0) &&
+            Number(existingBySku.purchasePrice ?? 0) === Number(incomingPurchase ?? 0) &&
+            Number(existingBySku.reorderLevel ?? 0) === Number(incomingReorder ?? 0) &&
+            Number(existingBySku.safetyStock ?? 0) === Number(incomingSafety ?? 0);
+
+          if (sameData) {
+            skipped += 1;
+            rowIssues.push({ row: rowNo, message: `No change for existing SKU: ${sku}` });
+            continue;
+          }
+
+          if (duplicateRule === "skip_existing") {
+            skipped += 1;
+            rowIssues.push({ row: rowNo, message: `Skipped existing SKU (data differs): ${sku}` });
+            continue;
+          }
+
+          failed += 1;
+          rowIssues.push({ row: rowNo, message: `SKU already exists with different data: ${sku}` });
+          failedRows.push({ row: rowNo, values: row, reason: `SKU already exists with different data: ${sku}` });
+          continue;
+        }
+
+        try {
+          let groupId: string | undefined;
+          if (fieldMapping.group !== undefined && fieldMapping.group >= 0) {
+            const groupName = (row[fieldMapping.group] || "").trim();
+            if (groupName) {
+              const gKey = groupName.toLowerCase();
+              let group = groupMap.get(gKey);
+              if (!group && autoCreateMasters) {
+                group = await createItemGroup({ name: groupName });
+                groupMap.set(gKey, group);
+              }
+              groupId = group?.id;
+            }
+          }
+
+          const unit = fieldMapping.unit !== undefined && fieldMapping.unit >= 0 ? (row[fieldMapping.unit] || "").trim() : "";
+          if (unit && !unitSet.has(unit.toLowerCase()) && autoCreateMasters) {
+            await createUnit({ name: unit });
+            unitSet.add(unit.toLowerCase());
+          }
+
+          await createItem({
+            name,
+            sku: sku || undefined,
+            hsCode: fieldMapping.hsCode !== undefined && fieldMapping.hsCode >= 0 ? (row[fieldMapping.hsCode] || "").trim() || undefined : undefined,
+            unit: unit || undefined,
+            groupId,
+            type: fieldMapping.type !== undefined && fieldMapping.type >= 0 && (row[fieldMapping.type] || "").trim().toLowerCase() === "services" ? "services" : "goods",
+            salesPrice: fieldMapping.salesPrice !== undefined && fieldMapping.salesPrice >= 0 ? toNum((row[fieldMapping.salesPrice] || "").trim()) : undefined,
+            purchasePrice: fieldMapping.purchasePrice !== undefined && fieldMapping.purchasePrice >= 0 ? toNum((row[fieldMapping.purchasePrice] || "").trim()) : undefined,
+            reorderLevel: fieldMapping.reorderLevel !== undefined && fieldMapping.reorderLevel >= 0 ? toNum((row[fieldMapping.reorderLevel] || "").trim()) : undefined,
+            safetyStock: fieldMapping.safetyStock !== undefined && fieldMapping.safetyStock >= 0 ? toNum((row[fieldMapping.safetyStock] || "").trim()) : undefined,
+            openingQty: fieldMapping.openingQty !== undefined && fieldMapping.openingQty >= 0 ? toNum((row[fieldMapping.openingQty] || "").trim()) : undefined,
+            openingPrice: fieldMapping.openingPrice !== undefined && fieldMapping.openingPrice >= 0 ? toNum((row[fieldMapping.openingPrice] || "").trim()) : undefined,
+          });
+          existingSkuMap.set(skuKey, { sku } as any);
+          created += 1;
+        } catch (e: any) {
+          failed += 1;
+          const reason = e?.message ?? "Row failed";
+          rowIssues.push({ row: rowNo, message: reason });
+          failedRows.push({ row: rowNo, values: row, reason });
+        }
+      }
+
+      await refresh();
+      setImportSummary({ created, skipped, failed });
+      setImportRowIssues(rowIssues);
+      setImportFailedRows(failedRows);
+      setImportStep(3);
+      setActionSuccess(`Import complete. Created: ${created}, Skipped: ${skipped}, Failed: ${failed}.`);
+    } catch (e: any) {
+      setActionError(e?.message ?? "Import failed.");
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const downloadFailedRowsCsv = async () => {
+    if (importFailedRows.length === 0) return;
+    const header = ["Row", ...importHeaders, "Reason"];
+    const lines = importFailedRows.map((r) => [String(r.row), ...importHeaders.map((_, i) => r.values[i] || ""), r.reason]);
+    const csv = [header, ...lines].map((row) => row.map(csvEscape).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    await saveBlob(blob, "inventory_import_failed_rows.csv");
+  };
+
+  const rowIssueMap = React.useMemo(() => {
+    const source = importSummary ? importRowIssues : preImportIssues;
+    const map = new Map<number, string>();
+    for (const issue of source) {
+      if (!map.has(issue.row)) map.set(issue.row, issue.message);
+    }
+    return map;
+  }, [importSummary, importRowIssues, preImportIssues]);
+
+  const previewRows = React.useMemo(() => {
+    const rows = importRows.map((values, idx) => {
+      const rowNumber = idx + 2;
+      return { rowNumber, values, issue: rowIssueMap.get(rowNumber) };
+    });
+    return previewErrorsOnly ? rows.filter((r) => Boolean(r.issue)) : rows;
+  }, [importRows, previewErrorsOnly, rowIssueMap]);
+
+  const previewTotalPages = Math.max(1, Math.ceil(previewRows.length / previewPageSize));
+  const safePreviewPage = Math.min(previewPage, previewTotalPages);
+  const pagedPreviewRows = React.useMemo(() => {
+    const start = (safePreviewPage - 1) * previewPageSize;
+    return previewRows.slice(start, start + previewPageSize);
+  }, [previewRows, safePreviewPage, previewPageSize]);
 
   const downloadImportTemplate = async () => {
     const header = [
@@ -1178,7 +1446,11 @@ export default function ItemsPage() {
             <Button
               variant="outline"
               className="rounded-xl border-border/50"
-              onClick={() => importFileRef.current?.click()}
+              onClick={() => {
+                setImportWizardOpen(true);
+                setImportStep(1);
+                setImportSummary(null);
+              }}
               disabled={importing}
               title="Import CSV"
             >
@@ -1522,6 +1794,198 @@ export default function ItemsPage() {
           // No need to refresh stock report but could refresh group list if we had one
         }}
       />
+      {importWizardOpen ? (
+        <div className="fixed inset-0 z-[1600] bg-black/30 backdrop-blur-sm p-4" onClick={() => setImportWizardOpen(false)}>
+          <div className="mx-auto mt-6 w-full max-w-6xl rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-800 dark:bg-slate-950" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-4 flex items-center justify-between border-b border-slate-200 pb-4 dark:border-slate-800">
+              <div>
+                <div className="text-base font-black tracking-tight">Import Items Wizard</div>
+                <div className="text-xs text-muted-foreground">Upload, map columns, review data, and import with migration rules.</div>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => setImportWizardOpen(false)}>Close</Button>
+            </div>
+            <div className="mb-5 grid grid-cols-1 gap-2 sm:grid-cols-3 text-xs">
+              <div className={cn("rounded-xl border px-3 py-2", importStep === 1 ? "border-primary bg-primary/10 text-primary" : "border-slate-200 dark:border-slate-800")}>1. Upload File</div>
+              <div className={cn("rounded-xl border px-3 py-2", importStep === 2 ? "border-primary bg-primary/10 text-primary" : "border-slate-200 dark:border-slate-800")}>2. Map Fields & Rules</div>
+              <div className={cn("rounded-xl border px-3 py-2", importStep === 3 ? "border-primary bg-primary/10 text-primary" : "border-slate-200 dark:border-slate-800")}>3. Preview & Import</div>
+            </div>
+
+            {importStep === 1 ? (
+              <div className="space-y-4">
+                <div
+                  className="rounded-2xl border-2 border-dashed border-slate-300 p-8 text-center dark:border-slate-700"
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    void handleImportFile(e.dataTransfer.files?.[0] || null);
+                  }}
+                  onDragOver={(e) => e.preventDefault()}
+                >
+                  <div className="mx-auto mb-3 h-12 w-12 rounded-xl bg-primary/10 grid place-items-center text-primary">
+                    <Upload className="h-5 w-5" />
+                  </div>
+                  <div className="text-sm font-semibold">Drop CSV here or choose file</div>
+                  <div className="mt-1 text-xs text-muted-foreground">Supported format: `.csv` with header row</div>
+                  <div className="mt-4 flex items-center justify-center gap-2">
+                    <Button onClick={() => importFileRef.current?.click()}><Upload className="mr-2 h-4 w-4" />Choose CSV</Button>
+                    <Button variant="outline" onClick={() => { void downloadImportTemplate(); }}><Download className="mr-2 h-4 w-4" />Download Template</Button>
+                  </div>
+                </div>
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-300">
+                  Recommended: verify SKU is unique before import to avoid duplicate conflicts.
+                </div>
+              </div>
+            ) : null}
+
+            {importStep === 2 ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><div className="text-[10px] uppercase text-muted-foreground">Rows</div><div className="text-lg font-black">{importRows.length}</div></div>
+                  <div className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><div className="text-[10px] uppercase text-muted-foreground">Columns</div><div className="text-lg font-black">{importHeaders.length}</div></div>
+                  <div className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><div className="text-[10px] uppercase text-muted-foreground">Mapped</div><div className="text-lg font-black">{Object.values(fieldMapping).filter((x) => typeof x === "number" && x >= 0).length}</div></div>
+                  <div className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><div className="text-[10px] uppercase text-muted-foreground">Required</div><div className="text-lg font-black">{(fieldMapping.name ?? -1) >= 0 ? "OK" : "Missing"}</div></div>
+                </div>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  {IMPORT_FIELDS.map((f) => (
+                    <div key={f.key} className={cn("flex items-center justify-between gap-3 rounded-xl border p-2.5 dark:border-slate-800", f.required && (fieldMapping[f.key] ?? -1) < 0 ? "border-red-300 bg-red-50/50 dark:bg-red-950/20" : "border-slate-200")}>
+                      <div className="text-sm font-medium">{f.label}{f.required ? <span className="text-red-500"> *</span> : null}</div>
+                      <select
+                        className="h-9 rounded-md border border-input bg-background px-2 text-xs"
+                        value={fieldMapping[f.key] ?? -1}
+                        onChange={(e) => setFieldMapping((prev) => ({ ...prev, [f.key]: Number(e.target.value) }))}
+                      >
+                        <option value={-1}>Not mapped</option>
+                        {importHeaders.map((h, idx) => <option key={`${h}-${idx}`} value={idx}>{h}</option>)}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div className="rounded-xl border border-slate-200 p-3 dark:border-slate-800">
+                    <div className="mb-2 text-sm font-semibold">Duplicate handling</div>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="radio" checked={duplicateRule === "skip_existing"} onChange={() => setDuplicateRule("skip_existing")} />
+                      Skip existing SKU
+                    </label>
+                    <label className="mt-2 flex items-center gap-2 text-sm">
+                      <input type="radio" checked={duplicateRule === "create_only"} onChange={() => setDuplicateRule("create_only")} />
+                      Create all (fail duplicates)
+                    </label>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 p-3 dark:border-slate-800">
+                    <div className="mb-2 text-sm font-semibold">Master data</div>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={autoCreateMasters} onChange={(e) => setAutoCreateMasters(e.target.checked)} />
+                      Auto-create missing Group/Unit
+                    </label>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setImportStep(1)}>Back</Button>
+                  <Button onClick={() => setImportStep(3)} disabled={(fieldMapping.name ?? -1) < 0}>Next</Button>
+                </div>
+              </div>
+            ) : null}
+
+            {importStep === 3 ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-3 text-sm dark:border-emerald-900 dark:bg-emerald-950/20">Valid: <span className="font-semibold">{importPreview.valid}</span></div>
+                  <div className={cn("rounded-xl p-3 text-sm", importPreview.invalid > 0 ? "border border-rose-300 bg-rose-50 dark:border-rose-900 dark:bg-rose-950/20" : "border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/40")}>
+                    Invalid: <span className="font-semibold">{importPreview.invalid}</span>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 p-3 text-sm dark:border-slate-800">Rule: <span className="font-semibold">{duplicateRule === "skip_existing" ? "Skip existing" : "Create all"}</span></div>
+                  <div className="rounded-xl border border-slate-200 p-3 text-sm dark:border-slate-800">Masters: <span className="font-semibold">{autoCreateMasters ? "Auto-create" : "Strict"}</span></div>
+                </div>
+                <div className="rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-800">
+                  {importSummary ? (
+                    <div>
+                      Created: <span className="font-semibold">{importSummary.created}</span>, Skipped: <span className="font-semibold">{importSummary.skipped}</span>, Failed: <span className="font-semibold">{importSummary.failed}</span>
+                    </div>
+                  ) : <div className="text-muted-foreground">Review rows and click Import Now.</div>}
+                </div>
+                {(preImportIssues.length > 0 || importRowIssues.length > 0) ? (
+                  <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs dark:border-amber-900 dark:bg-amber-950/20">
+                    <div className="mb-2 font-semibold text-amber-800 dark:text-amber-300">Row Issues</div>
+                    <div className="max-h-28 overflow-auto space-y-1 text-amber-900 dark:text-amber-200">
+                      {(importSummary ? importRowIssues : preImportIssues).slice(0, 50).map((issue, idx) => (
+                        <div key={`${issue.row}-${idx}`}>Row {issue.row}: {issue.message}</div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                <div className="max-h-[280px] overflow-auto rounded-lg border border-slate-200 dark:border-slate-800">
+                  <table className="w-full text-xs">
+                    <thead className="bg-slate-50 dark:bg-slate-900">
+                      <tr>
+                        <th className="p-2 text-left">Row</th>
+                        {importHeaders.map((h, idx) => <th key={`${h}-${idx}`} className="p-2 text-left">{h}</th>)}
+                        <th className="p-2 text-left">Issue</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pagedPreviewRows.map((row) => (
+                        <tr key={row.rowNumber} className={cn("border-t border-slate-200 dark:border-slate-800", row.issue ? "bg-rose-50/40 dark:bg-rose-950/20" : "")}>
+                          <td className="p-2 mono-numbers">{row.rowNumber}</td>
+                          {importHeaders.map((_, ci) => <td key={ci} className="p-2">{row.values[ci] || ""}</td>)}
+                          <td className="p-2 text-rose-700 dark:text-rose-300">{row.issue || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3 text-xs">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={previewErrorsOnly}
+                        onChange={(e) => {
+                          setPreviewErrorsOnly(e.target.checked);
+                          setPreviewPage(1);
+                        }}
+                      />
+                      Show only rows with issues
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <span>Rows per page</span>
+                      <select
+                        className="h-8 rounded-md border border-input bg-background px-2"
+                        value={previewPageSize}
+                        onChange={(e) => {
+                          setPreviewPageSize(Number(e.target.value));
+                          setPreviewPage(1);
+                        }}
+                      >
+                        <option value={50}>50</option>
+                        <option value={100}>100</option>
+                        <option value={250}>250</option>
+                        <option value={500}>500</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <Button variant="outline" size="sm" onClick={() => setPreviewPage((p) => Math.max(1, p - 1))} disabled={safePreviewPage <= 1}>Prev</Button>
+                    <span>Page {safePreviewPage} / {previewTotalPages}</span>
+                    <Button variant="outline" size="sm" onClick={() => setPreviewPage((p) => Math.min(previewTotalPages, p + 1))} disabled={safePreviewPage >= previewTotalPages}>Next</Button>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  {importSummary && importFailedRows.length > 0 ? (
+                    <Button variant="outline" onClick={() => { void downloadFailedRowsCsv(); }}>
+                      <Download className="mr-2 h-4 w-4" />
+                      Failed Rows CSV
+                    </Button>
+                  ) : null}
+                  <Button variant="outline" onClick={() => setImportStep(2)}>Back</Button>
+                  <Button onClick={() => { void runImportWizard(); }} disabled={importing || importPreview.valid === 0}>
+                    {importing ? "Importing..." : "Import Now"}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
       {adjustOpen ? (
         <div className="fixed inset-0 z-[1600] bg-black/30 backdrop-blur-sm p-4" onClick={() => setAdjustOpen(false)}>
           <div className="mx-auto mt-10 w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl dark:border-slate-800 dark:bg-slate-950" onClick={(e) => e.stopPropagation()}>

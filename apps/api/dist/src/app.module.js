@@ -44,6 +44,7 @@ const fiscal_sessions_module_1 = require("./modules/fiscal-sessions/fiscal-sessi
 const payment_methods_module_1 = require("./modules/payment-methods/payment-methods.module");
 const sale_types_module_1 = require("./modules/sale-types/sale-types.module");
 const purchase_types_module_1 = require("./modules/purchase-types/purchase-types.module");
+const warehouses_module_1 = require("./modules/warehouses/warehouses.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -85,6 +86,7 @@ exports.AppModule = AppModule = __decorate([
             payment_methods_module_1.PaymentMethodsModule,
             sale_types_module_1.SaleTypesModule,
             purchase_types_module_1.PurchaseTypesModule,
+            warehouses_module_1.WarehousesModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [

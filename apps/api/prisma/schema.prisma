@@ -177,6 +177,7 @@ model Company {
   paymentMethods PaymentMethod[]
   saleTypes      SaleType[]
   purchaseTypes  PurchaseType[]
+  stockCounts    StockCount[]
 }
 
 model User {
@@ -209,6 +210,7 @@ model User {
 
   deviceLinks DeviceUserLink[]
   apiIdempotencies ApiIdempotency[]
+  stockCounts      StockCount[] @relation("StockCountCreator")
 
   @@unique([companyId, email])
   @@index([companyId, status])
@@ -515,6 +517,7 @@ model Item {
   updatedAt DateTime @updatedAt
 
   stockLedger StockLedger[]
+  stockCountLines StockCountLine[]
 
   @@unique([companyId, name])
 }
@@ -771,8 +774,9 @@ model Warehouse {
 
   bins        WarehouseBin[]
   stockLedger StockLedger[]
+  stockCounts StockCount[]
 
-  @@unique([companyId, sku])
+  @@unique([companyId, name])
   @@index([companyId, isActive])
 }
 
@@ -790,6 +794,7 @@ model WarehouseBin {
   updatedAt DateTime @updatedAt
 
   stockLedger StockLedger[]
+  stockCountLines StockCountLine[]
 
   @@unique([warehouseId, name])
   @@index([companyId, warehouseId, isActive])
@@ -1461,4 +1466,63 @@ model PurchaseType {
   purchaseOrders PurchaseOrder[]
 
   @@unique([companyId, name])
+}
+
+enum StockCountStatus {
+  draft
+  in_progress
+  completed
+  cancelled
+}
+
+model StockCount {
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  reference     String?
+  warehouseId   String?
+  warehouse     Warehouse? @relation(fields: [warehouseId], references: [id])
+  countDate     DateTime
+  countDateBs   String?
+  status        StockCountStatus @default(draft)
+  memo          String?
+
+  createdByUserId String?
+  createdByUser   User? @relation("StockCountCreator", fields: [createdByUserId], references: [id])
+
+  completedAt DateTime?
+  adjustmentVoucherId String?
+
+  lines StockCountLine[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId, status])
+  @@index([companyId, countDate])
+}
+
+model StockCountLine {
+  id           String     @id @default(uuid())
+  stockCountId String
+  stockCount   StockCount @relation(fields: [stockCountId], references: [id], onDelete: Cascade)
+
+  itemId String
+  item   Item   @relation(fields: [itemId], references: [id])
+
+  binId String?
+  bin   WarehouseBin? @relation(fields: [binId], references: [id])
+
+  systemQty  Decimal @db.Decimal(14, 2)
+  countedQty Decimal? @db.Decimal(14, 2)
+  variance   Decimal? @db.Decimal(14, 2)
+
+  batchNo String?
+  lotNo   String?
+  note    String?
+
+  createdAt DateTime @default(now())
+
+  @@index([stockCountId, itemId])
 }

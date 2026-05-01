@@ -11,15 +11,17 @@ const common_1 = require("@nestjs/common");
 const prisma_module_1 = require("../../common/prisma/prisma.module");
 const inventory_controller_1 = require("./inventory.controller");
 const inventory_service_1 = require("./inventory.service");
+const stock_counts_controller_1 = require("./stock-counts.controller");
+const stock_counts_service_1 = require("./stock-counts.service");
 let InventoryModule = class InventoryModule {
 };
 exports.InventoryModule = InventoryModule;
 exports.InventoryModule = InventoryModule = __decorate([
     (0, common_1.Module)({
         imports: [prisma_module_1.PrismaModule],
-        controllers: [inventory_controller_1.InventoryController],
-        providers: [inventory_service_1.InventoryService],
-        exports: [inventory_service_1.InventoryService]
+        controllers: [inventory_controller_1.InventoryController, stock_counts_controller_1.StockCountsController],
+        providers: [inventory_service_1.InventoryService, stock_counts_service_1.StockCountsService],
+        exports: [inventory_service_1.InventoryService, stock_counts_service_1.StockCountsService]
     })
 ], InventoryModule);
 //# sourceMappingURL=inventory.module.js.map

@@ -1111,6 +1111,34 @@ export declare class AuthService {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+        })[] | ({
+            id: string;
+            companyId: string;
+            status: import("@prisma/client").$Enums.StockCountStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            memo: string | null;
+            createdByUserId: string | null;
+            warehouseId: string | null;
+            reference: string | null;
+            countDate: Date;
+            countDateBs: string | null;
+            completedAt: Date | null;
+            adjustmentVoucherId: string | null;
+        } | {
+            id: string;
+            companyId: string;
+            status: import("@prisma/client").$Enums.StockCountStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            memo: string | null;
+            createdByUserId: string | null;
+            warehouseId: string | null;
+            reference: string | null;
+            countDate: Date;
+            countDateBs: string | null;
+            completedAt: Date | null;
+            adjustmentVoucherId: string | null;
         })[] | {
             id: string;
             companyId: string;
@@ -1473,6 +1501,20 @@ export declare class AuthService {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+        }[] | {
+            id: string;
+            companyId: string;
+            status: import("@prisma/client").$Enums.StockCountStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            memo: string | null;
+            createdByUserId: string | null;
+            warehouseId: string | null;
+            reference: string | null;
+            countDate: Date;
+            countDateBs: string | null;
+            completedAt: Date | null;
+            adjustmentVoucherId: string | null;
         }[];
         [x: number]: never;
         [x: symbol]: never;
@@ -2587,6 +2629,34 @@ export declare class AuthService {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+        })[] | ({
+            id: string;
+            companyId: string;
+            status: import("@prisma/client").$Enums.StockCountStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            memo: string | null;
+            createdByUserId: string | null;
+            warehouseId: string | null;
+            reference: string | null;
+            countDate: Date;
+            countDateBs: string | null;
+            completedAt: Date | null;
+            adjustmentVoucherId: string | null;
+        } | {
+            id: string;
+            companyId: string;
+            status: import("@prisma/client").$Enums.StockCountStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            memo: string | null;
+            createdByUserId: string | null;
+            warehouseId: string | null;
+            reference: string | null;
+            countDate: Date;
+            countDateBs: string | null;
+            completedAt: Date | null;
+            adjustmentVoucherId: string | null;
         })[] | {
             id: string;
             companyId: string;
@@ -2949,6 +3019,20 @@ export declare class AuthService {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+        }[] | {
+            id: string;
+            companyId: string;
+            status: import("@prisma/client").$Enums.StockCountStatus;
+            createdAt: Date;
+            updatedAt: Date;
+            memo: string | null;
+            createdByUserId: string | null;
+            warehouseId: string | null;
+            reference: string | null;
+            countDate: Date;
+            countDateBs: string | null;
+            completedAt: Date | null;
+            adjustmentVoucherId: string | null;
         }[];
         [x: number]: never;
         [x: symbol]: never;

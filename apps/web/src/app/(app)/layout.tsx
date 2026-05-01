@@ -5,14 +5,54 @@ import Topbar from "@/components/app/topbar";
 import QuickActionsRail from "@/components/app/quick-actions";
 import CommandPalette from "@/components/app/command-palette";
 import OfflineSyncBanner from "@/components/app/offline-sync-banner";
-import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useShortcuts } from "@/hooks/use-shortcuts";
+import { clearToken, getToken } from "@/lib/store/auth";
+
+const IDLE_LOGOUT_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
   const router = useRouter();
   const isCreationPage = false;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    let timeoutId: ReturnType<typeof window.setTimeout> | null = null;
+
+    const resetIdleTimer = () => {
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+
+      if (!getToken()) return;
+
+      timeoutId = window.setTimeout(() => {
+        clearToken();
+        router.replace("/login");
+      }, IDLE_LOGOUT_TIMEOUT_MS);
+    };
+
+    const events: Array<keyof WindowEventMap> = [
+      "mousemove",
+      "mousedown",
+      "keydown",
+      "touchstart",
+      "scroll",
+    ];
+
+    events.forEach((eventName) => window.addEventListener(eventName, resetIdleTimer, { passive: true }));
+    resetIdleTimer();
+
+    return () => {
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+      events.forEach((eventName) => window.removeEventListener(eventName, resetIdleTimer));
+    };
+  }, [router]);
 
   useShortcuts({
     "alt+d": () => router.push("/dashboard"),
