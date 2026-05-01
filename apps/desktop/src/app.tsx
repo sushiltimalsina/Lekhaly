@@ -42,6 +42,7 @@ import InventoryDashboardPage from "@/pages/inventory/index";
 import WarehousesPage from "@/pages/inventory/warehouses";
 import StockAdjustPage from "@/pages/inventory/adjust";
 import StockTransferPage from "@/pages/inventory/transfer";
+import AssemblyOrdersPage from "@/pages/inventory/assemblies";
 import StockCountsPage from "@/pages/inventory/stock-counts/index";
 import CreateStockCountPage from "@/pages/inventory/stock-counts/create";
 import ViewStockCountPage from "@/pages/inventory/stock-counts/view";
@@ -239,6 +240,7 @@ export default function App() {
                 <Route path="/inventory/warehouses" element={<WarehousesPage />} />
                 <Route path="/inventory/adjust" element={<StockAdjustPage />} />
                 <Route path="/inventory/transfer" element={<StockTransferPage />} />
+                <Route path="/inventory/assemblies" element={<AssemblyOrdersPage />} />
                 <Route path="/inventory/stock-counts" element={<StockCountsPage />} />
                 <Route path="/inventory/stock-counts/create" element={<CreateStockCountPage />} />
                 <Route path="/inventory/stock-counts/view/:id" element={<ViewStockCountPage />} />

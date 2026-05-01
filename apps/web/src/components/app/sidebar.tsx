@@ -32,7 +32,8 @@ import {
   ShoppingCart,
   ClipboardList,
   KeyRoundIcon,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Hammer
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -156,6 +157,7 @@ const navData: NavItem[] = [
       { label: "Dashboard", href: "/inventory", icon: LayoutDashboard },
       { label: "Items", href: "/items", icon: List },
       { label: "Add Item", href: "/items/new", icon: Plus },
+      { label: "Assemblies", href: "/inventory/assemblies", icon: Hammer },
       { label: "Warehouses", href: "/inventory/warehouses", icon: Building2 },
       { label: "Adjust Stock", href: "/inventory/adjust", icon: Plus },
       { label: "Transfer Stock", href: "/inventory/transfer", icon: ArrowRightLeft },

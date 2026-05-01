@@ -559,28 +559,89 @@ export class InvoicesService {
         const qty = item.qty.toNumber ? item.qty.toNumber() : Number(item.qty);
         const rate = item.rate.toNumber ? item.rate.toNumber() : Number(item.rate);
 
-        // Check if this item is a kit — if so, explode into components
+        // Check if this item is a kit — if so, do hybrid stock fulfillment
         const itemRecord = await tx.item.findUnique({
           where: { id: item.itemId },
           include: { components: true }
         });
 
+        // Helper to compute Moving Average Cost (MAC)
+        const computeMAC = async (targetItemId: string) => {
+          const allEntries = await tx.stockLedger.findMany({
+            where: { companyId: user.companyId, itemId: targetItemId },
+            select: { qtyIn: true, qtyOut: true, amount: true }
+          });
+          let totalQty = 0;
+          let totalValue = 0;
+          for (const entry of allEntries) {
+            const qIn = Number(entry.qtyIn || 0);
+            const qOut = Number(entry.qtyOut || 0);
+            const amt = Number(entry.amount || 0);
+            if (qIn > 0) { totalQty += qIn; totalValue += amt; }
+            if (qOut > 0) { totalQty -= qOut; totalValue -= amt; }
+          }
+          return {
+            stock: totalQty,
+            avgCost: totalQty > 0 ? (totalValue / totalQty) : 0
+          };
+        };
+
         if (itemRecord?.isKit && itemRecord.components.length > 0 && isOut) {
-          // Deduct components instead of the kit itself
-          for (const comp of itemRecord.components) {
-            const compQty = Number(comp.qty) * qty;
+          // Smart Hybrid Kit Fulfillment
+          const kitMac = await computeMAC(item.itemId);
+          const currentKitStock = kitMac.stock;
+          
+          let qtyToDeductKit = 0;
+          let qtyToExplode = qty;
+
+          if (currentKitStock > 0) {
+            qtyToDeductKit = Math.min(currentKitStock, qty);
+            qtyToExplode = qty - qtyToDeductKit;
+          }
+
+          if (qtyToDeductKit > 0) {
             stockLedgerData.push({
               companyId: user.companyId,
-              itemId: comp.componentId,
+              itemId: item.itemId,
               date: invoice.date,
               voucherId: voucher.id,
               qtyIn: 0,
-              qtyOut: compQty,
-              rate: 0,
-              amount: 0
+              qtyOut: qtyToDeductKit,
+              rate: kitMac.avgCost,
+              amount: qtyToDeductKit * kitMac.avgCost
             });
           }
+
+          if (qtyToExplode > 0) {
+            // Auto-explode the remaining required quantity
+            for (const comp of itemRecord.components) {
+              const compQty = Number(comp.qty) * qtyToExplode;
+              const compMac = await computeMAC(comp.componentId);
+
+              stockLedgerData.push({
+                companyId: user.companyId,
+                itemId: comp.componentId,
+                date: invoice.date,
+                voucherId: voucher.id,
+                qtyIn: 0,
+                qtyOut: compQty,
+                rate: compMac.avgCost,
+                amount: compQty * compMac.avgCost
+              });
+            }
+          }
         } else {
+          // Standard item (or INBOUND Kit)
+          let finalRate = rate;
+          let finalAmount = qty * rate;
+
+          if (isOut) {
+            // For outward movements, use Moving Average Cost instead of Sales Price
+            const stdMac = await computeMAC(item.itemId);
+            finalRate = stdMac.avgCost;
+            finalAmount = qty * stdMac.avgCost;
+          }
+
           stockLedgerData.push({
             companyId: user.companyId,
             itemId: item.itemId,
@@ -588,8 +649,8 @@ export class InvoicesService {
             voucherId: voucher.id,
             qtyIn: isIn ? qty : 0,
             qtyOut: isOut ? qty : 0,
-            rate: rate,
-            amount: qty * rate
+            rate: finalRate,
+            amount: finalAmount
           });
         }
       }
