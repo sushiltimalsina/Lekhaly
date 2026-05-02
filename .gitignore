@@ -12,6 +12,12 @@ dist/
 build/
 **/build/
 
+# Tauri/Rust build artifacts
+target/
+**/target/
+src-tauri/target/
+**/src-tauri/target/
+
 # Environment files
 .env
 .env.local
