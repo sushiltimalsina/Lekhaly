@@ -1,6 +1,7 @@
 {
   "name": "lekhaly",
   "private": true,
+  "license": "MIT",
   "packageManager": "pnpm@10.28.1",
   "scripts": {
     "dev": "turbo dev",

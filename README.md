@@ -96,4 +96,4 @@ OpenAPI specification is available at `apps/api/openapi.yaml`.
 
 ## License
 
-Private — All rights reserved.
+This project is licensed under the MIT License. See [LICENSE](./LICENSE) for details.
