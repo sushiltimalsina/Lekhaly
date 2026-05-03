@@ -320,7 +320,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
 
 // --- Main Page Component ---
 
-type Line = { itemId: string; qty: string; rate: string; description?: string };
+type Line = { itemId: string; qty: string; rate: string; unit?: string; description?: string };
 type BillSundryRow = { id: string; sundryId?: string; name: string; type: "add" | "less"; ratePct: string; manualAmount?: string; isManual?: boolean };
 
 export default function PurchaseOrderCreatePage() {
@@ -532,8 +532,15 @@ export default function PurchaseOrderCreatePage() {
 
     const total = itemsSubtotal + billSundryComputed.net;
 
-    const updateLine = (idx: number, patch: Partial<Line>) =>
+    const updateLine = (idx: number, patch: Partial<Line>) => {
+        if (patch.itemId) {
+            const item = items.find(it => it.id === patch.itemId);
+            if (item) {
+                patch.unit = item.unit || "";
+            }
+        }
         setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
+    };
 
     const [pendingFocusIndex, setPendingFocusIndex] = React.useState<number | null>(null);
 
@@ -861,9 +868,10 @@ export default function PurchaseOrderCreatePage() {
                                 <thead className="bg-slate-50 text-xs font-medium text-slate-500 dark:bg-slate-900/50">
                                     <tr>
                                         <th className="px-4 py-3 w-16">#</th>
-                                        <th className="px-4 py-3 min-w-[200px]">Item Description</th>
-                                        <th className="px-4 py-3 w-24 text-right">Qty</th>
-                                        <th className="px-4 py-3 w-32 text-right">Rate</th>
+                                        <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-widest text-slate-500">Particulars</th>
+                                        <th className="w-24 px-4 py-3 text-center text-[10px] font-black uppercase tracking-widest text-slate-500">Unit</th>
+                                        <th className="w-32 px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-500 text-red-500">Qty *</th>
+                                        <th className="w-32 px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-500 text-red-500">Rate *</th>
                                         <th className="px-4 py-3 w-32 text-right">Amount</th>
                                         {isEditMode && <th className="px-4 py-3 w-12"></th>}
                                     </tr>
@@ -880,6 +888,7 @@ export default function PurchaseOrderCreatePage() {
                                                         onChange={(id, opt) => {
                                                             updateLine(idx, {
                                                                 itemId: id,
+                                                                unit: opt?.unit || "",
                                                                 rate: opt?.purchasePrice ? String(opt.purchasePrice) : line.rate,
                                                                 description: opt?.name
                                                             });
@@ -901,6 +910,14 @@ export default function PurchaseOrderCreatePage() {
                                                             onChange={(e) => updateLine(idx, { description: e.target.value })}
                                                         />
                                                     )}
+                                                </td>
+                                                <td className="px-3 py-2">
+                                                    <Input
+                                                        value={line.unit || ""}
+                                                        readOnly
+                                                        className="h-10 w-full rounded-xl bg-slate-50 text-center text-xs font-bold text-slate-500 cursor-not-allowed dark:bg-slate-900/50"
+                                                        placeholder="—"
+                                                    />
                                                 </td>
                                                 <td className="px-4 py-2">
                                                     <input
@@ -951,8 +968,13 @@ export default function PurchaseOrderCreatePage() {
                                 <tfoot className="bg-slate-50/50 font-medium">
                                     <tr>
                                         <td colSpan={2} className="px-4 py-3 text-right text-slate-500">Total Items:</td>
-                                        <td className="px-4 py-3 text-right">{lines.reduce((s, l) => s + Number(l.qty || 0), 0)}</td>
-                                        <td className="px-4 py-3"></td>
+                                        <td />
+                                        <td className="px-4 py-3 text-right text-xs font-bold uppercase tracking-widest text-slate-500">Total</td>
+                                        <td />
+                                        <td className="px-4 py-3 text-center text-sm font-bold text-slate-900 dark:text-slate-100">
+                                            {lines.reduce((s, l) => s + Number(l.qty || 0), 0)}
+                                        </td>
+                                        <td />
                                         <td className="px-4 py-3 text-right text-slate-900 dark:text-slate-100">
                                             {itemsSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                         </td>

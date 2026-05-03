@@ -44,7 +44,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { getInvoice, updateInvoiceDraft } from "@/lib/api/invoices";
 import AddBillSundryDialog from "@/components/app/add-bill-sundry-dialog";
 
-type Line = { itemId: string; qty: string; rate: string; description?: string };
+type Line = { itemId: string; qty: string; rate: string; unit?: string; description?: string };
 type BillSundryRow = { id: string; sundryId?: string; name: string; type: "add" | "less"; ratePct: string; manualAmount?: string; isManual?: boolean };
 
 function useOutsideClick<T extends HTMLElement>(
@@ -639,15 +639,23 @@ export default function SalesCreatePage() {
 
   const total = itemsSubtotal + billSundryComputed.net;
 
-  const updateLine = (idx: number, patch: Partial<Line>) =>
+  const updateLine = (idx: number, patch: Partial<Line>) => {
+    if (patch.itemId) {
+      const item = items.find(it => it.id === patch.itemId);
+      if (item) {
+        patch.unit = item.unit || "";
+        patch.rate = item.salesPrice?.toString() || "";
+      }
+    }
     setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
+  };
 
   const [pendingFocusIndex, setPendingFocusIndex] = React.useState<number | null>(null);
 
   const addLine = () => {
     setLines((prev) => {
       setPendingFocusIndex(prev.length);
-      return [...prev, { itemId: "", qty: "", rate: "" }];
+      return [...prev, { itemId: "", qty: "", rate: "", unit: "" }];
     });
   };
 
@@ -1088,7 +1096,8 @@ export default function SalesCreatePage() {
                 <thead className="bg-slate-100/70 dark:bg-slate-900/40">
                   <tr>
                     <th className="w-[60px] px-4 py-3 text-left text-xs text-muted-foreground">S.No.</th>
-                    <th className="w-[520px] min-w-[420px] px-4 py-3 text-left text-xs text-muted-foreground">Particulars</th>
+                    <th className="w-[420px] min-w-[320px] px-4 py-3 text-left text-xs text-muted-foreground">Particulars</th>
+                    <th className="w-[120px] px-4 py-3 text-left text-xs text-muted-foreground">Unit</th>
                     <th className="w-[140px] px-4 py-3 text-left text-xs text-muted-foreground">
                       Qty <span className="text-red-500">*</span>
                     </th>
@@ -1178,6 +1187,15 @@ export default function SalesCreatePage() {
                               </Button>
                             )}
                           </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <Input
+                            value={line.unit || ""}
+                            readOnly
+                            placeholder="Unit"
+                            className="h-11 rounded-2xl bg-slate-50/40 text-center dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 text-muted-foreground cursor-not-allowed"
+                            disabled
+                          />
                         </td>
 
                         <td className="px-4 py-3 align-top">

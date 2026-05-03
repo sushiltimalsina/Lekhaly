@@ -44,7 +44,7 @@ import { listPurchaseTypes } from "../../lib/api/purchase-types"; // New API
 import AddPaymentMethodDialog from "@/components/app/add-payment-method-dialog";
 import AddPurchaseTypeDialog from "../../components/app/add-purchase-type-dialog"; // New Dialog
 
-type Line = { itemId: string; qty: string; rate: string; description?: string; expenseAccountId?: string };
+type Line = { itemId: string; qty: string; rate: string; unit?: string; description?: string; expenseAccountId?: string };
 type BillSundryRow = { id: string; sundryId?: string; name: string; type: "add" | "less"; ratePct: string; manualAmount?: string; isManual?: boolean };
 
 function useOutsideClick<T extends HTMLElement>(
@@ -639,15 +639,24 @@ export default function PurchaseCreatePage() {
 
     const total = itemsSubtotal + billSundryComputed.net;
 
-    const updateLine = (idx: number, patch: Partial<Line>) =>
+    const updateLine = (idx: number, patch: Partial<Line>) => {
+        if (patch.itemId) {
+            const item = items.find(it => it.id === patch.itemId);
+            if (item) {
+                patch.unit = item.unit || "";
+                patch.rate = item.purchasePrice?.toString() || "";
+                patch.expenseAccountId = item.expenseAccountId || undefined;
+            }
+        }
         setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
+    };
 
     const [pendingFocusIndex, setPendingFocusIndex] = React.useState<number | null>(null);
 
     const addLine = () => {
         setLines((prev) => {
             setPendingFocusIndex(prev.length);
-            return [...prev, { itemId: "", qty: "", rate: "" }];
+            return [...prev, { itemId: "", qty: "", rate: "", unit: "" }];
         });
     };
 
@@ -1126,7 +1135,8 @@ export default function PurchaseCreatePage() {
                                 <thead className="bg-slate-100/70 dark:bg-slate-900/40">
                                     <tr>
                                         <th className="w-[60px] px-4 py-3 text-left text-xs text-muted-foreground">S.No.</th>
-                                        <th className="w-[520px] min-w-[420px] px-4 py-3 text-left text-xs text-muted-foreground">Particulars</th>
+                                        <th className="w-[420px] min-w-[320px] px-4 py-3 text-left text-xs text-muted-foreground font-semibold uppercase tracking-wider">Particulars</th>
+                                        <th className="w-[120px] px-4 py-3 text-left text-xs text-muted-foreground font-semibold uppercase tracking-wider">Unit</th>
                                         <th className="w-[140px] px-4 py-3 text-left text-xs text-muted-foreground">
                                             Qty <span className="text-red-500">*</span>
                                         </th>
@@ -1217,6 +1227,15 @@ export default function PurchaseCreatePage() {
                                                             </Button>
                                                         )}
                                                     </div>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <Input
+                                                        value={line.unit || ""}
+                                                        readOnly
+                                                        placeholder="Unit"
+                                                        className="h-11 rounded-2xl bg-slate-50/40 text-center dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 text-muted-foreground cursor-not-allowed"
+                                                        disabled
+                                                    />
                                                 </td>
 
                                                 <td className="px-4 py-3 align-top">

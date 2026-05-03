@@ -44,7 +44,7 @@ import { toBs } from "@/lib/dates/bs";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getInvoice, updateInvoiceDraft } from "@/lib/api/invoices";
 
-type Line = { itemId: string; qty: string; rate: string; description?: string };
+type Line = { itemId: string; qty: string; rate: string; unit?: string; description?: string };
 type BillSundryRow = { id: string; sundryId?: string; name: string; type: "add" | "less"; ratePct: string; manualAmount?: string; isManual?: boolean };
 
 function useOutsideClick<T extends HTMLElement>(
@@ -77,6 +77,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
     onChange: (id: string, opt?: T) => void;
     options: T[];
     getLabel?: (opt: T) => string;
+    getDetail?: (opt: T) => string | undefined;
     leftIcon?: React.ReactNode;
     className?: string;
     buttonClassName?: string;
@@ -95,6 +96,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
         onChange,
         options,
         getLabel,
+        getDetail,
         leftIcon,
         className,
         buttonClassName,
@@ -283,6 +285,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                             {filtered.length ? (
                                 filtered.map((o, idx) => {
                                     const labelText = getLabel ? getLabel(o) : o.name ?? o.id;
+                                    const detailText = getDetail ? getDetail(o) : undefined;
                                     const isSelected = o.id === valueId;
                                     const isActive = idx === activeIndex;
                                     return (
@@ -305,7 +308,14 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                                                 isSelected && "text-primary font-medium"
                                             )}
                                         >
-                                            <span className="min-w-0 flex-1 truncate">{labelText}</span>
+                                            <div className="flex flex-1 items-center justify-between gap-2 overflow-hidden">
+                                                <span className="truncate">{labelText}</span>
+                                                {detailText ? (
+                                                    <span className={cn("text-xs whitespace-nowrap", isSelected ? "text-primary/80" : "text-muted-foreground")}>
+                                                        {detailText}
+                                                    </span>
+                                                ) : null}
+                                            </div>
                                             {isSelected ? <Check className="h-4 w-4 text-primary" /> : null}
                                         </button>
                                     );
@@ -638,8 +648,15 @@ function SalesReturnCreateContent() {
 
     const total = itemsSubtotal + billSundryComputed.net;
 
-    const updateLine = (idx: number, patch: Partial<Line>) =>
+    const updateLine = (idx: number, patch: Partial<Line>) => {
+        if (patch.itemId) {
+            const item = items.find(it => it.id === patch.itemId);
+            if (item) {
+                patch.unit = item.unit || "";
+            }
+        }
         setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
+    };
 
     const [pendingFocusIndex, setPendingFocusIndex] = React.useState<number | null>(null);
 
@@ -699,6 +716,7 @@ function SalesReturnCreateContent() {
                     itemId: l.itemId,
                     qty,
                     rate,
+                    unit: l.unit,
                     description: l.description || undefined,
                 };
             });
@@ -1076,13 +1094,19 @@ function SalesReturnCreateContent() {
                                     <tr>
                                         <th className="w-[60px] px-4 py-3 text-left text-xs text-muted-foreground">S.No.</th>
                                         <th className="w-[520px] min-w-[420px] px-4 py-3 text-left text-xs text-muted-foreground">Particulars</th>
-                                        <th className="w-[140px] px-4 py-3 text-left text-xs text-muted-foreground">
-                                            Qty <span className="text-red-500">*</span>
-                                        </th>
-                                        <th className="w-[180px] px-4 py-3 text-left text-xs text-muted-foreground">
-                                            Rate <span className="text-red-500">*</span>
-                                        </th>
+                                        <th className="w-[140px] px-4 py-3 text-left text-xs text-muted-foreground">Qty <span className="text-red-500">*</span></th>
+                                        <th className="w-[100px] px-4 py-3 text-center text-xs text-muted-foreground">Unit</th>
+                                        <th className="w-[180px] px-4 py-3 text-left text-xs text-muted-foreground">Rate <span className="text-red-500">*</span></th>
                                         <th className="w-[180px] px-4 py-3 text-right text-xs text-muted-foreground">Amount</th>
+
+                                            
+                                        
+                                            
+                                        
+                                        
+                                            
+                                        
+                                        
                                         <th className="w-[70px] px-4 py-3 text-right text-xs text-muted-foreground" />
                                     </tr>
                                 </thead>
@@ -1102,12 +1126,15 @@ function SalesReturnCreateContent() {
                                                             buttonRef={(el) => { rowRefs.current.select[idx] = el; }}
                                                             placeholder="Search item…"
                                                             valueId={line.itemId}
-                                                            onChange={(id) => updateLine(idx, { itemId: id })}
+                                                            onChange={(id, item) => updateLine(idx, {
+                                                                itemId: id,
+                                                                unit: item?.unit || "",
+                                                                rate: item?.salesPrice?.toString() || "",
+                                                                description: item?.name
+                                                            })}
                                                             options={items}
-                                                            getLabel={(it) => {
-                                                                const code = it.hsCode ? ` (${it.hsCode})` : "";
-                                                                return `${it.name ?? "Item"}${code}`;
-                                                            }}
+                                                            getLabel={(it) => it.name}
+                                                            getDetail={(it) => `${it.sku || it.code ? (it.sku || it.code) + ' | ' : ''}Stock: ${it.stock ?? 0}`}
                                                             onEnterNext={() => safeFocus(rowRefs.current.qty[idx])}
                                                             onKeyDownCustom={(e: React.KeyboardEvent<HTMLInputElement>) => {
                                                                 if (e.key === "Enter" && e.shiftKey) {
@@ -1138,6 +1165,14 @@ function SalesReturnCreateContent() {
                                                                 <Plus className="mr-1 h-3 w-3" />
                                                                 Add item
                                                             </Button>
+                                                        )}
+                                                        {line.description && (
+                                                            <input
+                                                                className="mt-1 w-full bg-transparent text-xs text-slate-500 placeholder:text-slate-300 outline-none"
+                                                                placeholder="Custom description..."
+                                                                value={line.description}
+                                                                onChange={(e) => updateLine(idx, { description: e.target.value })}
+                                                            />
                                                         )}
                                                     </div>
                                                 </td>
@@ -1207,6 +1242,15 @@ function SalesReturnCreateContent() {
                                                             {lineErrors[idx].qty}
                                                         </div>
                                                     )}
+                                                </td>
+
+                                                <td className="px-4 py-3">
+                                                    <Input
+                                                        value={line.unit || ""}
+                                                        readOnly
+                                                        className="h-11 rounded-2xl bg-slate-50 text-center text-xs font-bold text-slate-500 cursor-not-allowed dark:bg-zinc-900/50"
+                                                        placeholder="—"
+                                                    />
                                                 </td>
 
                                                 <td className="px-4 py-3 align-top">
@@ -1300,13 +1344,12 @@ function SalesReturnCreateContent() {
 
                                     <tr className="border-t bg-slate-100/60 font-semibold dark:bg-slate-900/40">
                                         <td />
-                                        <td className="px-4 py-3 text-right">
-                                            Total
-                                        </td>
+                                        <td className="px-4 py-3 text-right">Total</td>
                                         <td className="px-4 py-3 text-center">
                                             {totalQty % 1 === 0 ? totalQty : totalQty.toFixed(2)}
                                         </td>
-                                        <td className="px-4 py-3 text-center">
+                                        <td />
+                                        <td className="px-4 py-3 text-right">
                                             <MoneyText value={totalRate} />
                                         </td>
                                         <td className="px-4 py-3 text-right">
@@ -1314,14 +1357,12 @@ function SalesReturnCreateContent() {
                                         </td>
                                         <td />
                                     </tr>
+
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </section>
-
-
-
                 <div className="mb-4 flex flex-col items-end gap-2 text-right">
                     <Button
                         ref={addSundryButtonRef}

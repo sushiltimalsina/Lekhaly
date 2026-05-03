@@ -319,7 +319,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
 
 // --- Main Page Component ---
 
-type Line = { itemId: string; qty: string; rate: string; description?: string };
+type Line = { itemId: string; qty: string; rate: string; unit?: string; description?: string };
 type BillSundryRow = { id: string; sundryId?: string; name: string; type: "add" | "less"; ratePct: string; manualAmount?: string; isManual?: boolean };
 
 export default function QuotationCreatePage() {
@@ -541,8 +541,15 @@ function QuotationCreateContent() {
 
     const total = itemsSubtotal + billSundryComputed.net;
 
-    const updateLine = (idx: number, patch: Partial<Line>) =>
+    const updateLine = (idx: number, patch: Partial<Line>) => {
+        if (patch.itemId) {
+            const item = items.find(it => it.id === patch.itemId);
+            if (item) {
+                patch.unit = item.unit || "";
+            }
+        }
         setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
+    };
 
     const [pendingFocusIndex, setPendingFocusIndex] = React.useState<number | null>(null);
 
@@ -598,6 +605,7 @@ function QuotationCreateContent() {
                     itemId: l.itemId,
                     qty,
                     rate,
+                    unit: l.unit,
                     description: l.description || undefined,
                 };
             });
@@ -875,6 +883,7 @@ function QuotationCreateContent() {
                                         <th className="px-4 py-3 w-16">#</th>
                                         <th className="px-4 py-3 min-w-[200px]">Item Description</th>
                                         <th className="px-4 py-3 w-24 text-right">Qty</th>
+                                        <th className="px-4 py-3 w-24 text-center">Unit</th>
                                         <th className="px-4 py-3 w-32 text-right">Rate</th>
                                         <th className="px-4 py-3 w-32 text-right">Amount</th>
                                         {isEditMode && <th className="px-4 py-3 w-12"></th>}
@@ -893,15 +902,18 @@ function QuotationCreateContent() {
                                                             updateLine(idx, {
                                                                 itemId: id,
                                                                 rate: opt?.salesPrice ? String(opt.salesPrice) : line.rate,
-                                                                description: opt?.name
+                                                                description: opt?.name,
+                                                                unit: opt?.unit || ""
                                                             });
                                                         }}
                                                         options={items}
                                                         getLabel={(i) => i.name}
-                                                        getDetail={(i) => i.code ? `Code: ${i.code}` : `Stock: ${i.stock ?? 0}`}
+                                                        getDetail={(it) => `${it.sku || it.code ? (it.sku || it.code) + ' | ' : ''}Stock: ${it.stock ?? 0}`}
                                                         placeholder="Select Item..."
                                                         className="w-full min-w-[200px]"
-                                                        buttonClassName="h-9 border-transparent bg-transparent hover:bg-white focus:bg-white focus:ring-2 px-2 shadow-none"
+                                                        leftIcon={<Search className="h-4 w-4" />}
+                                                        buttonClassName="h-11 rounded-2xl bg-white dark:bg-slate-900 pr-[100px]"
+                                                        disabled={!isEditMode}
                                                         buttonRef={(el) => { rowRefs.current.select[idx] = el; }}
                                                         onEnterNext={() => rowRefs.current.qty[idx]?.focus()}
                                                     />
@@ -915,21 +927,31 @@ function QuotationCreateContent() {
                                                     )}
                                                 </td>
                                                 <td className="px-4 py-2">
-                                                    <input
+                                                    <Input
                                                         ref={(el) => { rowRefs.current.qty[idx] = el; }}
-                                                        className="w-full text-right bg-transparent p-1 outline-none focus:bg-slate-100 rounded"
+                                                        type="number"
+                                                        className={cn("h-11 rounded-2xl bg-white text-center dark:bg-slate-900 transition-colors", lineErrors[idx]?.qty && "border-red-500")}
                                                         value={line.qty}
                                                         onChange={(e) => updateLine(idx, { qty: e.target.value })}
                                                         onKeyDown={(e) => {
                                                             if (e.key === "Enter") rowRefs.current.rate[idx]?.focus();
                                                         }}
-                                                        placeholder="0"
+                                                        disabled={!isEditMode}
+                                                    />
+                                                </td>
+                                                <td className="px-4 py-2 text-center">
+                                                    <Input
+                                                        value={line.unit || ""}
+                                                        readOnly
+                                                        className="h-11 rounded-2xl bg-slate-50 text-center text-xs font-bold text-slate-500 cursor-not-allowed dark:bg-slate-900/50"
+                                                        placeholder="—"
+
                                                     />
                                                 </td>
                                                 <td className="px-4 py-2">
-                                                    <input
+                                                    <Input type="number"
                                                         ref={(el) => { rowRefs.current.rate[idx] = el; }}
-                                                        className="w-full text-right bg-transparent p-1 outline-none focus:bg-slate-100 rounded"
+                                                        className={cn("h-11 rounded-2xl bg-white text-center dark:bg-slate-900 transition-colors", lineErrors[idx]?.rate && "border-red-500")}
                                                         value={line.rate}
                                                         onChange={(e) => updateLine(idx, { rate: e.target.value })}
                                                         onKeyDown={(e) => {
@@ -938,7 +960,7 @@ function QuotationCreateContent() {
                                                                 else rowRefs.current.select[idx + 1]?.focus();
                                                             }
                                                         }}
-                                                        placeholder="0.00"
+                                                        disabled={!isEditMode}
                                                     />
                                                 </td>
                                                 <td className="px-4 py-2 text-right font-medium tabular-nums">

@@ -45,7 +45,7 @@ import { listPurchaseTypes } from "@/lib/api/purchase-types";
 import AddPaymentMethodDialog from "@/components/app/add-payment-method-dialog";
 import AddPurchaseTypeDialog from "@/components/app/add-purchase-type-dialog";
 
-type Line = { itemId: string; qty: string; rate: string; description?: string; expenseAccountId?: string };
+type Line = { itemId: string; qty: string; rate: string; unit?: string; description?: string; expenseAccountId?: string };
 type BillSundryRow = { id: string; sundryId?: string; name: string; type: "add" | "less"; ratePct: string; manualAmount?: string; isManual?: boolean };
 
 function useOutsideClick<T extends HTMLElement>(
@@ -139,7 +139,11 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
         if (!q) return options;
         return options.filter((o) => {
             const labelText = (getLabel ? getLabel(o) : o.name ?? o.id).toLowerCase();
-            return labelText.includes(q);
+            // Also search in code/sku if available
+            const code = (o as any).code?.toLowerCase() || "";
+            const sku = (o as any).sku?.toLowerCase() || "";
+            const hsCode = (o as any).hsCode?.toLowerCase() || "";
+            return labelText.includes(q) || code.includes(q) || sku.includes(q) || hsCode.includes(q);
         });
     }, [options, query, getLabel]);
 
@@ -648,8 +652,15 @@ function PurchaseCreateContent() {
 
     const total = itemsSubtotal + billSundryComputed.net;
 
-    const updateLine = (idx: number, patch: Partial<Line>) =>
+    const updateLine = (idx: number, patch: Partial<Line>) => {
+        if (patch.itemId) {
+            const item = items.find(it => it.id === patch.itemId);
+            if (item) {
+                patch.unit = item.unit || "";
+            }
+        }
         setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
+    };
 
     const [pendingFocusIndex, setPendingFocusIndex] = React.useState<number | null>(null);
 
@@ -722,6 +733,7 @@ function PurchaseCreateContent() {
                 debit: qty * rate,
                 qty,
                 description: l.description || "Purchase",
+                unit: l.unit
             };
         });
 
@@ -1094,11 +1106,12 @@ function PurchaseCreateContent() {
                                 <thead className="bg-slate-100/70 dark:bg-slate-900/40">
                                     <tr>
                                         <th className="w-[60px] px-4 py-3 text-left text-xs text-muted-foreground">S.No.</th>
-                                        <th className="w-[520px] min-w-[420px] px-4 py-3 text-left text-xs text-muted-foreground">Particulars</th>
-                                        <th className="w-[140px] px-4 py-3 text-left text-xs text-muted-foreground">Qty <span className="text-red-500">*</span></th>
-                                        <th className="w-[180px] px-4 py-3 text-left text-xs text-muted-foreground">Rate <span className="text-red-500">*</span></th>
-                                        <th className="w-[180px] px-4 py-3 text-right text-xs text-muted-foreground">Amount</th>
-                                        <th className="w-[70px] px-4 py-3 text-right text-xs text-muted-foreground" />
+                                        <th className="w-[400px] min-w-[300px] px-4 py-3 text-left text-xs text-muted-foreground">Particulars</th>
+                                        <th className="w-[120px] px-4 py-3 text-left text-xs text-muted-foreground">Qty <span className="text-red-500">*</span></th>
+                                        <th className="w-[100px] px-4 py-3 text-left text-xs text-muted-foreground">Unit</th>
+                                        <th className="w-[140px] px-4 py-3 text-left text-xs text-muted-foreground">Rate <span className="text-red-500">*</span></th>
+                                        <th className="w-[140px] px-4 py-3 text-right text-xs text-muted-foreground">Amount</th>
+                                        <th className="w-[60px] px-4 py-3 text-right text-xs text-muted-foreground" />
                                     </tr>
                                 </thead>
 
@@ -1121,11 +1134,14 @@ function PurchaseCreateContent() {
                                                                 updateLine(idx, {
                                                                     itemId: id,
                                                                     rate: item?.purchasePrice?.toString() || "",
-                                                                    expenseAccountId: item?.expenseAccountId || undefined
+                                                                    expenseAccountId: item?.expenseAccountId || undefined,
+                                                                    unit: item?.unit || "",
+                                                                    description: item?.name
                                                                 });
                                                             }}
                                                             options={items}
                                                             getLabel={(it) => it.name}
+                                                            getDetail={(it) => `${it.sku || it.code ? (it.sku || it.code) + ' | ' : ''}Stock: ${it.stock ?? 0}`}
                                                             onEnterNext={() => safeFocus(rowRefs.current.qty[idx])}
                                                             leftIcon={<Search className="h-4 w-4" />}
                                                             buttonClassName="h-11 rounded-2xl bg-white dark:bg-slate-900 pr-[100px]"
@@ -1144,6 +1160,14 @@ function PurchaseCreateContent() {
                                                                 <Plus className="mr-1 h-3 w-3" />
                                                                 Add item
                                                             </Button>
+                                                        )}
+                                                        {line.description && (
+                                                            <input
+                                                                className="mt-1 w-full bg-transparent text-xs text-slate-500 placeholder:text-slate-300 outline-none"
+                                                                placeholder="Custom description..."
+                                                                value={line.description}
+                                                                onChange={(e) => updateLine(idx, { description: e.target.value })}
+                                                            />
                                                         )}
                                                     </div>
                                                 </td>
@@ -1180,31 +1204,15 @@ function PurchaseCreateContent() {
                                                                 e.preventDefault();
                                                                 if (rowRefs.current.qty[idx - 1]) {
                                                                     safeFocus(rowRefs.current.qty[idx - 1]);
-                                                                } else {
-                                                                    safeFocus(rowRefs.current.select[idx]);
                                                                 }
                                                             }
                                                             if (e.key === "Enter") {
-                                                                if (e.shiftKey) {
-                                                                    e.preventDefault();
-                                                                    safeFocus(sundryRefs.current.rate[0]);
-                                                                    return;
-                                                                }
-                                                                if (!line.qty || Number(line.qty) <= 0) {
-                                                                    setLineErrors(prev => ({ ...prev, [idx]: { ...prev[idx], qty: "Required" } }));
-                                                                    return;
-                                                                }
                                                                 e.preventDefault();
                                                                 safeFocus(rowRefs.current.rate[idx]);
                                                             }
                                                         }}
-                                                        onBlur={() => {
-                                                            if (line.itemId && (!line.qty || Number(line.qty) <= 0)) {
-                                                                setLineErrors(prev => ({ ...prev, [idx]: { ...prev[idx], qty: "Required" } }));
-                                                            }
-                                                        }}
                                                         className={cn(
-                                                            "h-11 rounded-2xl bg-white text-center dark:bg-slate-900 transition-colors",
+                                                            "h-11 rounded-2xl bg-white text-center dark:bg-slate-900",
                                                             lineErrors[idx]?.qty && "border-red-500 focus:ring-red-200"
                                                         )}
                                                     />
@@ -1213,6 +1221,16 @@ function PurchaseCreateContent() {
                                                             {lineErrors[idx].qty}
                                                         </div>
                                                     )}
+                                                </td>
+
+                                                <td className="px-4 py-3">
+                                                    <Input
+                                                        value={line.unit || ""}
+                                                        readOnly
+                                                        placeholder="Unit"
+                                                        className="h-11 rounded-2xl bg-slate-50/40 text-center dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 text-muted-foreground cursor-not-allowed"
+                                                        disabled
+                                                    />
                                                 </td>
 
                                                 <td className="px-4 py-3 align-top">
@@ -1244,20 +1262,9 @@ function PurchaseCreateContent() {
                                                                 e.preventDefault();
                                                                 if (rowRefs.current.rate[idx - 1]) {
                                                                     safeFocus(rowRefs.current.rate[idx - 1]);
-                                                                } else {
-                                                                    safeFocus(rowRefs.current.qty[idx]);
                                                                 }
                                                             }
                                                             if (e.key === "Enter") {
-                                                                if (e.shiftKey) {
-                                                                    e.preventDefault();
-                                                                    safeFocus(sundryRefs.current.rate[0]);
-                                                                    return;
-                                                                }
-                                                                if (!line.rate || Number(line.rate) <= 0) {
-                                                                    setLineErrors(prev => ({ ...prev, [idx]: { ...prev[idx], rate: "Required" } }));
-                                                                    return;
-                                                                }
                                                                 e.preventDefault();
                                                                 if (rowRefs.current.select[idx + 1]) {
                                                                     safeFocus(rowRefs.current.select[idx + 1]);
@@ -1266,16 +1273,10 @@ function PurchaseCreateContent() {
                                                                 }
                                                             }
                                                         }}
-                                                        onBlur={() => {
-                                                            if (line.itemId && (!line.rate || Number(line.rate) <= 0)) {
-                                                                setLineErrors(prev => ({ ...prev, [idx]: { ...prev[idx], rate: "Required" } }));
-                                                            }
-                                                        }}
                                                         className={cn(
-                                                            "h-11 rounded-2xl bg-white text-center dark:bg-slate-900 transition-colors",
+                                                            "h-11 rounded-2xl bg-white text-center dark:bg-slate-900",
                                                             lineErrors[idx]?.rate && "border-red-500 focus:ring-red-200"
                                                         )}
-                                                        placeholder="Rate"
                                                     />
                                                     {lineErrors[idx]?.rate && (
                                                         <div className="mt-1 text-[10px] text-red-500 font-medium text-center">
@@ -1316,6 +1317,7 @@ function PurchaseCreateContent() {
                                         <td className="px-4 py-3 text-center">
                                             {totalQty % 1 === 0 ? totalQty : totalQty.toFixed(2)}
                                         </td>
+                                        <td />
                                         <td className="px-4 py-3 text-center">
                                             <MoneyText value={totalRate} />
                                         </td>

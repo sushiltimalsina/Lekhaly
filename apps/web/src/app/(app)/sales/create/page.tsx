@@ -44,7 +44,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { getInvoice, updateInvoiceDraft } from "@/lib/api/invoices";
 import AddBillSundryDialog from "@/components/app/add-bill-sundry-dialog";
 
-type Line = { itemId: string; qty: string; rate: string; description?: string };
+type Line = { itemId: string; qty: string; rate: string; unit?: string; description?: string };
 type BillSundryRow = { id: string; sundryId?: string; name: string; type: "add" | "less"; ratePct: string; manualAmount?: string; isManual?: boolean };
 
 function useOutsideClick<T extends HTMLElement>(
@@ -137,7 +137,11 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
     if (!q) return options;
     return options.filter((o) => {
       const labelText = (getLabel ? getLabel(o) : o.name ?? o.id).toLowerCase();
-      return labelText.includes(q);
+      // Also search in code/sku if available
+      const code = (o as any).code?.toLowerCase() || "";
+      const sku = (o as any).sku?.toLowerCase() || "";
+      const hsCode = (o as any).hsCode?.toLowerCase() || "";
+      return labelText.includes(q) || code.includes(q) || sku.includes(q) || hsCode.includes(q);
     });
   }, [options, query, getLabel]);
 
@@ -648,15 +652,22 @@ function SalesCreateContent() {
 
   const total = itemsSubtotal + billSundryComputed.net;
 
-  const updateLine = (idx: number, patch: Partial<Line>) =>
+  const updateLine = (idx: number, patch: Partial<Line>) => {
+    if (patch.itemId) {
+      const item = items.find(it => it.id === patch.itemId);
+      if (item) {
+        patch.unit = item.unit || "";
+      }
+    }
     setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
+  };
 
   const [pendingFocusIndex, setPendingFocusIndex] = React.useState<number | null>(null);
 
   const addLine = () => {
     setLines((prev) => {
       setPendingFocusIndex(prev.length);
-      return [...prev, { itemId: "", qty: "", rate: "" }];
+      return [...prev, { itemId: "", qty: "", rate: "", unit: "" }];
     });
   };
 
@@ -972,7 +983,7 @@ function SalesCreateContent() {
                       }
                     }}
                     placeholder="Brief description of sales"
-                    className="mt-2 h-11 rounded-2xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700"
+                    className="mt-2 h-11 rounded-2xl bg-white dark:bg-slate-900 border-slate-200 dark:border-zinc-700"
                     disabled={!isEditMode}
                   />
                 </div>
@@ -1088,7 +1099,7 @@ function SalesCreateContent() {
 
         {/* Items Details */}
         <section className="mb-8 rounded-3xl border bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-          <div className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-100">Items Details</div>
+          <div className="mb-3 text-sm font-semibold text-slate-800 dark:text-zinc-100">Items Details</div>
 
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/60 dark:border-zinc-800 dark:bg-zinc-900/30">
             <div className="overflow-x-auto">
@@ -1096,24 +1107,19 @@ function SalesCreateContent() {
                 <thead className="bg-slate-100/70 dark:bg-zinc-900/40">
                   <tr>
                     <th className="w-[60px] px-4 py-3 text-left text-xs text-muted-foreground">S.No.</th>
-                    <th className="w-[520px] min-w-[420px] px-4 py-3 text-left text-xs text-muted-foreground">Particulars</th>
-                    <th className="w-[140px] px-4 py-3 text-left text-xs text-muted-foreground">
-                      Qty <span className="text-red-500">*</span>
-                    </th>
-                    <th className="w-[180px] px-4 py-3 text-left text-xs text-muted-foreground">
-                      Rate <span className="text-red-500">*</span>
-                    </th>
+                    <th className="w-[420px] min-w-[320px] px-4 py-3 text-left text-xs text-muted-foreground">Particulars</th>
+                    <th className="w-[140px] px-4 py-3 text-left text-xs text-muted-foreground">Qty <span className="text-red-500">*</span></th>
+                    <th className="w-[100px] px-4 py-3 text-left text-xs text-muted-foreground uppercase tracking-widest font-black">Unit</th>
+                    <th className="w-[180px] px-4 py-3 text-left text-xs text-muted-foreground">Rate <span className="text-red-500">*</span></th>
                     <th className="w-[180px] px-4 py-3 text-right text-xs text-muted-foreground">Amount</th>
                     <th className="w-[70px] px-4 py-3 text-right text-xs text-muted-foreground" />
                   </tr>
                 </thead>
-
                 <tbody>
                   {lines.map((line, idx) => {
                     const qty = Number(line.qty || 0);
                     const rate = Number(line.rate || 0);
                     const amt = qty * rate;
-
                     return (
                       <tr key={idx} className="border-t border-slate-200/70 dark:border-zinc-800/60">
                         <td className="px-4 py-3 text-muted-foreground font-medium">{idx + 1}</td>
@@ -1123,71 +1129,42 @@ function SalesCreateContent() {
                               buttonRef={(el) => { rowRefs.current.select[idx] = el; }}
                               placeholder="Search item…"
                               valueId={line.itemId}
-                              onChange={(id) => updateLine(idx, { itemId: id })}
+                              onChange={(id, item) => {
+                                updateLine(idx, {
+                                  itemId: id,
+                                  unit: item?.unit || "",
+                                  rate: item?.salesPrice?.toString() || "",
+                                  description: item?.name
+                                });
+                              }}
                               options={items}
-                              getLabel={(it) => {
-                                const sku = it.sku ? ` (${it.sku})` : "";
-                                return `${it.name}${sku}`;
-                              }}
-                              getDetail={(it) => {
-                                if (it.type === "services") return "Service";
-                                return `${it.stock ?? 0} ${it.unit ?? "Units"}`;
-                              }}
+                              getLabel={(it) => it.name}
+                              getDetail={(it) => `${it.sku || it.code ? (it.sku || it.code) + ' | ' : ''}Stock: ${it.stock ?? 0}`}
                               onEnterNext={() => safeFocus(rowRefs.current.qty[idx])}
-                              onKeyDownCustom={(e) => {
-                                if (e.key === "Enter" && e.shiftKey) {
-                                  e.preventDefault();
-                                  safeFocus(sundryRefs.current.rate[0]);
-                                  return;
-                                }
-                                if (e.key === "ArrowRight") {
-                                  e.preventDefault();
-                                  safeFocus(rowRefs.current.qty[idx]);
-                                }
-                                if (e.key === "ArrowDown") {
-                                  e.preventDefault();
-                                  if (rowRefs.current.select[idx + 1]) {
-                                    safeFocus(rowRefs.current.select[idx + 1]);
-                                  } else {
-                                    safeFocus(sundryRefs.current.rate[0]);
-                                  }
-                                }
-                                if (e.key === "ArrowUp") {
-                                  e.preventDefault();
-                                  if (rowRefs.current.select[idx - 1]) {
-                                    safeFocus(rowRefs.current.select[idx - 1]);
-                                  } else {
-                                    safeFocus(customerSelectRef.current);
-                                  }
-                                }
-                              }}
                               leftIcon={<Search className="h-4 w-4" />}
-                              buttonClassName={cn(
-                                "h-11 rounded-2xl bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-700",
-                                (!line.itemId && isEditMode) ? "pr-[100px]" : "pr-4"
-                              )}
-                              emptyText="No items found"
-                              onAdd={() => {
-                                setActiveLineIdx(idx);
-                                setAddItemOpen(true);
-                              }}
+                              disabled={!isEditMode || (!!invoiceStatus && invoiceStatus !== "draft")}
+                              buttonClassName="h-11 rounded-2xl bg-white dark:bg-slate-900 pr-[100px]"
+                              onAdd={() => { setActiveLineIdx(idx); setAddItemOpen(true); }}
                             />
-                            {!line.itemId && (
+                            {!line.itemId && isEditMode && (
                               <Button
                                 type="button"
-                                onClick={() => {
-                                  setActiveLineIdx(idx);
-                                  setAddItemOpen(true);
-                                }}
-                                className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 rounded-xl px-3 text-[10px] font-medium bg-emerald-600 text-white hover:bg-emerald-700 border-none"
+                                onClick={() => { setActiveLineIdx(idx); setAddItemOpen(true); }}
+                                className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 rounded-xl px-3 text-[10px] font-medium bg-emerald-600 text-white border-none hover:bg-emerald-700 transition-all active:scale-95"
                               >
-                                <Plus className="mr-1 h-3 w-3" />
-                                Add item
+                                <Plus className="mr-1 h-3 w-3" /> Add item
                               </Button>
+                            )}
+                            {line.description && (
+                              <input
+                                className="mt-1 w-full bg-transparent text-xs text-slate-500 placeholder:text-slate-300 outline-none"
+                                placeholder="Custom description..."
+                                value={line.description}
+                                onChange={(e) => updateLine(idx, { description: e.target.value })}
+                              />
                             )}
                           </div>
                         </td>
-
                         <td className="px-4 py-3 align-top">
                           <Input
                             ref={(el) => { rowRefs.current.qty[idx] = el; }}
@@ -1250,7 +1227,7 @@ function SalesCreateContent() {
                               }
                             }}
                             className={cn(
-                              "h-11 rounded-2xl bg-white text-center dark:bg-zinc-900 transition-colors",
+                              "h-11 rounded-2xl bg-white text-center dark:bg-slate-900 transition-colors",
                               lineErrors[idx]?.qty && "border-red-500 focus:ring-red-200"
                             )}
                           />
@@ -1259,6 +1236,15 @@ function SalesCreateContent() {
                               {lineErrors[idx].qty}
                             </div>
                           )}
+                        </td>
+
+                        <td className="px-4 py-3">
+                          <Input
+                            value={line.unit || ""}
+                            readOnly
+                            className="h-11 rounded-2xl bg-slate-50 text-center text-xs font-bold text-slate-500 cursor-not-allowed dark:bg-zinc-900/50"
+                            placeholder="—"
+                          />
                         </td>
 
                         <td className="px-4 py-3 align-top">
@@ -1358,6 +1344,7 @@ function SalesCreateContent() {
                     <td className="px-4 py-3 text-center">
                       {totalQty % 1 === 0 ? totalQty : totalQty.toFixed(2)}
                     </td>
+                    <td />
                     <td className="px-4 py-3 text-center">
                       <MoneyText value={totalRate} />
                     </td>
@@ -1372,27 +1359,16 @@ function SalesCreateContent() {
           </div>
         </section>
 
-
-
         <div className="mb-4 flex flex-col items-end gap-2 text-right">
-
-
           <Button ref={addSundryButtonRef} type="button" onClick={addSundry} className="rounded-full bg-emerald-600 text-white hover:bg-emerald-700 border-none">
             <Plus className="mr-2 h-4 w-4" />
             Add Sundry Column
           </Button>
-
         </div>
 
         {/* BILL SUNDRY */}
         <section className="mb-6">
-          {/* <div className="mb-3 text-center text-sm font-semibold tracking-[0.32em] text-slate-800 dark:text-slate-100">
-            BILL SUNDRY
-          </div> */}
-
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-
-
             <div className="mr-4 text-sm font-semibold text-slate-700 dark:text-slate-200">Bill Sundry Details</div>
             <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
               <table className="min-w-full text-sm">
@@ -1627,7 +1603,7 @@ function SalesCreateContent() {
         <section className="mb-6 rounded-3xl border bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
           <button type="button" onClick={() => setShowTerms((v) => !v)} className="flex w-full items-center gap-3">
             <ChevronRight className={cn("h-4 w-4 text-muted-foreground transition-transform", showTerms && "rotate-90")} />
-            <div className="text-sm font-semibold">Terms &amp; Conditions</div>
+            <div className="text-sm font-semibold">Terms & Conditions</div>
           </button>
 
           <div className="mt-2 text-sm text-muted-foreground">Using company default</div>
@@ -1638,7 +1614,7 @@ function SalesCreateContent() {
             className="mt-3 text-sm font-medium text-slate-700 hover:underline dark:text-slate-200"
             disabled={!isEditMode}
           >
-            + Add terms &amp; conditions
+            + Add terms & conditions
           </button>
 
           {showTerms ? (

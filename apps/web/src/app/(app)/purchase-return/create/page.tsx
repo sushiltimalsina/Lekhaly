@@ -42,7 +42,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { toBs } from "@/lib/dates/bs";
 import AddPurchaseTypeDialog from "@/components/app/add-purchase-type-dialog";
 
-type Line = { itemId: string; qty: string; rate: string; description?: string; expenseAccountId?: string };
+type Line = { itemId: string; qty: string; rate: string; unit?: string; description?: string; expenseAccountId?: string };
 type BillSundryRow = { id: string; sundryId?: string; name: string; type: "add" | "less"; ratePct: string; manualAmount?: string; isManual?: boolean };
 
 function useOutsideClick<T extends HTMLElement>(
@@ -75,6 +75,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
     onChange: (id: string, opt?: T) => void;
     options: T[];
     getLabel?: (opt: T) => string;
+    getDetail?: (opt: T) => string | undefined;
     leftIcon?: React.ReactNode;
     className?: string;
     buttonClassName?: string;
@@ -93,6 +94,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
         onChange,
         options,
         getLabel,
+        getDetail,
         leftIcon,
         className,
         buttonClassName,
@@ -268,6 +270,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                             {filtered.length ? (
                                 filtered.map((o, i) => {
                                     const labelText = getLabel ? getLabel(o) : o.name ?? o.id;
+                                    const detailText = getDetail ? getDetail(o) : undefined;
                                     const selected = o.id === valueId;
                                     const active = i === activeIndex;
 
@@ -288,7 +291,10 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                                                 selected && !active && "bg-slate-50 dark:bg-slate-800/30"
                                             )}
                                         >
-                                            <span className="min-w-0 flex-1 truncate font-medium">{labelText}</span>
+                                            <div className="min-w-0 flex-1 truncate">
+                                                <div className="font-medium">{labelText}</div>
+                                                {detailText ? <div className="text-[10px] text-slate-500 mt-0.5 font-normal">{detailText}</div> : null}
+                                            </div>
                                             {selected ? <Check className="h-4 w-4 text-sky-600" /> : null}
                                         </button>
                                     );
@@ -599,15 +605,22 @@ function PurchaseReturnCreateContent() {
 
     const total = itemsSubtotal + billSundryComputed.net;
 
-    const updateLine = (idx: number, patch: Partial<Line>) =>
+    const updateLine = (idx: number, patch: Partial<Line>) => {
+        if (patch.itemId) {
+            const item = items.find(it => it.id === patch.itemId);
+            if (item) {
+                patch.unit = item.unit || "";
+            }
+        }
         setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
+    };
 
     const [pendingFocusIndex, setPendingFocusIndex] = React.useState<number | null>(null);
 
     const addLine = () => {
         setLines((prev) => {
             setPendingFocusIndex(prev.length);
-            return [...prev, { itemId: "", qty: "", rate: "" }];
+            return [...prev, { itemId: "", qty: "", rate: "", unit: "" }];
         });
     };
 
@@ -657,6 +670,7 @@ function PurchaseReturnCreateContent() {
                 credit: qty * rate,
                 qty,
                 description: l.description || "Purchase Return",
+                unit: l.unit || ""
             };
         });
 
@@ -928,6 +942,7 @@ function PurchaseReturnCreateContent() {
                                         <th className="w-[60px] px-4 py-3 text-left text-xs text-muted-foreground">S.No.</th>
                                         <th className="w-[520px] min-w-[420px] px-4 py-3 text-left text-xs text-muted-foreground">Particulars</th>
                                         <th className="w-[140px] px-4 py-3 text-left text-xs text-muted-foreground">Qty <span className="text-red-500">*</span></th>
+                                        <th className="w-[100px] px-4 py-3 text-center text-xs text-muted-foreground">Unit</th>
                                         <th className="w-[180px] px-4 py-3 text-left text-xs text-muted-foreground">Rate <span className="text-red-500">*</span></th>
                                         <th className="w-[180px] px-4 py-3 text-right text-xs text-muted-foreground">Amount</th>
                                         <th className="w-[70px] px-4 py-3 text-right text-xs text-muted-foreground" />
@@ -951,11 +966,13 @@ function PurchaseReturnCreateContent() {
                                                                 updateLine(idx, {
                                                                     itemId: id,
                                                                     rate: item?.purchasePrice?.toString() || "",
-                                                                    expenseAccountId: item?.expenseAccountId || undefined
+                                                                    expenseAccountId: item?.expenseAccountId || undefined,
+                                                                    unit: item?.unit || ""
                                                                 });
                                                             }}
                                                             options={items}
                                                             getLabel={(it) => it.name}
+                                                            getDetail={(it) => `${it.sku || it.code ? (it.sku || it.code) + ' | ' : ''}Stock: ${it.stock ?? 0}`}
                                                             onEnterNext={() => safeFocus(rowRefs.current.qty[idx])}
                                                             leftIcon={<Search className="h-4 w-4" />}
                                                             buttonClassName="h-11 rounded-2xl bg-white dark:bg-slate-900 pr-[100px]"
@@ -981,8 +998,27 @@ function PurchaseReturnCreateContent() {
                                                             updateLine(idx, { qty: e.target.value });
                                                             setLineErrors(prev => ({ ...prev, [idx]: { ...prev[idx], qty: undefined } }));
                                                         }}
+
+
                                                         disabled={!isEditMode}
                                                         className={cn("h-11 rounded-2xl bg-white text-center dark:bg-slate-900 transition-colors", lineErrors[idx]?.qty && "border-red-500")}
+
+                                                    />
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <Input
+                                                        value={line.unit || ""}
+                                                        readOnly
+                                                        className="h-11 rounded-2xl bg-slate-50 text-center text-xs font-bold text-slate-500 cursor-not-allowed dark:bg-slate-900/50"
+                                                        placeholder="—"
+
+
+
+
+
+
+
+
                                                     />
                                                 </td>
                                                 <td className="px-4 py-3 align-top">
@@ -1010,8 +1046,7 @@ function PurchaseReturnCreateContent() {
                                         );
                                     })}
                                     <tr className="border-t bg-slate-100/60 font-semibold dark:bg-slate-900/40">
-                                        <td /><td className="px-4 py-3 text-right">Total</td>
-                                        <td className="px-4 py-3 text-center">{totalQty}</td>
+                                        <td /><td /><td /><td className="px-4 py-3 text-center">{totalQty}</td>
                                         <td /><td className="px-4 py-3 text-right"><MoneyText value={itemsSubtotal} /></td><td />
                                     </tr>
                                 </tbody>

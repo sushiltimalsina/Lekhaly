@@ -44,7 +44,7 @@ import AddPurchaseTypeDialog from "../../components/app/add-purchase-type-dialog
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toBs } from "@/lib/dates/bs";
 
-type Line = { itemId: string; qty: string; rate: string; description?: string; expenseAccountId?: string };
+type Line = { itemId: string; qty: string; rate: string; unit?: string; description?: string; expenseAccountId?: string };
 type BillSundryRow = { id: string; sundryId?: string; name: string; type: "add" | "less"; ratePct: string; manualAmount?: string; isManual?: boolean };
 
 function useOutsideClick<T extends HTMLElement>(
@@ -584,8 +584,15 @@ export default function PurchaseReturnCreatePage() {
 
     const total = itemsSubtotal + billSundryComputed.net;
 
-    const updateLine = (idx: number, patch: Partial<Line>) =>
+    const updateLine = (idx: number, patch: Partial<Line>) => {
+        if (patch.itemId) {
+            const item = items.find(it => it.id === patch.itemId);
+            if (item) {
+                patch.unit = item.unit || "";
+            }
+        }
         setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
+    };
 
     const [pendingFocusIndex, setPendingFocusIndex] = React.useState<number | null>(null);
 
@@ -641,6 +648,7 @@ export default function PurchaseReturnCreatePage() {
                 accountId: l.expenseAccountId || item?.expenseAccountId || "",
                 credit: qty * rate,
                 qty,
+                unit: lines.find(l => l.itemId === it.itemId)?.unit,
                 description: l.description || "Purchase Return",
             };
         });
@@ -900,6 +908,7 @@ export default function PurchaseReturnCreatePage() {
                                     <tr>
                                         <th className="w-[60px] px-4 py-3 text-left text-xs text-muted-foreground">S.No.</th>
                                         <th className="w-[520px] min-w-[420px] px-4 py-3 text-left text-xs text-muted-foreground">Particulars</th>
+                                        <th className="w-[100px] px-4 py-3 text-left text-xs text-muted-foreground uppercase tracking-widest font-black">Unit</th>
                                         <th className="w-[140px] px-4 py-3 text-left text-xs text-muted-foreground">Qty <span className="text-red-500">*</span></th>
                                         <th className="w-[180px] px-4 py-3 text-left text-xs text-muted-foreground">Rate <span className="text-red-500">*</span></th>
                                         <th className="w-[180px] px-4 py-3 text-right text-xs text-muted-foreground">Amount</th>
@@ -923,6 +932,7 @@ export default function PurchaseReturnCreatePage() {
                                                             onChange={(id, item) => {
                                                                 updateLine(idx, {
                                                                     itemId: id,
+                                                                    unit: item?.unit || "",
                                                                     rate: item?.purchasePrice?.toString() || "",
                                                                     expenseAccountId: item?.expenseAccountId || undefined
                                                                 });
@@ -945,6 +955,14 @@ export default function PurchaseReturnCreatePage() {
                                                             </Button>
                                                         )}
                                                     </div>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <Input
+                                                        value={line.unit || ""}
+                                                        readOnly
+                                                        className="h-11 rounded-2xl bg-slate-50 text-center text-xs font-bold text-slate-500 cursor-not-allowed dark:bg-slate-900/50"
+                                                        placeholder="—"
+                                                    />
                                                 </td>
                                                 <td className="px-4 py-3 align-top">
                                                     <Input
@@ -988,7 +1006,9 @@ export default function PurchaseReturnCreatePage() {
                                     <tr className="border-t bg-slate-100/60 font-semibold dark:bg-slate-900/40">
                                         <td /><td className="px-4 py-3 text-right text-slate-500 uppercase text-[10px] tracking-wider">Totals</td>
                                         <td className="px-4 py-3 text-center text-slate-900 dark:text-slate-100">{totalQty % 1 === 0 ? totalQty : totalQty.toFixed(2)}</td>
-                                        <td /><td className="px-4 py-3 text-right text-sky-600"><MoneyText value={itemsSubtotal} /></td><td />
+                                        <td />
+                                        <td />
+                                        <td className="px-4 py-3 text-right text-sky-600"><MoneyText value={itemsSubtotal} /></td><td />
                                     </tr>
                                 </tbody>
                             </table>
