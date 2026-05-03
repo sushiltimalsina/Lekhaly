@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import * as React from "react";
 import PageHeader from "@/components/app/page-header";
@@ -23,11 +23,11 @@ export default function CustomersPage() {
   const [q, setQ] = React.useState("");
   const [rows] = React.useState<CustomerRow[]>([
     { id: "c1", name: "ABC Traders", phone: "9841234567", email: "abc@traders.com", balance: 12500 },
-    { id: "c2", name: "Himal Suppliers", phone: "9851098765", email: "himal@suppliers.np", balance: -5000 },
     { id: "c3", name: "Everest Enterprises", phone: "01-4433221", email: "info@everest.com", balance: 0 },
+    { id: "c2", name: "Himal Suppliers", phone: "9851098765", email: "himal@suppliers.np", balance: -5000 },
     { id: "c4", name: "Kathmandu Mart", phone: "9808877665", email: "mart@ktm.com", balance: 45000 },
     { id: "c5", name: "Patan General Store", phone: "01-5544332", email: "patan@store.com", balance: 1200 },
-  ]);
+  ].sort((a, b) => a.name.localeCompare(b.name)));
 
   const filtered = rows.filter((r) => {
     if (!q.trim()) return true;

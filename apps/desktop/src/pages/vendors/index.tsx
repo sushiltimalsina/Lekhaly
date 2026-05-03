@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import * as React from "react";
 import PageHeader from "@/components/app/page-header";
@@ -23,11 +23,11 @@ export default function VendorsPage() {
   const [q, setQ] = React.useState("");
   const [rows] = React.useState<VendorRow[]>([
     { id: "v1", name: "Everest Distributors", phone: "01-4411223", email: "sales@everestdist.com", payable: 42000 },
+    { id: "v5", name: "Global Logistics", phone: "01-4455667", email: "accounts@globallog.com", payable: -1500 },
     { id: "v2", name: "Kathmandu Wholesale", phone: "9841987654", email: "info@ktmwholesale.np", payable: 0 },
     { id: "v3", name: "Modern Paper Mills", phone: "01-5522334", email: "orders@modernpaper.com", payable: 8500 },
     { id: "v4", name: "Quality Stationery", phone: "9801234567", email: "info@quality.np", payable: 12400 },
-    { id: "v5", name: "Global Logistics", phone: "01-4455667", email: "accounts@globallog.com", payable: -1500 },
-  ]);
+  ].sort((a, b) => a.name.localeCompare(b.name)));
 
   const filtered = rows.filter((r) => {
     if (!q.trim()) return true;
