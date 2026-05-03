@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query } from "@nestjs/common";
+import { Body, Controller, Get, Patch, Post, Query } from "@nestjs/common";
 import { CurrentUser, RequirePerm } from "../../common/auth/auth.decorator";
 import type { AuthUser } from "../../common/auth/auth.types";
 import { ZodValidationPipe } from "../../common/zod/zod.pipe";
@@ -15,6 +15,13 @@ const ListPurchaseTypeQuerySchema = z.object({
   take: z.string().transform(Number).optional(),
 });
 
+const ReorderSchema = z.array(
+  z.object({
+    id: z.string().uuid(),
+    sortOrder: z.number().int(),
+  }),
+);
+
 @Controller("purchase-types")
 export class PurchaseTypesController {
   constructor(private svc: PurchaseTypesService) {}
@@ -23,6 +30,12 @@ export class PurchaseTypesController {
   @RequirePerm("masters.write")
   create(@CurrentUser() user: AuthUser, @Body(new ZodValidationPipe(CreatePurchaseTypeSchema)) body: any) {
     return this.svc.create(user, body);
+  }
+
+  @Patch("reorder")
+  @RequirePerm("masters.write")
+  reorder(@CurrentUser() user: AuthUser, @Body(new ZodValidationPipe(ReorderSchema)) body: any) {
+    return this.svc.updateSortOrder(user, body);
   }
 
   @Get()

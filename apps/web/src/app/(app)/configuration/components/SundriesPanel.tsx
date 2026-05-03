@@ -4,6 +4,7 @@ import * as React from "react";
 import { Calculator, ChevronDown, ChevronRight, Search, Plus, Pencil, Trash2 } from "lucide-react";
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, Input } from "@lekhaly/ui";
 import { cn } from "@/lib/utils";
+import { SortableList } from "@/components/app/sortable-list";
 import type { BillSundryRecord } from "@/lib/api/bill-sundries";
 
 interface SundriesPanelProps {
@@ -15,6 +16,7 @@ interface SundriesPanelProps {
   onAdd: () => void;
   onEdit: (sundry: BillSundryRecord) => void;
   onRemove: (id: string) => void;
+  onReorder?: (sundries: BillSundryRecord[]) => void;
   focus?: boolean;
   forwardedRef?: React.RefObject<HTMLDivElement | null>;
 }
@@ -28,6 +30,7 @@ export function SundriesPanel({
   onAdd,
   onEdit,
   onRemove,
+  onReorder,
   focus,
   forwardedRef
 }: SundriesPanelProps) {
@@ -70,57 +73,62 @@ export function SundriesPanel({
               className="pl-9 rounded-xl border-border"
             />
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3">
             {loading ? (
-              <div className="col-span-2 py-8 text-center text-sm text-muted-foreground">Loading sundries...</div>
+              <div className="py-8 text-center text-sm text-muted-foreground">Loading sundries...</div>
             ) : filtered.length ? (
-              filtered.map(s => (
-                <div key={s.id} className="flex items-center justify-between rounded-2xl border bg-muted/20 p-4 transition-all hover:bg-muted/40 text-foreground">
-                  <div className="flex items-center gap-3">
-                    <div className={cn(
-                      "flex h-10 w-10 items-center justify-center rounded-xl font-medium",
-                      s.type === "add" ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-950/30" : "bg-red-100 text-red-600 dark:bg-red-950/30"
-                    )}>
-                      {s.type === "add" ? <Plus className="h-5 w-5" /> : <Calculator className="h-5 w-5" />}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 font-semibold text-foreground truncate">
-                        {s.name}
-                        {systemNames.includes(s.name) && (
-                           <span className="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 text-[10px] px-1.5 py-0.5 rounded-md font-medium shrink-0">System</span>
-                        )}
+              <SortableList
+                items={filtered}
+                getId={(s) => s.id}
+                onReorder={(newItems) => onReorder?.(newItems)}
+                renderItem={(s) => (
+                  <div className="flex w-full items-center justify-between rounded-2xl border bg-muted/20 p-4 transition-all hover:bg-muted/40 text-foreground">
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "flex h-10 w-10 items-center justify-center rounded-xl font-medium",
+                        s.type === "add" ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-950/30" : "bg-red-100 text-red-600 dark:bg-red-950/30"
+                      )}>
+                        {s.type === "add" ? <Plus className="h-5 w-5" /> : <Calculator className="h-5 w-5" />}
                       </div>
-                      <div className="font-mono text-xs uppercase tracking-tight text-muted-foreground truncate">
-                        {s.rate ? `${s.rate}%` : "Manual"} • {s.type} {s.account?.name ? `• ${s.account.name}` : ""}
+                      <div className="min-w-0 flex-1 text-left">
+                        <div className="flex items-center gap-2 font-semibold text-foreground truncate">
+                          {s.name}
+                          {systemNames.includes(s.name) && (
+                             <span className="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 text-[10px] px-1.5 py-0.5 rounded-md font-medium shrink-0">System</span>
+                          )}
+                        </div>
+                        <div className="font-mono text-xs uppercase tracking-tight text-muted-foreground truncate">
+                          {s.rate ? `${s.rate}%` : "Manual"} • {s.type} {s.account?.name ? `• ${s.account.name}` : ""}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onEdit(s)}
-                      disabled={busy}
-                      className="h-8 w-8 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-indigo-950/30"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    {!systemNames.includes(s.name) && (
+                    <div className="flex items-center gap-1">
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => onRemove(s.id)}
+                        onClick={() => onEdit(s)}
                         disabled={busy}
-                        className="h-8 w-8 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
+                        className="h-8 w-8 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-indigo-950/30"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Pencil className="h-4 w-4" />
                       </Button>
-                    )}
+                      {!systemNames.includes(s.name) && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onRemove(s.id)}
+                          disabled={busy}
+                          className="h-8 w-8 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))
+                )}
+              />
             ) : (
-              <div className="col-span-2 py-8 text-center text-sm text-muted-foreground border-2 border-dashed rounded-2xl">
+              <div className="py-8 text-center text-sm text-muted-foreground border-2 border-dashed rounded-2xl">
                 {q ? `No sundries matching "${q}"` : "No predefined sundries found."}
               </div>
             )}

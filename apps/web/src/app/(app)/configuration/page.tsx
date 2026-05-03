@@ -3,12 +3,12 @@
 import * as React from "react";
 import PageHeader from "@/components/app/page-header";
 import { Button } from "@lekhaly/ui";
-import { listUnits, type UnitRecord, deleteUnit } from "@/lib/api/units";
-import { listItemGroups, type ItemGroupRecord, deleteItemGroup } from "@/lib/api/item-groups";
-import { listBillSundries, type BillSundryRecord, deleteBillSundry } from "@/lib/api/bill-sundries";
-import { listPaymentMethods, deletePaymentMethod } from "@/lib/api/payment-methods";
-import { listSaleTypes, deleteSaleType } from "@/lib/api/sale-types";
-import { listPurchaseTypes, deletePurchaseType } from "@/lib/api/purchase-types";
+import { listUnits, type UnitRecord, deleteUnit, reorderUnits } from "@/lib/api/units";
+import { listItemGroups, type ItemGroupRecord, deleteItemGroup, reorderItemGroups } from "@/lib/api/item-groups";
+import { listBillSundries, type BillSundryRecord, deleteBillSundry, reorderBillSundries } from "@/lib/api/bill-sundries";
+import { listPaymentMethods, deletePaymentMethod, reorderPaymentMethods } from "@/lib/api/payment-methods";
+import { listSaleTypes, deleteSaleType, reorderSaleTypes } from "@/lib/api/sale-types";
+import { listPurchaseTypes, deletePurchaseType, reorderPurchaseTypes } from "@/lib/api/purchase-types";
 import { AlertCircle } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -128,9 +128,9 @@ function ConfigurationContent() {
          ...s,
          id: s.id || (s as any)._id
       })));
-      setPaymentMethods(normalizeList<any>(pmRes).sort((a, b) => b.name.localeCompare(a.name)));
-      setSaleTypes(normalizeList<any>(stRes).sort((a, b) => b.name.localeCompare(a.name)));
-      setPurchaseTypes(normalizeList<any>(ptRes).sort((a, b) => b.name.localeCompare(a.name)));
+      setPaymentMethods(normalizeList<any>(pmRes));
+      setSaleTypes(normalizeList<any>(stRes));
+      setPurchaseTypes(normalizeList<any>(ptRes));
       setCompany(cRes);
       setCompanyForm(cRes);
       setSessions(normalizeList<FiscalSessionRecord>(sessRes));
@@ -189,6 +189,66 @@ function ConfigurationContent() {
       setError(e?.message ?? "Failed to update inventory settings.");
     } finally {
       setBusy(false);
+    }
+  };
+
+  const handleReorderUnits = async (newUnits: UnitRecord[]) => {
+    setUnits(newUnits);
+    try {
+      await reorderUnits(newUnits.map((u, i) => ({ id: u.id, sortOrder: i })));
+    } catch (e: any) {
+      setError(e.message);
+      fetchData(); // Rollback
+    }
+  };
+
+  const handleReorderGroups = async (newGroups: ItemGroupRecord[]) => {
+    setGroups(newGroups);
+    try {
+      await reorderItemGroups(newGroups.map((g, i) => ({ id: g.id, sortOrder: i })));
+    } catch (e: any) {
+      setError(e.message);
+      fetchData(); // Rollback
+    }
+  };
+
+  const handleReorderSundries = async (newSundries: BillSundryRecord[]) => {
+    setSundries(newSundries);
+    try {
+      await reorderBillSundries(newSundries.map((s, i) => ({ id: s.id, sortOrder: i })));
+    } catch (e: any) {
+      setError(e.message);
+      fetchData(); // Rollback
+    }
+  };
+
+  const handleReorderPaymentMethods = async (newItems: any[]) => {
+    setPaymentMethods(newItems);
+    try {
+      await reorderPaymentMethods(newItems.map((pm, i) => ({ id: pm.id, sortOrder: i })));
+    } catch (e: any) {
+      setError(e.message);
+      fetchData(); // Rollback
+    }
+  };
+
+  const handleReorderSaleTypes = async (newItems: any[]) => {
+    setSaleTypes(newItems);
+    try {
+      await reorderSaleTypes(newItems.map((st, i) => ({ id: st.id, sortOrder: i })));
+    } catch (e: any) {
+      setError(e.message);
+      fetchData(); // Rollback
+    }
+  };
+
+  const handleReorderPurchaseTypes = async (newItems: any[]) => {
+    setPurchaseTypes(newItems);
+    try {
+      await reorderPurchaseTypes(newItems.map((pt, i) => ({ id: pt.id, sortOrder: i })));
+    } catch (e: any) {
+      setError(e.message);
+      fetchData(); // Rollback
     }
   };
 
@@ -255,6 +315,7 @@ function ConfigurationContent() {
           onAdd={() => setAddUnitOpen(true)}
           onEdit={(u) => { setEditUnit(u); setAddUnitOpen(true); }}
           onRemove={(id) => setConfirmState({ id, name: units.find(u => u.id === id)?.name || "", type: "unit", open: true })}
+          onReorder={handleReorderUnits}
           focus={focus === "units"}
           forwardedRef={unitsRef}
         />
@@ -268,6 +329,7 @@ function ConfigurationContent() {
           onAdd={() => setAddGroupOpen(true)}
           onEdit={(g) => { setEditGroup(g); setAddGroupOpen(true); }}
           onRemove={(id) => setConfirmState({ id, name: groups.find(g => g.id === id)?.name || "", type: "group", open: true })}
+          onReorder={handleReorderGroups}
           focus={focus === "groups"}
           forwardedRef={groupsRef}
         />
@@ -281,6 +343,7 @@ function ConfigurationContent() {
           onAdd={() => setAddSundryOpen(true)}
           onEdit={(s) => { setEditSundry(s); setAddSundryOpen(true); }}
           onRemove={(id) => setConfirmState({ id, name: sundries.find(s => s.id === id)?.name || "", type: "sundry", open: true })}
+          onReorder={handleReorderSundries}
           focus={focus === "sundries"}
           forwardedRef={sundriesRef}
         />
@@ -294,6 +357,7 @@ function ConfigurationContent() {
           onAdd={() => { setEditPaymentMethod(undefined); setAddPaymentMethodOpen(true); }}
           onEdit={(pm) => { setEditPaymentMethod(pm); setAddPaymentMethodOpen(true); }}
           onRemove={(id) => setConfirmState({ id, name: paymentMethods.find(pm => pm.id === id)?.name || "", type: "payment-method", open: true })}
+          onReorder={handleReorderPaymentMethods}
           focus={focus === "payment-methods"}
         />
 
@@ -307,9 +371,11 @@ function ConfigurationContent() {
           onAddSaleType={() => { setEditSaleType(undefined); setAddSaleTypeOpen(true); }}
           onEditSaleType={(st) => { setEditSaleType(st); setAddSaleTypeOpen(true); }}
           onRemoveSaleType={(id) => setConfirmState({ id, name: saleTypes.find(st => st.id === id)?.name || "", type: "sale-type", open: true })}
+          onReorderSaleTypes={handleReorderSaleTypes}
           onAddPurchaseType={() => { setEditPurchaseType(undefined); setAddPurchaseTypeOpen(true); }}
           onEditPurchaseType={(pt) => { setEditPurchaseType(pt); setAddPurchaseTypeOpen(true); }}
           onRemovePurchaseType={(id) => setConfirmState({ id, name: purchaseTypes.find(pt => pt.id === id)?.name || "", type: "purchase-type", open: true })}
+          onReorderPurchaseTypes={handleReorderPurchaseTypes}
           focus={focus === "trade-types"}
         />
 

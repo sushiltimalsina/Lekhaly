@@ -15,10 +15,21 @@ export class BillSundriesService {
         return this.prisma.billSundry.findMany({
             where,
             include: { account: true },
-            orderBy: { name: "desc" },
+            orderBy: [{ sortOrder: "asc" }, { name: "desc" }],
             take: filters.take || 50,
             skip: filters.skip || 0
         });
+    }
+
+    async updateSortOrder(user: AuthUser, data: { id: string; sortOrder: number }[]) {
+        const queries = data.map((item) =>
+            this.prisma.billSundry.update({
+                where: { id: item.id, companyId: user.companyId },
+                data: { sortOrder: item.sortOrder },
+            }),
+        );
+        await this.prisma.$transaction(queries);
+        return { success: true };
     }
 
     async get(user: AuthUser, id: string) {

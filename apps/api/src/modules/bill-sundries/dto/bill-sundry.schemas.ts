@@ -14,3 +14,10 @@ export const BillSundryListQuerySchema = z.object({
     take: z.preprocess((v) => (v ? parseInt(v as string, 10) : undefined), z.number().optional()),
     skip: z.preprocess((v) => (v ? parseInt(v as string, 10) : undefined), z.number().optional())
 });
+
+export const ReorderSchema = z.array(
+    z.object({
+        id: z.string().uuid(),
+        sortOrder: z.number().int(),
+    }),
+);

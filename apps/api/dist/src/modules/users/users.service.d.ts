@@ -21,6 +21,7 @@ export declare class UsersService {
                 name: string;
                 createdAt: Date;
                 updatedAt: Date;
+                sortOrder: number;
             };
         } & {
             userId: string;
@@ -40,6 +41,7 @@ export declare class UsersService {
                 name: string;
                 createdAt: Date;
                 updatedAt: Date;
+                sortOrder: number;
             };
         } & {
             userId: string;

@@ -38,3 +38,11 @@ export async function deleteItemGroup(id: string) {
   });
 }
 
+export async function reorderItemGroups(items: { id: string; sortOrder: number }[]) {
+  return apiRequest<void>({
+    method: "PATCH",
+    path: "/item-groups/reorder",
+    body: items,
+  });
+}
+

@@ -4,6 +4,7 @@ import * as React from "react";
 import { Tag, ShoppingBag, ChevronDown, ChevronRight, Search, Plus, Pencil, Trash2 } from "lucide-react";
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, Input } from "@lekhaly/ui";
 import { cn } from "@/lib/utils";
+import { SortableList } from "@/components/app/sortable-list";
 
 interface TradeTypesPanelProps {
   saleTypes: any[];
@@ -15,9 +16,11 @@ interface TradeTypesPanelProps {
   onAddSaleType: () => void;
   onEditSaleType: (st: any) => void;
   onRemoveSaleType: (id: string) => void;
+  onReorderSaleTypes?: (items: any[]) => void;
   onAddPurchaseType: () => void;
   onEditPurchaseType: (pt: any) => void;
   onRemovePurchaseType: (id: string) => void;
+  onReorderPurchaseTypes?: (items: any[]) => void;
   focus?: boolean;
 }
 
@@ -31,9 +34,11 @@ export function TradeTypesPanel({
   onAddSaleType,
   onEditSaleType,
   onRemoveSaleType,
+  onReorderSaleTypes,
   onAddPurchaseType,
   onEditPurchaseType,
   onRemovePurchaseType,
+  onReorderPurchaseTypes,
   focus,
 }: TradeTypesPanelProps) {
   const [qSale, setQSale] = React.useState("");
@@ -89,38 +94,43 @@ export function TradeTypesPanel({
                 />
               </div>
 
-              <div className="grid gap-2 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin">
+              <div className="grid gap-2 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin">
                 {loading ? (
                   <div className="py-8 text-center text-sm text-muted-foreground">Loading...</div>
                 ) : filteredSales.length ? (
-                  filteredSales.map(st => (
-                    <div key={st.id} className="flex items-center justify-between rounded-xl border bg-white px-3 py-2 text-sm transition-all hover:border-emerald-200 dark:bg-slate-900 dark:border-slate-800 dark:hover:border-emerald-900/50">
-                      <div className="flex flex-col">
-                        <span className="font-medium text-slate-700 dark:text-slate-200">{st.name}</span>
-                        {!st.isActive && <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Inactive</span>}
+                  <SortableList
+                    items={filteredSales}
+                    getId={(st) => st.id}
+                    onReorder={(newItems) => onReorderSaleTypes?.(newItems)}
+                    renderItem={(st) => (
+                      <div className="flex w-full items-center justify-between rounded-xl border bg-white px-3 py-2 text-sm transition-all hover:border-emerald-200 dark:bg-slate-900 dark:border-slate-800 dark:hover:border-emerald-900/50">
+                        <div className="flex flex-col text-left">
+                          <span className="font-medium text-slate-700 dark:text-slate-200">{st.name}</span>
+                          {!st.isActive && <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Inactive</span>}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => onEditSaleType(st)}
+                            disabled={busy}
+                            className="h-7 w-7 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => onRemoveSaleType(st.id)}
+                            disabled={busy}
+                            className="h-7 w-7 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => onEditSaleType(st)}
-                          disabled={busy}
-                          className="h-7 w-7 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => onRemoveSaleType(st.id)}
-                          disabled={busy}
-                          className="h-7 w-7 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))
+                    )}
+                  />
                 ) : (
                   <div className="py-8 text-center text-xs text-slate-400 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
                     {qSale ? "No matching sales types." : "No sales types added."}
@@ -153,38 +163,43 @@ export function TradeTypesPanel({
                 />
               </div>
 
-              <div className="grid gap-2 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin">
+              <div className="grid gap-2 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin">
                 {loading ? (
                   <div className="py-8 text-center text-sm text-muted-foreground">Loading...</div>
                 ) : filteredPurchases.length ? (
-                  filteredPurchases.map(pt => (
-                    <div key={pt.id} className="flex items-center justify-between rounded-xl border bg-white px-3 py-2 text-sm transition-all hover:border-orange-200 dark:bg-slate-900 dark:border-slate-800 dark:hover:border-orange-900/50">
-                      <div className="flex flex-col">
-                        <span className="font-medium text-slate-700 dark:text-slate-200">{pt.name}</span>
-                        {!pt.isActive && <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Inactive</span>}
+                  <SortableList
+                    items={filteredPurchases}
+                    getId={(pt) => pt.id}
+                    onReorder={(newItems) => onReorderPurchaseTypes?.(newItems)}
+                    renderItem={(pt) => (
+                      <div className="flex w-full items-center justify-between rounded-xl border bg-white px-3 py-2 text-sm transition-all hover:border-orange-200 dark:bg-slate-900 dark:border-slate-800 dark:hover:border-orange-900/50">
+                        <div className="flex flex-col text-left">
+                          <span className="font-medium text-slate-700 dark:text-slate-200">{pt.name}</span>
+                          {!pt.isActive && <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Inactive</span>}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => onEditPurchaseType(pt)}
+                            disabled={busy}
+                            className="h-7 w-7 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => onRemovePurchaseType(pt.id)}
+                            disabled={busy}
+                            className="h-7 w-7 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => onEditPurchaseType(pt)}
-                          disabled={busy}
-                          className="h-7 w-7 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => onRemovePurchaseType(pt.id)}
-                          disabled={busy}
-                          className="h-7 w-7 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))
+                    )}
+                  />
                 ) : (
                   <div className="py-8 text-center text-xs text-slate-400 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
                     {qPurchase ? "No matching purchase types." : "No purchase types added."}

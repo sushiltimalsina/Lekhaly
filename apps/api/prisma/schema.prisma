@@ -225,6 +225,7 @@ model Role {
   company   Company @relation(fields: [companyId], references: [id])
 
   name      String
+  sortOrder Int @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -372,6 +373,7 @@ model TaxCode {
   outputTaxAccount   ChartOfAccount? @relation("TaxOutputAccount", fields: [outputTaxAccountId], references: [id])
 
   isActive  Boolean  @default(true)
+  sortOrder Int @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -399,6 +401,7 @@ model BillSundry {
   accountId String?
   account   ChartOfAccount? @relation(fields: [accountId], references: [id])
   isActive  Boolean  @default(true)
+  sortOrder Int @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -555,7 +558,6 @@ model InventorySettings {
   requireWarehouseOnMovements Boolean @default(false)
   defaultWarehouseId       String?
   costingMethod            String  @default("moving_average")
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -567,6 +569,7 @@ model Unit {
   companyId String
   company   Company  @relation(fields: [companyId], references: [id])
   name      String
+  sortOrder Int @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -578,6 +581,7 @@ model ItemGroup {
   companyId String
   company   Company  @relation(fields: [companyId], references: [id])
   name      String
+  sortOrder Int @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -864,6 +868,7 @@ model Warehouse {
   name      String
   code      String?
   isActive  Boolean @default(true)
+  sortOrder Int @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -886,6 +891,7 @@ model WarehouseBin {
   name      String
   code      String?
   isActive  Boolean @default(true)
+  sortOrder Int @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1524,6 +1530,7 @@ model PaymentMethod {
 
   name      String
   isActive  Boolean @default(true)
+  sortOrder Int @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1540,6 +1547,7 @@ model SaleType {
 
   name      String
   isActive  Boolean @default(true)
+  sortOrder Int @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1556,6 +1564,7 @@ model PurchaseType {
 
   name      String
   isActive  Boolean @default(true)
+  sortOrder Int @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

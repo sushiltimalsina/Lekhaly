@@ -18,3 +18,7 @@ export declare const VatReportQuerySchema: z.ZodObject<{
     to: z.ZodOptional<z.ZodCoercedDate<unknown>>;
     toBs: z.ZodOptional<z.ZodString>;
 }, z.core.$strip>;
+export declare const ReorderSchema: z.ZodArray<z.ZodObject<{
+    id: z.ZodString;
+    sortOrder: z.ZodNumber;
+}, z.core.$strip>>;

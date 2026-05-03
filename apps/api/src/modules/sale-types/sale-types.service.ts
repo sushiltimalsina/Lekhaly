@@ -23,9 +23,20 @@ export class SaleTypesService {
     }
     const data = await this.prisma.saleType.findMany({
       where,
-      orderBy: { name: "desc" },
+      orderBy: [{ sortOrder: "asc" }, { name: "desc" }],
       take: query.take || 50,
     });
     return { data };
+  }
+
+  async updateSortOrder(user: AuthUser, data: { id: string; sortOrder: number }[]) {
+    const queries = data.map((item) =>
+      this.prisma.saleType.update({
+        where: { id: item.id, companyId: user.companyId },
+        data: { sortOrder: item.sortOrder },
+      }),
+    );
+    await this.prisma.$transaction(queries);
+    return { success: true };
   }
 }

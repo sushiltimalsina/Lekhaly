@@ -15,3 +15,7 @@ export async function updatePurchaseType(id: string, data: { name?: string; isAc
 export async function deletePurchaseType(id: string) {
   return apiClient.delete(`/purchase-types/${id}`);
 }
+
+export async function reorderPurchaseTypes(items: { id: string; sortOrder: number }[]) {
+  return apiClient.patch("/purchase-types/reorder", items);
+}

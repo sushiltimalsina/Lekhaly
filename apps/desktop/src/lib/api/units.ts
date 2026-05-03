@@ -1,4 +1,4 @@
-// apps/web/src/lib/api/units.ts
+// apps/desktop/src/lib/api/units.ts
 
 import { apiRequest } from "./client";
 
@@ -35,5 +35,13 @@ export async function deleteUnit(id: string) {
   return apiRequest<void>({
     method: "DELETE",
     path: `/units/${id}`,
+  });
+}
+
+export async function reorderUnits(items: { id: string; sortOrder: number }[]) {
+  return apiRequest<void>({
+    method: "PATCH",
+    path: "/units/reorder",
+    body: items,
   });
 }

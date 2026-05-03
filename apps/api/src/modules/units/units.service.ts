@@ -46,10 +46,21 @@ export class UnitsService {
 
     return this.prisma.unit.findMany({
       where,
-      orderBy: { name: "desc" },
+      orderBy: [{ sortOrder: "asc" }, { name: "desc" }],
       skip: filters.skip || 0,
       take: filters.take || 100
     });
+  }
+
+  async updateSortOrder(user: AuthUser, data: { id: string; sortOrder: number }[]) {
+    const queries = data.map((item) =>
+      this.prisma.unit.update({
+        where: { id: item.id, companyId: user.companyId },
+        data: { sortOrder: item.sortOrder },
+      }),
+    );
+    await this.prisma.$transaction(queries);
+    return { success: true };
   }
 
   async remove(user: AuthUser, id: string) {

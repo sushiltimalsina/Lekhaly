@@ -27,6 +27,9 @@ let TaxesController = class TaxesController {
     list(user, query) {
         return this.taxes.list(user, query);
     }
+    reorder(user, body) {
+        return this.taxes.updateSortOrder(user, body);
+    }
     create(user, body) {
         return this.taxes.create(user, body);
     }
@@ -56,6 +59,15 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", void 0)
 ], TaxesController.prototype, "list", null);
+__decorate([
+    (0, common_1.Patch)("reorder"),
+    (0, auth_decorator_1.RequirePerm)("settings.tax"),
+    __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Body)(new zod_pipe_1.ZodValidationPipe(tax_schemas_1.ReorderSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], TaxesController.prototype, "reorder", null);
 __decorate([
     (0, common_1.Post)(),
     (0, auth_decorator_1.RequirePerm)("settings.tax"),

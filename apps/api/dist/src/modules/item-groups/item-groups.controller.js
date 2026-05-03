@@ -26,6 +26,9 @@ let ItemGroupsController = class ItemGroupsController {
     create(user, body) {
         return this.groups.create(user, body);
     }
+    reorder(user, body) {
+        return this.groups.updateSortOrder(user, body);
+    }
     update(user, id, body) {
         return this.groups.update(user, id, body);
     }
@@ -46,6 +49,15 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", void 0)
 ], ItemGroupsController.prototype, "create", null);
+__decorate([
+    (0, common_1.Patch)("reorder"),
+    (0, auth_decorator_1.RequirePerm)("masters.write"),
+    __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Body)(new zod_pipe_1.ZodValidationPipe(item_group_schemas_1.ReorderSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], ItemGroupsController.prototype, "reorder", null);
 __decorate([
     (0, common_1.Patch)(":id"),
     (0, auth_decorator_1.RequirePerm)("masters.write"),

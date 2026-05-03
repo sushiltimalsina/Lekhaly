@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query } from "@nestjs/common";
 import { Audit } from "../../common/audit/audit.decorator";
 import { CurrentUser, RequirePerm, RequireStep } from "../../common/auth/auth.decorator";
 import { ZodValidationPipe } from "../../common/zod/zod.pipe";
@@ -7,7 +7,8 @@ import {
   AssignRoleUserSchema,
   CreateRoleSchema,
   RoleListQuerySchema,
-  UpdateRoleSchema
+  UpdateRoleSchema,
+  ReorderSchema
 } from "./dto/roles.schemas";
 import { RolesService } from "./roles.service";
 
@@ -23,6 +24,12 @@ export class RolesController {
     @Query(new ZodValidationPipe(RoleListQuerySchema)) query: any
   ) {
     return this.roles.list(user, query);
+  }
+
+  @Patch("reorder")
+  @RequirePerm("settings.security")
+  reorder(@CurrentUser() user: AuthUser, @Body(new ZodValidationPipe(ReorderSchema)) body: any) {
+    return this.roles.updateSortOrder(user, body);
   }
 
   @Get("permissions")

@@ -18,6 +18,7 @@ import {
   UpdateBinSchema,
   UpdateWarehouseSchema,
   WarehouseListQuerySchema,
+  ReorderSchema,
 } from "./dto/warehouse.schemas";
 import { WarehousesService } from "./warehouses.service";
 
@@ -48,6 +49,15 @@ export class WarehousesController {
   @RequirePerm("masters.read")
   get(@CurrentUser() user: AuthUser, @Param("id") id: string) {
     return this.warehouses.get(user, id);
+  }
+
+  @Patch("reorder")
+  @RequirePerm("masters.write")
+  reorder(
+    @CurrentUser() user: AuthUser,
+    @Body(new ZodValidationPipe(ReorderSchema)) body: any
+  ) {
+    return this.warehouses.updateSortOrder(user, body);
   }
 
   @Patch(":id")
@@ -85,6 +95,15 @@ export class WarehousesController {
     @Param("id") warehouseId: string
   ) {
     return this.warehouses.listBins(user, warehouseId);
+  }
+
+  @Patch("bins/reorder")
+  @RequirePerm("masters.write")
+  reorderBins(
+    @CurrentUser() user: AuthUser,
+    @Body(new ZodValidationPipe(ReorderSchema)) body: any
+  ) {
+    return this.warehouses.updateBinSortOrder(user, body);
   }
 
   @Patch("bins/:binId")

@@ -27,6 +27,9 @@ let RolesController = class RolesController {
     list(user, query) {
         return this.roles.list(user, query);
     }
+    reorder(user, body) {
+        return this.roles.updateSortOrder(user, body);
+    }
     permissions() {
         return this.roles.listPermissions();
     }
@@ -59,6 +62,15 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", void 0)
 ], RolesController.prototype, "list", null);
+__decorate([
+    (0, common_1.Patch)("reorder"),
+    (0, auth_decorator_1.RequirePerm)("settings.security"),
+    __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Body)(new zod_pipe_1.ZodValidationPipe(roles_schemas_1.ReorderSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], RolesController.prototype, "reorder", null);
 __decorate([
     (0, common_1.Get)("permissions"),
     (0, auth_decorator_1.RequirePerm)("settings.security"),

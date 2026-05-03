@@ -15,3 +15,7 @@ export declare const RoleListQuerySchema: z.ZodObject<{
 export declare const AssignRoleUserSchema: z.ZodObject<{
     userId: z.ZodString;
 }, z.core.$strip>;
+export declare const ReorderSchema: z.ZodArray<z.ZodObject<{
+    id: z.ZodString;
+    sortOrder: z.ZodNumber;
+}, z.core.$strip>>;

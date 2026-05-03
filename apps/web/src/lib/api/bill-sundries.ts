@@ -55,3 +55,11 @@ export async function deleteBillSundry(id: string) {
         path: `/bill-sundries/${id}`,
     });
 }
+
+export async function reorderBillSundries(items: { id: string; sortOrder: number }[]) {
+    return apiRequest<void>({
+        method: "PATCH",
+        path: "/bill-sundries/reorder",
+        body: items,
+    });
+}

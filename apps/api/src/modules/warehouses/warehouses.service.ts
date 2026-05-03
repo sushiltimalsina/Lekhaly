@@ -73,9 +73,9 @@ export class WarehousesService {
 
     const warehouses = await this.prisma.warehouse.findMany({
       where,
-      orderBy: { name: "desc" },
+      orderBy: [{ sortOrder: "asc" }, { name: "desc" }],
       include: {
-        bins: { where: { isActive: true }, orderBy: { name: "desc" } },
+        bins: { where: { isActive: true }, orderBy: [{ sortOrder: "asc" }, { name: "desc" }] },
         _count: { select: { bins: true, stockLedger: true } },
       },
     });
@@ -115,7 +115,7 @@ export class WarehousesService {
     const warehouse = await this.prisma.warehouse.findFirst({
       where: { id, companyId: user.companyId },
       include: {
-        bins: { orderBy: { name: "desc" } },
+        bins: { orderBy: [{ sortOrder: "asc" }, { name: "desc" }] },
         _count: { select: { bins: true, stockLedger: true } },
       },
     });
@@ -141,6 +141,17 @@ export class WarehousesService {
     }
 
     return this.prisma.warehouse.delete({ where: { id } });
+  }
+
+  async updateSortOrder(user: AuthUser, data: { id: string; sortOrder: number }[]) {
+    const queries = data.map((item) =>
+      this.prisma.warehouse.update({
+        where: { id: item.id, companyId: user.companyId },
+        data: { sortOrder: item.sortOrder },
+      }),
+    );
+    await this.prisma.$transaction(queries);
+    return { success: true };
   }
 
   // ─── Bin CRUD ──────────────────────────────────────────────
@@ -210,8 +221,19 @@ export class WarehousesService {
 
     return this.prisma.warehouseBin.findMany({
       where: { warehouseId, companyId: user.companyId },
-      orderBy: { name: "desc" },
+      orderBy: [{ sortOrder: "asc" }, { name: "desc" }],
     });
+  }
+
+  async updateBinSortOrder(user: AuthUser, data: { id: string; sortOrder: number }[]) {
+    const queries = data.map((item) =>
+      this.prisma.warehouseBin.update({
+        where: { id: item.id, companyId: user.companyId },
+        data: { sortOrder: item.sortOrder },
+      }),
+    );
+    await this.prisma.$transaction(queries);
+    return { success: true };
   }
 
   async removeBin(user: AuthUser, binId: string) {

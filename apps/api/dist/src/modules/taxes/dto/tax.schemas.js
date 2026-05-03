@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.VatReportQuerySchema = exports.TaxListQuerySchema = exports.TaxCodeSchema = void 0;
+exports.ReorderSchema = exports.VatReportQuerySchema = exports.TaxListQuerySchema = exports.TaxCodeSchema = void 0;
 const zod_1 = require("zod");
 exports.TaxCodeSchema = zod_1.z.object({
     name: zod_1.z.string().trim().min(2).max(100),
@@ -21,4 +21,8 @@ exports.VatReportQuerySchema = zod_1.z.object({
     to: zod_1.z.coerce.date().optional(),
     toBs: zod_1.z.string().trim().max(20).optional()
 });
+exports.ReorderSchema = zod_1.z.array(zod_1.z.object({
+    id: zod_1.z.string().uuid(),
+    sortOrder: zod_1.z.number().int(),
+}));
 //# sourceMappingURL=tax.schemas.js.map

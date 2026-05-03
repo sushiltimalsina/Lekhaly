@@ -37,3 +37,11 @@ export async function deleteUnit(id: string) {
     path: `/units/${id}`,
   });
 }
+
+export async function reorderUnits(items: { id: string; sortOrder: number }[]) {
+  return apiRequest<void>({
+    method: "PATCH",
+    path: "/units/reorder",
+    body: items,
+  });
+}

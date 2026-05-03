@@ -1,9 +1,9 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query } from "@nestjs/common";
 import { Audit } from "../../common/audit/audit.decorator";
 import { CurrentUser, RequirePerm } from "../../common/auth/auth.decorator";
 import { ZodValidationPipe } from "../../common/zod/zod.pipe";
 import type { AuthUser } from "../../common/auth/auth.types";
-import { TaxCodeSchema, TaxListQuerySchema, VatReportQuerySchema } from "./dto/tax.schemas";
+import { TaxCodeSchema, TaxListQuerySchema, VatReportQuerySchema, ReorderSchema } from "./dto/tax.schemas";
 import { TaxesService } from "./taxes.service";
 
 @Controller("taxes")
@@ -18,6 +18,12 @@ export class TaxesController {
     @Query(new ZodValidationPipe(TaxListQuerySchema)) query: any
   ) {
     return this.taxes.list(user, query);
+  }
+
+  @Patch("reorder")
+  @RequirePerm("settings.tax")
+  reorder(@CurrentUser() user: AuthUser, @Body(new ZodValidationPipe(ReorderSchema)) body: any) {
+    return this.taxes.updateSortOrder(user, body);
   }
 
   @Post()

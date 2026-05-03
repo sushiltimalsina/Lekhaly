@@ -16,6 +16,7 @@ export declare class UsersController {
                 name: string;
                 createdAt: Date;
                 updatedAt: Date;
+                sortOrder: number;
             };
         } & {
             userId: string;
@@ -35,6 +36,7 @@ export declare class UsersController {
                 name: string;
                 createdAt: Date;
                 updatedAt: Date;
+                sortOrder: number;
             };
         } & {
             userId: string;

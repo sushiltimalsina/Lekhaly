@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from "@nestj
 import { CurrentUser, RequirePerm } from "../../common/auth/auth.decorator";
 import { ZodValidationPipe } from "../../common/zod/zod.pipe";
 import type { AuthUser } from "../../common/auth/auth.types";
-import { CreateUnitSchema, ListUnitQuerySchema } from "./dto/unit.schemas";
+import { CreateUnitSchema, ListUnitQuerySchema, ReorderSchema } from "./dto/unit.schemas";
 import { UnitsService } from "./units.service";
 
 @Controller("units")
@@ -13,6 +13,12 @@ export class UnitsController {
   @RequirePerm("masters.write")
   create(@CurrentUser() user: AuthUser, @Body(new ZodValidationPipe(CreateUnitSchema)) body: any) {
     return this.units.create(user, body);
+  }
+
+  @Patch("reorder")
+  @RequirePerm("masters.write")
+  reorder(@CurrentUser() user: AuthUser, @Body(new ZodValidationPipe(ReorderSchema)) body: any) {
+    return this.units.updateSortOrder(user, body);
   }
 
   @Patch(":id")

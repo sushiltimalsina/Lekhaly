@@ -29,3 +29,10 @@ export const WarehouseListQuerySchema = z.object({
   ),
   q: z.string().trim().optional(),
 });
+
+export const ReorderSchema = z.array(
+  z.object({
+    id: z.string().uuid(),
+    sortOrder: z.number().int(),
+  }),
+);

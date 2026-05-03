@@ -62,3 +62,11 @@ export async function updateBin(binId: string, input: { name?: string; code?: st
 export async function deleteBin(binId: string) {
   return apiRequest<WarehouseBin>({ path: `/warehouses/bins/${binId}`, method: "DELETE" });
 }
+
+export async function reorderWarehouses(items: { id: string; sortOrder: number }[]) {
+  return apiRequest<void>({ path: "/warehouses/reorder", method: "PATCH", body: items });
+}
+
+export async function reorderBins(items: { id: string; sortOrder: number }[]) {
+  return apiRequest<void>({ path: "/warehouses/bins/reorder", method: "PATCH", body: items });
+}

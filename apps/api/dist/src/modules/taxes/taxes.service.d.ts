@@ -9,63 +9,74 @@ export declare class TaxesService {
         q?: string;
     }): Promise<{
         id: string;
+        companyId: string;
         name: string;
-        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
+        isActive: boolean;
+        rate: Prisma.Decimal;
+        sortOrder: number;
+        isInclusive: boolean;
         inputTaxAccountId: string | null;
         outputTaxAccountId: string | null;
-        rate: Prisma.Decimal;
-        isInclusive: boolean;
     }[]>;
+    updateSortOrder(user: AuthUser, data: {
+        id: string;
+        sortOrder: number;
+    }[]): Promise<{
+        success: boolean;
+    }>;
     get(user: AuthUser, id: string): Promise<{
         id: string;
+        companyId: string;
         name: string;
-        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
+        isActive: boolean;
+        rate: Prisma.Decimal;
+        sortOrder: number;
+        isInclusive: boolean;
         inputTaxAccountId: string | null;
         outputTaxAccountId: string | null;
-        rate: Prisma.Decimal;
-        isInclusive: boolean;
     }>;
     create(user: AuthUser, input: any): Promise<{
         id: string;
+        companyId: string;
         name: string;
-        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
+        isActive: boolean;
+        rate: Prisma.Decimal;
+        sortOrder: number;
+        isInclusive: boolean;
         inputTaxAccountId: string | null;
         outputTaxAccountId: string | null;
-        rate: Prisma.Decimal;
-        isInclusive: boolean;
     }>;
     update(user: AuthUser, id: string, input: any): Promise<{
         id: string;
+        companyId: string;
         name: string;
-        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
+        isActive: boolean;
+        rate: Prisma.Decimal;
+        sortOrder: number;
+        isInclusive: boolean;
         inputTaxAccountId: string | null;
         outputTaxAccountId: string | null;
-        rate: Prisma.Decimal;
-        isInclusive: boolean;
     }>;
     remove(user: AuthUser, id: string): Promise<{
         id: string;
+        companyId: string;
         name: string;
-        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
+        isActive: boolean;
+        rate: Prisma.Decimal;
+        sortOrder: number;
+        isInclusive: boolean;
         inputTaxAccountId: string | null;
         outputTaxAccountId: string | null;
-        rate: Prisma.Decimal;
-        isInclusive: boolean;
     }>;
     buildVatRegister(companyId: string, from?: Date, to?: Date): Promise<{
         voucherId: string;

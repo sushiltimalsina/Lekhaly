@@ -13,7 +13,21 @@ export class TaxesService {
     if (filters.isActive !== undefined) where.isActive = filters.isActive;
     if (filters.q) where.name = { contains: filters.q, mode: "insensitive" };
 
-    return this.prisma.taxCode.findMany({ where, orderBy: { name: "desc" } });
+    return this.prisma.taxCode.findMany({
+      where,
+      orderBy: [{ sortOrder: "asc" }, { name: "desc" }]
+    });
+  }
+
+  async updateSortOrder(user: AuthUser, data: { id: string; sortOrder: number }[]) {
+    const queries = data.map((item) =>
+      this.prisma.taxCode.update({
+        where: { id: item.id, companyId: user.companyId },
+        data: { sortOrder: item.sortOrder },
+      }),
+    );
+    await this.prisma.$transaction(queries);
+    return { success: true };
   }
 
   async get(user: AuthUser, id: string) {

@@ -15,7 +15,7 @@ export class RolesService {
 
     return this.prisma.role.findMany({
       where,
-      orderBy: { name: "desc" },
+      orderBy: [{ sortOrder: "asc" }, { name: "desc" }],
       skip: filters.skip || 0,
       take: filters.take || 50,
       include: {
@@ -23,6 +23,17 @@ export class RolesService {
         userRoles: { include: { user: { select: { id: true, email: true, name: true, status: true } } } }
       }
     });
+  }
+
+  async updateSortOrder(user: AuthUser, data: { id: string; sortOrder: number }[]) {
+    const queries = data.map((item) =>
+      this.prisma.role.update({
+        where: { id: item.id, companyId: user.companyId },
+        data: { sortOrder: item.sortOrder },
+      }),
+    );
+    await this.prisma.$transaction(queries);
+    return { success: true };
   }
 
   async listPermissions() {

@@ -15,3 +15,7 @@ export async function updateSaleType(id: string, data: { name?: string; isActive
 export async function deleteSaleType(id: string) {
   return apiClient.delete(`/sale-types/${id}`);
 }
+
+export async function reorderSaleTypes(items: { id: string; sortOrder: number }[]) {
+  return apiClient.patch("/sale-types/reorder", items);
+}

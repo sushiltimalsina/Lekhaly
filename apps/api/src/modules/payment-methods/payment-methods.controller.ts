@@ -1,8 +1,8 @@
-import { Body, Controller, Get, Post, Query } from "@nestjs/common";
+import { Body, Controller, Get, Patch, Post, Query } from "@nestjs/common";
 import { CurrentUser, RequirePerm } from "../../common/auth/auth.decorator";
 import { ZodValidationPipe } from "../../common/zod/zod.pipe";
 import type { AuthUser } from "../../common/auth/auth.types";
-import { CreatePaymentMethodSchema, ListPaymentMethodQuerySchema } from "./dto/payment-methods.schemas";
+import { CreatePaymentMethodSchema, ListPaymentMethodQuerySchema, ReorderSchema } from "./dto/payment-methods.schemas";
 import { PaymentMethodsService } from "./payment-methods.service";
 
 @Controller("payment-methods")
@@ -13,6 +13,12 @@ export class PaymentMethodsController {
   @RequirePerm("masters.write")
   create(@CurrentUser() user: AuthUser, @Body(new ZodValidationPipe(CreatePaymentMethodSchema)) body: any) {
     return this.svc.create(user, body);
+  }
+
+  @Patch("reorder")
+  @RequirePerm("masters.write")
+  reorder(@CurrentUser() user: AuthUser, @Body(new ZodValidationPipe(ReorderSchema)) body: any) {
+    return this.svc.updateSortOrder(user, body);
   }
 
   @Get()

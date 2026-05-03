@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AssignRoleUserSchema = exports.RoleListQuerySchema = exports.UpdateRoleSchema = exports.CreateRoleSchema = void 0;
+exports.ReorderSchema = exports.AssignRoleUserSchema = exports.RoleListQuerySchema = exports.UpdateRoleSchema = exports.CreateRoleSchema = void 0;
 const zod_1 = require("zod");
 exports.CreateRoleSchema = zod_1.z.object({
     name: zod_1.z.string().trim().min(2).max(64),
@@ -18,4 +18,8 @@ exports.RoleListQuerySchema = zod_1.z.object({
 exports.AssignRoleUserSchema = zod_1.z.object({
     userId: zod_1.z.string().uuid()
 });
+exports.ReorderSchema = zod_1.z.array(zod_1.z.object({
+    id: zod_1.z.string().uuid(),
+    sortOrder: zod_1.z.number().int(),
+}));
 //# sourceMappingURL=roles.schemas.js.map

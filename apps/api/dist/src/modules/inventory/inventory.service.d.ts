@@ -22,6 +22,8 @@ export declare class InventoryService {
     }): Promise<{
         id: string;
         companyId: string;
+        createdAt: Date;
+        updatedAt: Date;
         inventoryTrackingEnabled: boolean;
         warehousesEnabled: boolean;
         binsEnabled: boolean;
@@ -34,8 +36,6 @@ export declare class InventoryService {
         requireWarehouseOnMovements: boolean;
         defaultWarehouseId: string | null;
         costingMethod: string;
-        createdAt: Date;
-        updatedAt: Date;
     }>;
     private assertSettingsCanChange;
     private normalizeSerialNumbers;
@@ -204,12 +204,12 @@ export declare class InventoryService {
     } & {
         id: string;
         companyId: string;
+        status: string;
         createdAt: Date;
         updatedAt: Date;
         itemId: string;
         warehouseId: string | null;
         binId: string | null;
-        status: string;
         serialNo: string;
         purchaseInvoiceId: string | null;
         salesInvoiceId: string | null;

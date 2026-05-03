@@ -19,3 +19,10 @@ export const RoleListQuerySchema = z.object({
 export const AssignRoleUserSchema = z.object({
   userId: z.string().uuid()
 });
+
+export const ReorderSchema = z.array(
+  z.object({
+    id: z.string().uuid(),
+    sortOrder: z.number().int(),
+  }),
+);

@@ -140,12 +140,14 @@ export declare class AuthService {
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
         }[] | {
             id: string;
             companyId: string;
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
         }[] | {
             id: string;
             companyId: string;
@@ -539,6 +541,7 @@ export declare class AuthService {
             updatedAt: Date;
             isActive: boolean;
             rate: Prisma.Decimal;
+            sortOrder: number;
             isInclusive: boolean;
             inputTaxAccountId: string | null;
             outputTaxAccountId: string | null;
@@ -550,6 +553,7 @@ export declare class AuthService {
             updatedAt: Date;
             isActive: boolean;
             rate: Prisma.Decimal;
+            sortOrder: number;
             isInclusive: boolean;
             inputTaxAccountId: string | null;
             outputTaxAccountId: string | null;
@@ -587,6 +591,7 @@ export declare class AuthService {
             accountId: string | null;
             isActive: boolean;
             rate: Prisma.Decimal | null;
+            sortOrder: number;
         } | {
             id: string;
             companyId: string;
@@ -597,6 +602,7 @@ export declare class AuthService {
             accountId: string | null;
             isActive: boolean;
             rate: Prisma.Decimal | null;
+            sortOrder: number;
         })[] | ({
             id: string;
             companyId: string;
@@ -641,6 +647,7 @@ export declare class AuthService {
             updatedAt: Date;
             code: string | null;
             isActive: boolean;
+            sortOrder: number;
         } | {
             id: string;
             companyId: string;
@@ -649,6 +656,7 @@ export declare class AuthService {
             updatedAt: Date;
             code: string | null;
             isActive: boolean;
+            sortOrder: number;
         })[] | ({
             id: string;
             companyId: string;
@@ -657,6 +665,7 @@ export declare class AuthService {
             updatedAt: Date;
             code: string | null;
             isActive: boolean;
+            sortOrder: number;
             warehouseId: string;
         } | {
             id: string;
@@ -666,6 +675,7 @@ export declare class AuthService {
             updatedAt: Date;
             code: string | null;
             isActive: boolean;
+            sortOrder: number;
             warehouseId: string;
         })[] | ({
             id: string;
@@ -673,36 +683,42 @@ export declare class AuthService {
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
         } | {
             id: string;
             companyId: string;
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
         })[] | ({
             id: string;
             companyId: string;
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
         } | {
             id: string;
             companyId: string;
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
         })[] | ({
             id: string;
             companyId: string;
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
         } | {
             id: string;
             companyId: string;
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
         })[] | ({
             id: string;
             companyId: string;
@@ -1132,6 +1148,7 @@ export declare class AuthService {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+            sortOrder: number;
         } | {
             id: string;
             companyId: string;
@@ -1139,6 +1156,7 @@ export declare class AuthService {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+            sortOrder: number;
         })[] | ({
             id: string;
             companyId: string;
@@ -1146,6 +1164,7 @@ export declare class AuthService {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+            sortOrder: number;
         } | {
             id: string;
             companyId: string;
@@ -1153,6 +1172,7 @@ export declare class AuthService {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+            sortOrder: number;
         })[] | ({
             id: string;
             companyId: string;
@@ -1160,6 +1180,7 @@ export declare class AuthService {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+            sortOrder: number;
         } | {
             id: string;
             companyId: string;
@@ -1167,6 +1188,7 @@ export declare class AuthService {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+            sortOrder: number;
         })[] | ({
             id: string;
             companyId: string;
@@ -1305,6 +1327,7 @@ export declare class AuthService {
             updatedAt: Date;
             isActive: boolean;
             rate: Prisma.Decimal;
+            sortOrder: number;
             isInclusive: boolean;
             inputTaxAccountId: string | null;
             outputTaxAccountId: string | null;
@@ -1330,6 +1353,7 @@ export declare class AuthService {
             accountId: string | null;
             isActive: boolean;
             rate: Prisma.Decimal | null;
+            sortOrder: number;
         }[] | {
             id: string;
             companyId: string;
@@ -1338,6 +1362,7 @@ export declare class AuthService {
             updatedAt: Date;
             code: string | null;
             isActive: boolean;
+            sortOrder: number;
         }[] | {
             id: string;
             companyId: string;
@@ -1346,6 +1371,7 @@ export declare class AuthService {
             updatedAt: Date;
             code: string | null;
             isActive: boolean;
+            sortOrder: number;
             warehouseId: string;
         }[] | {
             id: string;
@@ -1353,6 +1379,7 @@ export declare class AuthService {
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
         }[] | {
             id: string;
             companyId: string;
@@ -1571,6 +1598,7 @@ export declare class AuthService {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+            sortOrder: number;
         }[] | {
             id: string;
             companyId: string;
@@ -1578,6 +1606,7 @@ export declare class AuthService {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+            sortOrder: number;
         }[] | {
             id: string;
             companyId: string;
@@ -1585,6 +1614,7 @@ export declare class AuthService {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+            sortOrder: number;
         }[] | {
             id: string;
             companyId: string;
@@ -1742,12 +1772,14 @@ export declare class AuthService {
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
         }[] | {
             id: string;
             companyId: string;
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
         }[] | {
             id: string;
             companyId: string;
@@ -2141,6 +2173,7 @@ export declare class AuthService {
             updatedAt: Date;
             isActive: boolean;
             rate: Prisma.Decimal;
+            sortOrder: number;
             isInclusive: boolean;
             inputTaxAccountId: string | null;
             outputTaxAccountId: string | null;
@@ -2152,6 +2185,7 @@ export declare class AuthService {
             updatedAt: Date;
             isActive: boolean;
             rate: Prisma.Decimal;
+            sortOrder: number;
             isInclusive: boolean;
             inputTaxAccountId: string | null;
             outputTaxAccountId: string | null;
@@ -2189,6 +2223,7 @@ export declare class AuthService {
             accountId: string | null;
             isActive: boolean;
             rate: Prisma.Decimal | null;
+            sortOrder: number;
         } | {
             id: string;
             companyId: string;
@@ -2199,6 +2234,7 @@ export declare class AuthService {
             accountId: string | null;
             isActive: boolean;
             rate: Prisma.Decimal | null;
+            sortOrder: number;
         })[] | ({
             id: string;
             companyId: string;
@@ -2243,6 +2279,7 @@ export declare class AuthService {
             updatedAt: Date;
             code: string | null;
             isActive: boolean;
+            sortOrder: number;
         } | {
             id: string;
             companyId: string;
@@ -2251,6 +2288,7 @@ export declare class AuthService {
             updatedAt: Date;
             code: string | null;
             isActive: boolean;
+            sortOrder: number;
         })[] | ({
             id: string;
             companyId: string;
@@ -2259,6 +2297,7 @@ export declare class AuthService {
             updatedAt: Date;
             code: string | null;
             isActive: boolean;
+            sortOrder: number;
             warehouseId: string;
         } | {
             id: string;
@@ -2268,6 +2307,7 @@ export declare class AuthService {
             updatedAt: Date;
             code: string | null;
             isActive: boolean;
+            sortOrder: number;
             warehouseId: string;
         })[] | ({
             id: string;
@@ -2275,36 +2315,42 @@ export declare class AuthService {
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
         } | {
             id: string;
             companyId: string;
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
         })[] | ({
             id: string;
             companyId: string;
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
         } | {
             id: string;
             companyId: string;
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
         })[] | ({
             id: string;
             companyId: string;
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
         } | {
             id: string;
             companyId: string;
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
         })[] | ({
             id: string;
             companyId: string;
@@ -2734,6 +2780,7 @@ export declare class AuthService {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+            sortOrder: number;
         } | {
             id: string;
             companyId: string;
@@ -2741,6 +2788,7 @@ export declare class AuthService {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+            sortOrder: number;
         })[] | ({
             id: string;
             companyId: string;
@@ -2748,6 +2796,7 @@ export declare class AuthService {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+            sortOrder: number;
         } | {
             id: string;
             companyId: string;
@@ -2755,6 +2804,7 @@ export declare class AuthService {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+            sortOrder: number;
         })[] | ({
             id: string;
             companyId: string;
@@ -2762,6 +2812,7 @@ export declare class AuthService {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+            sortOrder: number;
         } | {
             id: string;
             companyId: string;
@@ -2769,6 +2820,7 @@ export declare class AuthService {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+            sortOrder: number;
         })[] | ({
             id: string;
             companyId: string;
@@ -2907,6 +2959,7 @@ export declare class AuthService {
             updatedAt: Date;
             isActive: boolean;
             rate: Prisma.Decimal;
+            sortOrder: number;
             isInclusive: boolean;
             inputTaxAccountId: string | null;
             outputTaxAccountId: string | null;
@@ -2932,6 +2985,7 @@ export declare class AuthService {
             accountId: string | null;
             isActive: boolean;
             rate: Prisma.Decimal | null;
+            sortOrder: number;
         }[] | {
             id: string;
             companyId: string;
@@ -2940,6 +2994,7 @@ export declare class AuthService {
             updatedAt: Date;
             code: string | null;
             isActive: boolean;
+            sortOrder: number;
         }[] | {
             id: string;
             companyId: string;
@@ -2948,6 +3003,7 @@ export declare class AuthService {
             updatedAt: Date;
             code: string | null;
             isActive: boolean;
+            sortOrder: number;
             warehouseId: string;
         }[] | {
             id: string;
@@ -2955,6 +3011,7 @@ export declare class AuthService {
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
         }[] | {
             id: string;
             companyId: string;
@@ -3173,6 +3230,7 @@ export declare class AuthService {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+            sortOrder: number;
         }[] | {
             id: string;
             companyId: string;
@@ -3180,6 +3238,7 @@ export declare class AuthService {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+            sortOrder: number;
         }[] | {
             id: string;
             companyId: string;
@@ -3187,6 +3246,7 @@ export declare class AuthService {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+            sortOrder: number;
         }[] | {
             id: string;
             companyId: string;

@@ -5,30 +5,37 @@ export declare class UnitsController {
     constructor(units: UnitsService);
     create(user: AuthUser, body: any): Promise<{
         id: string;
+        companyId: string;
         name: string;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
+        sortOrder: number;
+    }>;
+    reorder(user: AuthUser, body: any): Promise<{
+        success: boolean;
     }>;
     update(user: AuthUser, id: string, body: any): Promise<{
         id: string;
+        companyId: string;
         name: string;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
+        sortOrder: number;
     }>;
     list(user: AuthUser, query: any): Promise<{
         id: string;
+        companyId: string;
         name: string;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
+        sortOrder: number;
     }[]>;
     remove(user: AuthUser, id: string): Promise<{
         id: string;
+        companyId: string;
         name: string;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
+        sortOrder: number;
     }>;
 }

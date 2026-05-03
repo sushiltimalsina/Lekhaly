@@ -50,8 +50,16 @@ export async function updateBillSundry(id: string, input: BillSundryInput) {
 }
 
 export async function deleteBillSundry(id: string) {
-    return apiRequest<any>({
-        method: "DELETE",
-        path: `/bill-sundries/${id}`,
-    });
+  return apiRequest<void>({
+    method: "DELETE",
+    path: `/bill-sundries/${id}`,
+  });
+}
+
+export async function reorderBillSundries(items: { id: string; sortOrder: number }[]) {
+  return apiRequest<void>({
+    method: "PATCH",
+    path: "/bill-sundries/reorder",
+    body: items,
+  });
 }

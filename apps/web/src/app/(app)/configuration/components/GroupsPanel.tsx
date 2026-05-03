@@ -4,6 +4,7 @@ import * as React from "react";
 import { Layers, ChevronDown, ChevronRight, Search, Plus, Pencil, Trash2 } from "lucide-react";
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, Input } from "@lekhaly/ui";
 import { cn } from "@/lib/utils";
+import { SortableList } from "@/components/app/sortable-list";
 import type { ItemGroupRecord } from "@/lib/api/item-groups";
 
 interface GroupsPanelProps {
@@ -15,6 +16,7 @@ interface GroupsPanelProps {
   onAdd: () => void;
   onEdit: (group: ItemGroupRecord) => void;
   onRemove: (id: string) => void;
+  onReorder?: (groups: ItemGroupRecord[]) => void;
   focus?: boolean;
   forwardedRef?: React.RefObject<HTMLDivElement | null>;
 }
@@ -28,6 +30,7 @@ export function GroupsPanel({
   onAdd,
   onEdit,
   onRemove,
+  onReorder,
   focus,
   forwardedRef
 }: GroupsPanelProps) {
@@ -73,31 +76,36 @@ export function GroupsPanel({
             {loading ? (
               <div className="py-8 text-center text-sm text-muted-foreground">Loading groups...</div>
             ) : filtered.length ? (
-              filtered.map(g => (
-                <div key={g.id} className="flex items-center justify-between rounded-2xl border bg-muted/20 px-4 py-3 text-sm transition-all hover:bg-muted/40 text-foreground">
-                  <span className="font-medium">{g.name}</span>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onEdit(g)}
-                      disabled={busy}
-                      className="h-8 w-8 text-orange-600 hover:bg-orange-50 hover:text-orange-700 dark:hover:bg-orange-950/30"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onRemove(g.id)}
-                      disabled={busy}
-                      className="h-8 w-8 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+              <SortableList
+                items={filtered}
+                getId={(g) => g.id}
+                onReorder={(newItems) => onReorder?.(newItems)}
+                renderItem={(g) => (
+                  <div className="flex w-full items-center justify-between rounded-2xl border bg-muted/20 px-4 py-3 text-sm transition-all hover:bg-muted/40 text-foreground">
+                    <span className="font-medium">{g.name}</span>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onEdit(g)}
+                        disabled={busy}
+                        className="h-8 w-8 text-orange-600 hover:bg-orange-50 hover:text-orange-700 dark:hover:bg-orange-950/30"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onRemove(g.id)}
+                        disabled={busy}
+                        className="h-8 w-8 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ))
+                )}
+              />
             ) : (
               <div className="py-8 text-center text-sm text-muted-foreground border-2 border-dashed rounded-2xl">
                 {q ? `No groups matching "${q}"` : "No groups added yet."}

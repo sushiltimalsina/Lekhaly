@@ -7,3 +7,7 @@ export declare const ListUnitQuerySchema: z.ZodObject<{
     skip: z.ZodOptional<z.ZodCoercedNumber<unknown>>;
     take: z.ZodOptional<z.ZodCoercedNumber<unknown>>;
 }, z.core.$strip>;
+export declare const ReorderSchema: z.ZodArray<z.ZodObject<{
+    id: z.ZodString;
+    sortOrder: z.ZodNumber;
+}, z.core.$strip>>;

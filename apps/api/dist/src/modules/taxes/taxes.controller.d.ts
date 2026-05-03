@@ -5,63 +5,71 @@ export declare class TaxesController {
     constructor(taxes: TaxesService);
     list(user: AuthUser, query: any): Promise<{
         id: string;
+        companyId: string;
         name: string;
-        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
+        isActive: boolean;
+        rate: import("@prisma/client/runtime/client").Decimal;
+        sortOrder: number;
+        isInclusive: boolean;
         inputTaxAccountId: string | null;
         outputTaxAccountId: string | null;
-        rate: import("@prisma/client/runtime/client").Decimal;
-        isInclusive: boolean;
     }[]>;
+    reorder(user: AuthUser, body: any): Promise<{
+        success: boolean;
+    }>;
     create(user: AuthUser, body: any): Promise<{
         id: string;
+        companyId: string;
         name: string;
-        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
+        isActive: boolean;
+        rate: import("@prisma/client/runtime/client").Decimal;
+        sortOrder: number;
+        isInclusive: boolean;
         inputTaxAccountId: string | null;
         outputTaxAccountId: string | null;
-        rate: import("@prisma/client/runtime/client").Decimal;
-        isInclusive: boolean;
     }>;
     get(user: AuthUser, id: string): Promise<{
         id: string;
+        companyId: string;
         name: string;
-        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
+        isActive: boolean;
+        rate: import("@prisma/client/runtime/client").Decimal;
+        sortOrder: number;
+        isInclusive: boolean;
         inputTaxAccountId: string | null;
         outputTaxAccountId: string | null;
-        rate: import("@prisma/client/runtime/client").Decimal;
-        isInclusive: boolean;
     }>;
     update(user: AuthUser, id: string, body: any): Promise<{
         id: string;
+        companyId: string;
         name: string;
-        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
+        isActive: boolean;
+        rate: import("@prisma/client/runtime/client").Decimal;
+        sortOrder: number;
+        isInclusive: boolean;
         inputTaxAccountId: string | null;
         outputTaxAccountId: string | null;
-        rate: import("@prisma/client/runtime/client").Decimal;
-        isInclusive: boolean;
     }>;
     remove(user: AuthUser, id: string): Promise<{
         id: string;
+        companyId: string;
         name: string;
-        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
+        isActive: boolean;
+        rate: import("@prisma/client/runtime/client").Decimal;
+        sortOrder: number;
+        isInclusive: boolean;
         inputTaxAccountId: string | null;
         outputTaxAccountId: string | null;
-        rate: import("@prisma/client/runtime/client").Decimal;
-        isInclusive: boolean;
     }>;
     vatReport(user: AuthUser, query: any): Promise<{
         rows: {

@@ -48,10 +48,18 @@ let ItemGroupsService = class ItemGroupsService {
             where.name = { contains: filters.q, mode: "insensitive" };
         return this.prisma.itemGroup.findMany({
             where,
-            orderBy: { name: "desc" },
+            orderBy: [{ sortOrder: "asc" }, { name: "desc" }],
             skip: filters.skip || 0,
             take: filters.take || 200
         });
+    }
+    async updateSortOrder(user, data) {
+        const queries = data.map((item) => this.prisma.itemGroup.update({
+            where: { id: item.id, companyId: user.companyId },
+            data: { sortOrder: item.sortOrder },
+        }));
+        await this.prisma.$transaction(queries);
+        return { success: true };
     }
     async remove(user, id) {
         const group = await this.prisma.itemGroup.findFirst({

@@ -1,12 +1,13 @@
 import * as React from "react";
 import PageHeader from "@/components/app/page-header";
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Switch } from "@lekhaly/ui";
-import { deleteUnit, listUnits, type UnitRecord } from "@/lib/api/units";
-import { deleteItemGroup, listItemGroups, type ItemGroupRecord } from "@/lib/api/item-groups";
-import { listBillSundries, deleteBillSundry, type BillSundryRecord } from "@/lib/api/bill-sundries";
-import { listPaymentMethods, deletePaymentMethod } from "@/lib/api/payment-methods";
-import { listSaleTypes, deleteSaleType } from "@/lib/api/sale-types";
-import { listPurchaseTypes, deletePurchaseType } from "@/lib/api/purchase-types";
+import { deleteUnit, listUnits, reorderUnits, type UnitRecord } from "@/lib/api/units";
+import { deleteItemGroup, listItemGroups, reorderItemGroups, type ItemGroupRecord } from "@/lib/api/item-groups";
+import { listBillSundries, deleteBillSundry, reorderBillSundries, type BillSundryRecord } from "@/lib/api/bill-sundries";
+import { listPaymentMethods, deletePaymentMethod, reorderPaymentMethods } from "@/lib/api/payment-methods";
+import { listSaleTypes, deleteSaleType, reorderSaleTypes } from "@/lib/api/sale-types";
+import { listPurchaseTypes, deletePurchaseType, reorderPurchaseTypes } from "@/lib/api/purchase-types";
+import { SortableList } from "@/components/app/sortable-list";
 import { Trash2, Ruler, Layers, Calculator, Plus, AlertCircle, ChevronDown, ChevronRight, Search, Pencil, Monitor, Hash, Shield, CreditCard, Calendar, Tag, ShoppingBag, PackageCheck } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -214,9 +215,9 @@ export default function ConfigurationPage() {
       setUnits(normalizeList<UnitRecord>(uRes));
       setGroups(normalizeList<ItemGroupRecord>(gRes));
       setSundries(normalizeList<BillSundryRecord>(sRes));
-      setPaymentMethods(normalizeList<any>(pmRes).sort((a, b) => b.name.localeCompare(a.name)));
-      setSaleTypes(normalizeList<any>(stRes).sort((a, b) => b.name.localeCompare(a.name)));
-      setPurchaseTypes(normalizeList<any>(ptRes).sort((a, b) => b.name.localeCompare(a.name)));
+      setPaymentMethods(normalizeList<any>(pmRes));
+      setSaleTypes(normalizeList<any>(stRes));
+      setPurchaseTypes(normalizeList<any>(ptRes));
       setCompany(cRes);
       setCompanyForm(cRes);
       setInventorySettings(invRes);
@@ -378,6 +379,66 @@ export default function ConfigurationPage() {
     }
   };
 
+  const handleReorderUnits = async (newUnits: UnitRecord[]) => {
+    setUnits(newUnits);
+    try {
+      await reorderUnits(newUnits.map((u, i) => ({ id: u.id, sortOrder: i })));
+    } catch (e: any) {
+      setError(e.message);
+      fetchData(); // Rollback
+    }
+  };
+
+  const handleReorderGroups = async (newGroups: ItemGroupRecord[]) => {
+    setGroups(newGroups);
+    try {
+      await reorderItemGroups(newGroups.map((g, i) => ({ id: g.id, sortOrder: i })));
+    } catch (e: any) {
+      setError(e.message);
+      fetchData(); // Rollback
+    }
+  };
+
+  const handleReorderSundries = async (newSundries: BillSundryRecord[]) => {
+    setSundries(newSundries);
+    try {
+      await reorderBillSundries(newSundries.map((s, i) => ({ id: s.id, sortOrder: i })));
+    } catch (e: any) {
+      setError(e.message);
+      fetchData(); // Rollback
+    }
+  };
+
+  const handleReorderPaymentMethods = async (newItems: any[]) => {
+    setPaymentMethods(newItems);
+    try {
+      await reorderPaymentMethods(newItems.map((pm, i) => ({ id: pm.id, sortOrder: i })));
+    } catch (e: any) {
+      setError(e.message);
+      fetchData(); // Rollback
+    }
+  };
+
+  const handleReorderSaleTypes = async (newItems: any[]) => {
+    setSaleTypes(newItems);
+    try {
+      await reorderSaleTypes(newItems.map((st, i) => ({ id: st.id, sortOrder: i })));
+    } catch (e: any) {
+      setError(e.message);
+      fetchData(); // Rollback
+    }
+  };
+
+  const handleReorderPurchaseTypes = async (newItems: any[]) => {
+    setPurchaseTypes(newItems);
+    try {
+      await reorderPurchaseTypes(newItems.map((pt, i) => ({ id: pt.id, sortOrder: i })));
+    } catch (e: any) {
+      setError(e.message);
+      fetchData(); // Rollback
+    }
+  };
+
   const filteredUnits = units.filter(u => u.name.toLowerCase().includes(qUnits.toLowerCase()));
   const filteredGroups = groups.filter(g => g.name.toLowerCase().includes(qGroups.toLowerCase()));
   const filteredSundries = sundries.filter(s => s.name.toLowerCase().includes(qSundries.toLowerCase()));
@@ -443,31 +504,36 @@ export default function ConfigurationPage() {
                 {loading ? (
                   <div className="py-8 text-center text-sm text-muted-foreground">Loading units...</div>
                 ) : filteredUnits.length ? (
-                  filteredUnits.map(u => (
-                    <div key={u.id} className="flex items-center justify-between rounded-2xl border bg-muted/20 px-4 py-3 text-sm transition-all hover:bg-muted/40">
-                      <span className="font-medium text-foreground">{u.name}</span>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => { setEditUnit(u); setAddUnitOpen(true); }}
-                          disabled={busy}
-                          className="h-8 w-8 text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-950/30"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => onRemoveUnit(u.id)}
-                          disabled={busy}
-                          className="h-8 w-8 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                  <SortableList
+                    items={filteredUnits}
+                    onReorder={handleReorderUnits}
+                    getId={(u) => u.id}
+                    renderItem={(u) => (
+                      <div className="flex w-full items-center justify-between rounded-2xl border bg-muted/20 px-4 py-3 text-sm transition-all hover:bg-muted/40">
+                        <span className="font-medium text-foreground">{u.name}</span>
+                        <div className="flex items-center gap-1 text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => { setEditUnit(u); setAddUnitOpen(true); }}
+                            disabled={busy}
+                            className="h-8 w-8 text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-950/30"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => onRemoveUnit(u.id)}
+                            disabled={busy}
+                            className="h-8 w-8 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    )}
+                  />
                 ) : (
                   <div className="py-8 text-center text-sm text-muted-foreground border-2 border-dashed rounded-2xl">
                     {qUnits ? `No units matching "${qUnits}"` : "No units added yet."}
@@ -517,31 +583,36 @@ export default function ConfigurationPage() {
                 {loading ? (
                   <div className="py-8 text-center text-sm text-muted-foreground">Loading groups...</div>
                 ) : filteredGroups.length ? (
-                  filteredGroups.map(g => (
-                    <div key={g.id} className="flex items-center justify-between rounded-2xl border bg-muted/20 px-4 py-3 text-sm transition-all hover:bg-muted/40">
-                      <span className="font-medium text-foreground">{g.name}</span>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => { setEditGroup(g); setAddGroupOpen(true); }}
-                          disabled={busy}
-                          className="h-8 w-8 text-orange-600 hover:bg-orange-50 hover:text-orange-700 dark:hover:bg-orange-950/30"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => onRemoveGroup(g.id)}
-                          disabled={busy}
-                          className="h-8 w-8 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                  <SortableList
+                    items={filteredGroups}
+                    onReorder={handleReorderGroups}
+                    getId={(g) => g.id}
+                    renderItem={(g) => (
+                      <div className="flex w-full items-center justify-between rounded-2xl border bg-muted/20 px-4 py-3 text-sm transition-all hover:bg-muted/40">
+                        <span className="font-medium text-foreground">{g.name}</span>
+                        <div className="flex items-center gap-1 text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => { setEditGroup(g); setAddGroupOpen(true); }}
+                            disabled={busy}
+                            className="h-8 w-8 text-orange-600 hover:bg-orange-50 hover:text-orange-700 dark:hover:bg-orange-950/30"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => onRemoveGroup(g.id)}
+                            disabled={busy}
+                            className="h-8 w-8 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    )}
+                  />
                 ) : (
                   <div className="py-8 text-center text-sm text-muted-foreground border-2 border-dashed rounded-2xl">
                     {qGroups ? `No groups matching "${qGroups}"` : "No groups added yet."}
@@ -587,55 +658,61 @@ export default function ConfigurationPage() {
                   className="pl-9 rounded-xl border-border"
                 />
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3">
                 {loading ? (
                   <div className="col-span-2 py-8 text-center text-sm text-muted-foreground">Loading sundries...</div>
                 ) : filteredSundries.length ? (
-                  filteredSundries.map(s => (
-                    <div key={s.id} className="flex items-center justify-between rounded-2xl border bg-muted/20 p-4 transition-all hover:bg-muted/40">
-                      <div className="flex items-center gap-3">
-                        <div className={cn(
-                          "flex h-10 w-10 items-center justify-center rounded-xl",
-                          s.type === "add" ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-950/30 font-medium" : "bg-red-100 text-red-600 dark:bg-red-950/30 font-medium"
-                        )}>
-                          {s.type === "add" ? <Plus className="h-5 w-5" /> : <Calculator className="h-5 w-5" />}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 font-semibold text-foreground truncate">
-                            {s.name}
-                            {["Discount", "Shipping & Handling", "Packaging Charges", "Insurance", "Round Off", "VAT"].includes(s.name) && (
-                               <span className="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 text-[10px] px-1.5 py-0.5 rounded-md font-medium shrink-0">System</span>
-                            )}
+                  <SortableList
+                    items={filteredSundries}
+                    onReorder={handleReorderSundries}
+                    getId={(s) => s.id}
+                    className="sm:grid-cols-2"
+                    renderItem={(s) => (
+                      <div className="flex w-full items-center justify-between rounded-2xl border bg-muted/20 p-4 transition-all hover:bg-muted/40">
+                        <div className="flex items-center gap-3">
+                          <div className={cn(
+                            "flex h-10 w-10 items-center justify-center rounded-xl",
+                            s.type === "add" ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-950/30 font-medium" : "bg-red-100 text-red-600 dark:bg-red-950/30 font-medium"
+                          )}>
+                            {s.type === "add" ? <Plus className="h-5 w-5" /> : <Calculator className="h-5 w-5" />}
                           </div>
-                          <div className="font-mono text-xs uppercase tracking-tight text-muted-foreground truncate">
-                            {s.rate ? `${s.rate}%` : "Manual"} • {s.type} {s.account?.name ? `• ${s.account.name}` : ""}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 font-semibold text-foreground truncate">
+                              {s.name}
+                              {["Discount", "Shipping & Handling", "Packaging Charges", "Insurance", "Round Off", "VAT"].includes(s.name) && (
+                                 <span className="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 text-[10px] px-1.5 py-0.5 rounded-md font-medium shrink-0">System</span>
+                              )}
+                            </div>
+                            <div className="font-mono text-xs uppercase tracking-tight text-muted-foreground truncate">
+                              {s.rate ? `${s.rate}%` : "Manual"} • {s.type} {s.account?.name ? `• ${s.account.name}` : ""}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => { setEditSundry(s); setAddSundryOpen(true); }}
-                          disabled={busy}
-                          className="h-8 w-8 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-indigo-950/30"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        {!["Discount", "Shipping & Handling", "Packaging Charges", "Insurance", "Round Off", "VAT"].includes(s.name) && (
+                        <div className="flex items-center gap-1">
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => onRemoveSundry(s.id)}
+                            onClick={() => { setEditSundry(s); setAddSundryOpen(true); }}
                             disabled={busy}
-                            className="h-8 w-8 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
+                            className="h-8 w-8 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-indigo-950/30"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Pencil className="h-4 w-4" />
                           </Button>
-                        )}
+                          {!["Discount", "Shipping & Handling", "Packaging Charges", "Insurance", "Round Off", "VAT"].includes(s.name) && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => onRemoveSundry(s.id)}
+                              disabled={busy}
+                              className="h-8 w-8 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    )}
+                  />
                 ) : (
                   <div className="col-span-2 py-8 text-center text-sm text-muted-foreground border-2 border-dashed rounded-2xl">
                     {qSundries ? `No sundries matching "${qSundries}"` : "No predefined sundries found."}
@@ -685,34 +762,39 @@ export default function ConfigurationPage() {
                 {loading ? (
                   <div className="py-8 text-center text-sm text-muted-foreground">Loading...</div>
                 ) : filteredPaymentMethods.length ? (
-                  filteredPaymentMethods.map(pm => (
-                    <div key={pm.id} className="flex items-center justify-between rounded-2xl border bg-muted/20 px-4 py-3 text-sm transition-all hover:bg-muted/40">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-foreground">{pm.name}</span>
-                        {!pm.isActive && <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-md">Inactive</span>}
+                  <SortableList
+                    items={filteredPaymentMethods}
+                    onReorder={handleReorderPaymentMethods}
+                    getId={(pm) => pm.id}
+                    renderItem={(pm) => (
+                      <div className="flex w-full items-center justify-between rounded-2xl border bg-muted/20 px-4 py-3 text-sm transition-all hover:bg-muted/40">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-foreground">{pm.name}</span>
+                          {!pm.isActive && <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-md">Inactive</span>}
+                        </div>
+                        <div className="flex items-center gap-1 text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => { e.stopPropagation(); setEditPaymentMethod(pm); setAddPaymentMethodOpen(true); }}
+                            disabled={busy}
+                            className="h-8 w-8 text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-950/30"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => { e.stopPropagation(); onRemovePaymentMethod(pm.id); }}
+                            disabled={busy}
+                            className="h-8 w-8 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => { e.stopPropagation(); setEditPaymentMethod(pm); setAddPaymentMethodOpen(true); }}
-                          disabled={busy}
-                          className="h-8 w-8 text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-950/30"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => { e.stopPropagation(); onRemovePaymentMethod(pm.id); }}
-                          disabled={busy}
-                          className="h-8 w-8 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))
+                    )}
+                  />
                 ) : (
                   <div className="py-8 text-center text-sm text-muted-foreground border-2 border-dashed rounded-2xl">
                     No payment methods found.
@@ -770,38 +852,43 @@ export default function ConfigurationPage() {
                     />
                   </div>
 
-                  <div className="grid gap-2 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin">
+                  <div className="grid gap-2 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin">
                     {loading ? (
                       <div className="py-8 text-center text-sm text-muted-foreground">Loading...</div>
                     ) : filteredSaleTypes.length ? (
-                      filteredSaleTypes.map(st => (
-                        <div key={st.id} className="flex items-center justify-between rounded-xl border bg-white px-3 py-2 text-sm transition-all hover:border-emerald-200 dark:bg-slate-900 dark:border-slate-800 dark:hover:border-emerald-900/50">
-                          <div className="flex flex-col">
-                            <span className="font-medium text-slate-700 dark:text-slate-200">{st.name}</span>
-                            {!st.isActive && <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Inactive</span>}
+                      <SortableList
+                        items={filteredSaleTypes}
+                        onReorder={handleReorderSaleTypes}
+                        getId={(st) => st.id}
+                        renderItem={(st) => (
+                          <div className="flex w-full items-center justify-between rounded-xl border bg-white px-3 py-2 text-sm transition-all hover:border-emerald-200 dark:bg-slate-900 dark:border-slate-800 dark:hover:border-emerald-900/50">
+                            <div className="flex flex-col">
+                              <span className="font-medium text-slate-700 dark:text-slate-200">{st.name}</span>
+                              {!st.isActive && <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Inactive</span>}
+                            </div>
+                            <div className="flex items-center gap-1 text-right">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => { setEditSaleType(st); setAddSaleTypeOpen(true); }}
+                                disabled={busy}
+                                className="h-7 w-7 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => onRemoveSaleType(st.id)}
+                                disabled={busy}
+                                className="h-7 w-7 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => { setEditSaleType(st); setAddSaleTypeOpen(true); }}
-                              disabled={busy}
-                              className="h-7 w-7 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => onRemoveSaleType(st.id)}
-                              disabled={busy}
-                              className="h-7 w-7 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))
+                        )}
+                      />
                     ) : (
                       <div className="py-8 text-center text-xs text-slate-400 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
                         {qSaleTypes ? "No matching sales types." : "No sales types added."}
@@ -834,38 +921,43 @@ export default function ConfigurationPage() {
                     />
                   </div>
 
-                  <div className="grid gap-2 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin">
+                  <div className="grid gap-2 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin">
                     {loading ? (
                       <div className="py-8 text-center text-sm text-muted-foreground">Loading...</div>
                     ) : filteredPurchaseTypes.length ? (
-                      filteredPurchaseTypes.map(pt => (
-                        <div key={pt.id} className="flex items-center justify-between rounded-xl border bg-white px-3 py-2 text-sm transition-all hover:border-orange-200 dark:bg-slate-900 dark:border-slate-800 dark:hover:border-orange-900/50">
-                          <div className="flex flex-col">
-                            <span className="font-medium text-slate-700 dark:text-slate-200">{pt.name}</span>
-                            {!pt.isActive && <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Inactive</span>}
+                      <SortableList
+                        items={filteredPurchaseTypes}
+                        onReorder={handleReorderPurchaseTypes}
+                        getId={(pt) => pt.id}
+                        renderItem={(pt) => (
+                          <div className="flex w-full items-center justify-between rounded-xl border bg-white px-3 py-2 text-sm transition-all hover:border-orange-200 dark:bg-slate-900 dark:border-slate-800 dark:hover:border-orange-900/50">
+                            <div className="flex flex-col">
+                              <span className="font-medium text-slate-700 dark:text-slate-200">{pt.name}</span>
+                              {!pt.isActive && <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Inactive</span>}
+                            </div>
+                            <div className="flex items-center gap-1 text-right">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => { setEditPurchaseType(pt); setAddPurchaseTypeOpen(true); }}
+                                disabled={busy}
+                                className="h-7 w-7 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => onRemovePurchaseType(pt.id)}
+                                disabled={busy}
+                                className="h-7 w-7 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => { setEditPurchaseType(pt); setAddPurchaseTypeOpen(true); }}
-                              disabled={busy}
-                              className="h-7 w-7 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => onRemovePurchaseType(pt.id)}
-                              disabled={busy}
-                              className="h-7 w-7 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))
+                        )}
+                      />
                     ) : (
                       <div className="py-8 text-center text-xs text-slate-400 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
                         {qPurchaseTypes ? "No matching purchase types." : "No purchase types added."}

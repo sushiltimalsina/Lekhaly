@@ -21,3 +21,10 @@ export const VatReportQuerySchema = z.object({
   to: z.coerce.date().optional(),
   toBs: z.string().trim().max(20).optional()
 });
+
+export const ReorderSchema = z.array(
+  z.object({
+    id: z.string().uuid(),
+    sortOrder: z.number().int(),
+  }),
+);

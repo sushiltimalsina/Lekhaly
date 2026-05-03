@@ -25,7 +25,18 @@ let TaxesService = class TaxesService {
             where.isActive = filters.isActive;
         if (filters.q)
             where.name = { contains: filters.q, mode: "insensitive" };
-        return this.prisma.taxCode.findMany({ where, orderBy: { name: "desc" } });
+        return this.prisma.taxCode.findMany({
+            where,
+            orderBy: [{ sortOrder: "asc" }, { name: "desc" }]
+        });
+    }
+    async updateSortOrder(user, data) {
+        const queries = data.map((item) => this.prisma.taxCode.update({
+            where: { id: item.id, companyId: user.companyId },
+            data: { sortOrder: item.sortOrder },
+        }));
+        await this.prisma.$transaction(queries);
+        return { success: true };
     }
     async get(user, id) {
         const tax = await this.prisma.taxCode.findFirst({ where: { id, companyId: user.companyId } });

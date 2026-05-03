@@ -4,6 +4,7 @@ import * as React from "react";
 import { CreditCard, ChevronDown, ChevronRight, Search, Plus, Pencil, Trash2 } from "lucide-react";
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, Input } from "@lekhaly/ui";
 import { cn } from "@/lib/utils";
+import { SortableList } from "@/components/app/sortable-list";
 
 interface PaymentMethodsPanelProps {
   paymentMethods: any[];
@@ -14,6 +15,7 @@ interface PaymentMethodsPanelProps {
   onAdd: () => void;
   onEdit: (pm: any) => void;
   onRemove: (id: string) => void;
+  onReorder?: (items: any[]) => void;
   focus?: boolean;
   forwardedRef?: React.RefObject<HTMLDivElement | null>;
 }
@@ -27,6 +29,7 @@ export function PaymentMethodsPanel({
   onAdd,
   onEdit,
   onRemove,
+  onReorder,
   focus,
   forwardedRef
 }: PaymentMethodsPanelProps) {
@@ -72,34 +75,39 @@ export function PaymentMethodsPanel({
             {loading ? (
               <div className="py-8 text-center text-sm text-muted-foreground">Loading...</div>
             ) : filtered.length ? (
-              filtered.map(pm => (
-                <div key={pm.id} className="flex items-center justify-between rounded-2xl border bg-muted/20 px-4 py-3 text-sm transition-all hover:bg-muted/40 text-foreground">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{pm.name}</span>
-                    {!pm.isActive && <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 px-1.5 py-0.5 rounded-md">Inactive</span>}
+              <SortableList
+                items={filtered}
+                getId={(pm) => pm.id}
+                onReorder={(newItems) => onReorder?.(newItems)}
+                renderItem={(pm) => (
+                  <div className="flex w-full items-center justify-between rounded-2xl border bg-muted/20 px-4 py-3 text-sm transition-all hover:bg-muted/40 text-foreground">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-left">{pm.name}</span>
+                      {!pm.isActive && <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 px-1.5 py-0.5 rounded-md">Inactive</span>}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onEdit(pm)}
+                        disabled={busy}
+                        className="h-8 w-8 text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-950/30"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onRemove(pm.id)}
+                        disabled={busy}
+                        className="h-8 w-8 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onEdit(pm)}
-                      disabled={busy}
-                      className="h-8 w-8 text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-950/30"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onRemove(pm.id)}
-                      disabled={busy}
-                      className="h-8 w-8 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))
+                )}
+              />
             ) : (
               <div className="py-8 text-center text-sm text-muted-foreground border-2 border-dashed rounded-2xl">
                 {q ? `No matching payment methods.` : "No payment methods added yet."}

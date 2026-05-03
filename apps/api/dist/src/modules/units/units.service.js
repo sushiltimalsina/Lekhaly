@@ -54,10 +54,18 @@ let UnitsService = class UnitsService {
             where.name = { contains: filters.q, mode: "insensitive" };
         return this.prisma.unit.findMany({
             where,
-            orderBy: { name: "desc" },
+            orderBy: [{ sortOrder: "asc" }, { name: "desc" }],
             skip: filters.skip || 0,
             take: filters.take || 100
         });
+    }
+    async updateSortOrder(user, data) {
+        const queries = data.map((item) => this.prisma.unit.update({
+            where: { id: item.id, companyId: user.companyId },
+            data: { sortOrder: item.sortOrder },
+        }));
+        await this.prisma.$transaction(queries);
+        return { success: true };
     }
     async remove(user, id) {
         const unit = await this.prisma.unit.findFirst({

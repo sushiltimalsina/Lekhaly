@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from "@nestj
 import { CurrentUser, RequirePerm } from "../../common/auth/auth.decorator";
 import { ZodValidationPipe } from "../../common/zod/zod.pipe";
 import type { AuthUser } from "../../common/auth/auth.types";
-import { CreateItemGroupSchema, ListItemGroupQuerySchema } from "./dto/item-group.schemas";
+import { CreateItemGroupSchema, ListItemGroupQuerySchema, ReorderSchema } from "./dto/item-group.schemas";
 import { ItemGroupsService } from "./item-groups.service";
 
 @Controller("item-groups")
@@ -13,6 +13,12 @@ export class ItemGroupsController {
   @RequirePerm("masters.write")
   create(@CurrentUser() user: AuthUser, @Body(new ZodValidationPipe(CreateItemGroupSchema)) body: any) {
     return this.groups.create(user, body);
+  }
+
+  @Patch("reorder")
+  @RequirePerm("masters.write")
+  reorder(@CurrentUser() user: AuthUser, @Body(new ZodValidationPipe(ReorderSchema)) body: any) {
+    return this.groups.updateSortOrder(user, body);
   }
 
   @Patch(":id")

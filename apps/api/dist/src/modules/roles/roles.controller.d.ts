@@ -4,6 +4,17 @@ export declare class RolesController {
     private roles;
     constructor(roles: RolesService);
     list(user: AuthUser, query: any): Promise<({
+        userRoles: ({
+            user: {
+                id: string;
+                email: string;
+                name: string | null;
+                status: import("@prisma/client").$Enums.UserStatus;
+            };
+        } & {
+            userId: string;
+            roleId: string;
+        })[];
         rolePermissions: ({
             permission: {
                 code: string;
@@ -13,29 +24,33 @@ export declare class RolesController {
             roleId: string;
             permissionCode: string;
         })[];
-        userRoles: ({
-            user: {
-                id: string;
-                name: string | null;
-                status: import("@prisma/client").$Enums.UserStatus;
-                email: string;
-            };
-        } & {
-            roleId: string;
-            userId: string;
-        })[];
     } & {
         id: string;
+        companyId: string;
         name: string;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
+        sortOrder: number;
     })[]>;
+    reorder(user: AuthUser, body: any): Promise<{
+        success: boolean;
+    }>;
     permissions(): Promise<{
         code: string;
         description: string;
     }[]>;
     getById(user: AuthUser, id: string): Promise<{
+        userRoles: ({
+            user: {
+                id: string;
+                email: string;
+                name: string | null;
+                status: import("@prisma/client").$Enums.UserStatus;
+            };
+        } & {
+            userId: string;
+            roleId: string;
+        })[];
         rolePermissions: ({
             permission: {
                 code: string;
@@ -45,23 +60,13 @@ export declare class RolesController {
             roleId: string;
             permissionCode: string;
         })[];
-        userRoles: ({
-            user: {
-                id: string;
-                name: string | null;
-                status: import("@prisma/client").$Enums.UserStatus;
-                email: string;
-            };
-        } & {
-            roleId: string;
-            userId: string;
-        })[];
     } & {
         id: string;
+        companyId: string;
         name: string;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
+        sortOrder: number;
     }>;
     create(user: AuthUser, body: any): Promise<{
         rolePermissions: ({
@@ -75,10 +80,11 @@ export declare class RolesController {
         })[];
     } & {
         id: string;
+        companyId: string;
         name: string;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
+        sortOrder: number;
     }>;
     update(user: AuthUser, id: string, body: any): Promise<{
         rolePermissions: ({
@@ -92,10 +98,11 @@ export declare class RolesController {
         })[];
     } & {
         id: string;
+        companyId: string;
         name: string;
         createdAt: Date;
         updatedAt: Date;
-        companyId: string;
+        sortOrder: number;
     }>;
     remove(user: AuthUser, id: string): Promise<{
         id: string;

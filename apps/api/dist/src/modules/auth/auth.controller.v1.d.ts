@@ -132,12 +132,14 @@ export declare class AuthV1Controller {
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
         }[] | {
             id: string;
             companyId: string;
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
         }[] | {
             id: string;
             companyId: string;
@@ -531,6 +533,7 @@ export declare class AuthV1Controller {
             updatedAt: Date;
             isActive: boolean;
             rate: import("@prisma/client/runtime/client").Decimal;
+            sortOrder: number;
             isInclusive: boolean;
             inputTaxAccountId: string | null;
             outputTaxAccountId: string | null;
@@ -542,6 +545,7 @@ export declare class AuthV1Controller {
             updatedAt: Date;
             isActive: boolean;
             rate: import("@prisma/client/runtime/client").Decimal;
+            sortOrder: number;
             isInclusive: boolean;
             inputTaxAccountId: string | null;
             outputTaxAccountId: string | null;
@@ -579,6 +583,7 @@ export declare class AuthV1Controller {
             accountId: string | null;
             isActive: boolean;
             rate: import("@prisma/client/runtime/client").Decimal | null;
+            sortOrder: number;
         } | {
             id: string;
             companyId: string;
@@ -589,6 +594,7 @@ export declare class AuthV1Controller {
             accountId: string | null;
             isActive: boolean;
             rate: import("@prisma/client/runtime/client").Decimal | null;
+            sortOrder: number;
         })[] | ({
             id: string;
             companyId: string;
@@ -633,6 +639,7 @@ export declare class AuthV1Controller {
             updatedAt: Date;
             code: string | null;
             isActive: boolean;
+            sortOrder: number;
         } | {
             id: string;
             companyId: string;
@@ -641,6 +648,7 @@ export declare class AuthV1Controller {
             updatedAt: Date;
             code: string | null;
             isActive: boolean;
+            sortOrder: number;
         })[] | ({
             id: string;
             companyId: string;
@@ -649,6 +657,7 @@ export declare class AuthV1Controller {
             updatedAt: Date;
             code: string | null;
             isActive: boolean;
+            sortOrder: number;
             warehouseId: string;
         } | {
             id: string;
@@ -658,6 +667,7 @@ export declare class AuthV1Controller {
             updatedAt: Date;
             code: string | null;
             isActive: boolean;
+            sortOrder: number;
             warehouseId: string;
         })[] | ({
             id: string;
@@ -665,36 +675,42 @@ export declare class AuthV1Controller {
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
         } | {
             id: string;
             companyId: string;
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
         })[] | ({
             id: string;
             companyId: string;
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
         } | {
             id: string;
             companyId: string;
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
         })[] | ({
             id: string;
             companyId: string;
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
         } | {
             id: string;
             companyId: string;
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
         })[] | ({
             id: string;
             companyId: string;
@@ -1124,6 +1140,7 @@ export declare class AuthV1Controller {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+            sortOrder: number;
         } | {
             id: string;
             companyId: string;
@@ -1131,6 +1148,7 @@ export declare class AuthV1Controller {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+            sortOrder: number;
         })[] | ({
             id: string;
             companyId: string;
@@ -1138,6 +1156,7 @@ export declare class AuthV1Controller {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+            sortOrder: number;
         } | {
             id: string;
             companyId: string;
@@ -1145,6 +1164,7 @@ export declare class AuthV1Controller {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+            sortOrder: number;
         })[] | ({
             id: string;
             companyId: string;
@@ -1152,6 +1172,7 @@ export declare class AuthV1Controller {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+            sortOrder: number;
         } | {
             id: string;
             companyId: string;
@@ -1159,6 +1180,7 @@ export declare class AuthV1Controller {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+            sortOrder: number;
         })[] | ({
             id: string;
             companyId: string;
@@ -1297,6 +1319,7 @@ export declare class AuthV1Controller {
             updatedAt: Date;
             isActive: boolean;
             rate: import("@prisma/client/runtime/client").Decimal;
+            sortOrder: number;
             isInclusive: boolean;
             inputTaxAccountId: string | null;
             outputTaxAccountId: string | null;
@@ -1322,6 +1345,7 @@ export declare class AuthV1Controller {
             accountId: string | null;
             isActive: boolean;
             rate: import("@prisma/client/runtime/client").Decimal | null;
+            sortOrder: number;
         }[] | {
             id: string;
             companyId: string;
@@ -1330,6 +1354,7 @@ export declare class AuthV1Controller {
             updatedAt: Date;
             code: string | null;
             isActive: boolean;
+            sortOrder: number;
         }[] | {
             id: string;
             companyId: string;
@@ -1338,6 +1363,7 @@ export declare class AuthV1Controller {
             updatedAt: Date;
             code: string | null;
             isActive: boolean;
+            sortOrder: number;
             warehouseId: string;
         }[] | {
             id: string;
@@ -1345,6 +1371,7 @@ export declare class AuthV1Controller {
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
         }[] | {
             id: string;
             companyId: string;
@@ -1563,6 +1590,7 @@ export declare class AuthV1Controller {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+            sortOrder: number;
         }[] | {
             id: string;
             companyId: string;
@@ -1570,6 +1598,7 @@ export declare class AuthV1Controller {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+            sortOrder: number;
         }[] | {
             id: string;
             companyId: string;
@@ -1577,6 +1606,7 @@ export declare class AuthV1Controller {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+            sortOrder: number;
         }[] | {
             id: string;
             companyId: string;
@@ -1691,12 +1721,14 @@ export declare class AuthV1Controller {
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
         }[] | {
             id: string;
             companyId: string;
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
         }[] | {
             id: string;
             companyId: string;
@@ -2090,6 +2122,7 @@ export declare class AuthV1Controller {
             updatedAt: Date;
             isActive: boolean;
             rate: import("@prisma/client/runtime/client").Decimal;
+            sortOrder: number;
             isInclusive: boolean;
             inputTaxAccountId: string | null;
             outputTaxAccountId: string | null;
@@ -2101,6 +2134,7 @@ export declare class AuthV1Controller {
             updatedAt: Date;
             isActive: boolean;
             rate: import("@prisma/client/runtime/client").Decimal;
+            sortOrder: number;
             isInclusive: boolean;
             inputTaxAccountId: string | null;
             outputTaxAccountId: string | null;
@@ -2138,6 +2172,7 @@ export declare class AuthV1Controller {
             accountId: string | null;
             isActive: boolean;
             rate: import("@prisma/client/runtime/client").Decimal | null;
+            sortOrder: number;
         } | {
             id: string;
             companyId: string;
@@ -2148,6 +2183,7 @@ export declare class AuthV1Controller {
             accountId: string | null;
             isActive: boolean;
             rate: import("@prisma/client/runtime/client").Decimal | null;
+            sortOrder: number;
         })[] | ({
             id: string;
             companyId: string;
@@ -2192,6 +2228,7 @@ export declare class AuthV1Controller {
             updatedAt: Date;
             code: string | null;
             isActive: boolean;
+            sortOrder: number;
         } | {
             id: string;
             companyId: string;
@@ -2200,6 +2237,7 @@ export declare class AuthV1Controller {
             updatedAt: Date;
             code: string | null;
             isActive: boolean;
+            sortOrder: number;
         })[] | ({
             id: string;
             companyId: string;
@@ -2208,6 +2246,7 @@ export declare class AuthV1Controller {
             updatedAt: Date;
             code: string | null;
             isActive: boolean;
+            sortOrder: number;
             warehouseId: string;
         } | {
             id: string;
@@ -2217,6 +2256,7 @@ export declare class AuthV1Controller {
             updatedAt: Date;
             code: string | null;
             isActive: boolean;
+            sortOrder: number;
             warehouseId: string;
         })[] | ({
             id: string;
@@ -2224,36 +2264,42 @@ export declare class AuthV1Controller {
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
         } | {
             id: string;
             companyId: string;
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
         })[] | ({
             id: string;
             companyId: string;
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
         } | {
             id: string;
             companyId: string;
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
         })[] | ({
             id: string;
             companyId: string;
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
         } | {
             id: string;
             companyId: string;
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
         })[] | ({
             id: string;
             companyId: string;
@@ -2683,6 +2729,7 @@ export declare class AuthV1Controller {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+            sortOrder: number;
         } | {
             id: string;
             companyId: string;
@@ -2690,6 +2737,7 @@ export declare class AuthV1Controller {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+            sortOrder: number;
         })[] | ({
             id: string;
             companyId: string;
@@ -2697,6 +2745,7 @@ export declare class AuthV1Controller {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+            sortOrder: number;
         } | {
             id: string;
             companyId: string;
@@ -2704,6 +2753,7 @@ export declare class AuthV1Controller {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+            sortOrder: number;
         })[] | ({
             id: string;
             companyId: string;
@@ -2711,6 +2761,7 @@ export declare class AuthV1Controller {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+            sortOrder: number;
         } | {
             id: string;
             companyId: string;
@@ -2718,6 +2769,7 @@ export declare class AuthV1Controller {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+            sortOrder: number;
         })[] | ({
             id: string;
             companyId: string;
@@ -2856,6 +2908,7 @@ export declare class AuthV1Controller {
             updatedAt: Date;
             isActive: boolean;
             rate: import("@prisma/client/runtime/client").Decimal;
+            sortOrder: number;
             isInclusive: boolean;
             inputTaxAccountId: string | null;
             outputTaxAccountId: string | null;
@@ -2881,6 +2934,7 @@ export declare class AuthV1Controller {
             accountId: string | null;
             isActive: boolean;
             rate: import("@prisma/client/runtime/client").Decimal | null;
+            sortOrder: number;
         }[] | {
             id: string;
             companyId: string;
@@ -2889,6 +2943,7 @@ export declare class AuthV1Controller {
             updatedAt: Date;
             code: string | null;
             isActive: boolean;
+            sortOrder: number;
         }[] | {
             id: string;
             companyId: string;
@@ -2897,6 +2952,7 @@ export declare class AuthV1Controller {
             updatedAt: Date;
             code: string | null;
             isActive: boolean;
+            sortOrder: number;
             warehouseId: string;
         }[] | {
             id: string;
@@ -2904,6 +2960,7 @@ export declare class AuthV1Controller {
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            sortOrder: number;
         }[] | {
             id: string;
             companyId: string;
@@ -3122,6 +3179,7 @@ export declare class AuthV1Controller {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+            sortOrder: number;
         }[] | {
             id: string;
             companyId: string;
@@ -3129,6 +3187,7 @@ export declare class AuthV1Controller {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+            sortOrder: number;
         }[] | {
             id: string;
             companyId: string;
@@ -3136,6 +3195,7 @@ export declare class AuthV1Controller {
             createdAt: Date;
             updatedAt: Date;
             isActive: boolean;
+            sortOrder: number;
         }[] | {
             id: string;
             companyId: string;

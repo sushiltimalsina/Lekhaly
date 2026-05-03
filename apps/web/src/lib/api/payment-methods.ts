@@ -15,3 +15,7 @@ export async function updatePaymentMethod(id: string, data: { name?: string; isA
 export async function deletePaymentMethod(id: string) {
   return apiClient.delete(`/payment-methods/${id}`);
 }
+
+export async function reorderPaymentMethods(items: { id: string; sortOrder: number }[]) {
+  return apiClient.patch("/payment-methods/reorder", items);
+}
