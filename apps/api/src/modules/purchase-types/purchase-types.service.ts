@@ -23,7 +23,7 @@ export class PurchaseTypesService {
     }
     const data = await this.prisma.purchaseType.findMany({
       where,
-      orderBy: { name: "asc" },
+      orderBy: { name: "desc" },
       take: query.take || 50,
     });
     return { data };

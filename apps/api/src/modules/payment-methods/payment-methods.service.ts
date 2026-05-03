@@ -23,7 +23,7 @@ export class PaymentMethodsService {
     }
     const data = await this.prisma.paymentMethod.findMany({
       where,
-      orderBy: { name: "asc" },
+      orderBy: { name: "desc" },
       take: query.take || 50,
     });
     return { data };

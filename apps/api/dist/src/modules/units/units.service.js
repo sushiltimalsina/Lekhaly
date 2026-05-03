@@ -54,7 +54,7 @@ let UnitsService = class UnitsService {
             where.name = { contains: filters.q, mode: "insensitive" };
         return this.prisma.unit.findMany({
             where,
-            orderBy: { name: "asc" },
+            orderBy: { name: "desc" },
             skip: filters.skip || 0,
             take: filters.take || 100
         });

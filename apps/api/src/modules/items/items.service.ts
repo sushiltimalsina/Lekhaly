@@ -196,7 +196,7 @@ export class ItemsService {
     return this.prisma.item.findMany({
       where,
       include: itemInclude,
-      orderBy: { name: "asc" },
+      orderBy: { name: "desc" },
       skip: filters.skip ?? 0,
       take: filters.take ?? 200
     });

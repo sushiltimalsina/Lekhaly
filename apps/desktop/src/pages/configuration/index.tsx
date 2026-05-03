@@ -201,12 +201,12 @@ export default function ConfigurationPage() {
     };
     try {
       const [uRes, gRes, sRes, pmRes, stRes, ptRes, cRes, invRes, whRes] = await Promise.all([
-        listUnits({ take: 200 }),
-        listItemGroups({ take: 200 }),
-        listBillSundries({ take: 200 }),
-        listPaymentMethods({ take: 200 }),
-        listSaleTypes({ take: 200 }),
-        listPurchaseTypes({ take: 200 }),
+        listUnits({ take: 100 }),
+        listItemGroups({ take: 100 }),
+        listBillSundries({ take: 100 }),
+        listPaymentMethods({ take: 100 }),
+        listSaleTypes({ take: 100 }),
+        listPurchaseTypes({ take: 100 }),
         getCompany(),
         getInventorySettings(),
         listWarehouses({ isActive: true })
@@ -214,15 +214,15 @@ export default function ConfigurationPage() {
       setUnits(normalizeList<UnitRecord>(uRes));
       setGroups(normalizeList<ItemGroupRecord>(gRes));
       setSundries(normalizeList<BillSundryRecord>(sRes));
-      setPaymentMethods(normalizeList<any>(pmRes));
-      setSaleTypes(normalizeList<any>(stRes));
-      setPurchaseTypes(normalizeList<any>(ptRes));
+      setPaymentMethods(normalizeList<any>(pmRes).sort((a, b) => b.name.localeCompare(a.name)));
+      setSaleTypes(normalizeList<any>(stRes).sort((a, b) => b.name.localeCompare(a.name)));
+      setPurchaseTypes(normalizeList<any>(ptRes).sort((a, b) => b.name.localeCompare(a.name)));
       setCompany(cRes);
       setCompanyForm(cRes);
       setInventorySettings(invRes);
       setWarehouses(normalizeList<Warehouse>(whRes));
-    } catch (e: any) {
-      setError(e?.message ?? "Failed to load configuration data.");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to load configuration data.");
     } finally {
       setLoading(false);
     }

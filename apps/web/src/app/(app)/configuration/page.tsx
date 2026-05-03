@@ -111,12 +111,12 @@ function ConfigurationContent() {
     };
     try {
       const [uRes, gRes, sRes, pmRes, stRes, ptRes, cRes, sessRes, invRes, whRes] = await Promise.all([
-        listUnits({ take: 200 }),
-        listItemGroups({ take: 200 }),
-        listBillSundries({ take: 200 }),
-        listPaymentMethods({ take: 200 }),
-        listSaleTypes({ take: 200 }),
-        listPurchaseTypes({ take: 200 }),
+        listUnits({ take: 100 }),
+        listItemGroups({ take: 100 }),
+        listBillSundries({ take: 100 }),
+        listPaymentMethods({ take: 100 }),
+        listSaleTypes({ take: 100 }),
+        listPurchaseTypes({ take: 100 }),
         getCompany(),
         listFiscalSessions(),
         getInventorySettings(),
@@ -128,9 +128,9 @@ function ConfigurationContent() {
          ...s,
          id: s.id || (s as any)._id
       })));
-      setPaymentMethods(normalizeList<any>(pmRes));
-      setSaleTypes(normalizeList<any>(stRes));
-      setPurchaseTypes(normalizeList<any>(ptRes));
+      setPaymentMethods(normalizeList<any>(pmRes).sort((a, b) => b.name.localeCompare(a.name)));
+      setSaleTypes(normalizeList<any>(stRes).sort((a, b) => b.name.localeCompare(a.name)));
+      setPurchaseTypes(normalizeList<any>(ptRes).sort((a, b) => b.name.localeCompare(a.name)));
       setCompany(cRes);
       setCompanyForm(cRes);
       setSessions(normalizeList<FiscalSessionRecord>(sessRes));

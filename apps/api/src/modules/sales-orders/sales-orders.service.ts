@@ -215,7 +215,7 @@ export class SalesOrdersService {
         // Find a default receivable account
         const receivable = await this.prisma.chartOfAccount.findFirst({
             where: { companyId: user.companyId, type: "asset", isPostable: true },
-            orderBy: { code: "asc" }
+            orderBy: { code: "desc" }
         });
 
         if (!receivable) throw new BadRequestException("No receivable account found. Please configure Chart of Accounts.");

@@ -225,7 +225,7 @@ export class PurchaseOrdersService {
 
         const payable = await this.prisma.chartOfAccount.findFirst({
             where: { companyId: user.companyId, type: "liability", isPostable: true },
-            orderBy: { code: "asc" }
+            orderBy: { code: "desc" }
         });
 
         if (!payable) throw new BadRequestException("No payable account found (liability).");

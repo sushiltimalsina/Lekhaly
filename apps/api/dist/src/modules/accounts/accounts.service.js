@@ -72,7 +72,7 @@ let AccountsService = class AccountsService {
         }
         return this.prisma.chartOfAccount.findMany({
             where,
-            orderBy: { code: "asc" },
+            orderBy: { code: "desc" },
             skip: filters.skip ?? 0,
             take: filters.take ?? 1000
         });
@@ -182,7 +182,7 @@ let AccountsService = class AccountsService {
       JOIN rolled_up_balances r ON t.id = r.id
       GROUP BY 
         t.id, t."parentId", t.name, t.code, t.type, t."isGroup", t.level, t.direct_balance
-      ORDER BY t.code ASC;
+      ORDER BY t.code DESC;
     `;
         return results;
     }

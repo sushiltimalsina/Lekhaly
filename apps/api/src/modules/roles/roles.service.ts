@@ -15,7 +15,7 @@ export class RolesService {
 
     return this.prisma.role.findMany({
       where,
-      orderBy: { name: "asc" },
+      orderBy: { name: "desc" },
       skip: filters.skip || 0,
       take: filters.take || 50,
       include: {
@@ -26,7 +26,7 @@ export class RolesService {
   }
 
   async listPermissions() {
-    return this.prisma.permission.findMany({ orderBy: { code: "asc" } });
+    return this.prisma.permission.findMany({ orderBy: { code: "desc" } });
   }
 
   private async ensurePermissionsExist(permissionCodes: string[]) {

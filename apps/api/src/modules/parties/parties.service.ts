@@ -53,7 +53,7 @@ export class PartiesService {
 
     return this.prisma.party.findMany({
       where,
-      orderBy: { name: "asc" },
+      orderBy: { name: "desc" },
       skip: filters.skip || 0,
       take: filters.take || 1000
     });

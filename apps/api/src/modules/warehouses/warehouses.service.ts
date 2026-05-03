@@ -73,9 +73,9 @@ export class WarehousesService {
 
     const warehouses = await this.prisma.warehouse.findMany({
       where,
-      orderBy: { name: "asc" },
+      orderBy: { name: "desc" },
       include: {
-        bins: { where: { isActive: true }, orderBy: { name: "asc" } },
+        bins: { where: { isActive: true }, orderBy: { name: "desc" } },
         _count: { select: { bins: true, stockLedger: true } },
       },
     });
@@ -115,7 +115,7 @@ export class WarehousesService {
     const warehouse = await this.prisma.warehouse.findFirst({
       where: { id, companyId: user.companyId },
       include: {
-        bins: { orderBy: { name: "asc" } },
+        bins: { orderBy: { name: "desc" } },
         _count: { select: { bins: true, stockLedger: true } },
       },
     });
@@ -210,7 +210,7 @@ export class WarehousesService {
 
     return this.prisma.warehouseBin.findMany({
       where: { warehouseId, companyId: user.companyId },
-      orderBy: { name: "asc" },
+      orderBy: { name: "desc" },
     });
   }
 

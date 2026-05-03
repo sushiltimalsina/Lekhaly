@@ -39,7 +39,7 @@ export class ItemGroupsService {
     if (filters.q) where.name = { contains: filters.q, mode: "insensitive" };
     return this.prisma.itemGroup.findMany({
       where,
-      orderBy: { name: "asc" },
+      orderBy: { name: "desc" },
       skip: filters.skip || 0,
       take: filters.take || 200
     });

@@ -13,7 +13,7 @@ export class TaxesService {
     if (filters.isActive !== undefined) where.isActive = filters.isActive;
     if (filters.q) where.name = { contains: filters.q, mode: "insensitive" };
 
-    return this.prisma.taxCode.findMany({ where, orderBy: { name: "asc" } });
+    return this.prisma.taxCode.findMany({ where, orderBy: { name: "desc" } });
   }
 
   async get(user: AuthUser, id: string) {

@@ -15,7 +15,7 @@ export class BillSundriesService {
         return this.prisma.billSundry.findMany({
             where,
             include: { account: true },
-            orderBy: { name: "asc" },
+            orderBy: { name: "desc" },
             take: filters.take || 50,
             skip: filters.skip || 0
         });

@@ -44,90 +44,90 @@ export declare class ItemsService {
     create(user: AuthUser, input: ItemInput): Promise<{
         taxCode: {
             id: string;
-            companyId: string;
             name: string;
+            isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            isActive: boolean;
-            rate: Prisma.Decimal;
-            isInclusive: boolean;
+            companyId: string;
             inputTaxAccountId: string | null;
             outputTaxAccountId: string | null;
+            rate: Prisma.Decimal;
+            isInclusive: boolean;
         } | null;
         group: {
             id: string;
-            companyId: string;
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            companyId: string;
         } | null;
         incomeAccount: {
             id: string;
-            companyId: string;
-            name: string;
-            createdAt: Date;
-            updatedAt: Date;
             code: string;
+            name: string;
             type: import("@prisma/client").$Enums.CoaType;
             level: number;
             isGroup: boolean;
-            parentId: string | null;
             isPostable: boolean;
             isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            parentId: string | null;
         } | null;
         expenseAccount: {
             id: string;
-            companyId: string;
-            name: string;
-            createdAt: Date;
-            updatedAt: Date;
             code: string;
+            name: string;
             type: import("@prisma/client").$Enums.CoaType;
             level: number;
             isGroup: boolean;
-            parentId: string | null;
             isPostable: boolean;
             isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            parentId: string | null;
         } | null;
         itemTaxCodes: ({
             taxCode: {
                 id: string;
-                companyId: string;
                 name: string;
+                isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
-                isActive: boolean;
-                rate: Prisma.Decimal;
-                isInclusive: boolean;
+                companyId: string;
                 inputTaxAccountId: string | null;
                 outputTaxAccountId: string | null;
+                rate: Prisma.Decimal;
+                isInclusive: boolean;
             };
         } & {
             id: string;
-            itemId: string;
             taxCodeId: string;
+            itemId: string;
         })[];
         uomConversions: {
             id: string;
             createdAt: Date;
             updatedAt: Date;
             unit: string;
-            itemId: string;
             factor: Prisma.Decimal;
             isBase: boolean;
+            itemId: string;
         }[];
         components: ({
             component: {
                 id: string;
-                companyId: string;
                 name: string;
+                type: import("@prisma/client").$Enums.ItemType;
+                isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
+                companyId: string;
+                incomeAccountId: string | null;
+                expenseAccountId: string | null;
                 unit: string | null;
-                type: import("@prisma/client").$Enums.ItemType;
-                taxCodeId: string | null;
-                isActive: boolean;
-                groupId: string | null;
                 sku: string | null;
                 hsCode: string | null;
                 baseUnit: string | null;
@@ -135,8 +135,6 @@ export declare class ItemsService {
                 purchasePrice: Prisma.Decimal | null;
                 reorderLevel: Prisma.Decimal;
                 safetyStock: Prisma.Decimal;
-                incomeAccountId: string | null;
-                expenseAccountId: string | null;
                 trackInventory: boolean;
                 isSerialized: boolean;
                 isKit: boolean;
@@ -145,27 +143,29 @@ export declare class ItemsService {
                 tracksExpiry: boolean;
                 minStockLevel: Prisma.Decimal | null;
                 reorderQty: Prisma.Decimal | null;
+                groupId: string | null;
+                taxCodeId: string | null;
             };
         } & {
             id: string;
-            companyId: string;
             createdAt: Date;
             updatedAt: Date;
-            qty: Prisma.Decimal;
+            companyId: string;
             parentId: string;
+            qty: Prisma.Decimal;
             componentId: string;
         })[];
     } & {
         id: string;
-        companyId: string;
         name: string;
+        type: import("@prisma/client").$Enums.ItemType;
+        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        companyId: string;
+        incomeAccountId: string | null;
+        expenseAccountId: string | null;
         unit: string | null;
-        type: import("@prisma/client").$Enums.ItemType;
-        taxCodeId: string | null;
-        isActive: boolean;
-        groupId: string | null;
         sku: string | null;
         hsCode: string | null;
         baseUnit: string | null;
@@ -173,8 +173,6 @@ export declare class ItemsService {
         purchasePrice: Prisma.Decimal | null;
         reorderLevel: Prisma.Decimal;
         safetyStock: Prisma.Decimal;
-        incomeAccountId: string | null;
-        expenseAccountId: string | null;
         trackInventory: boolean;
         isSerialized: boolean;
         isKit: boolean;
@@ -183,94 +181,96 @@ export declare class ItemsService {
         tracksExpiry: boolean;
         minStockLevel: Prisma.Decimal | null;
         reorderQty: Prisma.Decimal | null;
+        groupId: string | null;
+        taxCodeId: string | null;
     }>;
     update(user: AuthUser, id: string, input: ItemInput): Promise<{
         taxCode: {
             id: string;
-            companyId: string;
             name: string;
+            isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            isActive: boolean;
-            rate: Prisma.Decimal;
-            isInclusive: boolean;
+            companyId: string;
             inputTaxAccountId: string | null;
             outputTaxAccountId: string | null;
+            rate: Prisma.Decimal;
+            isInclusive: boolean;
         } | null;
         group: {
             id: string;
-            companyId: string;
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            companyId: string;
         } | null;
         incomeAccount: {
             id: string;
-            companyId: string;
-            name: string;
-            createdAt: Date;
-            updatedAt: Date;
             code: string;
+            name: string;
             type: import("@prisma/client").$Enums.CoaType;
             level: number;
             isGroup: boolean;
-            parentId: string | null;
             isPostable: boolean;
             isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            parentId: string | null;
         } | null;
         expenseAccount: {
             id: string;
-            companyId: string;
-            name: string;
-            createdAt: Date;
-            updatedAt: Date;
             code: string;
+            name: string;
             type: import("@prisma/client").$Enums.CoaType;
             level: number;
             isGroup: boolean;
-            parentId: string | null;
             isPostable: boolean;
             isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            parentId: string | null;
         } | null;
         itemTaxCodes: ({
             taxCode: {
                 id: string;
-                companyId: string;
                 name: string;
+                isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
-                isActive: boolean;
-                rate: Prisma.Decimal;
-                isInclusive: boolean;
+                companyId: string;
                 inputTaxAccountId: string | null;
                 outputTaxAccountId: string | null;
+                rate: Prisma.Decimal;
+                isInclusive: boolean;
             };
         } & {
             id: string;
-            itemId: string;
             taxCodeId: string;
+            itemId: string;
         })[];
         uomConversions: {
             id: string;
             createdAt: Date;
             updatedAt: Date;
             unit: string;
-            itemId: string;
             factor: Prisma.Decimal;
             isBase: boolean;
+            itemId: string;
         }[];
         components: ({
             component: {
                 id: string;
-                companyId: string;
                 name: string;
+                type: import("@prisma/client").$Enums.ItemType;
+                isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
+                companyId: string;
+                incomeAccountId: string | null;
+                expenseAccountId: string | null;
                 unit: string | null;
-                type: import("@prisma/client").$Enums.ItemType;
-                taxCodeId: string | null;
-                isActive: boolean;
-                groupId: string | null;
                 sku: string | null;
                 hsCode: string | null;
                 baseUnit: string | null;
@@ -278,8 +278,6 @@ export declare class ItemsService {
                 purchasePrice: Prisma.Decimal | null;
                 reorderLevel: Prisma.Decimal;
                 safetyStock: Prisma.Decimal;
-                incomeAccountId: string | null;
-                expenseAccountId: string | null;
                 trackInventory: boolean;
                 isSerialized: boolean;
                 isKit: boolean;
@@ -288,27 +286,29 @@ export declare class ItemsService {
                 tracksExpiry: boolean;
                 minStockLevel: Prisma.Decimal | null;
                 reorderQty: Prisma.Decimal | null;
+                groupId: string | null;
+                taxCodeId: string | null;
             };
         } & {
             id: string;
-            companyId: string;
             createdAt: Date;
             updatedAt: Date;
-            qty: Prisma.Decimal;
+            companyId: string;
             parentId: string;
+            qty: Prisma.Decimal;
             componentId: string;
         })[];
     } & {
         id: string;
-        companyId: string;
         name: string;
+        type: import("@prisma/client").$Enums.ItemType;
+        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        companyId: string;
+        incomeAccountId: string | null;
+        expenseAccountId: string | null;
         unit: string | null;
-        type: import("@prisma/client").$Enums.ItemType;
-        taxCodeId: string | null;
-        isActive: boolean;
-        groupId: string | null;
         sku: string | null;
         hsCode: string | null;
         baseUnit: string | null;
@@ -316,8 +316,6 @@ export declare class ItemsService {
         purchasePrice: Prisma.Decimal | null;
         reorderLevel: Prisma.Decimal;
         safetyStock: Prisma.Decimal;
-        incomeAccountId: string | null;
-        expenseAccountId: string | null;
         trackInventory: boolean;
         isSerialized: boolean;
         isKit: boolean;
@@ -326,94 +324,96 @@ export declare class ItemsService {
         tracksExpiry: boolean;
         minStockLevel: Prisma.Decimal | null;
         reorderQty: Prisma.Decimal | null;
+        groupId: string | null;
+        taxCodeId: string | null;
     }>;
     get(user: AuthUser, id: string): Promise<{
         taxCode: {
             id: string;
-            companyId: string;
             name: string;
+            isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            isActive: boolean;
-            rate: Prisma.Decimal;
-            isInclusive: boolean;
+            companyId: string;
             inputTaxAccountId: string | null;
             outputTaxAccountId: string | null;
+            rate: Prisma.Decimal;
+            isInclusive: boolean;
         } | null;
         group: {
             id: string;
-            companyId: string;
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            companyId: string;
         } | null;
         incomeAccount: {
             id: string;
-            companyId: string;
-            name: string;
-            createdAt: Date;
-            updatedAt: Date;
             code: string;
+            name: string;
             type: import("@prisma/client").$Enums.CoaType;
             level: number;
             isGroup: boolean;
-            parentId: string | null;
             isPostable: boolean;
             isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            parentId: string | null;
         } | null;
         expenseAccount: {
             id: string;
-            companyId: string;
-            name: string;
-            createdAt: Date;
-            updatedAt: Date;
             code: string;
+            name: string;
             type: import("@prisma/client").$Enums.CoaType;
             level: number;
             isGroup: boolean;
-            parentId: string | null;
             isPostable: boolean;
             isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            parentId: string | null;
         } | null;
         itemTaxCodes: ({
             taxCode: {
                 id: string;
-                companyId: string;
                 name: string;
+                isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
-                isActive: boolean;
-                rate: Prisma.Decimal;
-                isInclusive: boolean;
+                companyId: string;
                 inputTaxAccountId: string | null;
                 outputTaxAccountId: string | null;
+                rate: Prisma.Decimal;
+                isInclusive: boolean;
             };
         } & {
             id: string;
-            itemId: string;
             taxCodeId: string;
+            itemId: string;
         })[];
         uomConversions: {
             id: string;
             createdAt: Date;
             updatedAt: Date;
             unit: string;
-            itemId: string;
             factor: Prisma.Decimal;
             isBase: boolean;
+            itemId: string;
         }[];
         components: ({
             component: {
                 id: string;
-                companyId: string;
                 name: string;
+                type: import("@prisma/client").$Enums.ItemType;
+                isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
+                companyId: string;
+                incomeAccountId: string | null;
+                expenseAccountId: string | null;
                 unit: string | null;
-                type: import("@prisma/client").$Enums.ItemType;
-                taxCodeId: string | null;
-                isActive: boolean;
-                groupId: string | null;
                 sku: string | null;
                 hsCode: string | null;
                 baseUnit: string | null;
@@ -421,8 +421,6 @@ export declare class ItemsService {
                 purchasePrice: Prisma.Decimal | null;
                 reorderLevel: Prisma.Decimal;
                 safetyStock: Prisma.Decimal;
-                incomeAccountId: string | null;
-                expenseAccountId: string | null;
                 trackInventory: boolean;
                 isSerialized: boolean;
                 isKit: boolean;
@@ -431,27 +429,29 @@ export declare class ItemsService {
                 tracksExpiry: boolean;
                 minStockLevel: Prisma.Decimal | null;
                 reorderQty: Prisma.Decimal | null;
+                groupId: string | null;
+                taxCodeId: string | null;
             };
         } & {
             id: string;
-            companyId: string;
             createdAt: Date;
             updatedAt: Date;
-            qty: Prisma.Decimal;
+            companyId: string;
             parentId: string;
+            qty: Prisma.Decimal;
             componentId: string;
         })[];
     } & {
         id: string;
-        companyId: string;
         name: string;
+        type: import("@prisma/client").$Enums.ItemType;
+        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        companyId: string;
+        incomeAccountId: string | null;
+        expenseAccountId: string | null;
         unit: string | null;
-        type: import("@prisma/client").$Enums.ItemType;
-        taxCodeId: string | null;
-        isActive: boolean;
-        groupId: string | null;
         sku: string | null;
         hsCode: string | null;
         baseUnit: string | null;
@@ -459,8 +459,6 @@ export declare class ItemsService {
         purchasePrice: Prisma.Decimal | null;
         reorderLevel: Prisma.Decimal;
         safetyStock: Prisma.Decimal;
-        incomeAccountId: string | null;
-        expenseAccountId: string | null;
         trackInventory: boolean;
         isSerialized: boolean;
         isKit: boolean;
@@ -469,6 +467,8 @@ export declare class ItemsService {
         tracksExpiry: boolean;
         minStockLevel: Prisma.Decimal | null;
         reorderQty: Prisma.Decimal | null;
+        groupId: string | null;
+        taxCodeId: string | null;
     }>;
     list(user: AuthUser, filters: {
         isActive?: boolean;
@@ -479,90 +479,90 @@ export declare class ItemsService {
     }): Promise<({
         taxCode: {
             id: string;
-            companyId: string;
             name: string;
+            isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
-            isActive: boolean;
-            rate: Prisma.Decimal;
-            isInclusive: boolean;
+            companyId: string;
             inputTaxAccountId: string | null;
             outputTaxAccountId: string | null;
+            rate: Prisma.Decimal;
+            isInclusive: boolean;
         } | null;
         group: {
             id: string;
-            companyId: string;
             name: string;
             createdAt: Date;
             updatedAt: Date;
+            companyId: string;
         } | null;
         incomeAccount: {
             id: string;
-            companyId: string;
-            name: string;
-            createdAt: Date;
-            updatedAt: Date;
             code: string;
+            name: string;
             type: import("@prisma/client").$Enums.CoaType;
             level: number;
             isGroup: boolean;
-            parentId: string | null;
             isPostable: boolean;
             isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            parentId: string | null;
         } | null;
         expenseAccount: {
             id: string;
-            companyId: string;
-            name: string;
-            createdAt: Date;
-            updatedAt: Date;
             code: string;
+            name: string;
             type: import("@prisma/client").$Enums.CoaType;
             level: number;
             isGroup: boolean;
-            parentId: string | null;
             isPostable: boolean;
             isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+            companyId: string;
+            parentId: string | null;
         } | null;
         itemTaxCodes: ({
             taxCode: {
                 id: string;
-                companyId: string;
                 name: string;
+                isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
-                isActive: boolean;
-                rate: Prisma.Decimal;
-                isInclusive: boolean;
+                companyId: string;
                 inputTaxAccountId: string | null;
                 outputTaxAccountId: string | null;
+                rate: Prisma.Decimal;
+                isInclusive: boolean;
             };
         } & {
             id: string;
-            itemId: string;
             taxCodeId: string;
+            itemId: string;
         })[];
         uomConversions: {
             id: string;
             createdAt: Date;
             updatedAt: Date;
             unit: string;
-            itemId: string;
             factor: Prisma.Decimal;
             isBase: boolean;
+            itemId: string;
         }[];
         components: ({
             component: {
                 id: string;
-                companyId: string;
                 name: string;
+                type: import("@prisma/client").$Enums.ItemType;
+                isActive: boolean;
                 createdAt: Date;
                 updatedAt: Date;
+                companyId: string;
+                incomeAccountId: string | null;
+                expenseAccountId: string | null;
                 unit: string | null;
-                type: import("@prisma/client").$Enums.ItemType;
-                taxCodeId: string | null;
-                isActive: boolean;
-                groupId: string | null;
                 sku: string | null;
                 hsCode: string | null;
                 baseUnit: string | null;
@@ -570,8 +570,6 @@ export declare class ItemsService {
                 purchasePrice: Prisma.Decimal | null;
                 reorderLevel: Prisma.Decimal;
                 safetyStock: Prisma.Decimal;
-                incomeAccountId: string | null;
-                expenseAccountId: string | null;
                 trackInventory: boolean;
                 isSerialized: boolean;
                 isKit: boolean;
@@ -580,27 +578,29 @@ export declare class ItemsService {
                 tracksExpiry: boolean;
                 minStockLevel: Prisma.Decimal | null;
                 reorderQty: Prisma.Decimal | null;
+                groupId: string | null;
+                taxCodeId: string | null;
             };
         } & {
             id: string;
-            companyId: string;
             createdAt: Date;
             updatedAt: Date;
-            qty: Prisma.Decimal;
+            companyId: string;
             parentId: string;
+            qty: Prisma.Decimal;
             componentId: string;
         })[];
     } & {
         id: string;
-        companyId: string;
         name: string;
+        type: import("@prisma/client").$Enums.ItemType;
+        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        companyId: string;
+        incomeAccountId: string | null;
+        expenseAccountId: string | null;
         unit: string | null;
-        type: import("@prisma/client").$Enums.ItemType;
-        taxCodeId: string | null;
-        isActive: boolean;
-        groupId: string | null;
         sku: string | null;
         hsCode: string | null;
         baseUnit: string | null;
@@ -608,8 +608,6 @@ export declare class ItemsService {
         purchasePrice: Prisma.Decimal | null;
         reorderLevel: Prisma.Decimal;
         safetyStock: Prisma.Decimal;
-        incomeAccountId: string | null;
-        expenseAccountId: string | null;
         trackInventory: boolean;
         isSerialized: boolean;
         isKit: boolean;
@@ -618,18 +616,20 @@ export declare class ItemsService {
         tracksExpiry: boolean;
         minStockLevel: Prisma.Decimal | null;
         reorderQty: Prisma.Decimal | null;
+        groupId: string | null;
+        taxCodeId: string | null;
     })[]>;
     remove(user: AuthUser, id: string): Promise<{
         id: string;
-        companyId: string;
         name: string;
+        type: import("@prisma/client").$Enums.ItemType;
+        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        companyId: string;
+        incomeAccountId: string | null;
+        expenseAccountId: string | null;
         unit: string | null;
-        type: import("@prisma/client").$Enums.ItemType;
-        taxCodeId: string | null;
-        isActive: boolean;
-        groupId: string | null;
         sku: string | null;
         hsCode: string | null;
         baseUnit: string | null;
@@ -637,8 +637,6 @@ export declare class ItemsService {
         purchasePrice: Prisma.Decimal | null;
         reorderLevel: Prisma.Decimal;
         safetyStock: Prisma.Decimal;
-        incomeAccountId: string | null;
-        expenseAccountId: string | null;
         trackInventory: boolean;
         isSerialized: boolean;
         isKit: boolean;
@@ -647,18 +645,20 @@ export declare class ItemsService {
         tracksExpiry: boolean;
         minStockLevel: Prisma.Decimal | null;
         reorderQty: Prisma.Decimal | null;
+        groupId: string | null;
+        taxCodeId: string | null;
     }>;
     restore(user: AuthUser, id: string): Promise<{
         id: string;
-        companyId: string;
         name: string;
+        type: import("@prisma/client").$Enums.ItemType;
+        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        companyId: string;
+        incomeAccountId: string | null;
+        expenseAccountId: string | null;
         unit: string | null;
-        type: import("@prisma/client").$Enums.ItemType;
-        taxCodeId: string | null;
-        isActive: boolean;
-        groupId: string | null;
         sku: string | null;
         hsCode: string | null;
         baseUnit: string | null;
@@ -666,8 +666,6 @@ export declare class ItemsService {
         purchasePrice: Prisma.Decimal | null;
         reorderLevel: Prisma.Decimal;
         safetyStock: Prisma.Decimal;
-        incomeAccountId: string | null;
-        expenseAccountId: string | null;
         trackInventory: boolean;
         isSerialized: boolean;
         isKit: boolean;
@@ -676,6 +674,8 @@ export declare class ItemsService {
         tracksExpiry: boolean;
         minStockLevel: Prisma.Decimal | null;
         reorderQty: Prisma.Decimal | null;
+        groupId: string | null;
+        taxCodeId: string | null;
     }>;
     assemble(user: AuthUser, id: string, qty: number, memo?: string, components?: Array<{
         componentId: string;

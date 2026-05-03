@@ -23,7 +23,7 @@ export class SaleTypesService {
     }
     const data = await this.prisma.saleType.findMany({
       where,
-      orderBy: { name: "asc" },
+      orderBy: { name: "desc" },
       take: query.take || 50,
     });
     return { data };

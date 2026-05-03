@@ -60,7 +60,7 @@ let PartiesService = class PartiesService {
             where.name = { contains: filters.q, mode: "insensitive" };
         return this.prisma.party.findMany({
             where,
-            orderBy: { name: "asc" },
+            orderBy: { name: "desc" },
             skip: filters.skip || 0,
             take: filters.take || 1000
         });
