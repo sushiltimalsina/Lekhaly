@@ -180,6 +180,7 @@ model Company {
   saleTypes      SaleType[]
   purchaseTypes  PurchaseType[]
   stockCounts    StockCount[]
+  inventorySettings InventorySettings?
 }
 
 model User {
@@ -524,6 +525,9 @@ model Item {
   trackInventory Boolean  @default(true)
   isSerialized   Boolean  @default(false)
   isKit          Boolean  @default(false)
+  tracksBatch    Boolean  @default(false)
+  tracksLot      Boolean  @default(false)
+  tracksExpiry   Boolean  @default(false)
   minStockLevel  Decimal? @db.Decimal(14, 2)
   reorderQty     Decimal? @db.Decimal(14, 2)
 
@@ -532,6 +536,30 @@ model Item {
   serialNumbers  SerialNumber[]
 
   @@unique([companyId, name])
+}
+
+model InventorySettings {
+  id        String  @id @default(uuid())
+  companyId String  @unique
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  inventoryTrackingEnabled Boolean @default(true)
+  warehousesEnabled        Boolean @default(false)
+  binsEnabled              Boolean @default(false)
+  batchTrackingEnabled     Boolean @default(false)
+  lotTrackingEnabled       Boolean @default(false)
+  expiryTrackingEnabled    Boolean @default(false)
+  serialTrackingEnabled    Boolean @default(false)
+  kitsEnabled              Boolean @default(false)
+  allowNegativeStock       Boolean @default(false)
+  requireWarehouseOnMovements Boolean @default(false)
+  defaultWarehouseId       String?
+  costingMethod            String  @default("moving_average")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
 }
 
 model Unit {

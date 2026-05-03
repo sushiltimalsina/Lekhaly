@@ -31,7 +31,8 @@ function useOutsideClick<T extends HTMLElement>(
 export interface SearchableSelectProps<T> {
     label?: string;
     placeholder?: string;
-    valueId: string;
+    valueId?: string;
+    value?: string;
     onChange: (id: string, opt?: T) => void;
     options: T[];
     getLabel?: (opt: T) => string;
@@ -51,7 +52,8 @@ export default function SearchableSelect<T extends any>(props: SearchableSelectP
     const {
         label,
         placeholder = "Selectâ€¦",
-        valueId,
+        valueId: valueIdProp,
+        value,
         onChange,
         options,
         getLabel,
@@ -63,6 +65,7 @@ export default function SearchableSelect<T extends any>(props: SearchableSelectP
         fallbackLabel,
         disabled,
     } = props;
+    const valueId = valueIdProp ?? value ?? "";
 
     const [open, setOpen] = React.useState(false);
     const [query, setQuery] = React.useState("");

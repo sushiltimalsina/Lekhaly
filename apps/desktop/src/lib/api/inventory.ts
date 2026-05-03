@@ -85,11 +85,14 @@ export type StockAdjustmentInput = {
   qty: number;
   rate?: number;
   accountId: string;
+  warehouseId?: string;
+  binId?: string;
   memo?: string;
   batchNo?: string;
   lotNo?: string;
   expiryDate?: string;
   expiryDateBs?: string;
+  serialNumbers?: string[];
   allowNegativeOverride?: boolean;
   overrideReason?: string;
 };
@@ -106,9 +109,41 @@ export type StockTransferInput = {
   lotNo?: string;
   expiryDate?: string;
   expiryDateBs?: string;
+  serialNumbers?: string[];
   date?: string;
   dateBs?: string;
   memo?: string;
+};
+
+export type InventorySettings = {
+  id?: string;
+  companyId?: string;
+  inventoryTrackingEnabled: boolean;
+  warehousesEnabled: boolean;
+  binsEnabled: boolean;
+  batchTrackingEnabled: boolean;
+  lotTrackingEnabled: boolean;
+  expiryTrackingEnabled: boolean;
+  serialTrackingEnabled: boolean;
+  kitsEnabled: boolean;
+  allowNegativeStock: boolean;
+  requireWarehouseOnMovements: boolean;
+  defaultWarehouseId?: string | null;
+  costingMethod: "moving_average" | "fifo";
+};
+
+export type InventorySettingsInput = Partial<InventorySettings>;
+
+export type SerialNumberRecord = {
+  id: string;
+  itemId: string;
+  serialNo: string;
+  status: string;
+  warehouseId?: string | null;
+  binId?: string | null;
+  item?: { id: string; name: string; sku?: string | null };
+  warehouse?: { id: string; name: string } | null;
+  bin?: { id: string; name: string } | null;
 };
 
 export async function adjustInventoryStock(input: StockAdjustmentInput) {
@@ -125,4 +160,20 @@ export async function transferInventoryStock(input: StockTransferInput) {
     method: "POST",
     body: input,
   });
+}
+
+export async function getInventorySettings() {
+  return apiRequest<InventorySettings>({ path: "/inventory/settings" });
+}
+
+export async function updateInventorySettings(input: InventorySettingsInput) {
+  return apiRequest<InventorySettings>({
+    path: "/inventory/settings",
+    method: "POST",
+    body: input,
+  });
+}
+
+export async function listSerialNumbers(query?: { itemId?: string; status?: string; q?: string; take?: number }) {
+  return apiRequest<SerialNumberRecord[]>({ path: "/inventory/serials", query });
 }

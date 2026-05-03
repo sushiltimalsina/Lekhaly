@@ -24,10 +24,6 @@ export class StockCountsService {
   }
 
   async getById(companyId: string, id: string) {
-    const stockCount = await this.prisma.stockCount.findUnique({
-      where: { id_companyId: { id, companyId } } as any, // Schema uses @@index, so we'll just query by both or findFirst
-    });
-    // Let's use findFirst
     const count = await this.prisma.stockCount.findFirst({
       where: { id, companyId },
       include: {
@@ -46,6 +42,8 @@ export class StockCountsService {
   }
 
   async create(companyId: string, userId: string, dto: CreateStockCountDto) {
+    await this.assertCountPolicy(companyId, dto.lines, dto.warehouseId);
+
     // Determine system quantities for lines
     const linesWithSystemQty = await Promise.all(dto.lines.map(async (line) => {
       // Find current stock
@@ -104,6 +102,20 @@ export class StockCountsService {
     }
 
     return this.prisma.$transaction(async (tx) => {
+      if (dto.lines || dto.warehouseId !== undefined) {
+        await this.assertCountPolicy(
+          companyId,
+          dto.lines ?? existing.lines.map((line) => ({
+            itemId: line.itemId,
+            binId: line.binId ?? undefined,
+            batchNo: line.batchNo ?? undefined,
+            lotNo: line.lotNo ?? undefined
+          })),
+          dto.warehouseId !== undefined ? dto.warehouseId : existing.warehouseId ?? undefined,
+          tx
+        );
+      }
+
       // Update basic fields
       const updateData: any = {};
       if (dto.reference !== undefined) updateData.reference = dto.reference;
@@ -193,6 +205,8 @@ export class StockCountsService {
 
   async complete(companyId: string, id: string, adjustmentAccountId: string) {
     const existing = await this.getById(companyId, id);
+    const settings = await this.inventoryService.getOrCreateSettings(companyId);
+    if (!settings.inventoryTrackingEnabled) throw new BadRequestException("Inventory tracking is disabled");
     if (existing.status !== "in_progress" && existing.status !== "draft") {
       throw new BadRequestException(`Cannot complete a ${existing.status} stock count`);
     }
@@ -313,5 +327,51 @@ export class StockCountsService {
       throw new BadRequestException("Cannot delete a completed stock count");
     }
     return this.prisma.stockCount.delete({ where: { id } });
+  }
+
+  private async assertCountPolicy(
+    companyId: string,
+    lines: Array<{ itemId: string; binId?: string | null; batchNo?: string | null; lotNo?: string | null }>,
+    warehouseId?: string | null,
+    tx?: Prisma.TransactionClient
+  ) {
+    const settings = await this.inventoryService.getOrCreateSettings(companyId, tx);
+    if (!settings.inventoryTrackingEnabled) throw new BadRequestException("Inventory tracking is disabled");
+    if ((warehouseId || settings.requireWarehouseOnMovements) && !settings.warehousesEnabled) {
+      throw new BadRequestException("Warehouse tracking is disabled in inventory configuration");
+    }
+    if (settings.requireWarehouseOnMovements && !warehouseId) {
+      throw new BadRequestException("Warehouse is required for stock counts");
+    }
+    if (lines.some((line) => line.binId) && !settings.binsEnabled) {
+      throw new BadRequestException("Bin tracking is disabled in inventory configuration");
+    }
+    if (lines.some((line) => line.batchNo) && !settings.batchTrackingEnabled) {
+      throw new BadRequestException("Batch tracking is disabled in inventory configuration");
+    }
+    if (lines.some((line) => line.lotNo) && !settings.lotTrackingEnabled) {
+      throw new BadRequestException("Lot tracking is disabled in inventory configuration");
+    }
+
+    const db = (tx ?? this.prisma) as any;
+    if (warehouseId) {
+      const warehouse = await db.warehouse.findFirst({ where: { id: warehouseId, companyId, isActive: true } });
+      if (!warehouse) throw new BadRequestException("Warehouse not found");
+    }
+
+    const itemIds = Array.from(new Set(lines.map((line) => line.itemId)));
+    const items = await db.item.findMany({
+      where: { id: { in: itemIds }, companyId },
+      select: { id: true, type: true, trackInventory: true, tracksBatch: true, tracksLot: true }
+    });
+    const itemMap = new Map<string, any>(items.map((item: any) => [item.id, item]));
+    for (const line of lines) {
+      const item = itemMap.get(line.itemId);
+      if (!item || item.type === "services" || item.trackInventory === false) {
+        throw new BadRequestException("Stock counts can only include stock-tracked goods");
+      }
+      if (item.tracksBatch && !line.batchNo) throw new BadRequestException("Batch number is required for this item");
+      if (item.tracksLot && !line.lotNo) throw new BadRequestException("Lot number is required for this item");
+    }
   }
 }

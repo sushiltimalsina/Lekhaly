@@ -13,7 +13,7 @@ import { Calendar as CalendarPicker } from "./calendar";
 type DualDateValue = { ad: string; bs: string };
 
 type DualDateInputProps = {
-  label: string;
+  label?: string;
   value: DualDateValue;
   onChange: (next: DualDateValue) => void;
   preferred?: CalendarPreference;
@@ -166,10 +166,12 @@ const DualDateInput = React.forwardRef<HTMLInputElement, DualDateInputProps>(
 
     return (
       <div className={cn("space-y-1 relative", className)}>
-        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 block mb-1">
-          {label}
-          {required ? " *" : ""}
-        </label>
+        {label ? (
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 block mb-1">
+            {label}
+            {required ? " *" : ""}
+          </label>
+        ) : null}
 
         <div className="group/input">
           <div className="relative">

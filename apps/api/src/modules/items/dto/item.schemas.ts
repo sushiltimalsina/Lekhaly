@@ -27,8 +27,12 @@ export const CreateItemSchema = z.object({
   minStockLevel: z.number().nonnegative().optional(),
   reorderQty: z.number().nonnegative().optional(),
   // Advanced inventory flags
+  trackInventory: z.boolean().optional(),
   isSerialized: z.boolean().optional(),
   isKit: z.boolean().optional(),
+  tracksBatch: z.boolean().optional(),
+  tracksLot: z.boolean().optional(),
+  tracksExpiry: z.boolean().optional(),
   // Bill of Materials (kit components)
   components: z.array(z.object({
     componentId: z.string().uuid(),

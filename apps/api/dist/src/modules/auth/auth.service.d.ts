@@ -498,6 +498,9 @@ export declare class AuthService {
             trackInventory: boolean;
             isSerialized: boolean;
             isKit: boolean;
+            tracksBatch: boolean;
+            tracksLot: boolean;
+            tracksExpiry: boolean;
             minStockLevel: Prisma.Decimal | null;
             reorderQty: Prisma.Decimal | null;
         } | {
@@ -523,6 +526,9 @@ export declare class AuthService {
             trackInventory: boolean;
             isSerialized: boolean;
             isKit: boolean;
+            tracksBatch: boolean;
+            tracksLot: boolean;
+            tracksExpiry: boolean;
             minStockLevel: Prisma.Decimal | null;
             reorderQty: Prisma.Decimal | null;
         })[] | ({
@@ -1286,6 +1292,9 @@ export declare class AuthService {
             trackInventory: boolean;
             isSerialized: boolean;
             isKit: boolean;
+            tracksBatch: boolean;
+            tracksLot: boolean;
+            tracksExpiry: boolean;
             minStockLevel: Prisma.Decimal | null;
             reorderQty: Prisma.Decimal | null;
         }[] | {
@@ -2091,6 +2100,9 @@ export declare class AuthService {
             trackInventory: boolean;
             isSerialized: boolean;
             isKit: boolean;
+            tracksBatch: boolean;
+            tracksLot: boolean;
+            tracksExpiry: boolean;
             minStockLevel: Prisma.Decimal | null;
             reorderQty: Prisma.Decimal | null;
         } | {
@@ -2116,6 +2128,9 @@ export declare class AuthService {
             trackInventory: boolean;
             isSerialized: boolean;
             isKit: boolean;
+            tracksBatch: boolean;
+            tracksLot: boolean;
+            tracksExpiry: boolean;
             minStockLevel: Prisma.Decimal | null;
             reorderQty: Prisma.Decimal | null;
         })[] | ({
@@ -2879,6 +2894,9 @@ export declare class AuthService {
             trackInventory: boolean;
             isSerialized: boolean;
             isKit: boolean;
+            tracksBatch: boolean;
+            tracksLot: boolean;
+            tracksExpiry: boolean;
             minStockLevel: Prisma.Decimal | null;
             reorderQty: Prisma.Decimal | null;
         }[] | {

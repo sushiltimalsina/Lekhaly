@@ -7,7 +7,7 @@ import * as React from "react";
 export function useBarcodeScanner(onScan: (barcode: string) => void, enabled = true) {
   const buffer = React.useRef<string>("");
   const lastKeyTime = React.useRef<number>(0);
-  const timerRef = React.useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   React.useEffect(() => {
     if (!enabled) return;

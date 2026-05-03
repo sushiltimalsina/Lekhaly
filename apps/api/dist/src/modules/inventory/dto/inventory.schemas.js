@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.InventoryAlertsQuerySchema = exports.StockTransferSchema = exports.StockQuerySchema = exports.StockAdjustmentSchema = void 0;
+exports.SerialQuerySchema = exports.InventorySettingsSchema = exports.InventoryAlertsQuerySchema = exports.StockTransferSchema = exports.StockQuerySchema = exports.StockAdjustmentSchema = void 0;
 const zod_1 = require("zod");
 exports.StockAdjustmentSchema = zod_1.z.object({
     itemId: zod_1.z.string().uuid(),
@@ -9,11 +9,14 @@ exports.StockAdjustmentSchema = zod_1.z.object({
     qty: zod_1.z.number(),
     rate: zod_1.z.number().nonnegative().optional(),
     accountId: zod_1.z.string().uuid(),
+    warehouseId: zod_1.z.string().uuid().optional(),
+    binId: zod_1.z.string().uuid().optional(),
     memo: zod_1.z.string().trim().max(255).optional(),
     batchNo: zod_1.z.string().trim().max(64).optional(),
     lotNo: zod_1.z.string().trim().max(64).optional(),
     expiryDate: zod_1.z.coerce.date().optional(),
     expiryDateBs: zod_1.z.string().trim().max(20).optional(),
+    serialNumbers: zod_1.z.array(zod_1.z.string().trim().min(1).max(120)).optional(),
     allowNegativeOverride: zod_1.z.boolean().optional(),
     overrideReason: zod_1.z.string().trim().max(255).optional()
 }).superRefine((data, ctx) => {
@@ -44,6 +47,7 @@ exports.StockTransferSchema = zod_1.z.object({
     lotNo: zod_1.z.string().trim().max(64).optional(),
     expiryDate: zod_1.z.coerce.date().optional(),
     expiryDateBs: zod_1.z.string().trim().max(20).optional(),
+    serialNumbers: zod_1.z.array(zod_1.z.string().trim().min(1).max(120)).optional(),
     date: zod_1.z.coerce.date().optional(),
     dateBs: zod_1.z.string().trim().max(20).optional(),
     memo: zod_1.z.string().trim().max(255).optional()
@@ -59,5 +63,32 @@ exports.InventoryAlertsQuerySchema = zod_1.z.object({
     expiringWithinDays: zod_1.z.coerce.number().int().min(1).max(365).optional(),
     noMovementDays: zod_1.z.coerce.number().int().min(1).max(3650).optional(),
     limit: zod_1.z.coerce.number().int().min(1).max(1000).optional()
+});
+exports.InventorySettingsSchema = zod_1.z.object({
+    inventoryTrackingEnabled: zod_1.z.boolean().optional(),
+    warehousesEnabled: zod_1.z.boolean().optional(),
+    binsEnabled: zod_1.z.boolean().optional(),
+    batchTrackingEnabled: zod_1.z.boolean().optional(),
+    lotTrackingEnabled: zod_1.z.boolean().optional(),
+    expiryTrackingEnabled: zod_1.z.boolean().optional(),
+    serialTrackingEnabled: zod_1.z.boolean().optional(),
+    kitsEnabled: zod_1.z.boolean().optional(),
+    allowNegativeStock: zod_1.z.boolean().optional(),
+    requireWarehouseOnMovements: zod_1.z.boolean().optional(),
+    defaultWarehouseId: zod_1.z.string().uuid().nullable().optional(),
+    costingMethod: zod_1.z.enum(["moving_average", "fifo"]).optional()
+}).superRefine((data, ctx) => {
+    if (data.binsEnabled && data.warehousesEnabled === false) {
+        ctx.addIssue({ code: "custom", message: "Bins require warehouses to be enabled", path: ["binsEnabled"] });
+    }
+    if (data.requireWarehouseOnMovements && data.warehousesEnabled === false) {
+        ctx.addIssue({ code: "custom", message: "Required warehouse needs warehouses to be enabled", path: ["requireWarehouseOnMovements"] });
+    }
+});
+exports.SerialQuerySchema = zod_1.z.object({
+    itemId: zod_1.z.string().uuid().optional(),
+    status: zod_1.z.enum(["available", "sold", "returned", "reserved", "damaged"]).optional(),
+    q: zod_1.z.string().trim().max(120).optional(),
+    take: zod_1.z.coerce.number().int().min(1).max(1000).optional()
 });
 //# sourceMappingURL=inventory.schemas.js.map

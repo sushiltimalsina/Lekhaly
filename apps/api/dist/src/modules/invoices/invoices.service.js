@@ -25,6 +25,13 @@ let InvoicesService = class InvoicesService {
             throw new common_1.BadRequestException("Company not found");
         return company;
     }
+    async getInventorySettings(companyId, tx) {
+        const db = (tx ?? this.prisma);
+        const existing = await db.inventorySettings.findUnique({ where: { companyId } });
+        if (existing)
+            return existing;
+        return db.inventorySettings.create({ data: { companyId } });
+    }
     async validateItems(companyId, items) {
         const itemIds = Array.from(new Set(items.map((i) => i.itemId).filter(Boolean)));
         const taxCodeIds = Array.from(new Set(items.flatMap((i) => [
@@ -55,14 +62,17 @@ let InvoicesService = class InvoicesService {
         return { subtotal, vatAmount, total };
     }
     async enforceStockForSales(user, items) {
+        const settings = await this.getInventorySettings(user.companyId);
+        if (!settings.inventoryTrackingEnabled || settings.allowNegativeStock)
+            return;
         const itemIds = Array.from(new Set(items.map((i) => i.itemId).filter(Boolean)));
         if (!itemIds.length)
             return;
         const dbItems = await this.prisma.item.findMany({
             where: { id: { in: itemIds }, companyId: user.companyId },
-            select: { id: true, name: true, type: true }
+            select: { id: true, name: true, type: true, trackInventory: true }
         });
-        const goodsIds = dbItems.filter((i) => i.type !== "services").map((i) => i.id);
+        const goodsIds = dbItems.filter((i) => i.type !== "services" && i.trackInventory !== false).map((i) => i.id);
         if (!goodsIds.length)
             return;
         const ledger = await this.prisma.stockLedger.findMany({
@@ -78,7 +88,7 @@ let InvoicesService = class InvoicesService {
             if (!line.itemId)
                 continue;
             const item = dbItems.find((i) => i.id === line.itemId);
-            if (!item || item.type === "services")
+            if (!item || item.type === "services" || item.trackInventory === false)
                 continue;
             const available = stockMap.get(line.itemId) || new client_1.Prisma.Decimal(0);
             const required = new client_1.Prisma.Decimal(line.qty);
@@ -477,8 +487,11 @@ let InvoicesService = class InvoicesService {
                 where: { id: company.id },
                 data: { nextInvoiceNumber: sequence + 1 }
             });
+            const inventorySettings = await this.getInventorySettings(user.companyId, tx);
             const stockLedgerData = [];
             for (const item of invoice.items) {
+                if (!inventorySettings.inventoryTrackingEnabled)
+                    continue;
                 if (!item.itemId)
                     continue;
                 const isOut = invoice.type === "sales" || invoice.type === "purchase_return";
@@ -489,6 +502,17 @@ let InvoicesService = class InvoicesService {
                     where: { id: item.itemId },
                     include: { components: true }
                 });
+                if (!itemRecord || itemRecord.type === "services" || itemRecord.trackInventory === false)
+                    continue;
+                if (itemRecord.isKit && !inventorySettings.kitsEnabled) {
+                    throw new common_1.BadRequestException("Enable kits in inventory configuration before posting kit invoices");
+                }
+                if (itemRecord.isSerialized) {
+                    throw new common_1.BadRequestException("Serialized invoice posting requires serial number selection");
+                }
+                if (itemRecord.tracksBatch || itemRecord.tracksLot || itemRecord.tracksExpiry) {
+                    throw new common_1.BadRequestException("Tracked batch/lot/expiry invoice posting requires line tracking selection");
+                }
                 const computeMAC = async (targetItemId) => {
                     const allEntries = await tx.stockLedger.findMany({
                         where: { companyId: user.companyId, itemId: targetItemId },

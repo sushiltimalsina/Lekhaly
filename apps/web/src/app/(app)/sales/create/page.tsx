@@ -355,6 +355,14 @@ function isoAddDays(iso: string, days: number) {
 }
 
 export default function SalesCreatePage() {
+  return (
+    <React.Suspense fallback={null}>
+      <SalesCreateContent />
+    </React.Suspense>
+  );
+}
+
+function SalesCreateContent() {
   const [mounted, setMounted] = React.useState(false);
 
   const invoiceDateRef = React.useRef<HTMLInputElement>(null);

@@ -48,6 +48,14 @@ type LedgerOption = {
 };
 
 export default function ContraCreatePage() {
+    return (
+        <React.Suspense fallback={null}>
+            <ContraCreateContent />
+        </React.Suspense>
+    );
+}
+
+function ContraCreateContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const id = searchParams.get("id");

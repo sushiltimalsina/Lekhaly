@@ -12,9 +12,11 @@ describe("ExpensesService", () => {
       taxCode: { findFirst: jest.fn() },
       voucherAttachment: { findFirst: jest.fn() },
       chartOfAccount: { findFirst: jest.fn() },
+      company: { findUnique: jest.fn() },
       expense: { create: jest.fn(), findFirst: jest.fn(), update: jest.fn(), findMany: jest.fn() },
       voucher: { create: jest.fn() }
     };
+    prisma.company.findUnique.mockResolvedValue({ id: user.companyId, lockDate: null });
     service = new ExpensesService(prisma);
   });
 

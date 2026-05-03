@@ -339,6 +339,14 @@ const isoAddDays = (iso: string, days: number) => {
 };
 
 export default function PurchaseCreatePage() {
+    return (
+        <React.Suspense fallback={null}>
+            <PurchaseCreateContent />
+        </React.Suspense>
+    );
+}
+
+function PurchaseCreateContent() {
     const [mounted, setMounted] = React.useState(false);
 
     const purchaseDateRef = React.useRef<HTMLInputElement>(null);

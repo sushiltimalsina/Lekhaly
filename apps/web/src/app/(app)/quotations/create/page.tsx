@@ -323,6 +323,14 @@ type Line = { itemId: string; qty: string; rate: string; description?: string };
 type BillSundryRow = { id: string; sundryId?: string; name: string; type: "add" | "less"; ratePct: string; manualAmount?: string; isManual?: boolean };
 
 export default function QuotationCreatePage() {
+    return (
+        <React.Suspense fallback={null}>
+            <QuotationCreateContent />
+        </React.Suspense>
+    );
+}
+
+function QuotationCreateContent() {
     const [mounted, setMounted] = React.useState(false);
 
     const dateRef = React.useRef<HTMLInputElement>(null);

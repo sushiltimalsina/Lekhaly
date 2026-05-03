@@ -27,8 +27,12 @@ exports.CreateItemSchema = zod_1.z.object({
     taxCodeIds: zod_1.z.array(zod_1.z.string().uuid()).optional(),
     minStockLevel: zod_1.z.number().nonnegative().optional(),
     reorderQty: zod_1.z.number().nonnegative().optional(),
+    trackInventory: zod_1.z.boolean().optional(),
     isSerialized: zod_1.z.boolean().optional(),
     isKit: zod_1.z.boolean().optional(),
+    tracksBatch: zod_1.z.boolean().optional(),
+    tracksLot: zod_1.z.boolean().optional(),
+    tracksExpiry: zod_1.z.boolean().optional(),
     components: zod_1.z.array(zod_1.z.object({
         componentId: zod_1.z.string().uuid(),
         qty: zod_1.z.number().positive()

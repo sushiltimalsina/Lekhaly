@@ -321,6 +321,14 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
 }
 
 export default function PurchaseReturnCreatePage() {
+    return (
+        <React.Suspense fallback={null}>
+            <PurchaseReturnCreateContent />
+        </React.Suspense>
+    );
+}
+
+function PurchaseReturnCreateContent() {
     const [mounted, setMounted] = React.useState(false);
 
     const purchaseDateRef = React.useRef<HTMLInputElement>(null);

@@ -4,6 +4,43 @@ import type { AuthUser } from "../../common/auth/auth.types";
 export declare class InventoryService {
     private prisma;
     constructor(prisma: PrismaService);
+    getOrCreateSettings(companyId: string, tx?: Prisma.TransactionClient): Promise<any>;
+    getSettings(user: AuthUser): Promise<any>;
+    updateSettings(user: AuthUser, input: {
+        inventoryTrackingEnabled?: boolean;
+        warehousesEnabled?: boolean;
+        binsEnabled?: boolean;
+        batchTrackingEnabled?: boolean;
+        lotTrackingEnabled?: boolean;
+        expiryTrackingEnabled?: boolean;
+        serialTrackingEnabled?: boolean;
+        kitsEnabled?: boolean;
+        allowNegativeStock?: boolean;
+        requireWarehouseOnMovements?: boolean;
+        defaultWarehouseId?: string | null;
+        costingMethod?: "moving_average" | "fifo";
+    }): Promise<{
+        id: string;
+        companyId: string;
+        createdAt: Date;
+        updatedAt: Date;
+        inventoryTrackingEnabled: boolean;
+        warehousesEnabled: boolean;
+        binsEnabled: boolean;
+        batchTrackingEnabled: boolean;
+        lotTrackingEnabled: boolean;
+        expiryTrackingEnabled: boolean;
+        serialTrackingEnabled: boolean;
+        kitsEnabled: boolean;
+        allowNegativeStock: boolean;
+        requireWarehouseOnMovements: boolean;
+        defaultWarehouseId: string | null;
+        costingMethod: string;
+    }>;
+    private assertSettingsCanChange;
+    private normalizeSerialNumbers;
+    private assertSerializedQuantity;
+    private applyMovementPolicy;
     getStock(user: AuthUser, itemId: string, filters: {
         from?: Date;
         to?: Date;
@@ -35,11 +72,14 @@ export declare class InventoryService {
         qty: number;
         rate?: number;
         accountId: string;
+        warehouseId?: string;
+        binId?: string;
         memo?: string;
         batchNo?: string;
         lotNo?: string;
         expiryDate?: Date;
         expiryDateBs?: string;
+        serialNumbers?: string[];
         allowNegativeOverride?: boolean;
         overrideReason?: string;
     }): Promise<{
@@ -56,6 +96,7 @@ export declare class InventoryService {
         hsCode: any;
         unit: string | null;
         type: any;
+        trackInventory: boolean;
         parentGroup: string;
         reorderLevel: number;
         safetyStock: number;
@@ -88,6 +129,7 @@ export declare class InventoryService {
         lotNo?: string;
         expiryDate?: Date;
         expiryDateBs?: string;
+        serialNumbers?: string[];
         date?: Date;
         dateBs?: string;
         memo?: string;
@@ -140,4 +182,36 @@ export declare class InventoryService {
             sku: any;
         }[];
     }>;
+    listSerialNumbers(user: AuthUser, query: {
+        itemId?: string;
+        status?: string;
+        q?: string;
+        take?: number;
+    }): Promise<({
+        item: {
+            id: string;
+            name: string;
+            sku: string | null;
+        };
+        warehouse: {
+            id: string;
+            name: string;
+        } | null;
+        bin: {
+            id: string;
+            name: string;
+        } | null;
+    } & {
+        id: string;
+        companyId: string;
+        status: string;
+        createdAt: Date;
+        updatedAt: Date;
+        itemId: string;
+        warehouseId: string | null;
+        binId: string | null;
+        serialNo: string;
+        purchaseInvoiceId: string | null;
+        salesInvoiceId: string | null;
+    })[]>;
 }

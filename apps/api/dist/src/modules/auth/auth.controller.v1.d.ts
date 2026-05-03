@@ -490,6 +490,9 @@ export declare class AuthV1Controller {
             trackInventory: boolean;
             isSerialized: boolean;
             isKit: boolean;
+            tracksBatch: boolean;
+            tracksLot: boolean;
+            tracksExpiry: boolean;
             minStockLevel: import("@prisma/client/runtime/client").Decimal | null;
             reorderQty: import("@prisma/client/runtime/client").Decimal | null;
         } | {
@@ -515,6 +518,9 @@ export declare class AuthV1Controller {
             trackInventory: boolean;
             isSerialized: boolean;
             isKit: boolean;
+            tracksBatch: boolean;
+            tracksLot: boolean;
+            tracksExpiry: boolean;
             minStockLevel: import("@prisma/client/runtime/client").Decimal | null;
             reorderQty: import("@prisma/client/runtime/client").Decimal | null;
         })[] | ({
@@ -1278,6 +1284,9 @@ export declare class AuthV1Controller {
             trackInventory: boolean;
             isSerialized: boolean;
             isKit: boolean;
+            tracksBatch: boolean;
+            tracksLot: boolean;
+            tracksExpiry: boolean;
             minStockLevel: import("@prisma/client/runtime/client").Decimal | null;
             reorderQty: import("@prisma/client/runtime/client").Decimal | null;
         }[] | {
@@ -2040,6 +2049,9 @@ export declare class AuthV1Controller {
             trackInventory: boolean;
             isSerialized: boolean;
             isKit: boolean;
+            tracksBatch: boolean;
+            tracksLot: boolean;
+            tracksExpiry: boolean;
             minStockLevel: import("@prisma/client/runtime/client").Decimal | null;
             reorderQty: import("@prisma/client/runtime/client").Decimal | null;
         } | {
@@ -2065,6 +2077,9 @@ export declare class AuthV1Controller {
             trackInventory: boolean;
             isSerialized: boolean;
             isKit: boolean;
+            tracksBatch: boolean;
+            tracksLot: boolean;
+            tracksExpiry: boolean;
             minStockLevel: import("@prisma/client/runtime/client").Decimal | null;
             reorderQty: import("@prisma/client/runtime/client").Decimal | null;
         })[] | ({
@@ -2828,6 +2843,9 @@ export declare class AuthV1Controller {
             trackInventory: boolean;
             isSerialized: boolean;
             isKit: boolean;
+            tracksBatch: boolean;
+            tracksLot: boolean;
+            tracksExpiry: boolean;
             minStockLevel: import("@prisma/client/runtime/client").Decimal | null;
             reorderQty: import("@prisma/client/runtime/client").Decimal | null;
         }[] | {

@@ -24,6 +24,15 @@ let InventoryController = class InventoryController {
     constructor(inventory) {
         this.inventory = inventory;
     }
+    settings(user) {
+        return this.inventory.getSettings(user);
+    }
+    updateSettings(user, body) {
+        return this.inventory.updateSettings(user, body);
+    }
+    serials(user, query) {
+        return this.inventory.listSerialNumbers(user, query);
+    }
     adjust(user, body) {
         return this.inventory.adjustStock(user, body);
     }
@@ -38,6 +47,33 @@ let InventoryController = class InventoryController {
     }
 };
 exports.InventoryController = InventoryController;
+__decorate([
+    (0, common_1.Get)("settings"),
+    (0, auth_decorator_1.RequirePerm)("masters.read"),
+    __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], InventoryController.prototype, "settings", null);
+__decorate([
+    (0, common_1.Post)("settings"),
+    (0, auth_decorator_1.RequirePerm)("masters.write"),
+    (0, auth_decorator_1.RequireStep)("sensitive"),
+    __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Body)(new zod_pipe_1.ZodValidationPipe(inventory_schemas_1.InventorySettingsSchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], InventoryController.prototype, "updateSettings", null);
+__decorate([
+    (0, common_1.Get)("serials"),
+    (0, auth_decorator_1.RequirePerm)("masters.read"),
+    __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Query)(new zod_pipe_1.ZodValidationPipe(inventory_schemas_1.SerialQuerySchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], InventoryController.prototype, "serials", null);
 __decorate([
     (0, common_1.Post)("adjustment"),
     (0, auth_decorator_1.RequirePerm)("masters.write"),

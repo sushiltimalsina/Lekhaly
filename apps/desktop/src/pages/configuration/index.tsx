@@ -7,7 +7,7 @@ import { listBillSundries, deleteBillSundry, type BillSundryRecord } from "@/lib
 import { listPaymentMethods, deletePaymentMethod } from "@/lib/api/payment-methods";
 import { listSaleTypes, deleteSaleType } from "@/lib/api/sale-types";
 import { listPurchaseTypes, deletePurchaseType } from "@/lib/api/purchase-types";
-import { Trash2, Ruler, Layers, Calculator, Plus, AlertCircle, ChevronDown, ChevronRight, Search, Pencil, Monitor, Hash, Shield, CreditCard, Calendar, Tag, ShoppingBag } from "lucide-react";
+import { Trash2, Ruler, Layers, Calculator, Plus, AlertCircle, ChevronDown, ChevronRight, Search, Pencil, Monitor, Hash, Shield, CreditCard, Calendar, Tag, ShoppingBag, PackageCheck } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import AddUnitDialog from "@/components/app/add-unit-dialog";
@@ -22,6 +22,8 @@ import { getSettings, setCalendarPreference, setDefaultDateRange, subscribeSetti
 import { getCurrencySettings, setCurrencySymbol, setNumberFormat, subscribeUi } from "@/lib/store/ui";
 import { MoneyText } from "@/components/app/money";
 import { getCompany, updateCompany } from "@/lib/api/auth";
+import { getInventorySettings, updateInventorySettings, type InventorySettings } from "@/lib/api/inventory";
+import { listWarehouses, type Warehouse } from "@/lib/api/warehouses";
 
 function NumberingRow({ 
   label, 
@@ -90,6 +92,36 @@ function NumberingRow({
   );
 }
 
+function InventoryToggleRow({
+  label,
+  description,
+  checked,
+  disabled,
+  onChange
+}: {
+  label: string;
+  description: string;
+  checked: boolean;
+  disabled?: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="flex items-start justify-between gap-4 rounded-xl border bg-background/80 px-4 py-3">
+      <span>
+        <span className="block text-sm font-semibold">{label}</span>
+        <span className="block text-xs text-muted-foreground">{description}</span>
+      </span>
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.checked)}
+        className="mt-1 h-4 w-4 rounded border-slate-300 text-emerald-600 disabled:opacity-50"
+      />
+    </label>
+  );
+}
+
 export default function ConfigurationPage() {
   const [searchParams] = useSearchParams();
   const focus = searchParams.get("focus");
@@ -103,6 +135,8 @@ export default function ConfigurationPage() {
   const [paymentMethods, setPaymentMethods] = React.useState<any[]>([]);
   const [saleTypes, setSaleTypes] = React.useState<any[]>([]);
   const [purchaseTypes, setPurchaseTypes] = React.useState<any[]>([]);
+  const [warehouses, setWarehouses] = React.useState<Warehouse[]>([]);
+  const [inventorySettings, setInventorySettings] = React.useState<InventorySettings | null>(null);
 
   const [loading, setLoading] = React.useState(true);
   const [busy, setBusy] = React.useState(false);
@@ -166,14 +200,16 @@ export default function ConfigurationPage() {
       return obj?.items ?? obj?.data ?? [];
     };
     try {
-      const [uRes, gRes, sRes, pmRes, stRes, ptRes, cRes] = await Promise.all([
+      const [uRes, gRes, sRes, pmRes, stRes, ptRes, cRes, invRes, whRes] = await Promise.all([
         listUnits({ take: 200 }),
         listItemGroups({ take: 200 }),
         listBillSundries({ take: 200 }),
         listPaymentMethods({ take: 200 }),
         listSaleTypes({ take: 200 }),
         listPurchaseTypes({ take: 200 }),
-        getCompany()
+        getCompany(),
+        getInventorySettings(),
+        listWarehouses({ isActive: true })
       ]);
       setUnits(normalizeList<UnitRecord>(uRes));
       setGroups(normalizeList<ItemGroupRecord>(gRes));
@@ -183,6 +219,8 @@ export default function ConfigurationPage() {
       setPurchaseTypes(normalizeList<any>(ptRes));
       setCompany(cRes);
       setCompanyForm(cRes);
+      setInventorySettings(invRes);
+      setWarehouses(normalizeList<Warehouse>(whRes));
     } catch (e: any) {
       setError(e?.message ?? "Failed to load configuration data.");
     } finally {
@@ -286,6 +324,20 @@ export default function ConfigurationPage() {
       // Optional: Show success toast/message
     } catch (e: any) {
       setError(e?.message ?? "Failed to update company settings.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const saveInventorySettings = async (updates: Partial<InventorySettings>) => {
+    if (!inventorySettings) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await updateInventorySettings({ ...inventorySettings, ...updates });
+      setInventorySettings(res);
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to update inventory settings.");
     } finally {
       setBusy(false);
     }
@@ -823,6 +875,92 @@ export default function ConfigurationPage() {
                 </div>
 
               </div>
+            </CardContent>
+          )}
+        </Card>
+
+        {/* Inventory Configuration Section */}
+        <Card className={cn("glass-card overflow-hidden lg:col-span-2", expandedSection === "inventory" && "ring-2 ring-emerald-500/50")}>
+          <CardHeader 
+            className="cursor-pointer hover:bg-muted/50 transition-colors select-none"
+            onClick={() => setExpandedSection(expandedSection === "inventory" ? null : "inventory")}
+          >
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-emerald-100 dark:hover:bg-emerald-950/50 transition-colors">
+                  {expandedSection === "inventory" ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="rounded-xl bg-emerald-50 p-2 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">
+                    <PackageCheck className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg font-bold">Inventory Configuration</CardTitle>
+                    <CardDescription>Choose how this company maintains stock movements</CardDescription>
+                  </div>
+                </div>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="rounded-xl"
+                onClick={(e) => { e.stopPropagation(); fetchData(); }}
+              >
+                Refresh
+              </Button>
+            </div>
+          </CardHeader>
+          
+          {expandedSection === "inventory" && (
+            <CardContent className="space-y-5 pt-0 animate-in fade-in slide-in-from-top-1">
+              {!inventorySettings ? (
+                <div className="py-12 text-center text-sm text-muted-foreground bg-muted/20 rounded-2xl border-2 border-dashed">
+                  {loading ? "Loading inventory settings..." : "Inventory settings are currently unavailable."}
+                </div>
+              ) : (
+                <>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <InventoryToggleRow label="Inventory Tracking" description="Maintain item stock quantities" checked={inventorySettings.inventoryTrackingEnabled} onChange={(v) => saveInventorySettings({ inventoryTrackingEnabled: v })} />
+                    <InventoryToggleRow label="Allow Negative Stock" description="Permit outbound movements below available stock" checked={inventorySettings.allowNegativeStock} disabled={!inventorySettings.inventoryTrackingEnabled} onChange={(v) => saveInventorySettings({ allowNegativeStock: v })} />
+                    <InventoryToggleRow label="Warehouses" description="Track stock by storage location" checked={inventorySettings.warehousesEnabled} disabled={!inventorySettings.inventoryTrackingEnabled} onChange={(v) => saveInventorySettings({ warehousesEnabled: v })} />
+                    <InventoryToggleRow label="Bins" description="Track stock inside warehouse bins" checked={inventorySettings.binsEnabled} disabled={!inventorySettings.inventoryTrackingEnabled || !inventorySettings.warehousesEnabled} onChange={(v) => saveInventorySettings({ binsEnabled: v })} />
+                    <InventoryToggleRow label="Batch Tracking" description="Allow batch numbers on stock movements" checked={inventorySettings.batchTrackingEnabled} disabled={!inventorySettings.inventoryTrackingEnabled} onChange={(v) => saveInventorySettings({ batchTrackingEnabled: v })} />
+                    <InventoryToggleRow label="Lot Tracking" description="Allow lot numbers on stock movements" checked={inventorySettings.lotTrackingEnabled} disabled={!inventorySettings.inventoryTrackingEnabled} onChange={(v) => saveInventorySettings({ lotTrackingEnabled: v })} />
+                    <InventoryToggleRow label="Expiry Tracking" description="Store expiry dates and expiry alerts" checked={inventorySettings.expiryTrackingEnabled} disabled={!inventorySettings.inventoryTrackingEnabled} onChange={(v) => saveInventorySettings({ expiryTrackingEnabled: v })} />
+                    <InventoryToggleRow label="Serial Numbers" description="Track unique serial numbers per unit" checked={inventorySettings.serialTrackingEnabled} disabled={!inventorySettings.inventoryTrackingEnabled} onChange={(v) => saveInventorySettings({ serialTrackingEnabled: v })} />
+                    <InventoryToggleRow label="Kits & Assemblies" description="Enable BOM and kit assembly flows" checked={inventorySettings.kitsEnabled} disabled={!inventorySettings.inventoryTrackingEnabled} onChange={(v) => saveInventorySettings({ kitsEnabled: v })} />
+                    <InventoryToggleRow label="Require Warehouse" description="Require warehouse on stock movements" checked={inventorySettings.requireWarehouseOnMovements} disabled={!inventorySettings.inventoryTrackingEnabled || !inventorySettings.warehousesEnabled} onChange={(v) => saveInventorySettings({ requireWarehouseOnMovements: v })} />
+                  </div>
+
+                  <div className="mt-5 grid gap-4 md:grid-cols-2 pt-4 border-t">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Default Warehouse</label>
+                      <select
+                        value={inventorySettings.defaultWarehouseId ?? ""}
+                        disabled={!inventorySettings.warehousesEnabled}
+                        onChange={(event) => saveInventorySettings({ defaultWarehouseId: event.target.value || null })}
+                        className="h-10 w-full rounded-xl border bg-background px-3 text-sm focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                      >
+                        <option value="">No default warehouse</option>
+                        {warehouses.map((warehouse) => (
+                          <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Costing Method</label>
+                      <select
+                        value={inventorySettings.costingMethod}
+                        onChange={(event) => saveInventorySettings({ costingMethod: event.target.value as InventorySettings["costingMethod"] })}
+                        className="h-10 w-full rounded-xl border bg-background px-3 text-sm focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                      >
+                        <option value="moving_average">Moving average</option>
+                        <option value="fifo">FIFO</option>
+                      </select>
+                    </div>
+                  </div>
+                </>
+              )}
             </CardContent>
           )}
         </Card>

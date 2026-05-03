@@ -3,13 +3,45 @@ import { Audit } from "../../common/audit/audit.decorator";
 import { CurrentUser, RequirePerm, RequireStep } from "../../common/auth/auth.decorator";
 import { ZodValidationPipe } from "../../common/zod/zod.pipe";
 import type { AuthUser } from "../../common/auth/auth.types";
-import { InventoryAlertsQuerySchema, StockAdjustmentSchema, StockQuerySchema, StockTransferSchema } from "./dto/inventory.schemas";
+import {
+  InventoryAlertsQuerySchema,
+  InventorySettingsSchema,
+  SerialQuerySchema,
+  StockAdjustmentSchema,
+  StockQuerySchema,
+  StockTransferSchema
+} from "./dto/inventory.schemas";
 import { InventoryService } from "./inventory.service";
 
 @Controller("inventory")
 @Audit({ entityType: "inventory", idParam: "id" })
 export class InventoryController {
   constructor(private inventory: InventoryService) {}
+
+  @Get("settings")
+  @RequirePerm("masters.read")
+  settings(@CurrentUser() user: AuthUser) {
+    return this.inventory.getSettings(user);
+  }
+
+  @Post("settings")
+  @RequirePerm("masters.write")
+  @RequireStep("sensitive")
+  updateSettings(
+    @CurrentUser() user: AuthUser,
+    @Body(new ZodValidationPipe(InventorySettingsSchema)) body: any
+  ) {
+    return this.inventory.updateSettings(user, body);
+  }
+
+  @Get("serials")
+  @RequirePerm("masters.read")
+  serials(
+    @CurrentUser() user: AuthUser,
+    @Query(new ZodValidationPipe(SerialQuerySchema)) query: any
+  ) {
+    return this.inventory.listSerialNumbers(user, query);
+  }
 
   @Post("adjustment")
   @RequirePerm("masters.write")

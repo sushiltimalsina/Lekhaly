@@ -10,7 +10,7 @@ import { Button } from "@lekhaly/ui";
 import { Input } from "@lekhaly/ui";
 import { ArrowRightLeft, Save, AlertTriangle, CheckCircle2, ChevronLeft, Info, ArrowRight, Warehouse, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { transferInventoryStock } from "@/lib/api/inventory";
+import { getInventorySettings, transferInventoryStock, type InventorySettings } from "@/lib/api/inventory";
 import { listItems } from "@/lib/api/items";
 import { listWarehouses, type Warehouse as WarehouseType } from "@/lib/api/warehouses";
 
@@ -23,6 +23,7 @@ export default function StockTransferPage() {
   const [success, setSuccess] = React.useState<string | null>(null);
   const [items, setItems] = React.useState<any[]>([]);
   const [warehouses, setWarehouses] = React.useState<WarehouseType[]>([]);
+  const [inventorySettings, setInventorySettings] = React.useState<InventorySettings | null>(null);
   const [itemId, setItemId] = React.useState("");
   const [fromWarehouseId, setFromWarehouseId] = React.useState("");
   const [fromBinId, setFromBinId] = React.useState("");
@@ -35,12 +36,14 @@ export default function StockTransferPage() {
   const [batchNo, setBatchNo] = React.useState("");
   const [lotNo, setLotNo] = React.useState("");
   const [expiryDate, setExpiryDate] = React.useState("");
+  const [serialText, setSerialText] = React.useState("");
 
   React.useEffect(() => {
     (async () => {
       try {
-        const [iData, whData] = await Promise.all([listItems({ isActive: true, take: 5000 }), listWarehouses({ isActive: true })]);
-        setItems((Array.isArray(iData) ? iData : []).filter((i: any) => i.type !== "services").map((i: any) => ({ id: i.id, name: i.name, sku: i.sku, stock: i.stock ?? 0 })));
+        const [iData, whData, settingsData] = await Promise.all([listItems({ isActive: true, take: 5000 }), listWarehouses({ isActive: true }), getInventorySettings()]);
+        setInventorySettings(settingsData);
+        setItems((Array.isArray(iData) ? iData : []).filter((i: any) => i.type !== "services" && i.trackInventory !== false).map((i: any) => ({ id: i.id, name: i.name, sku: i.sku, stock: i.stock ?? 0, isSerialized: i.isSerialized, tracksBatch: i.tracksBatch, tracksLot: i.tracksLot, tracksExpiry: i.tracksExpiry })));
         setWarehouses(Array.isArray(whData) ? whData : []);
       } catch {}
     })();
@@ -61,11 +64,15 @@ export default function StockTransferPage() {
     if (fromWarehouseId === toWarehouseId && fromBinId === toBinId) return setError("Source and destination cannot be the same");
     if (!qty || Number(qty) <= 0) return setError("Enter a positive quantity");
     if (!date.ad) return setError("Select a date");
+    if (selectedItem?.tracksBatch && !batchNo.trim()) return setError("Batch number is required for this item");
+    if (selectedItem?.tracksLot && !lotNo.trim()) return setError("Lot number is required for this item");
+    if (selectedItem?.tracksExpiry && !expiryDate) return setError("Expiry date is required for this item");
     setSubmitting(true);
     try {
-      await transferInventoryStock({ itemId, fromWarehouseId, fromBinId: fromBinId || undefined, toWarehouseId, toBinId: toBinId || undefined, qty: Number(qty), rate: rate ? Number(rate) : undefined, date: date.ad, dateBs: date.bs || undefined, memo: memo.trim() || undefined, batchNo: batchNo.trim() || undefined, lotNo: lotNo.trim() || undefined, expiryDate: expiryDate || undefined });
+      const serialNumbers = serialText.split(/[\n,]+/).map((serial) => serial.trim()).filter(Boolean);
+      await transferInventoryStock({ itemId, fromWarehouseId, fromBinId: fromBinId || undefined, toWarehouseId, toBinId: toBinId || undefined, qty: Number(qty), rate: rate ? Number(rate) : undefined, date: date.ad, dateBs: date.bs || undefined, memo: memo.trim() || undefined, batchNo: batchNo.trim() || undefined, lotNo: lotNo.trim() || undefined, expiryDate: expiryDate || undefined, serialNumbers: serialNumbers.length ? serialNumbers : undefined });
       setSuccess("Stock transfer completed!");
-      setTimeout(() => { setItemId(""); setFromWarehouseId(""); setFromBinId(""); setToWarehouseId(""); setToBinId(""); setQty(""); setRate(""); setMemo(""); setBatchNo(""); setLotNo(""); setExpiryDate(""); setSuccess(null); }, 2000);
+      setTimeout(() => { setItemId(""); setFromWarehouseId(""); setFromBinId(""); setToWarehouseId(""); setToBinId(""); setQty(""); setRate(""); setMemo(""); setBatchNo(""); setLotNo(""); setExpiryDate(""); setSerialText(""); setSuccess(null); }, 2000);
     } catch (e: any) { setError(e?.message ?? "Failed to transfer stock"); } finally { setSubmitting(false); }
   };
 
@@ -113,12 +120,13 @@ export default function StockTransferPage() {
 
       {/* Batch/Lot */}
       <Card className="border-border/50 shadow-lg"><CardContent className="pt-6 space-y-4">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Batch / Lot (Optional)</h3>
+        <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Tracking</h3>
         <div className="grid gap-4 sm:grid-cols-3">
-          <Input placeholder="Batch No." value={batchNo} onChange={(e) => setBatchNo(e.target.value)} className="rounded-xl" />
-          <Input placeholder="Lot No." value={lotNo} onChange={(e) => setLotNo(e.target.value)} className="rounded-xl" />
-          <Input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} className="rounded-xl" />
+          {inventorySettings?.batchTrackingEnabled && <Input placeholder={selectedItem?.tracksBatch ? "Batch No. *" : "Batch No."} value={batchNo} onChange={(e) => setBatchNo(e.target.value)} className="rounded-xl" />}
+          {inventorySettings?.lotTrackingEnabled && <Input placeholder={selectedItem?.tracksLot ? "Lot No. *" : "Lot No."} value={lotNo} onChange={(e) => setLotNo(e.target.value)} className="rounded-xl" />}
+          {inventorySettings?.expiryTrackingEnabled && <Input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} className="rounded-xl" />}
         </div>
+        {selectedItem?.isSerialized && inventorySettings?.serialTrackingEnabled && <div><label className="text-xs font-medium text-muted-foreground mb-1.5 block">Serial Numbers *</label><textarea value={serialText} onChange={(e) => setSerialText(e.target.value)} placeholder="One serial per line, or comma separated" className="min-h-24 w-full rounded-xl border bg-background px-3 py-2 text-sm" /></div>}
       </CardContent></Card>
 
       {/* Submit */}

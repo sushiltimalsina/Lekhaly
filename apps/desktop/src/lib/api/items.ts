@@ -3,6 +3,7 @@ import { apiRequest } from "./client";
 export type ItemRecord = {
   id: string;
   name: string;
+  code?: string;
   sku?: string;
   hsCode?: string;
   unit?: string;
@@ -21,8 +22,12 @@ export type ItemRecord = {
   taxCodeIds?: string[];
   minStockLevel?: number;
   reorderQty?: number;
+  trackInventory?: boolean;
   isSerialized?: boolean;
   isKit?: boolean;
+  tracksBatch?: boolean;
+  tracksLot?: boolean;
+  tracksExpiry?: boolean;
   components?: Array<{ componentId: string; qty: number }>;
   stock?: number;
 };

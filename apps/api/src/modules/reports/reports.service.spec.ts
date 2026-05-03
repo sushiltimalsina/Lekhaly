@@ -8,13 +8,20 @@ describe("ReportsService export", () => {
   beforeEach(() => {
     prisma = {
       voucherLine: {
-        findMany: jest.fn()
+        findMany: jest.fn(),
+        aggregate: jest.fn()
       },
       company: {
         findUnique: jest.fn()
       }
     };
     prisma.company.findUnique.mockResolvedValue({ id: "company-1", fiscalYearStartMonth: 4 });
+    prisma.voucherLine.aggregate.mockResolvedValue({
+      _sum: {
+        debit: new Prisma.Decimal(0),
+        credit: new Prisma.Decimal(0)
+      }
+    });
     service = new ReportsService(prisma, { enqueue: jest.fn() } as any);
   });
 

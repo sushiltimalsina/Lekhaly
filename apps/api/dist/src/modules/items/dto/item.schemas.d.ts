@@ -27,8 +27,12 @@ export declare const CreateItemSchema: z.ZodObject<{
     taxCodeIds: z.ZodOptional<z.ZodArray<z.ZodString>>;
     minStockLevel: z.ZodOptional<z.ZodNumber>;
     reorderQty: z.ZodOptional<z.ZodNumber>;
+    trackInventory: z.ZodOptional<z.ZodBoolean>;
     isSerialized: z.ZodOptional<z.ZodBoolean>;
     isKit: z.ZodOptional<z.ZodBoolean>;
+    tracksBatch: z.ZodOptional<z.ZodBoolean>;
+    tracksLot: z.ZodOptional<z.ZodBoolean>;
+    tracksExpiry: z.ZodOptional<z.ZodBoolean>;
     components: z.ZodOptional<z.ZodArray<z.ZodObject<{
         componentId: z.ZodString;
         qty: z.ZodNumber;
@@ -62,8 +66,12 @@ export declare const UpdateItemSchema: z.ZodObject<{
     taxCodeIds: z.ZodOptional<z.ZodOptional<z.ZodArray<z.ZodString>>>;
     minStockLevel: z.ZodOptional<z.ZodOptional<z.ZodNumber>>;
     reorderQty: z.ZodOptional<z.ZodOptional<z.ZodNumber>>;
+    trackInventory: z.ZodOptional<z.ZodOptional<z.ZodBoolean>>;
     isSerialized: z.ZodOptional<z.ZodOptional<z.ZodBoolean>>;
     isKit: z.ZodOptional<z.ZodOptional<z.ZodBoolean>>;
+    tracksBatch: z.ZodOptional<z.ZodOptional<z.ZodBoolean>>;
+    tracksLot: z.ZodOptional<z.ZodOptional<z.ZodBoolean>>;
+    tracksExpiry: z.ZodOptional<z.ZodOptional<z.ZodBoolean>>;
     components: z.ZodOptional<z.ZodOptional<z.ZodArray<z.ZodObject<{
         componentId: z.ZodString;
         qty: z.ZodNumber;

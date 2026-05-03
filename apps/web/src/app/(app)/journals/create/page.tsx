@@ -48,6 +48,14 @@ type LedgerOption = {
 };
 
 export default function JournalCreatePage() {
+    return (
+        <React.Suspense fallback={null}>
+            <JournalCreateContent />
+        </React.Suspense>
+    );
+}
+
+function JournalCreateContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const id = searchParams.get("id");

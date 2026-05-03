@@ -39,6 +39,14 @@ const VOUCHER_TYPE_METADATA: Record<string, { label: string; icon: any; color: s
 };
 
 export default function VouchersListPage() {
+  return (
+    <React.Suspense fallback={null}>
+      <VouchersListContent />
+    </React.Suspense>
+  );
+}
+
+function VouchersListContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { dateFormat } = useDateFormat();

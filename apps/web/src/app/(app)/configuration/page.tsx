@@ -24,6 +24,8 @@ import AddFiscalSessionDialog from "./components/AddFiscalSessionDialog";
 
 import { getCompany, updateCompany } from "@/lib/api/auth";
 import { listFiscalSessions, switchFiscalSession, lockFiscalSession, type FiscalSessionRecord } from "@/lib/api/fiscal-sessions";
+import { getInventorySettings, updateInventorySettings, type InventorySettings } from "@/lib/api/inventory";
+import { listWarehouses, type Warehouse } from "@/lib/api/warehouses";
 
 // Refactored Components
 import { UnitsPanel } from "./components/UnitsPanel";
@@ -35,8 +37,17 @@ import { RegionalPreferences } from "./components/RegionalPreferences";
 import { VoucherNumbering } from "./components/VoucherNumbering";
 import { FiscalSecurityPanel, CreditManagementPanel } from "./components/SecurityCreditPanels";
 import { FiscalSessionsPanel } from "./components/FiscalSessionsPanel";
+import { InventoryConfigurationPanel } from "./components/InventoryConfigurationPanel";
 
 export default function ConfigurationPage() {
+  return (
+    <React.Suspense fallback={null}>
+      <ConfigurationContent />
+    </React.Suspense>
+  );
+}
+
+function ConfigurationContent() {
   const searchParams = useSearchParams();
   const focus = searchParams.get("focus");
   
@@ -51,6 +62,8 @@ export default function ConfigurationPage() {
   const [saleTypes, setSaleTypes] = React.useState<any[]>([]);
   const [purchaseTypes, setPurchaseTypes] = React.useState<any[]>([]);
   const [sessions, setSessions] = React.useState<FiscalSessionRecord[]>([]);
+  const [warehouses, setWarehouses] = React.useState<Warehouse[]>([]);
+  const [inventorySettings, setInventorySettings] = React.useState<InventorySettings | null>(null);
 
   const [loading, setLoading] = React.useState(true);
   const [busy, setBusy] = React.useState(false);
@@ -97,7 +110,7 @@ export default function ConfigurationPage() {
       return obj?.items ?? obj?.data ?? [];
     };
     try {
-      const [uRes, gRes, sRes, pmRes, stRes, ptRes, cRes, sessRes] = await Promise.all([
+      const [uRes, gRes, sRes, pmRes, stRes, ptRes, cRes, sessRes, invRes, whRes] = await Promise.all([
         listUnits({ take: 200 }),
         listItemGroups({ take: 200 }),
         listBillSundries({ take: 200 }),
@@ -105,7 +118,9 @@ export default function ConfigurationPage() {
         listSaleTypes({ take: 200 }),
         listPurchaseTypes({ take: 200 }),
         getCompany(),
-        listFiscalSessions()
+        listFiscalSessions(),
+        getInventorySettings(),
+        listWarehouses({ isActive: true })
       ]);
       setUnits(normalizeList<UnitRecord>(uRes));
       setGroups(normalizeList<ItemGroupRecord>(gRes));
@@ -119,6 +134,8 @@ export default function ConfigurationPage() {
       setCompany(cRes);
       setCompanyForm(cRes);
       setSessions(normalizeList<FiscalSessionRecord>(sessRes));
+      setInventorySettings(invRes);
+      setWarehouses(normalizeList<Warehouse>(whRes));
     } catch (e: any) {
       setError(e?.message ?? "Failed to load configuration data.");
     } finally {
@@ -156,6 +173,20 @@ export default function ConfigurationPage() {
       setCompanyForm(res);
     } catch (e: any) {
       setError(e?.message ?? "Failed to update company settings.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const saveInventorySettings = async (updates: Partial<InventorySettings>) => {
+    if (!inventorySettings) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await updateInventorySettings({ ...inventorySettings, ...updates });
+      setInventorySettings(res);
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to update inventory settings.");
     } finally {
       setBusy(false);
     }
@@ -312,6 +343,16 @@ export default function ConfigurationPage() {
               setBusy(false);
             }
           }}
+        />
+
+        <InventoryConfigurationPanel
+          settings={inventorySettings}
+          warehouses={warehouses}
+          loading={loading}
+          busy={busy}
+          expanded={expandedSection === "inventory"}
+          onToggle={() => setExpandedSection(expandedSection === "inventory" ? null : "inventory")}
+          onSave={saveInventorySettings}
         />
 
         <RegionalPreferences 

@@ -28,7 +28,15 @@ describe("VouchersService", () => {
       },
       company: {
         findUnique: jest.fn(),
+        findFirst: jest.fn(),
         update: jest.fn()
+      },
+      fiscalSession: {
+        update: jest.fn()
+      },
+      inventorySettings: {
+        findUnique: jest.fn(),
+        create: jest.fn()
       },
       chartOfAccount: {
         findMany: jest.fn()
@@ -55,7 +63,10 @@ describe("VouchersService", () => {
       apiIdempotency: prisma.apiIdempotency,
       voucher: prisma.voucher,
       voucherLine: prisma.voucherLine,
-      company: prisma.company
+      company: prisma.company,
+      fiscalSession: prisma.fiscalSession,
+      inventorySettings: prisma.inventorySettings,
+      item: prisma.item
     };
 
     prisma.$transaction.mockImplementation((callback: (client: typeof tx) => any) => callback(tx));
@@ -178,9 +189,24 @@ describe("VouchersService", () => {
     prisma.company.findUnique.mockResolvedValue({
       id: user.companyId,
       lockDate: null,
-      invoicePrefix: "INV",
-      nextInvoiceNumber: 10
+      activeFiscalSessionId: "session-1",
+      fiscalSessions: [
+        {
+          id: "session-1",
+          isLocked: false,
+          startDate: new Date("2020-01-01T00:00:00.000Z"),
+          endDate: new Date("2030-12-31T00:00:00.000Z"),
+          invoicePrefix: "INV",
+          invoiceSuffix: "",
+          nextInvoiceNumber: 10
+        }
+      ]
     });
+    prisma.company.findFirst.mockResolvedValue({
+      id: user.companyId,
+      activeFiscalSessionId: "session-1"
+    });
+    prisma.fiscalSession.update.mockResolvedValue({ id: "session-1" });
 
     prisma.voucher.update.mockResolvedValue({ id: "voucher-2" });
     prisma.voucher.findUnique.mockResolvedValue({

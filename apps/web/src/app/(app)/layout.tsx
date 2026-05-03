@@ -20,7 +20,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    let timeoutId: ReturnType<typeof window.setTimeout> | null = null;
+    let timeoutId: number | null = null;
 
     const resetIdleTimer = () => {
       if (timeoutId !== null) {

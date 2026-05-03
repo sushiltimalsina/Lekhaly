@@ -20,12 +20,22 @@ import {
   Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { adjustInventoryStock } from "@/lib/api/inventory";
+import { adjustInventoryStock, getInventorySettings, type InventorySettings } from "@/lib/api/inventory";
 import { listItems } from "@/lib/api/items";
 import { listAccounts } from "@/lib/api/accounts";
+import { listWarehouses, type Warehouse } from "@/lib/api/warehouses";
 
 type DateValue = { ad: string; bs: string };
-type ItemOption = { id: string; name: string; sku?: string | null; stock?: number };
+type ItemOption = {
+  id: string;
+  name: string;
+  sku?: string | null;
+  stock?: number;
+  isSerialized?: boolean;
+  tracksBatch?: boolean;
+  tracksLot?: boolean;
+  tracksExpiry?: boolean;
+};
 type AccountOption = { id: string; name: string; code?: string };
 
 export default function StockAdjustPage() {
@@ -37,6 +47,8 @@ export default function StockAdjustPage() {
   // Items and accounts for pickers
   const [items, setItems] = React.useState<ItemOption[]>([]);
   const [accounts, setAccounts] = React.useState<AccountOption[]>([]);
+  const [warehouses, setWarehouses] = React.useState<Warehouse[]>([]);
+  const [inventorySettings, setInventorySettings] = React.useState<InventorySettings | null>(null);
 
   // Form state
   const [itemId, setItemId] = React.useState("");
@@ -49,9 +61,12 @@ export default function StockAdjustPage() {
     bs: "",
   });
   const [memo, setMemo] = React.useState("");
+  const [warehouseId, setWarehouseId] = React.useState("");
+  const [binId, setBinId] = React.useState("");
   const [batchNo, setBatchNo] = React.useState("");
   const [lotNo, setLotNo] = React.useState("");
   const [expiryDate, setExpiryDate] = React.useState("");
+  const [serialText, setSerialText] = React.useState("");
   const [allowNegative, setAllowNegative] = React.useState(false);
   const [overrideReason, setOverrideReason] = React.useState("");
 
@@ -59,18 +74,28 @@ export default function StockAdjustPage() {
   React.useEffect(() => {
     (async () => {
       try {
-        const [itemData, accountData] = await Promise.all([
+        const [itemData, accountData, settingsData, warehouseData] = await Promise.all([
           listItems({ isActive: true, take: 5000 }),
           listAccounts({ isActive: true, take: 2000 }),
+          getInventorySettings(),
+          listWarehouses({ isActive: true }),
         ]);
+        setInventorySettings(settingsData);
+        const warehouseList = Array.isArray(warehouseData) ? warehouseData : [];
+        setWarehouses(warehouseList);
+        if (settingsData.defaultWarehouseId) setWarehouseId(settingsData.defaultWarehouseId);
         setItems(
           (Array.isArray(itemData) ? itemData : [])
-            .filter((i: any) => i.type !== "services")
+            .filter((i: any) => i.type !== "services" && i.trackInventory !== false)
             .map((i: any) => ({
               id: i.id,
               name: i.name,
               sku: i.sku,
               stock: i.stock ?? 0,
+              isSerialized: i.isSerialized,
+              tracksBatch: i.tracksBatch,
+              tracksLot: i.tracksLot,
+              tracksExpiry: i.tracksExpiry,
             }))
         );
         setAccounts(
@@ -83,6 +108,8 @@ export default function StockAdjustPage() {
   }, []);
 
   const selectedItem = items.find((i) => i.id === itemId);
+  const selectedWarehouse = warehouses.find((warehouse) => warehouse.id === warehouseId);
+  const availableBins = selectedWarehouse?.bins ?? [];
   const amount =
     Number(qty) && Number(rate) ? Math.abs(Number(qty)) * Number(rate) : 0;
 
@@ -94,6 +121,10 @@ export default function StockAdjustPage() {
     if (!qty || Number(qty) === 0) return setError("Enter a quantity");
     if (!accountId) return setError("Select an adjustment account");
     if (!date.ad) return setError("Select a date");
+    if (inventorySettings?.requireWarehouseOnMovements && !warehouseId) return setError("Select a warehouse");
+    if (selectedItem?.tracksBatch && !batchNo.trim()) return setError("Batch number is required for this item");
+    if (selectedItem?.tracksLot && !lotNo.trim()) return setError("Lot number is required for this item");
+    if (selectedItem?.tracksExpiry && !expiryDate) return setError("Expiry date is required for this item");
     if (allowNegative && !overrideReason.trim())
       return setError("Override reason is required");
 
@@ -102,17 +133,24 @@ export default function StockAdjustPage() {
 
     setSubmitting(true);
     try {
+      const serialNumbers = serialText
+        .split(/[\n,]+/)
+        .map((serial) => serial.trim())
+        .filter(Boolean);
       await adjustInventoryStock({
         itemId,
         qty: finalQty,
         rate: rate ? Number(rate) : undefined,
         accountId,
+        warehouseId: warehouseId || undefined,
+        binId: binId || undefined,
         date: date.ad,
         dateBs: date.bs || undefined,
         memo: memo.trim() || undefined,
         batchNo: batchNo.trim() || undefined,
         lotNo: lotNo.trim() || undefined,
         expiryDate: expiryDate || undefined,
+        serialNumbers: serialNumbers.length ? serialNumbers : undefined,
         allowNegativeOverride: allowNegative || undefined,
         overrideReason: allowNegative ? overrideReason.trim() : undefined,
       });
@@ -126,6 +164,7 @@ export default function StockAdjustPage() {
         setBatchNo("");
         setLotNo("");
         setExpiryDate("");
+        setSerialText("");
         setAllowNegative(false);
         setOverrideReason("");
         setSuccess(null);
@@ -316,31 +355,48 @@ export default function StockAdjustPage() {
           <Card className="border-border/50 shadow-lg">
             <CardContent className="pt-6 space-y-4">
               <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                Batch / Lot (Optional)
+                Tracking
               </h3>
+              {inventorySettings?.warehousesEnabled && (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Warehouse</label>
+                    <SearchableSelect
+                      options={warehouses.map((warehouse) => ({ value: warehouse.id, label: warehouse.name }))}
+                      value={warehouseId}
+                      onChange={(value) => { setWarehouseId(value); setBinId(""); }}
+                      placeholder="Select warehouse..."
+                    />
+                  </div>
+                  {inventorySettings.binsEnabled && (
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Bin</label>
+                      <SearchableSelect
+                        options={availableBins.map((bin) => ({ value: bin.id, label: bin.name }))}
+                        value={binId}
+                        onChange={setBinId}
+                        placeholder="Select bin..."
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="grid gap-4 sm:grid-cols-3">
-                <Input
-                  placeholder="Batch No."
-                  value={batchNo}
-                  onChange={(e) => setBatchNo(e.target.value)}
-                  className="rounded-xl"
-                />
-                <Input
-                  placeholder="Lot No."
-                  value={lotNo}
-                  onChange={(e) => setLotNo(e.target.value)}
-                  className="rounded-xl"
-                />
+                {inventorySettings?.batchTrackingEnabled && <Input placeholder={selectedItem?.tracksBatch ? "Batch No. *" : "Batch No."} value={batchNo} onChange={(e) => setBatchNo(e.target.value)} className="rounded-xl" />}
+                {inventorySettings?.lotTrackingEnabled && <Input placeholder={selectedItem?.tracksLot ? "Lot No. *" : "Lot No."} value={lotNo} onChange={(e) => setLotNo(e.target.value)} className="rounded-xl" />}
+                {inventorySettings?.expiryTrackingEnabled && <Input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} className="rounded-xl" />}
+              </div>
+              {selectedItem?.isSerialized && inventorySettings?.serialTrackingEnabled && (
                 <div>
-                  <Input
-                    type="date"
-                    placeholder="Expiry Date"
-                    value={expiryDate}
-                    onChange={(e) => setExpiryDate(e.target.value)}
-                    className="rounded-xl"
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Serial Numbers *</label>
+                  <textarea
+                    value={serialText}
+                    onChange={(e) => setSerialText(e.target.value)}
+                    placeholder="One serial per line, or comma separated"
+                    className="min-h-24 w-full rounded-xl border bg-background px-3 py-2 text-sm"
                   />
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
 

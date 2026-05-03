@@ -5,6 +5,7 @@ import PageHeader from "@/components/app/page-header";
 import { Input } from "@lekhaly/ui";
 import { Button } from "@lekhaly/ui";
 import { createItem, listItems } from "@/lib/api/items";
+import { getInventorySettings, type InventorySettings } from "@/lib/api/inventory";
 import { listTaxes } from "@/lib/api/taxes";
 import { listUnits, type UnitRecord } from "@/lib/api/units";
 import { listItemGroups, type ItemGroupRecord } from "@/lib/api/item-groups";
@@ -34,6 +35,7 @@ export default function NewItemPage() {
   const [units, setUnits] = React.useState<UnitRecord[]>([]);
   const [groups, setGroups] = React.useState<ItemGroupRecord[]>([]);
   const [allItems, setAllItems] = React.useState<SimpleItem[]>([]);
+  const [inventorySettings, setInventorySettings] = React.useState<InventorySettings | null>(null);
   const [addUnitOpen, setAddUnitOpen] = React.useState(false);
   const [addGroupOpen, setAddGroupOpen] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState<Tab>("basic");
@@ -59,8 +61,12 @@ export default function NewItemPage() {
     // New fields
     minStockLevel: "",
     reorderQty: "",
+    trackInventory: true,
     isSerialized: false,
     isKit: false,
+    tracksBatch: false,
+    tracksLot: false,
+    tracksExpiry: false,
   });
 
   React.useEffect(() => {
@@ -99,6 +105,8 @@ export default function NewItemPage() {
           : []
       );
     }).catch(() => setAllItems([]));
+
+    getInventorySettings().then(setInventorySettings).catch(() => setInventorySettings(null));
   }, []);
 
   const update = (key: keyof typeof form, value: any) => {
@@ -152,8 +160,12 @@ export default function NewItemPage() {
         taxCodeIds: taxable ? form.taxCodeIds : undefined,
         minStockLevel: form.minStockLevel ? Number(form.minStockLevel) : undefined,
         reorderQty: form.reorderQty ? Number(form.reorderQty) : undefined,
-        isSerialized: form.isSerialized,
-        isKit: form.isKit,
+        trackInventory: form.type === "goods" ? form.trackInventory : false,
+        isSerialized: form.type === "goods" && form.trackInventory ? form.isSerialized : false,
+        isKit: form.type === "goods" ? form.isKit : false,
+        tracksBatch: form.type === "goods" && form.trackInventory ? form.tracksBatch : false,
+        tracksLot: form.type === "goods" && form.trackInventory ? form.tracksLot : false,
+        tracksExpiry: form.type === "goods" && form.trackInventory ? form.tracksExpiry : false,
         components: form.isKit
           ? bomLines.map((l) => ({ componentId: l.componentId, qty: l.qty }))
           : undefined,
@@ -295,12 +307,44 @@ export default function NewItemPage() {
               <SectionHeader icon={ShieldCheck} title="Advanced Tracking" desc="Enable serial number or kit/bundle behaviour." />
               <div className="flex flex-col gap-4">
                 <Toggle
+                  id="trackInventory"
+                  label="Track Stock"
+                  desc="Maintain stock ledger quantities for this goods item."
+                  checked={form.trackInventory}
+                  onChange={(v) => update("trackInventory", v)}
+                  disabled={form.type === "services" || inventorySettings?.inventoryTrackingEnabled === false}
+                />
+                <Toggle
                   id="isSerialized"
                   label="Serialized Item"
                   desc="Each unit has a unique serial number tracked from purchase to sale."
                   checked={form.isSerialized}
                   onChange={(v) => update("isSerialized", v)}
-                  disabled={form.type === "services"}
+                  disabled={form.type === "services" || !form.trackInventory || inventorySettings?.serialTrackingEnabled === false}
+                />
+                <Toggle
+                  id="tracksBatch"
+                  label="Batch Tracked"
+                  desc="Require batch number when stock moves for this item."
+                  checked={form.tracksBatch}
+                  onChange={(v) => update("tracksBatch", v)}
+                  disabled={form.type === "services" || !form.trackInventory || inventorySettings?.batchTrackingEnabled === false}
+                />
+                <Toggle
+                  id="tracksLot"
+                  label="Lot Tracked"
+                  desc="Require lot number when stock moves for this item."
+                  checked={form.tracksLot}
+                  onChange={(v) => update("tracksLot", v)}
+                  disabled={form.type === "services" || !form.trackInventory || inventorySettings?.lotTrackingEnabled === false}
+                />
+                <Toggle
+                  id="tracksExpiry"
+                  label="Expiry Tracked"
+                  desc="Require expiry date when stock moves for this item."
+                  checked={form.tracksExpiry}
+                  onChange={(v) => update("tracksExpiry", v)}
+                  disabled={form.type === "services" || !form.trackInventory || inventorySettings?.expiryTrackingEnabled === false}
                 />
                 <Toggle
                   id="isKit"
@@ -308,7 +352,7 @@ export default function NewItemPage() {
                   desc="When sold, automatically deducts the component items from stock instead of this item."
                   checked={form.isKit}
                   onChange={(v) => update("isKit", v)}
-                  disabled={form.type === "services"}
+                  disabled={form.type === "services" || inventorySettings?.kitsEnabled === false}
                 />
               </div>
             </section>

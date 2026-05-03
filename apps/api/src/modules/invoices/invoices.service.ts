@@ -14,6 +14,13 @@ export class InvoicesService {
     return company;
   }
 
+  private async getInventorySettings(companyId: string, tx?: Prisma.TransactionClient) {
+    const db = (tx ?? this.prisma) as any;
+    const existing = await db.inventorySettings.findUnique({ where: { companyId } });
+    if (existing) return existing;
+    return db.inventorySettings.create({ data: { companyId } });
+  }
+
   private async validateItems(
     companyId: string,
     items: Array<{ itemId?: string; taxCodeId?: string; taxCodeIds?: string[] }>
@@ -56,15 +63,18 @@ export class InvoicesService {
     user: AuthUser,
     items: Array<{ itemId?: string; qty: number }>
   ) {
+    const settings = await this.getInventorySettings(user.companyId);
+    if (!settings.inventoryTrackingEnabled || settings.allowNegativeStock) return;
+
     const itemIds = Array.from(new Set(items.map((i) => i.itemId).filter(Boolean))) as string[];
     if (!itemIds.length) return;
 
     const dbItems = await this.prisma.item.findMany({
       where: { id: { in: itemIds }, companyId: user.companyId },
-      select: { id: true, name: true, type: true }
+      select: { id: true, name: true, type: true, trackInventory: true }
     });
 
-    const goodsIds = dbItems.filter((i: any) => i.type !== "services").map((i) => i.id);
+    const goodsIds = dbItems.filter((i: any) => i.type !== "services" && i.trackInventory !== false).map((i) => i.id);
     if (!goodsIds.length) return;
 
     const ledger = await this.prisma.stockLedger.findMany({
@@ -81,7 +91,7 @@ export class InvoicesService {
     for (const line of items) {
       if (!line.itemId) continue;
       const item = dbItems.find((i) => i.id === line.itemId);
-      if (!item || (item as any).type === "services") continue;
+      if (!item || (item as any).type === "services" || (item as any).trackInventory === false) continue;
       const available = stockMap.get(line.itemId) || new Prisma.Decimal(0);
       const required = new Prisma.Decimal(line.qty);
       if (available.sub(required).lt(0)) {
@@ -550,8 +560,10 @@ export class InvoicesService {
         data: { nextInvoiceNumber: sequence + 1 }
       });
 
+      const inventorySettings = await this.getInventorySettings(user.companyId, tx);
       const stockLedgerData = [];
       for (const item of invoice.items) {
+        if (!inventorySettings.inventoryTrackingEnabled) continue;
         if (!item.itemId) continue;
         const isOut = invoice.type === "sales" || invoice.type === "purchase_return";
         const isIn = invoice.type === "purchase" || invoice.type === "sales_return";
@@ -564,6 +576,16 @@ export class InvoicesService {
           where: { id: item.itemId },
           include: { components: true }
         });
+        if (!itemRecord || (itemRecord as any).type === "services" || itemRecord.trackInventory === false) continue;
+        if (itemRecord.isKit && !inventorySettings.kitsEnabled) {
+          throw new BadRequestException("Enable kits in inventory configuration before posting kit invoices");
+        }
+        if (itemRecord.isSerialized) {
+          throw new BadRequestException("Serialized invoice posting requires serial number selection");
+        }
+        if (itemRecord.tracksBatch || itemRecord.tracksLot || itemRecord.tracksExpiry) {
+          throw new BadRequestException("Tracked batch/lot/expiry invoice posting requires line tracking selection");
+        }
 
         // Helper to compute Moving Average Cost (MAC)
         const computeMAC = async (targetItemId: string) => {

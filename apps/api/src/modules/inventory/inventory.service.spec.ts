@@ -17,7 +17,24 @@ describe("InventoryService", () => {
       },
       stockLedger: {
         findMany: jest.fn(),
+        aggregate: jest.fn(),
         create: jest.fn()
+      },
+      inventorySettings: {
+        findUnique: jest.fn(),
+        create: jest.fn(),
+        upsert: jest.fn()
+      },
+      warehouse: {
+        findFirst: jest.fn()
+      },
+      warehouseBin: {
+        findFirst: jest.fn()
+      },
+      serialNumber: {
+        findMany: jest.fn(),
+        createMany: jest.fn(),
+        updateMany: jest.fn()
       },
       voucher: {
         create: jest.fn()
@@ -25,14 +42,29 @@ describe("InventoryService", () => {
       $transaction: jest.fn()
     };
     prisma.$transaction.mockImplementation((cb: any) => cb(prisma));
+    prisma.inventorySettings.findUnique.mockResolvedValue({
+      companyId: "company-1",
+      inventoryTrackingEnabled: true,
+      warehousesEnabled: false,
+      binsEnabled: false,
+      batchTrackingEnabled: false,
+      lotTrackingEnabled: false,
+      expiryTrackingEnabled: false,
+      serialTrackingEnabled: false,
+      kitsEnabled: false,
+      allowNegativeStock: false,
+      requireWarehouseOnMovements: false,
+      defaultWarehouseId: null,
+      costingMethod: "moving_average"
+    });
     service = new InventoryService(prisma);
   });
 
   it("returns stock summary", async () => {
     prisma.item.findFirst.mockResolvedValue({ id: "item-1" });
     prisma.stockLedger.findMany.mockResolvedValue([
-      { qtyIn: new Prisma.Decimal(10), qtyOut: new Prisma.Decimal(0) },
-      { qtyIn: new Prisma.Decimal(0), qtyOut: new Prisma.Decimal(3) }
+      { qtyIn: new Prisma.Decimal(10), qtyOut: new Prisma.Decimal(0), rate: new Prisma.Decimal(10), amount: new Prisma.Decimal(100) },
+      { qtyIn: new Prisma.Decimal(0), qtyOut: new Prisma.Decimal(3), rate: new Prisma.Decimal(10), amount: new Prisma.Decimal(30) }
     ]);
 
     const result = await service.getStock(user, "item-1", {});

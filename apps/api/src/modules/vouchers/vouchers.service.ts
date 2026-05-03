@@ -44,6 +44,13 @@ type TaxLineInput = {
 export class VouchersService {
   constructor(private prisma: PrismaService) { }
 
+  private async getInventorySettings(companyId: string, tx?: Prisma.TransactionClient) {
+    const db = (tx ?? this.prisma) as any;
+    const existing = await db.inventorySettings.findUnique({ where: { companyId } });
+    if (existing) return existing;
+    return db.inventorySettings.create({ data: { companyId } });
+  }
+
   private parseDateOrNull(value: Date | string | null | undefined) {
     if (!value) return null;
     const dt = value instanceof Date ? value : new Date(value);
@@ -710,6 +717,40 @@ export class VouchersService {
       // Create stock ledger entries for item-related lines with batch-aware outgoing allocation (FEFO).
       const itemLines = voucher.lines.filter(l => l.itemId);
       if (itemLines.length > 0) {
+        const inventorySettings = await this.getInventorySettings(user.companyId, tx);
+        if (!inventorySettings.inventoryTrackingEnabled) {
+          const result = await tx.voucher.findUnique({ where: { id: posted.id }, include: { lines: true } });
+          if (idempotencyKey && guard?.kind === "new" && result) {
+            await tx.apiIdempotency.create({
+              data: {
+                companyId: user.companyId,
+                userId: user.sub,
+                key: idempotencyKey,
+                action: "voucher.post",
+                requestHash: guard.requestHash,
+                responseJson: this.toJsonSafe(result)
+              }
+            });
+          }
+          return result;
+        }
+
+        const itemIds = Array.from(new Set(itemLines.map((line) => (line as any).itemId).filter(Boolean))) as string[];
+        const itemMap = new Map(
+          (await tx.item.findMany({
+            where: { id: { in: itemIds }, companyId: user.companyId },
+            select: {
+              id: true,
+              type: true,
+              trackInventory: true,
+              isSerialized: true,
+              isKit: true,
+              tracksBatch: true,
+              tracksLot: true,
+              tracksExpiry: true
+            }
+          })).map((item) => [item.id, item])
+        );
         const stockEntries: Array<{
           companyId: string;
           itemId: string;
@@ -727,8 +768,20 @@ export class VouchersService {
 
         for (const line of itemLines) {
           const l = line as any; // Cast to access qty
-          const isPurchase = voucher.voucherType === VoucherType.purchase || voucher.voucherType === VoucherType.purchase_return;
-          const isSale = voucher.voucherType === VoucherType.sales_invoice || voucher.voucherType === VoucherType.sales_return;
+          const item = itemMap.get(l.itemId!);
+          if (!item || (item as any).type === "services" || (item as any).trackInventory === false) continue;
+          if ((item as any).isKit && !inventorySettings.kitsEnabled) {
+            throw new BadRequestException("Enable kits in inventory configuration before posting kit vouchers");
+          }
+          if ((item as any).isSerialized) {
+            throw new BadRequestException("Serialized voucher posting requires serial number selection");
+          }
+          if ((item as any).tracksBatch || (item as any).tracksLot || (item as any).tracksExpiry) {
+            throw new BadRequestException("Tracked batch/lot/expiry voucher posting requires line tracking selection");
+          }
+
+          const isStockIn = voucher.voucherType === VoucherType.purchase || voucher.voucherType === VoucherType.sales_return;
+          const isStockOut = voucher.voucherType === VoucherType.sales_invoice || voucher.voucherType === VoucherType.purchase_return;
 
           // Determine quantity based on voucher type
           let qtyIn = new Prisma.Decimal(0);
@@ -739,20 +792,36 @@ export class VouchersService {
           // Use the stored quantity from the line, or default to 1 if 0/null (fallback)
           const quantity = (l.qty && l.qty.equals(0) === false) ? l.qty : new Prisma.Decimal(1);
 
-          if (isPurchase) {
-            // Purchase: debit amount / qty
+          if (isStockIn) {
+            // Stock-in vouchers use debit for purchases and credit reversal for sales returns.
             amount = l.debit;
+            if (voucher.voucherType === VoucherType.sales_return && amount.equals(0)) amount = l.credit;
             qtyIn = quantity; // Use stored qty
             // Prevent division by zero if quantity is somehow 0
-            rate = quantity.equals(0) ? new Prisma.Decimal(0) : l.debit.div(quantity);
-          } else if (isSale) {
-            // Sale: credit amount
+            rate = quantity.equals(0) ? new Prisma.Decimal(0) : amount.div(quantity);
+          } else if (isStockOut) {
+            // Stock-out vouchers use credit for sales and debit reversal for purchase returns.
             amount = l.credit;
+            if (voucher.voucherType === VoucherType.purchase_return && amount.equals(0)) amount = l.debit;
             qtyOut = quantity; // Use stored qty
-            rate = quantity.equals(0) ? new Prisma.Decimal(0) : l.credit.div(quantity);
+            rate = quantity.equals(0) ? new Prisma.Decimal(0) : amount.div(quantity);
           }
 
           if (qtyOut.gt(0)) {
+            if (inventorySettings.allowNegativeStock) {
+              stockEntries.push({
+                companyId: user.companyId,
+                itemId: l.itemId!,
+                date: voucher.voucherDate,
+                dateBs: voucher.voucherDateBs || undefined,
+                voucherId: voucher.id,
+                qtyIn: new Prisma.Decimal(0),
+                qtyOut,
+                rate,
+                amount
+              });
+              continue;
+            }
             const allocations = await this.allocateOutgoingByBatch(tx, user.companyId, l.itemId!, qtyOut);
             for (const alloc of allocations) {
               stockEntries.push({
@@ -786,9 +855,11 @@ export class VouchersService {
           });
         }
 
-        await tx.stockLedger.createMany({
-          data: stockEntries
-        });
+        if (stockEntries.length) {
+          await tx.stockLedger.createMany({
+            data: stockEntries
+          });
+        }
       }
 
 

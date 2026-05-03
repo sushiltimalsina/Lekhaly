@@ -5,6 +5,7 @@ export declare class InvoicesService {
     private prisma;
     constructor(prisma: PrismaService);
     private getCompany;
+    private getInventorySettings;
     private validateItems;
     private computeTotals;
     private enforceStockForSales;

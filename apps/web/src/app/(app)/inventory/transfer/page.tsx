@@ -21,7 +21,7 @@ import {
   Package,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { transferInventoryStock } from "@/lib/api/inventory";
+import { getInventorySettings, transferInventoryStock, type InventorySettings } from "@/lib/api/inventory";
 import { listItems } from "@/lib/api/items";
 import {
   listWarehouses,
@@ -29,7 +29,16 @@ import {
 } from "@/lib/api/warehouses";
 
 type DateValue = { ad: string; bs: string };
-type ItemOption = { id: string; name: string; sku?: string | null; stock?: number };
+type ItemOption = {
+  id: string;
+  name: string;
+  sku?: string | null;
+  stock?: number;
+  isSerialized?: boolean;
+  tracksBatch?: boolean;
+  tracksLot?: boolean;
+  tracksExpiry?: boolean;
+};
 
 export default function StockTransferPage() {
   const router = useRouter();
@@ -40,6 +49,7 @@ export default function StockTransferPage() {
   // Master data
   const [items, setItems] = React.useState<ItemOption[]>([]);
   const [warehouses, setWarehouses] = React.useState<WarehouseType[]>([]);
+  const [inventorySettings, setInventorySettings] = React.useState<InventorySettings | null>(null);
 
   // Form state
   const [itemId, setItemId] = React.useState("");
@@ -57,23 +67,30 @@ export default function StockTransferPage() {
   const [batchNo, setBatchNo] = React.useState("");
   const [lotNo, setLotNo] = React.useState("");
   const [expiryDate, setExpiryDate] = React.useState("");
+  const [serialText, setSerialText] = React.useState("");
 
   // Load master data
   React.useEffect(() => {
     (async () => {
       try {
-        const [itemData, whData] = await Promise.all([
+        const [itemData, whData, settingsData] = await Promise.all([
           listItems({ isActive: true, take: 5000 }),
           listWarehouses({ isActive: true }),
+          getInventorySettings(),
         ]);
+        setInventorySettings(settingsData);
         setItems(
           (Array.isArray(itemData) ? itemData : [])
-            .filter((i: any) => i.type !== "services")
+            .filter((i: any) => i.type !== "services" && i.trackInventory !== false)
             .map((i: any) => ({
               id: i.id,
               name: i.name,
               sku: i.sku,
               stock: i.stock ?? 0,
+              isSerialized: i.isSerialized,
+              tracksBatch: i.tracksBatch,
+              tracksLot: i.tracksLot,
+              tracksExpiry: i.tracksExpiry,
             }))
         );
         setWarehouses(Array.isArray(whData) ? whData : []);
@@ -101,9 +118,13 @@ export default function StockTransferPage() {
       return setError("Source and destination cannot be the same");
     if (!qty || Number(qty) <= 0) return setError("Enter a positive quantity");
     if (!date.ad) return setError("Select a date");
+    if (selectedItem?.tracksBatch && !batchNo.trim()) return setError("Batch number is required for this item");
+    if (selectedItem?.tracksLot && !lotNo.trim()) return setError("Lot number is required for this item");
+    if (selectedItem?.tracksExpiry && !expiryDate) return setError("Expiry date is required for this item");
 
     setSubmitting(true);
     try {
+      const serialNumbers = serialText.split(/[\n,]+/).map((serial) => serial.trim()).filter(Boolean);
       await transferInventoryStock({
         itemId,
         fromWarehouseId,
@@ -118,6 +139,7 @@ export default function StockTransferPage() {
         batchNo: batchNo.trim() || undefined,
         lotNo: lotNo.trim() || undefined,
         expiryDate: expiryDate || undefined,
+        serialNumbers: serialNumbers.length ? serialNumbers : undefined,
       });
       setSuccess("Stock transfer completed successfully!");
       setTimeout(() => {
@@ -132,6 +154,7 @@ export default function StockTransferPage() {
         setBatchNo("");
         setLotNo("");
         setExpiryDate("");
+        setSerialText("");
         setSuccess(null);
       }, 2000);
     } catch (e: any) {
@@ -340,29 +363,19 @@ export default function StockTransferPage() {
       <Card className="border-border/50 shadow-lg">
         <CardContent className="pt-6 space-y-4">
           <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-            Batch / Lot (Optional)
+            Tracking
           </h3>
           <div className="grid gap-4 sm:grid-cols-3">
-            <Input
-              placeholder="Batch No."
-              value={batchNo}
-              onChange={(e) => setBatchNo(e.target.value)}
-              className="rounded-xl"
-            />
-            <Input
-              placeholder="Lot No."
-              value={lotNo}
-              onChange={(e) => setLotNo(e.target.value)}
-              className="rounded-xl"
-            />
-            <Input
-              type="date"
-              placeholder="Expiry Date"
-              value={expiryDate}
-              onChange={(e) => setExpiryDate(e.target.value)}
-              className="rounded-xl"
-            />
+            {inventorySettings?.batchTrackingEnabled && <Input placeholder={selectedItem?.tracksBatch ? "Batch No. *" : "Batch No."} value={batchNo} onChange={(e) => setBatchNo(e.target.value)} className="rounded-xl" />}
+            {inventorySettings?.lotTrackingEnabled && <Input placeholder={selectedItem?.tracksLot ? "Lot No. *" : "Lot No."} value={lotNo} onChange={(e) => setLotNo(e.target.value)} className="rounded-xl" />}
+            {inventorySettings?.expiryTrackingEnabled && <Input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} className="rounded-xl" />}
           </div>
+          {selectedItem?.isSerialized && inventorySettings?.serialTrackingEnabled && (
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Serial Numbers *</label>
+              <textarea value={serialText} onChange={(e) => setSerialText(e.target.value)} placeholder="One serial per line, or comma separated" className="min-h-24 w-full rounded-xl border bg-background px-3 py-2 text-sm" />
+            </div>
+          )}
         </CardContent>
       </Card>
 

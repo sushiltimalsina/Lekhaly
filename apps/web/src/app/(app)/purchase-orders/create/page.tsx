@@ -324,6 +324,14 @@ type Line = { itemId: string; qty: string; rate: string; description?: string };
 type BillSundryRow = { id: string; sundryId?: string; name: string; type: "add" | "less"; ratePct: string; manualAmount?: string; isManual?: boolean };
 
 export default function PurchaseOrderCreatePage() {
+    return (
+        <React.Suspense fallback={null}>
+            <PurchaseOrderCreateContent />
+        </React.Suspense>
+    );
+}
+
+function PurchaseOrderCreateContent() {
     const [mounted, setMounted] = React.useState(false);
 
     const dateRef = React.useRef<HTMLInputElement>(null);
