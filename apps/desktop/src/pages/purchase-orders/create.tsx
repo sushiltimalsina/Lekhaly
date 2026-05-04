@@ -894,7 +894,7 @@ export default function PurchaseOrderCreatePage() {
                                                             });
                                                         }}
                                                         options={items}
-                                                        getLabel={(i) => i.name}
+                                                        getLabel={(i) => `${i.name}${i.sku ? ` [${i.sku}]` : ""}`}
                                                         getDetail={(i) => i.sku ? `Code: ${i.sku}` : `Stock: ${i.stock ?? 0}`}
                                                         placeholder="Select Item..."
                                                         className="w-full min-w-[200px]"

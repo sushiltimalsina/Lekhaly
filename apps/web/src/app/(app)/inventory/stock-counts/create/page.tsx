@@ -198,7 +198,7 @@ export default function CreateStockCountPage() {
                   <tr key={line.id} className="hover:bg-muted/30 transition-colors">
                     <td className="p-2">
                       <SearchableSelect
-                        options={items.map((i) => ({ id: i.id, name: `${i.name}${i.sku ? ` (${i.sku})` : ""}` }))}
+                        options={items.map((i) => ({ id: i.id, name: `${i.name}${i.sku ? ` [${i.sku}]` : ""}` }))}
                         valueId={line.itemId}
                         onChange={(id) => updateLine(line.id, "itemId", id)}
                         placeholder="Select item..."

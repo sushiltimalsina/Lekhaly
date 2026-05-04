@@ -88,7 +88,7 @@ export default function StockTransferPage() {
       {/* Item */}
       <Card className="border-border/50 shadow-lg"><CardContent className="pt-6 space-y-4">
         <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2"><Package className="h-3.5 w-3.5" /> Item</h3>
-        <SearchableSelect options={items.map((i) => ({ value: i.id, label: `${i.name}${i.sku ? ` (${i.sku})` : ""}` }))} value={itemId} onChange={setItemId} placeholder="Search items..." />
+        <SearchableSelect options={items.map((i) => ({ value: i.id, label: `${i.name}${i.sku ? ` [${i.sku}]` : ""}` }))} value={itemId} onChange={setItemId} placeholder="Search items..." />
         {selectedItem && <div className="flex items-center gap-4 text-sm"><span className="text-muted-foreground">Total stock:</span><span className="font-bold tabular-nums">{selectedItem.stock ?? 0} units</span></div>}
       </CardContent></Card>
 

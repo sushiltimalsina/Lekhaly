@@ -96,7 +96,7 @@ export default function StockAdjustPage() {
         <div className="lg:col-span-2 space-y-6">
           <Card className="border-border/50 shadow-lg"><CardContent className="pt-6 space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Item</h3>
-            <SearchableSelect options={items.map((i) => ({ value: i.id, label: `${i.name}${i.sku ? ` (${i.sku})` : ""}` }))} value={itemId} onChange={setItemId} placeholder="Search items..." />
+            <SearchableSelect options={items.map((i) => ({ value: i.id, label: `${i.name}${i.sku ? ` [${i.sku}]` : ""}` }))} value={itemId} onChange={setItemId} placeholder="Search items..." />
             {selectedItem && <div className="flex items-center gap-4 text-sm"><span className="text-muted-foreground">Current stock:</span><span className={cn("font-bold tabular-nums", (selectedItem.stock ?? 0) <= 0 ? "text-red-600" : "text-emerald-600")}>{selectedItem.stock ?? 0} units</span></div>}
           </CardContent></Card>
 

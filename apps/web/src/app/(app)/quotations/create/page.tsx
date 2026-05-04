@@ -902,12 +902,12 @@ function QuotationCreateContent() {
                                                             updateLine(idx, {
                                                                 itemId: id,
                                                                 rate: opt?.salesPrice ? String(opt.salesPrice) : line.rate,
-                                                                description: opt?.name,
+                                                                description: opt ? `${opt.name}${opt.sku ? ` [${opt.sku}]` : ""}` : "",
                                                                 unit: opt?.unit || ""
                                                             });
                                                         }}
                                                         options={items}
-                                                        getLabel={(i) => i.name}
+                                                        getLabel={(i) => `${i.name}${i.sku ? ` [${i.sku}]` : ""}`}
                                                         getDetail={(it) => `${it.sku || it.code ? (it.sku || it.code) + ' | ' : ''}Stock: ${it.stock ?? 0}`}
                                                         placeholder="Select Item..."
                                                         className="w-full min-w-[200px]"

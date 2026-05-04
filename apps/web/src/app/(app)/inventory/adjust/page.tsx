@@ -220,7 +220,7 @@ export default function StockAdjustPage() {
               <SearchableSelect
                 options={items.map((i) => ({
                   value: i.id,
-                  label: `${i.name}${i.sku ? ` (${i.sku})` : ""}`,
+                  label: `${i.name}${i.sku ? ` [${i.sku}]` : ""}`,
                 }))}
                 value={itemId}
                 onChange={setItemId}

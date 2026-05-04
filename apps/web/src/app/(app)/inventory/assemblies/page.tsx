@@ -56,7 +56,7 @@ export default function AssemblyOrdersPage() {
 
   React.useEffect(() => { loadItems(); loadSundries(); }, [loadItems, loadSundries]);
 
-  const itemOpts = React.useMemo(() => allItems.filter(i => i.type !== "services").map(i => ({ id: i.id, name: `${i.name}${i.sku ? ` (${i.sku})` : ""}`, _raw: i })), [allItems]);
+  const itemOpts = React.useMemo(() => allItems.filter(i => i.type !== "services").map(i => ({ id: i.id, name: `${i.name}${i.sku ? ` [${i.sku}]` : ""}`, _raw: i })), [allItems]);
   const sundryOpts = React.useMemo(() => allSundries.map(s => ({ id: s.id, name: s.name, _raw: s })), [allSundries]);
 
   const updateLine = (s: React.Dispatch<React.SetStateAction<VLine[]>>, i: number, p: Partial<VLine>) => s(prev => prev.map((l, idx) => idx === i ? calc({ ...l, ...p }) : l));
@@ -173,7 +173,7 @@ export default function AssemblyOrdersPage() {
                         options={itemOpts}
                         valueId={line.itemId}
                         leftIcon={<Search className="h-4 w-4" />}
-                        getLabel={(it: any) => `${it.name}${it._raw?.sku ? ` (${it._raw.sku})` : ""}`}
+                        getLabel={(it: any) => `${it.name}${it._raw?.sku ? ` [${it._raw.sku}]` : ""}`}
                         getDetail={(it: any) => it._raw?.type === "services" ? "Service" : `${it._raw?.stock ?? 0} ${it._raw?.unit ?? "Units"}`}
                         onChange={(id, opt) => {
                           const raw = (opt as any)?._raw as ItemRecord | undefined;

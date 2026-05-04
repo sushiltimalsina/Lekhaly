@@ -851,7 +851,7 @@ function SalesOrderCreateContent() {
                     </div>
 
                     {/* Items Table */}
-                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-zinc-950">
                         <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/50 px-4 py-2 dark:border-slate-800 dark:bg-slate-900/20">
                             <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Items</h3>
                             {isEditMode && (
@@ -892,12 +892,12 @@ function SalesOrderCreateContent() {
                                                             updateLine(idx, {
                                                                 itemId: id,
                                                                 rate: opt?.salesPrice ? String(opt.salesPrice) : line.rate,
-                                                                description: opt?.name,
+                                                                description: opt ? `${opt.name}${opt.sku ? ` [${opt.sku}]` : ""}` : "",
                                                                 unit: opt?.unit || ""
                                                             });
                                                         }}
                                                         options={items}
-                                                        getLabel={(i) => i.name}
+                                                        getLabel={(i) => `${i.name}${i.sku ? ` [${i.sku}]` : ""}`}
                                                         getDetail={(it) => `${it.sku || it.code ? (it.sku || it.code) + ' | ' : ''}Stock: ${it.stock ?? 0}`}
                                                         placeholder="Select Item..."
                                                         className="w-full min-w-[200px]"

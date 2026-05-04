@@ -765,6 +765,7 @@ function PurchaseReturnCreateContent() {
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-4">
                         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-600 text-white shadow-xl shadow-sky-600/20">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                             <PackageMinus className="h-6 w-6" />
                         </div>
                         <div>
@@ -967,11 +968,12 @@ function PurchaseReturnCreateContent() {
                                                                     itemId: id,
                                                                     rate: item?.purchasePrice?.toString() || "",
                                                                     expenseAccountId: item?.expenseAccountId || undefined,
-                                                                    unit: item?.unit || ""
+                                                                    unit: item?.unit || "",
+                                                                    description: item ? `${item.name}${item.sku ? ` [${item.sku}]` : ""}` : ""
                                                                 });
                                                             }}
                                                             options={items}
-                                                            getLabel={(it) => it.name}
+                                                            getLabel={(it) => `${it.name}${it.sku ? ` [${it.sku}]` : ""}`}
                                                             getDetail={(it) => `${it.sku || it.code ? (it.sku || it.code) + ' | ' : ''}Stock: ${it.stock ?? 0}`}
                                                             onEnterNext={() => safeFocus(rowRefs.current.qty[idx])}
                                                             leftIcon={<Search className="h-4 w-4" />}

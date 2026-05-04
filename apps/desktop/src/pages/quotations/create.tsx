@@ -898,7 +898,7 @@ export default function QuotationCreatePage() {
                                                             });
                                                         }}
                                                         options={items}
-                                                        getLabel={(i) => i.name}
+                                                        getLabel={(i) => `${i.name}${i.sku ? ` [${i.sku}]` : ""}`}
                                                         getDetail={(i) => i.code ? `Code: ${i.code}` : `Stock: ${i.stock ?? 0}`}
                                                         placeholder="Select Item..."
                                                         className="w-full min-w-[200px]"

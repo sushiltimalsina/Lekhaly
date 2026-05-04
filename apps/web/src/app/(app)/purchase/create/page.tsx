@@ -19,6 +19,7 @@ import AddVendorDialog from "@/components/app/add-vendor-dialog";
 import AddBillSundryDialog from "@/components/app/add-bill-sundry-dialog";
 import { listBillSundries, type BillSundryRecord } from "@/lib/api/bill-sundries";
 import { useUiState } from "@/lib/store/ui";
+import { useExcelPaste } from "@/hooks/use-excel-paste";
 
 import {
     Plus,
@@ -429,6 +430,40 @@ function PurchaseCreateContent() {
     });
 
     const [lines, setLines] = React.useState<Line[]>([{ itemId: "", qty: "", rate: "" }]);
+
+    const { handlePaste } = useExcelPaste<Line>({
+        items,
+        onPaste: (newLines) => {
+            if (lines.length === 1 && !lines[0].itemId && !lines[0].qty) {
+                setLines(newLines);
+            } else {
+                setLines([...lines, ...newLines]);
+            }
+            setSuccess(`Successfully pasted ${newLines.length} items from Excel.`);
+        },
+        mapRow: (cols, allItems) => {
+            const query = cols[0]?.trim().toLowerCase();
+            if (!query) return null;
+
+            const item = allItems.find(it =>
+                it.name?.toLowerCase() === query ||
+                it.sku?.toLowerCase() === query ||
+                it.code?.toLowerCase() === query ||
+                it.hsCode?.toLowerCase() === query
+            );
+
+            if (!item) return null;
+
+            return {
+                itemId: item.id,
+                qty: cols[1]?.trim() || "1",
+                rate: cols[2]?.trim() || item.purchasePrice?.toString() || "0",
+                unit: item.unit || "",
+                description: `${item.name}${item.sku ? ` [${item.sku}]` : ""}`,
+                expenseAccountId: item.expenseAccountId || undefined
+            };
+        }
+    });
 
     // Clean up refs when lines change
     React.useEffect(() => {
@@ -861,7 +896,7 @@ function PurchaseCreateContent() {
     if (!mounted) return <div className="min-h-screen" />;
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6" onPaste={handlePaste}>
             <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
                 <div className="mb-4">
                     <Button
@@ -1136,11 +1171,11 @@ function PurchaseCreateContent() {
                                                                     rate: item?.purchasePrice?.toString() || "",
                                                                     expenseAccountId: item?.expenseAccountId || undefined,
                                                                     unit: item?.unit || "",
-                                                                    description: item?.name
+                                                                    description: item ? `${item.name}${item.sku ? ` [${item.sku}]` : ""}` : ""
                                                                 });
                                                             }}
                                                             options={items}
-                                                            getLabel={(it) => it.name}
+                                                            getLabel={(it) => `${it.name}${it.sku ? ` [${it.sku}]` : ""}`}
                                                             getDetail={(it) => `${it.sku || it.code ? (it.sku || it.code) + ' | ' : ''}Stock: ${it.stock ?? 0}`}
                                                             onEnterNext={() => safeFocus(rowRefs.current.qty[idx])}
                                                             leftIcon={<Search className="h-4 w-4" />}

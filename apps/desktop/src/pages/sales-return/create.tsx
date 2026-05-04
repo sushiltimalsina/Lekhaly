@@ -994,8 +994,8 @@ export default function SalesReturnCreatePage() {
                                                             }}
                                                             options={items}
                                                             getLabel={(it) => {
-                                                                const code = it.hsCode ? ` (${it.hsCode})` : "";
-                                                                return `${it.name ?? "Item"}${code}`;
+                                                                const sku = it.sku ? ` [${it.sku}]` : "";
+                                                                return `${it.name ?? "Item"}${sku}`;
                                                             }}
                                                             onEnterNext={() => safeFocus(rowRefs.current.qty[idx])}
                                                             onKeyDownCustom={(e: React.KeyboardEvent<HTMLInputElement>) => {

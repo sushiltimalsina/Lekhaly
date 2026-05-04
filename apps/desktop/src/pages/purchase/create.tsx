@@ -1172,7 +1172,7 @@ export default function PurchaseCreatePage() {
                                                             }}
                                                             options={items}
                                                             getLabel={(it) => {
-                                                                const sku = it.sku ? ` (${it.sku})` : "";
+                                                                const sku = it.sku ? ` [${it.sku}]` : "";
                                                                 return `${it.name}${sku}`;
                                                             }}
                                                             getDetail={(it) => {
