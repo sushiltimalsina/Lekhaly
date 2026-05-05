@@ -22,6 +22,7 @@ import { listSaleTypes } from "@/lib/api/sale-types";
 import AddPaymentMethodDialog from "@/components/app/add-payment-method-dialog";
 import AddSaleTypeDialog from "@/components/app/add-sale-type-dialog";
 import { useUiState } from "@/lib/store/ui";
+import { useExcelPaste } from "@/hooks/use-excel-paste";
 
 import {
   Plus,
@@ -438,6 +439,41 @@ export default function SalesCreatePage() {
 
   const [lines, setLines] = React.useState<Line[]>([{ itemId: "", qty: "", rate: "" }]);
 
+  const { handlePaste } = useExcelPaste<Line>({
+    items,
+    onPaste: (newLines) => {
+      // If the first line is empty, replace it
+      if (lines.length === 1 && !lines[0].itemId && !lines[0].qty) {
+        setLines(newLines);
+      } else {
+        setLines([...lines, ...newLines]);
+      }
+      setSuccess(`Successfully pasted ${newLines.length} items from Excel.`);
+    },
+    mapRow: (cols, allItems) => {
+      const query = cols[0]?.trim().toLowerCase();
+      if (!query) return null;
+
+      // Find item by name, sku, code, or hscode
+      const item = allItems.find(it => 
+        it.name?.toLowerCase() === query ||
+        it.sku?.toLowerCase() === query ||
+        it.code?.toLowerCase() === query ||
+        it.hsCode?.toLowerCase() === query
+      );
+
+      if (!item) return null;
+
+      return {
+        itemId: item.id,
+        qty: cols[1]?.trim() || "1",
+        rate: cols[2]?.trim() || item.salesPrice?.toString() || "0",
+        unit: item.unit || "",
+        description: `${item.name}${item.sku ? ` [${item.sku}]` : ""}`
+      };
+    }
+  });
+
   // Clean up refs when lines change
   React.useEffect(() => {
     rowRefs.current.select = rowRefs.current.select.slice(0, lines.length);
@@ -655,7 +691,7 @@ export default function SalesCreatePage() {
   const addLine = () => {
     setLines((prev) => {
       setPendingFocusIndex(prev.length);
-      return [...prev, { itemId: "", qty: "", rate: "", unit: "" }];
+      return [...prev, { itemId: "", qty: "", rate: "", unit: "", description: "" }];
     });
   };
 
@@ -713,6 +749,7 @@ export default function SalesCreatePage() {
           itemId: l.itemId,
           qty,
           rate,
+          unit: l.unit,
           description: l.description || undefined,
         };
       });
@@ -809,7 +846,7 @@ export default function SalesCreatePage() {
   if (!mounted) return <div className="min-h-screen" />;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" onPaste={handlePaste}>
       <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
         <div className="mb-4">
           <Button
@@ -1097,10 +1134,10 @@ export default function SalesCreatePage() {
                   <tr>
                     <th className="w-[60px] px-4 py-3 text-left text-xs text-muted-foreground">S.No.</th>
                     <th className="w-[420px] min-w-[320px] px-4 py-3 text-left text-xs text-muted-foreground">Particulars</th>
-                    <th className="w-[120px] px-4 py-3 text-left text-xs text-muted-foreground">Unit</th>
                     <th className="w-[140px] px-4 py-3 text-left text-xs text-muted-foreground">
                       Qty <span className="text-red-500">*</span>
                     </th>
+                    <th className="w-[120px] px-4 py-3 text-left text-xs text-muted-foreground">Unit</th>
                     <th className="w-[180px] px-4 py-3 text-left text-xs text-muted-foreground">
                       Rate <span className="text-red-500">*</span>
                     </th>
@@ -1124,15 +1161,22 @@ export default function SalesCreatePage() {
                               buttonRef={(el) => { rowRefs.current.select[idx] = el; }}
                               placeholder="Search item…"
                               valueId={line.itemId}
-                              onChange={(id) => updateLine(idx, { itemId: id })}
+                              onChange={(id, item) => {
+                                updateLine(idx, {
+                                  itemId: id,
+                                  unit: item?.unit || "",
+                                  rate: item?.salesPrice?.toString() || "",
+                                  description: item?.name || ""
+                                });
+                              }}
                               options={items}
                               getLabel={(it) => {
-                                const sku = it.sku ? ` (${it.sku})` : "";
+                                const sku = it.sku ? ` [${it.sku}]` : "";
                                 return `${it.name}${sku}`;
                               }}
                               getDetail={(it) => {
                                 if (it.type === "services") return "Service";
-                                return `${it.stock ?? 0} ${it.unit ?? "Units"}`;
+                                return `Stock: ${it.stock ?? 0} ${it.unit ?? ""}`;
                               }}
                               onEnterNext={() => safeFocus(rowRefs.current.qty[idx])}
                               onKeyDownCustom={(e) => {
@@ -1188,16 +1232,6 @@ export default function SalesCreatePage() {
                             )}
                           </div>
                         </td>
-                        <td className="px-4 py-3">
-                          <Input
-                            value={line.unit || ""}
-                            readOnly
-                            placeholder="Unit"
-                            className="h-11 rounded-2xl bg-slate-50/40 text-center dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 text-muted-foreground cursor-not-allowed"
-                            disabled
-                          />
-                        </td>
-
                         <td className="px-4 py-3 align-top">
                           <Input
                             ref={(el) => { rowRefs.current.qty[idx] = el; }}
@@ -1269,6 +1303,16 @@ export default function SalesCreatePage() {
                               {lineErrors[idx].qty}
                             </div>
                           )}
+                        </td>
+
+                        <td className="px-4 py-3">
+                          <Input
+                            value={line.unit || ""}
+                            readOnly
+                            placeholder="Unit"
+                            className="h-11 rounded-2xl bg-slate-50/40 text-center dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 text-muted-foreground cursor-not-allowed"
+                            disabled
+                          />
                         </td>
 
                         <td className="px-4 py-3 align-top">

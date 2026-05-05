@@ -18,6 +18,7 @@ import { listItems, type ItemRecord } from "@/lib/api/items";
 import AddItemDialog from "@/components/app/add-item-dialog";
 import AddVendorDialog from "@/components/app/add-vendor-dialog";
 import AddBillSundryDialog from "@/components/app/add-bill-sundry-dialog";
+import { useExcelPaste } from "@/hooks/use-excel-paste";
 import { listBillSundries, type BillSundryRecord } from "@/lib/api/bill-sundries";
 import { useUiState } from "@/lib/store/ui";
 
@@ -77,6 +78,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
     onChange: (id: string, opt?: T) => void;
     options: T[];
     getLabel?: (opt: T) => string;
+    getDetail?: (opt: T) => string | undefined;
     leftIcon?: React.ReactNode;
     className?: string;
     buttonClassName?: string;
@@ -95,6 +97,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
         onChange,
         options,
         getLabel,
+        getDetail,
         leftIcon,
         className,
         buttonClassName,
@@ -270,6 +273,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                             {filtered.length ? (
                                 filtered.map((o, i) => {
                                     const labelText = getLabel ? getLabel(o) : o.name ?? o.id;
+                                    const detailText = getDetail ? getDetail(o) : undefined;
                                     const selected = o.id === valueId;
                                     const active = i === activeIndex;
 
@@ -292,6 +296,11 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                                         >
                                             <div className="flex flex-1 items-center justify-between gap-2 overflow-hidden">
                                                 <span className="truncate font-medium">{labelText}</span>
+                                                {detailText ? (
+                                                    <span className={cn("text-xs whitespace-nowrap", selected ? "text-sky-600/80" : "text-muted-foreground")}>
+                                                        {detailText}
+                                                    </span>
+                                                ) : null}
                                             </div>
                                             {selected ? <Check className="h-4 w-4 text-sky-600" /> : null}
                                         </button>
@@ -390,6 +399,39 @@ export default function PurchaseReturnCreatePage() {
     });
 
     const [lines, setLines] = React.useState<Line[]>([{ itemId: "", qty: "", rate: "" }]);
+
+    const { handlePaste } = useExcelPaste<Line>({
+        items,
+        onPaste: (newLines) => {
+            if (lines.length === 1 && !lines[0].itemId && !lines[0].qty) {
+                setLines(newLines);
+            } else {
+                setLines([...lines, ...newLines]);
+            }
+            setSuccess(`Successfully pasted ${newLines.length} items from Excel.`);
+        },
+        mapRow: (cols, allItems) => {
+            const query = cols[0]?.trim().toLowerCase();
+            if (!query) return null;
+
+            const item = allItems.find(it =>
+                it.name?.toLowerCase() === query ||
+                it.sku?.toLowerCase() === query ||
+                it.code?.toLowerCase() === query ||
+                it.hsCode?.toLowerCase() === query
+            );
+
+            if (!item) return null;
+
+            return {
+                itemId: item.id,
+                qty: cols[1]?.trim() || "1",
+                rate: cols[2]?.trim() || item.purchasePrice?.toString() || "0",
+                unit: item.unit || "",
+                description: `${item.name}${item.sku ? ` [${item.sku}]` : ""}`
+            };
+        }
+    });
 
     React.useEffect(() => {
         rowRefs.current.select = rowRefs.current.select.slice(0, lines.length);
@@ -599,7 +641,7 @@ export default function PurchaseReturnCreatePage() {
     const addLine = () => {
         setLines((prev) => {
             setPendingFocusIndex(prev.length);
-            return [...prev, { itemId: "", qty: "", rate: "" }];
+            return [...prev, { itemId: "", qty: "", rate: "", unit: "", description: "" }];
         });
     };
 
@@ -648,7 +690,7 @@ export default function PurchaseReturnCreatePage() {
                 accountId: l.expenseAccountId || item?.expenseAccountId || "",
                 credit: qty * rate,
                 qty,
-                unit: lines.find(l => l.itemId === it.itemId)?.unit,
+                unit: l.unit,
                 description: l.description || "Purchase Return",
             };
         });
@@ -726,7 +768,7 @@ export default function PurchaseReturnCreatePage() {
     if (!mounted) return <div className="min-h-screen" />;
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6" onPaste={handlePaste}>
             <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
                 <div className="mb-4">
                     <Button
@@ -908,8 +950,8 @@ export default function PurchaseReturnCreatePage() {
                                     <tr>
                                         <th className="w-[60px] px-4 py-3 text-left text-xs text-muted-foreground">S.No.</th>
                                         <th className="w-[520px] min-w-[420px] px-4 py-3 text-left text-xs text-muted-foreground">Particulars</th>
-                                        <th className="w-[100px] px-4 py-3 text-left text-xs text-muted-foreground uppercase tracking-widest font-black">Unit</th>
                                         <th className="w-[140px] px-4 py-3 text-left text-xs text-muted-foreground">Qty <span className="text-red-500">*</span></th>
+                                        <th className="w-[100px] px-4 py-3 text-left text-xs text-muted-foreground uppercase tracking-widest font-black">Unit</th>
                                         <th className="w-[180px] px-4 py-3 text-left text-xs text-muted-foreground">Rate <span className="text-red-500">*</span></th>
                                         <th className="w-[180px] px-4 py-3 text-right text-xs text-muted-foreground">Amount</th>
                                         <th className="w-[70px] px-4 py-3 text-right text-xs text-muted-foreground" />
@@ -934,11 +976,16 @@ export default function PurchaseReturnCreatePage() {
                                                                     itemId: id,
                                                                     unit: item?.unit || "",
                                                                     rate: item?.purchasePrice?.toString() || "",
+                                                                    description: item?.name || "",
                                                                     expenseAccountId: item?.expenseAccountId || undefined
                                                                 });
                                                             }}
                                                             options={items}
                                                             getLabel={(it) => it.name}
+                                                            getDetail={(it) => {
+                                                                if (it.type === "services") return "Service";
+                                                                return `Stock: ${it.stock ?? 0} ${it.unit ?? ""}`;
+                                                            }}
                                                             onEnterNext={() => safeFocus(rowRefs.current.qty[idx])}
                                                             leftIcon={<Search className="h-4 w-4" />}
                                                             disabled={!isEditMode}
@@ -956,14 +1003,6 @@ export default function PurchaseReturnCreatePage() {
                                                         )}
                                                     </div>
                                                 </td>
-                                                <td className="px-4 py-3">
-                                                    <Input
-                                                        value={line.unit || ""}
-                                                        readOnly
-                                                        className="h-11 rounded-2xl bg-slate-50 text-center text-xs font-bold text-slate-500 cursor-not-allowed dark:bg-slate-900/50"
-                                                        placeholder="—"
-                                                    />
-                                                </td>
                                                 <td className="px-4 py-3 align-top">
                                                     <Input
                                                         ref={(el) => { rowRefs.current.qty[idx] = el; }}
@@ -976,6 +1015,14 @@ export default function PurchaseReturnCreatePage() {
                                                         onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); safeFocus(rowRefs.current.rate[idx]); } }}
                                                         disabled={!isEditMode}
                                                         className={cn("h-11 rounded-2xl bg-white text-center dark:bg-slate-900", lineErrors[idx]?.qty && "border-red-500")}
+                                                    />
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <Input
+                                                        value={line.unit || ""}
+                                                        readOnly
+                                                        className="h-11 rounded-2xl bg-slate-50 text-center text-xs font-bold text-slate-500 cursor-not-allowed dark:bg-slate-900/50"
+                                                        placeholder="—"
                                                     />
                                                 </td>
                                                 <td className="px-4 py-3 align-top">

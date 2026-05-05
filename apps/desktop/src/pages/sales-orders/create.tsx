@@ -7,6 +7,7 @@ import { Input } from "@lekhaly/ui";
 import { Button } from "@lekhaly/ui";
 import { MoneyText } from "@/components/app/money";
 import { cn } from "@/lib/utils";
+import { useExcelPaste } from "@/hooks/use-excel-paste";
 
 import {
     createSalesOrder,
@@ -379,6 +380,37 @@ export default function SalesOrderCreatePage() {
 
     const [lines, setLines] = React.useState<Line[]>([{ itemId: "", qty: "", rate: "" }]);
 
+    const { handlePaste } = useExcelPaste<Line>({
+        items,
+        onPaste: (newLines) => {
+            if (lines.length === 1 && !lines[0].itemId && !lines[0].qty) {
+                setLines(newLines);
+            } else {
+                setLines([...lines, ...newLines]);
+            }
+            setSuccess(`Successfully pasted ${newLines.length} items from Excel.`);
+        },
+        mapRow: (cols, allItems) => {
+            const query = cols[0]?.trim().toLowerCase();
+            if (!query) return null;
+
+            const item = allItems.find(it =>
+                it.name?.toLowerCase() === query ||
+                it.sku?.toLowerCase() === query
+            );
+
+            if (!item) return null;
+
+            return {
+                itemId: item.id,
+                qty: cols[1]?.trim() || "1",
+                rate: cols[2]?.trim() || item.salesPrice?.toString() || "0",
+                unit: item.unit || "",
+                description: item.name
+            };
+        }
+    });
+
     // Clean up refs when lines change
     React.useEffect(() => {
         rowRefs.current.select = rowRefs.current.select.slice(0, lines.length);
@@ -545,7 +577,7 @@ export default function SalesOrderCreatePage() {
     const addLine = () => {
         setLines((prev) => {
             setPendingFocusIndex(prev.length);
-            return [...prev, { itemId: "", qty: "", rate: "" }];
+            return [...prev, { itemId: "", qty: "", rate: "", unit: "", description: "" }];
         });
     };
 
@@ -594,6 +626,7 @@ export default function SalesOrderCreatePage() {
                     itemId: l.itemId,
                     qty,
                     rate,
+                    unit: l.unit,
                     description: l.description || undefined,
                 };
             });
@@ -667,7 +700,7 @@ export default function SalesOrderCreatePage() {
     if (!mounted) return <div className="min-h-screen" />;
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6" onPaste={handlePaste}>
             <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
                 <div className="mb-4">
                     <Button
@@ -863,8 +896,8 @@ export default function SalesOrderCreatePage() {
                                     <tr>
                                         <th className="px-4 py-3 w-16">#</th>
                                         <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-widest text-slate-500">Particulars</th>
-                                        <th className="w-24 px-4 py-3 text-center text-[10px] font-black uppercase tracking-widest text-slate-500">Unit</th>
                                         <th className="w-32 px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-500 text-red-500">Qty *</th>
+                                        <th className="w-24 px-4 py-3 text-center text-[10px] font-black uppercase tracking-widest text-slate-500">Unit</th>
                                         <th className="w-32 px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-500 text-red-500">Rate *</th>
                                         <th className="px-4 py-3 w-32 text-right">Amount</th>
                                         {isEditMode && <th className="px-4 py-3 w-12"></th>}
@@ -889,7 +922,10 @@ export default function SalesOrderCreatePage() {
                                                         }}
                                                         options={items}
                                                         getLabel={(i) => `${i.name}${i.sku ? ` [${i.sku}]` : ""}`}
-                                                        getDetail={(i) => i.sku ? `Code: ${i.sku}` : `Stock: ${i.stock ?? 0}`}
+                                                        getDetail={(i) => {
+                                                            if (i.type === "services") return "Service";
+                                                            return `Stock: ${i.stock ?? 0} ${i.unit ?? ""}`;
+                                                        }}
                                                         placeholder="Select Item..."
                                                         className="w-full min-w-[200px]"
                                                         buttonClassName="h-9 border-transparent bg-transparent hover:bg-white focus:bg-white focus:ring-2 px-2 shadow-none"
@@ -905,14 +941,6 @@ export default function SalesOrderCreatePage() {
                                                         />
                                                     )}
                                                 </td>
-                                                <td className="px-3 py-2">
-                                                    <Input
-                                                        value={line.unit || ""}
-                                                        readOnly
-                                                        className="h-10 w-full rounded-xl bg-slate-50 text-center text-xs font-bold text-slate-500 cursor-not-allowed dark:bg-slate-900/50"
-                                                        placeholder="—"
-                                                    />
-                                                </td>
                                                 <td className="px-4 py-2">
                                                     <input
                                                         ref={(el) => { rowRefs.current.qty[idx] = el; }}
@@ -923,6 +951,14 @@ export default function SalesOrderCreatePage() {
                                                             if (e.key === "Enter") rowRefs.current.rate[idx]?.focus();
                                                         }}
                                                         placeholder="0"
+                                                    />
+                                                </td>
+                                                <td className="px-3 py-2">
+                                                    <Input
+                                                        value={line.unit || ""}
+                                                        readOnly
+                                                        className="h-10 w-full rounded-xl bg-slate-50 text-center text-xs font-bold text-slate-500 cursor-not-allowed dark:bg-slate-900/50"
+                                                        placeholder="—"
                                                     />
                                                 </td>
                                                 <td className="px-4 py-2">

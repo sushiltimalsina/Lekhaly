@@ -22,6 +22,7 @@ import { listSaleTypes } from "@/lib/api/sale-types";
 import AddPaymentMethodDialog from "@/components/app/add-payment-method-dialog";
 import AddSaleTypeDialog from "@/components/app/add-sale-type-dialog";
 import AddBillSundryDialog from "@/components/app/add-bill-sundry-dialog";
+import { useExcelPaste } from "@/hooks/use-excel-paste";
 
 import {
     Plus,
@@ -74,6 +75,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
     onChange: (id: string, opt?: T) => void;
     options: T[];
     getLabel?: (opt: T) => string;
+    getDetail?: (opt: T) => string | undefined;
     leftIcon?: React.ReactNode;
     className?: string;
     buttonClassName?: string;
@@ -92,6 +94,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
         onChange,
         options,
         getLabel,
+        getDetail,
         leftIcon,
         className,
         buttonClassName,
@@ -270,6 +273,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                             {filtered.length ? (
                                 filtered.map((o, idx) => {
                                     const labelText = getLabel ? getLabel(o) : o.name ?? o.id;
+                                    const detailText = getDetail ? getDetail(o) : undefined;
                                     const isSelected = o.id === valueId;
                                     const isActive = idx === activeIndex;
                                     return (
@@ -292,7 +296,14 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                                                 isSelected && "text-rose-600 font-medium"
                                             )}
                                         >
-                                            <span className="min-w-0 flex-1 truncate">{labelText}</span>
+                                            <div className="flex flex-1 items-center justify-between gap-2 overflow-hidden">
+                                                <span className="min-w-0 flex-1 truncate">{labelText}</span>
+                                                {detailText ? (
+                                                    <span className={cn("text-xs whitespace-nowrap", isSelected ? "text-rose-600/80" : "text-muted-foreground")}>
+                                                        {detailText}
+                                                    </span>
+                                                ) : null}
+                                            </div>
                                             {isSelected ? <Check className="h-4 w-4 text-rose-600" /> : null}
                                         </button>
                                     );
@@ -409,6 +420,39 @@ export default function SalesReturnCreatePage() {
     });
 
     const [lines, setLines] = React.useState<Line[]>([{ itemId: "", qty: "", rate: "" }]);
+
+    const { handlePaste } = useExcelPaste<Line>({
+        items,
+        onPaste: (newLines) => {
+            if (lines.length === 1 && !lines[0].itemId && !lines[0].qty) {
+                setLines(newLines);
+            } else {
+                setLines([...lines, ...newLines]);
+            }
+            setSuccess(`Successfully pasted ${newLines.length} items from Excel.`);
+        },
+        mapRow: (cols, allItems) => {
+            const query = cols[0]?.trim().toLowerCase();
+            if (!query) return null;
+
+            const item = allItems.find(it =>
+                it.name?.toLowerCase() === query ||
+                it.sku?.toLowerCase() === query ||
+                it.code?.toLowerCase() === query ||
+                it.hsCode?.toLowerCase() === query
+            );
+
+            if (!item) return null;
+
+            return {
+                itemId: item.id,
+                qty: cols[1]?.trim() || "1",
+                rate: cols[2]?.trim() || item.salesPrice?.toString() || "0",
+                unit: item.unit || "",
+                description: `${item.name}${item.sku ? ` [${item.sku}]` : ""}`
+            };
+        }
+    });
 
     // Clean up refs when lines change
     React.useEffect(() => {
@@ -568,7 +612,7 @@ export default function SalesReturnCreatePage() {
     const addLine = () => {
         setLines((prev) => {
             setPendingFocusIndex(prev.length);
-            return [...prev, { itemId: "", qty: "", rate: "" }];
+            return [...prev, { itemId: "", qty: "", rate: "", unit: "", description: "" }];
         });
     };
 
@@ -621,6 +665,7 @@ export default function SalesReturnCreatePage() {
                     itemId: l.itemId,
                     qty,
                     rate,
+                    unit: l.unit,
                     description: l.description || undefined,
                 };
             });
@@ -698,7 +743,7 @@ export default function SalesReturnCreatePage() {
     if (!mounted) return <div className="min-h-screen" />;
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6" onPaste={handlePaste}>
             <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
                 <div className="mb-4">
                     <Button
@@ -958,10 +1003,10 @@ export default function SalesReturnCreatePage() {
                                     <tr>
                                         <th className="w-[60px] px-4 py-3 text-left text-xs text-muted-foreground">S.No.</th>
                                         <th className="w-[520px] min-w-[420px] px-4 py-3 text-left text-xs text-muted-foreground">Particulars</th>
-                                        <th className="w-[100px] px-4 py-3 text-left text-xs text-muted-foreground uppercase tracking-widest font-black">Unit</th>
                                         <th className="w-[140px] px-4 py-3 text-left text-xs text-muted-foreground">
                                             Qty <span className="text-red-500">*</span>
                                         </th>
+                                        <th className="w-[100px] px-4 py-3 text-left text-xs text-muted-foreground uppercase tracking-widest font-black">Unit</th>
                                         <th className="w-[180px] px-4 py-3 text-left text-xs text-muted-foreground">
                                             Rate <span className="text-red-500">*</span>
                                         </th>
@@ -989,13 +1034,18 @@ export default function SalesReturnCreatePage() {
                                                                 updateLine(idx, {
                                                                     itemId: id,
                                                                     unit: opt?.unit || "",
-                                                                    rate: opt?.salesPrice?.toString() || line.rate
+                                                                    rate: opt?.salesPrice?.toString() || line.rate,
+                                                                    description: opt?.name || ""
                                                                 });
                                                             }}
                                                             options={items}
                                                             getLabel={(it) => {
                                                                 const sku = it.sku ? ` [${it.sku}]` : "";
                                                                 return `${it.name ?? "Item"}${sku}`;
+                                                            }}
+                                                            getDetail={(it) => {
+                                                                if (it.type === "services") return "Service";
+                                                                return `Stock: ${it.stock ?? 0} ${it.unit ?? ""}`;
                                                             }}
                                                             onEnterNext={() => safeFocus(rowRefs.current.qty[idx])}
                                                             onKeyDownCustom={(e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -1029,15 +1079,6 @@ export default function SalesReturnCreatePage() {
                                                             </Button>
                                                         )}
                                                     </div>
-                                                </td>
-
-                                                <td className="px-4 py-3">
-                                                    <Input
-                                                        value={line.unit || ""}
-                                                        readOnly
-                                                        className="h-11 rounded-2xl bg-slate-50 text-center text-xs font-bold text-slate-500 cursor-not-allowed dark:bg-slate-900/50"
-                                                        placeholder="—"
-                                                    />
                                                 </td>
 
                                                 <td className="px-4 py-3 align-top">
@@ -1081,6 +1122,15 @@ export default function SalesReturnCreatePage() {
                                                             {lineErrors[idx].qty}
                                                         </div>
                                                     )}
+                                                </td>
+
+                                                <td className="px-4 py-3">
+                                                    <Input
+                                                        value={line.unit || ""}
+                                                        readOnly
+                                                        className="h-11 rounded-2xl bg-slate-50 text-center text-xs font-bold text-slate-500 cursor-not-allowed dark:bg-slate-900/50"
+                                                        placeholder="—"
+                                                    />
                                                 </td>
 
                                                 <td className="px-4 py-3 align-top">

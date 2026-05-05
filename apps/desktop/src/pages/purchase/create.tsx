@@ -19,6 +19,7 @@ import AddVendorDialog from "@/components/app/add-vendor-dialog";
 import AddBillSundryDialog from "@/components/app/add-bill-sundry-dialog";
 import { listBillSundries, type BillSundryRecord } from "@/lib/api/bill-sundries";
 import { useUiState } from "@/lib/store/ui";
+import { useExcelPaste } from "@/hooks/use-excel-paste";
 
 import {
     Plus,
@@ -417,6 +418,39 @@ export default function PurchaseCreatePage() {
 
     const [lines, setLines] = React.useState<Line[]>([{ itemId: "", qty: "", rate: "" }]);
 
+    const { handlePaste } = useExcelPaste<Line>({
+        items,
+        onPaste: (newLines) => {
+            if (lines.length === 1 && !lines[0].itemId && !lines[0].qty) {
+                setLines(newLines);
+            } else {
+                setLines([...lines, ...newLines]);
+            }
+            setSuccess(`Successfully pasted ${newLines.length} items from Excel.`);
+        },
+        mapRow: (cols, allItems) => {
+            const query = cols[0]?.trim().toLowerCase();
+            if (!query) return null;
+
+            const item = allItems.find(it =>
+                it.name?.toLowerCase() === query ||
+                it.sku?.toLowerCase() === query ||
+                it.code?.toLowerCase() === query ||
+                it.hsCode?.toLowerCase() === query
+            );
+
+            if (!item) return null;
+
+            return {
+                itemId: item.id,
+                qty: cols[1]?.trim() || "1",
+                rate: cols[2]?.trim() || item.purchasePrice?.toString() || "0",
+                unit: item.unit || "",
+                description: `${item.name}${item.sku ? ` [${item.sku}]` : ""}`
+            };
+        }
+    });
+
     // Clean up refs when lines change
     React.useEffect(() => {
         rowRefs.current.select = rowRefs.current.select.slice(0, lines.length);
@@ -722,6 +756,7 @@ export default function PurchaseCreatePage() {
                 debit: qty * rate,
                 qty,
                 description: l.description || "Purchase",
+                unit: l.unit,
             };
         });
 
@@ -852,7 +887,7 @@ export default function PurchaseCreatePage() {
     if (!mounted) return <div className="min-h-screen" />;
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6" onPaste={handlePaste}>
             <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
                 <div className="mb-4">
                     <Button
@@ -1136,10 +1171,10 @@ export default function PurchaseCreatePage() {
                                     <tr>
                                         <th className="w-[60px] px-4 py-3 text-left text-xs text-muted-foreground">S.No.</th>
                                         <th className="w-[420px] min-w-[320px] px-4 py-3 text-left text-xs text-muted-foreground font-semibold uppercase tracking-wider">Particulars</th>
-                                        <th className="w-[120px] px-4 py-3 text-left text-xs text-muted-foreground font-semibold uppercase tracking-wider">Unit</th>
                                         <th className="w-[140px] px-4 py-3 text-left text-xs text-muted-foreground">
                                             Qty <span className="text-red-500">*</span>
                                         </th>
+                                        <th className="w-[120px] px-4 py-3 text-left text-xs text-muted-foreground font-semibold uppercase tracking-wider">Unit</th>
                                         <th className="w-[180px] px-4 py-3 text-left text-xs text-muted-foreground">
                                             Rate <span className="text-red-500">*</span>
                                         </th>
@@ -1166,7 +1201,9 @@ export default function PurchaseCreatePage() {
                                                             onChange={(id, item) => {
                                                                 updateLine(idx, {
                                                                     itemId: id,
+                                                                    unit: item?.unit || "",
                                                                     rate: item?.purchasePrice?.toString() || "",
+                                                                    description: item?.name || "",
                                                                     expenseAccountId: item?.expenseAccountId || undefined
                                                                 });
                                                             }}
@@ -1177,7 +1214,7 @@ export default function PurchaseCreatePage() {
                                                             }}
                                                             getDetail={(it) => {
                                                                 if (it.type === "services") return "Service";
-                                                                return `${it.stock ?? 0} ${it.unit ?? "Units"}`;
+                                                                return `Stock: ${it.stock ?? 0} ${it.unit ?? ""}`;
                                                             }}
                                                             onEnterNext={() => safeFocus(rowRefs.current.qty[idx])}
                                                             onKeyDownCustom={(e) => {
@@ -1222,22 +1259,12 @@ export default function PurchaseCreatePage() {
                                                                 className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 rounded-xl px-3 text-[10px] font-medium bg-orange-600 text-white hover:bg-orange-700 border-none shadow-sm transition-all active:scale-95"
                                                                 disabled={!isEditMode}
                                                             >
-                                                                <Plus className="mr-1 h-3 w-3" />
+                                                <Plus className="mr-1 h-3 w-3" />
                                                                 Add item
                                                             </Button>
                                                         )}
                                                     </div>
                                                 </td>
-                                                <td className="px-4 py-3">
-                                                    <Input
-                                                        value={line.unit || ""}
-                                                        readOnly
-                                                        placeholder="Unit"
-                                                        className="h-11 rounded-2xl bg-slate-50/40 text-center dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 text-muted-foreground cursor-not-allowed"
-                                                        disabled
-                                                    />
-                                                </td>
-
                                                 <td className="px-4 py-3 align-top">
                                                     <Input
                                                         ref={(el) => { rowRefs.current.qty[idx] = el; }}
@@ -1294,6 +1321,7 @@ export default function PurchaseCreatePage() {
                                                                 setLineErrors(prev => ({ ...prev, [idx]: { ...prev[idx], qty: "Required" } }));
                                                             }
                                                         }}
+                                                        placeholder="0"
                                                         className={cn(
                                                             "h-11 rounded-2xl bg-white text-center dark:bg-slate-900 transition-colors",
                                                             lineErrors[idx]?.qty && "border-red-500 focus:ring-red-200"
@@ -1304,6 +1332,15 @@ export default function PurchaseCreatePage() {
                                                             {lineErrors[idx].qty}
                                                         </div>
                                                     )}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <Input
+                                                        value={line.unit || ""}
+                                                        readOnly
+                                                        placeholder="Unit"
+                                                        className="h-11 rounded-2xl bg-slate-50/40 text-center dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 text-muted-foreground cursor-not-allowed"
+                                                        disabled
+                                                    />
                                                 </td>
 
                                                 <td className="px-4 py-3 align-top">

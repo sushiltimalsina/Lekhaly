@@ -2075,7 +2075,7 @@ export default function ItemsPage() {
               <Input placeholder="Date (YYYY-MM-DD)" value={adjustForm.date} onChange={(e) => setAdjustForm((p) => ({ ...p, date: e.target.value }))} />
               <select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={adjustForm.itemId} onChange={(e) => setAdjustForm((p) => ({ ...p, itemId: e.target.value }))}>
                 <option value="">Select item</option>
-                {goodsRows.map((r) => <option key={r.id} value={r.id}>{r.name}{r.sku ? ` (${r.sku})` : ""}</option>)}
+                {goodsRows.map((r) => <option key={r.id} value={r.id}>{r.name}{r.sku ? ` [${r.sku}]` : ""}</option>)}
               </select>
               <Input placeholder="Quantity (+in / -out)" value={adjustForm.qty} onChange={(e) => setAdjustForm((p) => ({ ...p, qty: e.target.value }))} />
               <Input placeholder="Rate (optional)" value={adjustForm.rate} onChange={(e) => setAdjustForm((p) => ({ ...p, rate: e.target.value }))} />
@@ -2115,7 +2115,7 @@ export default function ItemsPage() {
               <Input placeholder="Date (YYYY-MM-DD)" value={transferForm.date} onChange={(e) => setTransferForm((p) => ({ ...p, date: e.target.value }))} />
               <select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={transferForm.itemId} onChange={(e) => setTransferForm((p) => ({ ...p, itemId: e.target.value }))}>
                 <option value="">Select item</option>
-                {goodsRows.map((r) => <option key={r.id} value={r.id}>{r.name}{r.sku ? ` (${r.sku})` : ""}</option>)}
+                {goodsRows.map((r) => <option key={r.id} value={r.id}>{r.name}{r.sku ? ` [${r.sku}]` : ""}</option>)}
               </select>
               <Input placeholder="From warehouse ID" value={transferForm.fromWarehouseId} onChange={(e) => setTransferForm((p) => ({ ...p, fromWarehouseId: e.target.value }))} />
               <Input placeholder="To warehouse ID" value={transferForm.toWarehouseId} onChange={(e) => setTransferForm((p) => ({ ...p, toWarehouseId: e.target.value }))} />
@@ -2143,7 +2143,7 @@ export default function ItemsPage() {
             <div className="mb-3 flex items-center justify-between">
               <div>
                 <div className="text-sm font-bold">Stock Movement Timeline</div>
-                <div className="text-xs text-muted-foreground">{ledgerItem?.name} {ledgerItem?.sku ? `(${ledgerItem.sku})` : ""}</div>
+                <div className="text-xs text-muted-foreground">{ledgerItem?.name} {ledgerItem?.sku ? `[${ledgerItem.sku}]` : ""}</div>
               </div>
               <Button size="sm" variant="outline" onClick={() => setLedgerOpen(false)}>Close</Button>
             </div>
