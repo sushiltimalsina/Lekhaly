@@ -781,7 +781,19 @@ model InvoiceItem {
   taxAmount Decimal @db.Decimal(14, 2)
   taxes     InvoiceItemTax[]
 
+  warehouseId String?
+  warehouse   Warehouse? @relation(fields: [warehouseId], references: [id])
+  binId       String?
+  bin         WarehouseBin? @relation(fields: [binId], references: [id])
+  batchNo     String?
+  lotNo       String?
+  expiryDate  DateTime?
+  expiryDateBs String?
+  serialNumbers String[] @default([])
+
   createdAt DateTime @default(now())
+
+  @@index([warehouseId, binId])
 }
 
 model InvoiceItemTax {
@@ -876,6 +888,8 @@ model Warehouse {
   stockLedger StockLedger[]
   stockCounts StockCount[]
   serialNumbers SerialNumber[]
+  invoiceItems InvoiceItem[]
+  voucherLines VoucherLine[]
 
   @@unique([companyId, name])
   @@index([companyId, isActive])
@@ -898,6 +912,8 @@ model WarehouseBin {
   stockLedger StockLedger[]
   stockCountLines StockCountLine[]
   serialNumbers   SerialNumber[]
+  invoiceItems InvoiceItem[]
+  voucherLines VoucherLine[]
 
   @@unique([warehouseId, name])
   @@index([companyId, warehouseId, isActive])
@@ -935,12 +951,23 @@ model WarehouseBin {
 
     taxAmount Decimal @default(0) @db.Decimal(14, 2)
 
+    warehouseId String?
+    warehouse   Warehouse? @relation(fields: [warehouseId], references: [id])
+    binId       String?
+    bin         WarehouseBin? @relation(fields: [binId], references: [id])
+    batchNo     String?
+    lotNo       String?
+    expiryDate  DateTime?
+    expiryDateBs String?
+    serialNumbers String[] @default([])
+
     createdAt DateTime @default(now())
 
     bankStatementLines BankStatementLine[]
 
     @@index([companyId, accountId, createdAt])
     @@index([companyId, partyId, createdAt])
+    @@index([warehouseId, binId])
   }
 
 model VoucherAttachment {

@@ -111,10 +111,10 @@ export declare class InventoryController {
         }[];
         expiringSoon: {
             qty: number;
-            itemId: string;
             batchNo: string | null;
             lotNo: string | null;
             expiryDate: Date | null;
+            itemId: string;
             _sum: {
                 qtyIn: import("@prisma/client/runtime/client").Decimal | null;
                 qtyOut: import("@prisma/client/runtime/client").Decimal | null;

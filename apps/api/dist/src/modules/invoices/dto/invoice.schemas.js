@@ -8,7 +8,14 @@ exports.InvoiceItemSchema = zod_1.z.object({
     qty: zod_1.z.number().positive(),
     rate: zod_1.z.number().nonnegative(),
     taxCodeId: zod_1.z.string().uuid().optional(),
-    taxCodeIds: zod_1.z.array(zod_1.z.string().uuid()).optional()
+    taxCodeIds: zod_1.z.array(zod_1.z.string().uuid()).optional(),
+    warehouseId: zod_1.z.string().uuid().optional().nullable(),
+    binId: zod_1.z.string().uuid().optional().nullable(),
+    batchNo: zod_1.z.string().trim().max(120).optional(),
+    lotNo: zod_1.z.string().trim().max(120).optional(),
+    expiryDate: zod_1.z.coerce.date().optional(),
+    expiryDateBs: zod_1.z.string().trim().max(20).optional(),
+    serialNumbers: zod_1.z.array(zod_1.z.string().trim().min(1).max(120)).optional()
 });
 exports.CreateInvoiceDraftSchema = zod_1.z.object({
     type: zod_1.z.enum(["sales", "sales_return"]),

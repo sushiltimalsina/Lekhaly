@@ -6,7 +6,14 @@ export const InvoiceItemSchema = z.object({
   qty: z.number().positive(),
   rate: z.number().nonnegative(),
   taxCodeId: z.string().uuid().optional(),
-  taxCodeIds: z.array(z.string().uuid()).optional()
+  taxCodeIds: z.array(z.string().uuid()).optional(),
+  warehouseId: z.string().uuid().optional().nullable(),
+  binId: z.string().uuid().optional().nullable(),
+  batchNo: z.string().trim().max(120).optional(),
+  lotNo: z.string().trim().max(120).optional(),
+  expiryDate: z.coerce.date().optional(),
+  expiryDateBs: z.string().trim().max(20).optional(),
+  serialNumbers: z.array(z.string().trim().min(1).max(120)).optional()
 });
 
 export const CreateInvoiceDraftSchema = z.object({

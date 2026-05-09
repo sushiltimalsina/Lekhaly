@@ -19,6 +19,8 @@ import AddCustomerDialog from "@/components/app/add-customer-dialog";
 import { listBillSundries, type BillSundryRecord } from "@/lib/api/bill-sundries";
 import { listPaymentMethods } from "@/lib/api/payment-methods";
 import { listSaleTypes } from "@/lib/api/sale-types";
+import { getInventorySettings, type InventorySettings } from "@/lib/api/inventory";
+import { listWarehouses, type Warehouse } from "@/lib/api/warehouses";
 import AddPaymentMethodDialog from "@/components/app/add-payment-method-dialog";
 import AddSaleTypeDialog from "@/components/app/add-sale-type-dialog";
 import { useUiState } from "@/lib/store/ui";
@@ -45,7 +47,20 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { getInvoice, updateInvoiceDraft } from "@/lib/api/invoices";
 import AddBillSundryDialog from "@/components/app/add-bill-sundry-dialog";
 
-type Line = { itemId: string; qty: string; rate: string; unit?: string; description?: string };
+type Line = {
+  itemId: string;
+  qty: string;
+  rate: string;
+  unit?: string;
+  description?: string;
+  warehouseId?: string;
+  binId?: string;
+  batchNo?: string;
+  lotNo?: string;
+  expiryDate?: string;
+  expiryDateBs?: string;
+  serialText?: string;
+};
 type BillSundryRow = { id: string; sundryId?: string; name: string; type: "add" | "less"; ratePct: string; manualAmount?: string; isManual?: boolean };
 
 function useOutsideClick<T extends HTMLElement>(
@@ -399,6 +414,8 @@ export default function SalesCreatePage() {
   const [sundryOptions, setSundryOptions] = React.useState<BillSundryRecord[]>([]);
   const [paymentMethods, setPaymentMethods] = React.useState<any[]>([]);
   const [saleTypes, setSaleTypes] = React.useState<any[]>([]);
+  const [inventorySettings, setInventorySettings] = React.useState<InventorySettings | null>(null);
+  const [warehouses, setWarehouses] = React.useState<Warehouse[]>([]);
 
   const safeFocus = (el: HTMLElement | null) => {
     if (!el) return;
@@ -535,9 +552,11 @@ export default function SalesCreatePage() {
       listItems({ take: 1000 }),
       listBillSundries({ take: 100 }),
       listPaymentMethods({ isActive: true }),
-      listSaleTypes({ isActive: true })
+      listSaleTypes({ isActive: true }),
+      getInventorySettings(),
+      listWarehouses({ isActive: true })
     ])
-      .then(([p, a, i, s, pm, st]) => {
+      .then(([p, a, i, s, pm, st, inv, wh]) => {
         if (!alive) return;
         setParties(normalizeList<PartyRecord>(p));
         setAccounts(normalizeList<AccountRecord>(a));
@@ -546,6 +565,8 @@ export default function SalesCreatePage() {
         setSundryOptions(opts);
         setPaymentMethods(normalizeList<any>(pm));
         setSaleTypes(normalizeList<any>(st));
+        setInventorySettings(inv as InventorySettings);
+        setWarehouses(normalizeList<Warehouse>(wh));
 
         // Auto-link default sundries if they exist in the options
         setBillSundries(prev => prev.map(row => {
@@ -595,7 +616,14 @@ export default function SalesCreatePage() {
                 itemId: it.itemId,
                 qty: String(Number(it.qty || 0)),
                 rate: String(Number(it.rate || 0)),
-                description: it.description || ""
+                description: it.description || "",
+                warehouseId: it.warehouseId || "",
+                binId: it.binId || "",
+                batchNo: it.batchNo || "",
+                lotNo: it.lotNo || "",
+                expiryDate: it.expiryDate ? String(it.expiryDate).split("T")[0] : "",
+                expiryDateBs: it.expiryDateBs || "",
+                serialText: Array.isArray(it.serialNumbers) ? it.serialNumbers.join("\n") : ""
               })));
             }
 
@@ -681,6 +709,13 @@ export default function SalesCreatePage() {
       if (item) {
         patch.unit = item.unit || "";
         patch.rate = item.salesPrice?.toString() || "";
+        patch.warehouseId = inventorySettings?.defaultWarehouseId || "";
+        patch.binId = "";
+        patch.batchNo = "";
+        patch.lotNo = "";
+        patch.expiryDate = "";
+        patch.expiryDateBs = "";
+        patch.serialText = "";
       }
     }
     setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
@@ -691,7 +726,7 @@ export default function SalesCreatePage() {
   const addLine = () => {
     setLines((prev) => {
       setPendingFocusIndex(prev.length);
-      return [...prev, { itemId: "", qty: "", rate: "", unit: "", description: "" }];
+      return [...prev, { itemId: "", qty: "", rate: "", unit: "", description: "", warehouseId: inventorySettings?.defaultWarehouseId || "" }];
     });
   };
 
@@ -744,6 +779,26 @@ export default function SalesCreatePage() {
         if (item && item.type !== 'services' && (item.stock !== undefined) && qty > item.stock) {
           throw new Error(`Line ${idx + 1}: Quantity exceeds available stock (${item.stock}).`);
         }
+        const tracked = item && item.type !== "services" && item.trackInventory !== false && inventorySettings?.inventoryTrackingEnabled;
+        const serialNumbers = (l.serialText || "")
+          .split(/[\n,]+/)
+          .map((serial) => serial.trim())
+          .filter(Boolean);
+        if (tracked && inventorySettings?.requireWarehouseOnMovements && !l.warehouseId && !inventorySettings.defaultWarehouseId) {
+          throw new Error(`Line ${idx + 1}: Warehouse is required.`);
+        }
+        if (tracked && item?.tracksBatch && !l.batchNo?.trim()) {
+          throw new Error(`Line ${idx + 1}: Batch number is required.`);
+        }
+        if (tracked && item?.tracksLot && !l.lotNo?.trim()) {
+          throw new Error(`Line ${idx + 1}: Lot number is required.`);
+        }
+        if (tracked && item?.tracksExpiry && !l.expiryDate && !l.expiryDateBs) {
+          throw new Error(`Line ${idx + 1}: Expiry date is required.`);
+        }
+        if (tracked && item?.isSerialized && serialNumbers.length !== qty) {
+          throw new Error(`Line ${idx + 1}: Enter ${qty} serial number(s).`);
+        }
 
         return {
           itemId: l.itemId,
@@ -751,6 +806,13 @@ export default function SalesCreatePage() {
           rate,
           unit: l.unit,
           description: l.description || undefined,
+          warehouseId: l.warehouseId || undefined,
+          binId: l.binId || undefined,
+          batchNo: l.batchNo?.trim() || undefined,
+          lotNo: l.lotNo?.trim() || undefined,
+          expiryDate: l.expiryDate || undefined,
+          expiryDateBs: l.expiryDateBs || undefined,
+          serialNumbers: serialNumbers.length ? serialNumbers : undefined,
         };
       });
 
@@ -1151,9 +1213,26 @@ export default function SalesCreatePage() {
                     const qty = Number(line.qty || 0);
                     const rate = Number(line.rate || 0);
                     const amt = qty * rate;
+                    const selectedItem = items.find((it) => it.id === line.itemId);
+                    const needsInventoryFields = Boolean(
+                      inventorySettings?.inventoryTrackingEnabled &&
+                      selectedItem &&
+                      selectedItem.type !== "services" &&
+                      selectedItem.trackInventory !== false &&
+                      (
+                        inventorySettings.warehousesEnabled ||
+                        inventorySettings.batchTrackingEnabled ||
+                        inventorySettings.lotTrackingEnabled ||
+                        inventorySettings.expiryTrackingEnabled ||
+                        inventorySettings.serialTrackingEnabled
+                      )
+                    );
+                    const selectedWarehouse = warehouses.find((warehouse) => warehouse.id === line.warehouseId);
+                    const bins = selectedWarehouse?.bins ?? [];
 
                     return (
-                      <tr key={idx} className="border-t border-slate-200/70 dark:border-slate-800/60">
+                      <React.Fragment key={idx}>
+                      <tr className="border-t border-slate-200/70 dark:border-slate-800/60">
                         <td className="px-4 py-3 text-muted-foreground font-medium">{idx + 1}</td>
                         <td className="px-4 py-3">
                           <div className="relative">
@@ -1401,6 +1480,59 @@ export default function SalesCreatePage() {
                           </button>
                         </td>
                       </tr>
+                      {needsInventoryFields && (
+                        <tr className="border-t border-slate-100 bg-slate-50/70 dark:border-slate-800 dark:bg-slate-900/40">
+                          <td />
+                          <td colSpan={6} className="px-4 py-3">
+                            <div className="grid gap-3 md:grid-cols-6">
+                              {inventorySettings?.warehousesEnabled && (
+                                <select
+                                  value={line.warehouseId || inventorySettings.defaultWarehouseId || ""}
+                                  disabled={!isEditMode || (!!invoiceStatus && invoiceStatus !== "draft")}
+                                  onChange={(event) => updateLine(idx, { warehouseId: event.target.value, binId: "" })}
+                                  className="h-10 rounded-xl border bg-white px-3 text-xs dark:bg-slate-900"
+                                >
+                                  <option value="">Warehouse</option>
+                                  {warehouses.map((warehouse) => (
+                                    <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>
+                                  ))}
+                                </select>
+                              )}
+                              {inventorySettings?.binsEnabled && (
+                                <select
+                                  value={line.binId || ""}
+                                  disabled={!line.warehouseId || !isEditMode || (!!invoiceStatus && invoiceStatus !== "draft")}
+                                  onChange={(event) => updateLine(idx, { binId: event.target.value })}
+                                  className="h-10 rounded-xl border bg-white px-3 text-xs dark:bg-slate-900"
+                                >
+                                  <option value="">Bin</option>
+                                  {bins.map((bin) => (
+                                    <option key={bin.id} value={bin.id}>{bin.name}</option>
+                                  ))}
+                                </select>
+                              )}
+                              {inventorySettings?.batchTrackingEnabled && (
+                                <Input value={line.batchNo || ""} onChange={(e) => updateLine(idx, { batchNo: e.target.value })} placeholder={selectedItem?.tracksBatch ? "Batch *" : "Batch"} className="h-10 rounded-xl text-xs" />
+                              )}
+                              {inventorySettings?.lotTrackingEnabled && (
+                                <Input value={line.lotNo || ""} onChange={(e) => updateLine(idx, { lotNo: e.target.value })} placeholder={selectedItem?.tracksLot ? "Lot *" : "Lot"} className="h-10 rounded-xl text-xs" />
+                              )}
+                              {inventorySettings?.expiryTrackingEnabled && (
+                                <Input type="date" value={line.expiryDate || ""} onChange={(e) => updateLine(idx, { expiryDate: e.target.value })} className="h-10 rounded-xl text-xs" />
+                              )}
+                              {selectedItem?.isSerialized && inventorySettings?.serialTrackingEnabled && (
+                                <textarea
+                                  value={line.serialText || ""}
+                                  onChange={(event) => updateLine(idx, { serialText: event.target.value })}
+                                  placeholder="Serial numbers"
+                                  className="min-h-10 rounded-xl border bg-white px-3 py-2 text-xs dark:bg-slate-900 md:col-span-2"
+                                />
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      </React.Fragment>
                     );
                   })}
 
@@ -1950,6 +2082,3 @@ export default function SalesCreatePage() {
     </div>
   );
 }
-
-
-

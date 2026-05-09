@@ -42,10 +42,12 @@ import { listPaymentMethods } from "@/lib/api/payment-methods";
 import { listPurchaseTypes } from "../../lib/api/purchase-types";
 import AddPaymentMethodDialog from "@/components/app/add-payment-method-dialog";
 import AddPurchaseTypeDialog from "../../components/app/add-purchase-type-dialog";
+import { getInventorySettings, type InventorySettings } from "@/lib/api/inventory";
+import { listWarehouses, type Warehouse } from "@/lib/api/warehouses";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toBs } from "@/lib/dates/bs";
 
-type Line = { itemId: string; qty: string; rate: string; unit?: string; description?: string; expenseAccountId?: string };
+type Line = { itemId: string; qty: string; rate: string; unit?: string; description?: string; expenseAccountId?: string; warehouseId?: string; binId?: string; batchNo?: string; lotNo?: string; expiryDate?: string; expiryDateBs?: string; serialText?: string };
 type BillSundryRow = { id: string; sundryId?: string; name: string; type: "add" | "less"; ratePct: string; manualAmount?: string; isManual?: boolean };
 
 function useOutsideClick<T extends HTMLElement>(
@@ -372,6 +374,8 @@ export default function PurchaseReturnCreatePage() {
     const [items, setItems] = React.useState<ItemRecord[]>([]);
     const [sundryOptions, setSundryOptions] = React.useState<BillSundryRecord[]>([]);
     const [purchaseTypes, setPurchaseTypes] = React.useState<{ id: string, name: string }[]>([]);
+    const [inventorySettings, setInventorySettings] = React.useState<InventorySettings | null>(null);
+    const [warehouses, setWarehouses] = React.useState<Warehouse[]>([]);
 
     const safeFocus = (el: HTMLElement | null) => {
         if (!el) return;
@@ -486,14 +490,18 @@ export default function PurchaseReturnCreatePage() {
             listAccounts({ type: "liability", take: 200 }),
             listItems({ take: 200 }),
             listBillSundries({ take: 100 }),
-            listPurchaseTypes()
+            listPurchaseTypes(),
+            getInventorySettings(),
+            listWarehouses({ isActive: true })
         ])
-            .then(([p, a, i, s, pt]) => {
+            .then(([p, a, i, s, pt, inv, wh]) => {
                 if (!alive) return;
                 setParties(normalizeList<PartyRecord>(p));
                 setAccounts(normalizeList<AccountRecord>(a));
                 setItems(normalizeList<ItemRecord>(i));
                 setPurchaseTypes(normalizeList<{ id: string, name: string }>(pt));
+                setInventorySettings(inv as InventorySettings);
+                setWarehouses(normalizeList<Warehouse>(wh));
                 const opts = normalizeList<BillSundryRecord>(s);
                 setSundryOptions(opts);
 
@@ -545,7 +553,14 @@ export default function PurchaseReturnCreatePage() {
                             qty: String(Number(l.qty || 0)),
                             rate: l.qty && Number(l.qty) !== 0 ? String(Number(l.debit || l.credit) / Number(l.qty)) : "0",
                             description: l.description,
-                            expenseAccountId: l.accountId
+                            expenseAccountId: l.accountId,
+                            warehouseId: l.warehouseId || "",
+                            binId: l.binId || "",
+                            batchNo: l.batchNo || "",
+                            lotNo: l.lotNo || "",
+                            expiryDate: l.expiryDate ? String(l.expiryDate).split("T")[0] : "",
+                            expiryDateBs: l.expiryDateBs || "",
+                            serialText: Array.isArray(l.serialNumbers) ? l.serialNumbers.join("\n") : ""
                         }));
                         if (itemLines.length > 0) setLines(itemLines);
 
@@ -631,6 +646,13 @@ export default function PurchaseReturnCreatePage() {
             const item = items.find(it => it.id === patch.itemId);
             if (item) {
                 patch.unit = item.unit || "";
+                patch.warehouseId = inventorySettings?.defaultWarehouseId || "";
+                patch.binId = "";
+                patch.batchNo = "";
+                patch.lotNo = "";
+                patch.expiryDate = "";
+                patch.expiryDateBs = "";
+                patch.serialText = "";
             }
         }
         setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
@@ -641,7 +663,7 @@ export default function PurchaseReturnCreatePage() {
     const addLine = () => {
         setLines((prev) => {
             setPendingFocusIndex(prev.length);
-            return [...prev, { itemId: "", qty: "", rate: "", unit: "", description: "" }];
+            return [...prev, { itemId: "", qty: "", rate: "", unit: "", description: "", warehouseId: inventorySettings?.defaultWarehouseId || "" }];
         });
     };
 
@@ -679,6 +701,14 @@ export default function PurchaseReturnCreatePage() {
             const rate = Number(l.rate);
             if (isNaN(qty) || qty <= 0) throw new Error(`Line ${idx + 1}: Quantity must be greater than zero.`);
             if (isNaN(rate) || rate <= 0) throw new Error(`Line ${idx + 1}: Rate is required.`);
+            const item = items.find(it => it.id === l.itemId);
+            const tracked = item && item.type !== "services" && item.trackInventory !== false && inventorySettings?.inventoryTrackingEnabled;
+            const serialNumbers = (l.serialText || "").split(/[\n,]+/).map((serial) => serial.trim()).filter(Boolean);
+            if (tracked && inventorySettings?.requireWarehouseOnMovements && !l.warehouseId && !inventorySettings.defaultWarehouseId) throw new Error(`Line ${idx + 1}: Warehouse is required.`);
+            if (tracked && item?.tracksBatch && !l.batchNo?.trim()) throw new Error(`Line ${idx + 1}: Batch number is required.`);
+            if (tracked && item?.tracksLot && !l.lotNo?.trim()) throw new Error(`Line ${idx + 1}: Lot number is required.`);
+            if (tracked && item?.tracksExpiry && !l.expiryDate && !l.expiryDateBs) throw new Error(`Line ${idx + 1}: Expiry date is required.`);
+            if (tracked && item?.isSerialized && serialNumbers.length !== qty) throw new Error(`Line ${idx + 1}: Enter ${qty} serial number(s).`);
         });
 
         const payloadLines = lines.map((l) => {
@@ -692,6 +722,13 @@ export default function PurchaseReturnCreatePage() {
                 qty,
                 unit: l.unit,
                 description: l.description || "Purchase Return",
+                warehouseId: l.warehouseId || undefined,
+                binId: l.binId || undefined,
+                batchNo: l.batchNo?.trim() || undefined,
+                lotNo: l.lotNo?.trim() || undefined,
+                expiryDate: l.expiryDate || undefined,
+                expiryDateBs: l.expiryDateBs || undefined,
+                serialNumbers: (l.serialText || "").split(/[\n,]+/).map((serial) => serial.trim()).filter(Boolean),
             };
         });
 
@@ -962,8 +999,13 @@ export default function PurchaseReturnCreatePage() {
                                         const qty = Number(line.qty || 0);
                                         const rate = Number(line.rate || 0);
                                         const amt = qty * rate;
+                                        const selectedItem = items.find((it) => it.id === line.itemId);
+                                        const needsInventoryFields = Boolean(inventorySettings?.inventoryTrackingEnabled && selectedItem && selectedItem.type !== "services" && selectedItem.trackInventory !== false && (inventorySettings.warehousesEnabled || inventorySettings.batchTrackingEnabled || inventorySettings.lotTrackingEnabled || inventorySettings.expiryTrackingEnabled || inventorySettings.serialTrackingEnabled));
+                                        const selectedWarehouse = warehouses.find((warehouse) => warehouse.id === line.warehouseId);
+                                        const bins = selectedWarehouse?.bins ?? [];
                                         return (
-                                            <tr key={idx} className="border-t border-slate-200/70 dark:border-slate-800/60">
+                                            <React.Fragment key={idx}>
+                                            <tr className="border-t border-slate-200/70 dark:border-slate-800/60">
                                                 <td className="px-4 py-3 text-muted-foreground font-medium">{idx + 1}</td>
                                                 <td className="px-4 py-3">
                                                     <div className="relative">
@@ -1048,6 +1090,22 @@ export default function PurchaseReturnCreatePage() {
                                                     )}
                                                 </td>
                                             </tr>
+                                            {needsInventoryFields && (
+                                                <tr className="border-t border-slate-100 bg-slate-50/70 dark:border-slate-800 dark:bg-slate-900/40">
+                                                    <td />
+                                                    <td colSpan={6} className="px-4 py-3">
+                                                        <div className="grid gap-3 md:grid-cols-6">
+                                                            {inventorySettings?.warehousesEnabled && <select value={line.warehouseId || inventorySettings.defaultWarehouseId || ""} disabled={!isEditMode} onChange={(event) => updateLine(idx, { warehouseId: event.target.value, binId: "" })} className="h-10 rounded-xl border bg-white px-3 text-xs dark:bg-slate-900"><option value="">Warehouse</option>{warehouses.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>)}</select>}
+                                                            {inventorySettings?.binsEnabled && <select value={line.binId || ""} disabled={!line.warehouseId || !isEditMode} onChange={(event) => updateLine(idx, { binId: event.target.value })} className="h-10 rounded-xl border bg-white px-3 text-xs dark:bg-slate-900"><option value="">Bin</option>{bins.map((bin) => <option key={bin.id} value={bin.id}>{bin.name}</option>)}</select>}
+                                                            {inventorySettings?.batchTrackingEnabled && <Input value={line.batchNo || ""} onChange={(e) => updateLine(idx, { batchNo: e.target.value })} placeholder={selectedItem?.tracksBatch ? "Batch *" : "Batch"} className="h-10 rounded-xl text-xs" />}
+                                                            {inventorySettings?.lotTrackingEnabled && <Input value={line.lotNo || ""} onChange={(e) => updateLine(idx, { lotNo: e.target.value })} placeholder={selectedItem?.tracksLot ? "Lot *" : "Lot"} className="h-10 rounded-xl text-xs" />}
+                                                            {inventorySettings?.expiryTrackingEnabled && <Input type="date" value={line.expiryDate || ""} onChange={(e) => updateLine(idx, { expiryDate: e.target.value })} className="h-10 rounded-xl text-xs" />}
+                                                            {selectedItem?.isSerialized && inventorySettings?.serialTrackingEnabled && <textarea value={line.serialText || ""} onChange={(event) => updateLine(idx, { serialText: event.target.value })} placeholder="Serial numbers" className="min-h-10 rounded-xl border bg-white px-3 py-2 text-xs dark:bg-slate-900 md:col-span-2" />}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                            </React.Fragment>
                                         );
                                     })}
                                     <tr className="border-t bg-slate-100/60 font-semibold dark:bg-slate-900/40">

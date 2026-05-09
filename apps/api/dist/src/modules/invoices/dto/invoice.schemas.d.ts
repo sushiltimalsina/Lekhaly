@@ -6,6 +6,13 @@ export declare const InvoiceItemSchema: z.ZodObject<{
     rate: z.ZodNumber;
     taxCodeId: z.ZodOptional<z.ZodString>;
     taxCodeIds: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    warehouseId: z.ZodNullable<z.ZodOptional<z.ZodString>>;
+    binId: z.ZodNullable<z.ZodOptional<z.ZodString>>;
+    batchNo: z.ZodOptional<z.ZodString>;
+    lotNo: z.ZodOptional<z.ZodString>;
+    expiryDate: z.ZodOptional<z.ZodCoercedDate<unknown>>;
+    expiryDateBs: z.ZodOptional<z.ZodString>;
+    serialNumbers: z.ZodOptional<z.ZodArray<z.ZodString>>;
 }, z.core.$strip>;
 export declare const CreateInvoiceDraftSchema: z.ZodObject<{
     type: z.ZodEnum<{
@@ -30,6 +37,13 @@ export declare const CreateInvoiceDraftSchema: z.ZodObject<{
         rate: z.ZodNumber;
         taxCodeId: z.ZodOptional<z.ZodString>;
         taxCodeIds: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        warehouseId: z.ZodNullable<z.ZodOptional<z.ZodString>>;
+        binId: z.ZodNullable<z.ZodOptional<z.ZodString>>;
+        batchNo: z.ZodOptional<z.ZodString>;
+        lotNo: z.ZodOptional<z.ZodString>;
+        expiryDate: z.ZodOptional<z.ZodCoercedDate<unknown>>;
+        expiryDateBs: z.ZodOptional<z.ZodString>;
+        serialNumbers: z.ZodOptional<z.ZodArray<z.ZodString>>;
     }, z.core.$strip>>;
     sundries: z.ZodOptional<z.ZodArray<z.ZodObject<{
         billSundryId: z.ZodOptional<z.ZodString>;

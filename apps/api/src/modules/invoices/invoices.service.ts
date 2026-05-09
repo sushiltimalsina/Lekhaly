@@ -4,6 +4,32 @@ import { PrismaService } from "../../common/prisma/prisma.service";
 import type { AuthUser } from "../../common/auth/auth.types";
 import { resolveAdDate } from "../../common/date/nepali-date";
 
+type InvoiceLineInput = {
+  itemId?: string;
+  description?: string;
+  qty: number;
+  rate: number;
+  taxCodeId?: string;
+  taxCodeIds?: string[];
+  warehouseId?: string | null;
+  binId?: string | null;
+  batchNo?: string | null;
+  lotNo?: string | null;
+  expiryDate?: Date | null;
+  expiryDateBs?: string | null;
+  serialNumbers?: string[];
+};
+
+type NormalizedInventoryLine = {
+  warehouseId: string | null;
+  binId: string | null;
+  batchNo: string | null;
+  lotNo: string | null;
+  expiryDate: Date | null;
+  expiryDateBs: string | null;
+  serialNumbers: string[];
+};
+
 @Injectable()
 export class InvoicesService {
   constructor(private prisma: PrismaService) { }
@@ -19,6 +45,138 @@ export class InvoicesService {
     const existing = await db.inventorySettings.findUnique({ where: { companyId } });
     if (existing) return existing;
     return db.inventorySettings.create({ data: { companyId } });
+  }
+
+  private normalizeSerialNumbers(serialNumbers?: string[]) {
+    const normalized = (serialNumbers ?? []).map((serial) => serial.trim()).filter(Boolean);
+    if (new Set(normalized.map((serial) => serial.toLowerCase())).size !== normalized.length) {
+      throw new BadRequestException("Duplicate serial numbers are not allowed on a line");
+    }
+    return normalized;
+  }
+
+  private assertSerializedLine(item: any, qty: Prisma.Decimal, serialNumbers?: string[]) {
+    const serials = this.normalizeSerialNumbers(serialNumbers);
+    if (!item.isSerialized) {
+      if (serials.length) throw new BadRequestException("Serial numbers are only allowed for serialized items");
+      return serials;
+    }
+
+    const expected = Number(qty.abs().toString());
+    if (!Number.isInteger(expected)) throw new BadRequestException("Serialized item quantity must be a whole number");
+    if (serials.length !== expected) {
+      throw new BadRequestException(`Serialized item requires ${expected} serial number(s)`);
+    }
+    return serials;
+  }
+
+  private async normalizeInventoryLine(
+    db: Prisma.TransactionClient | PrismaService,
+    companyId: string,
+    settings: any,
+    item: any,
+    line: InvoiceLineInput,
+    qty: Prisma.Decimal
+  ): Promise<NormalizedInventoryLine> {
+    const warehouseId = line.warehouseId || settings.defaultWarehouseId || null;
+    const binId = line.binId || null;
+    const batchNo = line.batchNo?.trim() || null;
+    const lotNo = line.lotNo?.trim() || null;
+    const expiryDate = line.expiryDate ?? null;
+    const expiryDateBs = line.expiryDateBs?.trim() || null;
+
+    if (item.isSerialized && !settings.serialTrackingEnabled) {
+      throw new BadRequestException("Enable serial tracking in inventory configuration before posting serialized items");
+    }
+    if (item.isKit && !settings.kitsEnabled) {
+      throw new BadRequestException("Enable kits in inventory configuration before posting kit invoices");
+    }
+    if ((batchNo || item.tracksBatch) && !settings.batchTrackingEnabled) {
+      throw new BadRequestException("Batch tracking is disabled in inventory configuration");
+    }
+    if ((lotNo || item.tracksLot) && !settings.lotTrackingEnabled) {
+      throw new BadRequestException("Lot tracking is disabled in inventory configuration");
+    }
+    if ((expiryDate || expiryDateBs || item.tracksExpiry) && !settings.expiryTrackingEnabled) {
+      throw new BadRequestException("Expiry tracking is disabled in inventory configuration");
+    }
+    if (warehouseId && !settings.warehousesEnabled) {
+      throw new BadRequestException("Warehouse tracking is disabled in inventory configuration");
+    }
+    if (binId && !settings.binsEnabled) {
+      throw new BadRequestException("Bin tracking is disabled in inventory configuration");
+    }
+    if (settings.requireWarehouseOnMovements && !warehouseId) {
+      throw new BadRequestException("Warehouse is required for stock movements");
+    }
+
+    if (item.tracksBatch && !batchNo) throw new BadRequestException("Batch number is required for this item");
+    if (item.tracksLot && !lotNo) throw new BadRequestException("Lot number is required for this item");
+    if (item.tracksExpiry && !expiryDate && !expiryDateBs) {
+      throw new BadRequestException("Expiry date is required for this item");
+    }
+
+    if (warehouseId) {
+      const warehouse = await (db as any).warehouse.findFirst({
+        where: { id: warehouseId, companyId, isActive: true }
+      });
+      if (!warehouse) throw new BadRequestException("Warehouse not found");
+    }
+    if (binId) {
+      const bin = await (db as any).warehouseBin.findFirst({
+        where: { id: binId, companyId, warehouseId, isActive: true }
+      });
+      if (!bin) throw new BadRequestException("Bin not found for selected warehouse");
+    }
+
+    const serialNumbers = this.assertSerializedLine(item, qty, line.serialNumbers);
+    return { warehouseId, binId, batchNo, lotNo, expiryDate, expiryDateBs, serialNumbers };
+  }
+
+  private async getScopedStock(
+    db: Prisma.TransactionClient | PrismaService,
+    companyId: string,
+    itemId: string,
+    scope: NormalizedInventoryLine
+  ) {
+    const balance = await (db as any).stockLedger.aggregate({
+      where: {
+        companyId,
+        itemId,
+        warehouseId: scope.warehouseId,
+        binId: scope.binId,
+        batchNo: scope.batchNo ?? undefined,
+        lotNo: scope.lotNo ?? undefined,
+        expiryDate: scope.expiryDate ?? undefined
+      },
+      _sum: { qtyIn: true, qtyOut: true }
+    });
+    return new Prisma.Decimal(balance._sum.qtyIn ?? 0).sub(new Prisma.Decimal(balance._sum.qtyOut ?? 0));
+  }
+
+  private async ensureSerialsAvailable(
+    tx: Prisma.TransactionClient,
+    companyId: string,
+    itemId: string,
+    serialNumbers: string[],
+    scope: NormalizedInventoryLine
+  ) {
+    if (!serialNumbers.length) return [];
+    const serialRows = await tx.serialNumber.findMany({
+      where: {
+        companyId,
+        itemId,
+        serialNo: { in: serialNumbers },
+        status: "available",
+        warehouseId: scope.warehouseId,
+        binId: scope.binId
+      },
+      select: { id: true, serialNo: true }
+    });
+    if (serialRows.length !== serialNumbers.length) {
+      throw new BadRequestException("One or more serial numbers are not available at the selected location");
+    }
+    return serialRows;
   }
 
   private async validateItems(
@@ -61,7 +219,7 @@ export class InvoicesService {
 
   private async enforceStockForSales(
     user: AuthUser,
-    items: Array<{ itemId?: string; qty: number }>
+    items: InvoiceLineInput[]
   ) {
     const settings = await this.getInventorySettings(user.companyId);
     if (!settings.inventoryTrackingEnabled || settings.allowNegativeStock) return;
@@ -71,30 +229,46 @@ export class InvoicesService {
 
     const dbItems = await this.prisma.item.findMany({
       where: { id: { in: itemIds }, companyId: user.companyId },
-      select: { id: true, name: true, type: true, trackInventory: true }
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        trackInventory: true,
+        isSerialized: true,
+        isKit: true,
+        tracksBatch: true,
+        tracksLot: true,
+        tracksExpiry: true
+      }
     });
 
-    const goodsIds = dbItems.filter((i: any) => i.type !== "services" && i.trackInventory !== false).map((i) => i.id);
-    if (!goodsIds.length) return;
-
-    const ledger = await this.prisma.stockLedger.findMany({
-      where: { companyId: user.companyId, itemId: { in: goodsIds } },
-      select: { itemId: true, qtyIn: true, qtyOut: true }
-    });
-
-    const stockMap = new Map<string, Prisma.Decimal>();
-    for (const entry of ledger) {
-      const current = stockMap.get(entry.itemId) || new Prisma.Decimal(0);
-      stockMap.set(entry.itemId, current.add(entry.qtyIn).sub(entry.qtyOut));
-    }
+    const requiredByScope = new Map<
+      string,
+      { item: any; scope: NormalizedInventoryLine; qty: Prisma.Decimal }
+    >();
 
     for (const line of items) {
       if (!line.itemId) continue;
       const item = dbItems.find((i) => i.id === line.itemId);
       if (!item || (item as any).type === "services" || (item as any).trackInventory === false) continue;
-      const available = stockMap.get(line.itemId) || new Prisma.Decimal(0);
       const required = new Prisma.Decimal(line.qty);
-      if (available.sub(required).lt(0)) {
+      const scope = await this.normalizeInventoryLine(this.prisma, user.companyId, settings, item, line, required);
+      const key = [
+        line.itemId,
+        scope.warehouseId ?? "",
+        scope.binId ?? "",
+        scope.batchNo ?? "",
+        scope.lotNo ?? "",
+        scope.expiryDate?.toISOString() ?? ""
+      ].join("__");
+      const existing = requiredByScope.get(key);
+      if (existing) existing.qty = existing.qty.add(required);
+      else requiredByScope.set(key, { item, scope, qty: required });
+    }
+
+    for (const { item, scope, qty } of requiredByScope.values()) {
+      const available = await this.getScopedStock(this.prisma, user.companyId, item.id, scope);
+      if (available.sub(qty).lt(0)) {
         throw new BadRequestException(`Insufficient stock for ${item.name}`);
       }
     }
@@ -111,7 +285,7 @@ export class InvoicesService {
       dueDateBs?: string;
       receivableAccountId: string;
       referenceNo?: string;
-      items: Array<{ itemId?: string; description?: string; qty: number; rate: number; taxCodeId?: string; taxCodeIds?: string[] }>;
+      items: InvoiceLineInput[];
       sundries?: Array<{ billSundryId?: string; name: string; type: "add" | "less"; rate?: number | null; amount: number }>;
       memo?: string;
       additionalNote?: string;
@@ -121,10 +295,7 @@ export class InvoicesService {
   ) {
     await this.validateItems(user.companyId, input.items);
     if (input.type === "sales") {
-      await this.enforceStockForSales(user, input.items.map((item) => ({
-        itemId: item.itemId,
-        qty: item.qty
-      })));
+      await this.enforceStockForSales(user, input.items);
     }
     const party = await this.prisma.party.findFirst({
       where: { id: input.partyId, companyId: user.companyId }
@@ -408,7 +579,7 @@ export class InvoicesService {
       dueDateBs?: string;
       receivableAccountId: string;
       referenceNo?: string;
-      items: Array<{ itemId?: string; description?: string; qty: number; rate: number; taxCodeId?: string; taxCodeIds?: string[] }>;
+      items: InvoiceLineInput[];
       sundries?: Array<{ billSundryId?: string; name: string; type: "add" | "less"; rate?: number | null; amount: number }>;
       memo?: string;
       additionalNote?: string;
@@ -448,6 +619,13 @@ export class InvoicesService {
               amount: item.amount,
               taxCodeId: item.taxCodeId,
               taxAmount: item.taxAmount,
+              warehouseId: item.warehouseId || null,
+              binId: item.binId || null,
+              batchNo: item.batchNo || null,
+              lotNo: item.lotNo || null,
+              expiryDate: item.expiryDate || null,
+              expiryDateBs: item.expiryDateBs || null,
+              serialNumbers: this.normalizeSerialNumbers(item.serialNumbers),
               taxes: item.taxBreakdown?.length
                 ? {
                   create: item.taxBreakdown.map((t: any) => ({
@@ -501,7 +679,14 @@ export class InvoicesService {
         description: i.description || undefined,
         qty: i.qty.toNumber ? i.qty.toNumber() : Number(i.qty),
         rate: i.rate.toNumber ? i.rate.toNumber() : Number(i.rate),
-        taxCodeId: i.taxCodeId || undefined
+        taxCodeId: i.taxCodeId || undefined,
+        warehouseId: i.warehouseId || undefined,
+        binId: i.binId || undefined,
+        batchNo: i.batchNo || undefined,
+        lotNo: i.lotNo || undefined,
+        expiryDate: i.expiryDate || undefined,
+        expiryDateBs: i.expiryDateBs || undefined,
+        serialNumbers: i.serialNumbers || undefined
       })),
       sundries: (invoice.sundries as any[]).map((s: any) => ({
         billSundryId: s.billSundryId || undefined,
@@ -517,7 +702,15 @@ export class InvoicesService {
     if (invoice.type === "sales") {
       await this.enforceStockForSales(user, invoice.items.map((i: any) => ({
         itemId: i.itemId || undefined,
-        qty: i.qty.toNumber ? i.qty.toNumber() : Number(i.qty)
+        qty: i.qty.toNumber ? i.qty.toNumber() : Number(i.qty),
+        rate: i.rate.toNumber ? i.rate.toNumber() : Number(i.rate),
+        warehouseId: i.warehouseId || undefined,
+        binId: i.binId || undefined,
+        batchNo: i.batchNo || undefined,
+        lotNo: i.lotNo || undefined,
+        expiryDate: i.expiryDate || undefined,
+        expiryDateBs: i.expiryDateBs || undefined,
+        serialNumbers: i.serialNumbers || undefined
       })));
     }
 
@@ -561,30 +754,58 @@ export class InvoicesService {
       });
 
       const inventorySettings = await this.getInventorySettings(user.companyId, tx);
-      const stockLedgerData = [];
+      const stockLedgerData: Prisma.StockLedgerCreateManyInput[] = [];
       for (const item of invoice.items) {
         if (!inventorySettings.inventoryTrackingEnabled) continue;
         if (!item.itemId) continue;
-        const isOut = invoice.type === "sales" || invoice.type === "purchase_return";
-        const isIn = invoice.type === "purchase" || invoice.type === "sales_return";
+        const isOut = invoice.type === "sales";
+        const isIn = invoice.type === "sales_return";
 
         const qty = item.qty.toNumber ? item.qty.toNumber() : Number(item.qty);
         const rate = item.rate.toNumber ? item.rate.toNumber() : Number(item.rate);
+        const qtyDecimal = new Prisma.Decimal(qty);
 
         // Check if this item is a kit — if so, do hybrid stock fulfillment
         const itemRecord = await tx.item.findUnique({
           where: { id: item.itemId },
-          include: { components: true }
+          include: {
+            components: {
+              include: {
+                component: {
+                  select: {
+                    id: true,
+                    name: true,
+                    type: true,
+                    trackInventory: true,
+                    isSerialized: true,
+                    tracksBatch: true,
+                    tracksLot: true,
+                    tracksExpiry: true
+                  }
+                }
+              }
+            }
+          }
         });
         if (!itemRecord || (itemRecord as any).type === "services" || itemRecord.trackInventory === false) continue;
-        if (itemRecord.isKit && !inventorySettings.kitsEnabled) {
-          throw new BadRequestException("Enable kits in inventory configuration before posting kit invoices");
-        }
-        if (itemRecord.isSerialized) {
-          throw new BadRequestException("Serialized invoice posting requires serial number selection");
-        }
-        if (itemRecord.tracksBatch || itemRecord.tracksLot || itemRecord.tracksExpiry) {
-          throw new BadRequestException("Tracked batch/lot/expiry invoice posting requires line tracking selection");
+        const scope = await this.normalizeInventoryLine(tx, user.companyId, inventorySettings, itemRecord, {
+          itemId: item.itemId,
+          qty,
+          rate,
+          warehouseId: item.warehouseId,
+          binId: item.binId,
+          batchNo: item.batchNo,
+          lotNo: item.lotNo,
+          expiryDate: item.expiryDate,
+          expiryDateBs: item.expiryDateBs,
+          serialNumbers: item.serialNumbers
+        }, qtyDecimal);
+
+        if (isOut && !inventorySettings.allowNegativeStock) {
+          const available = await this.getScopedStock(tx, user.companyId, item.itemId, scope);
+          if (available.sub(qtyDecimal).lt(0)) {
+            throw new BadRequestException(`Insufficient stock for ${itemRecord.name}`);
+          }
         }
 
         // Helper to compute Moving Average Cost (MAC)
@@ -627,16 +848,32 @@ export class InvoicesService {
               itemId: item.itemId,
               date: invoice.date,
               voucherId: voucher.id,
+              warehouseId: scope.warehouseId,
+              binId: scope.binId,
               qtyIn: 0,
               qtyOut: qtyToDeductKit,
               rate: kitMac.avgCost,
-              amount: qtyToDeductKit * kitMac.avgCost
+              amount: qtyToDeductKit * kitMac.avgCost,
+              batchNo: scope.batchNo,
+              lotNo: scope.lotNo,
+              expiryDate: scope.expiryDate,
+              expiryDateBs: scope.expiryDateBs
             });
           }
 
           if (qtyToExplode > 0) {
             // Auto-explode the remaining required quantity
             for (const comp of itemRecord.components) {
+              if (
+                comp.component?.isSerialized ||
+                comp.component?.tracksBatch ||
+                comp.component?.tracksLot ||
+                comp.component?.tracksExpiry
+              ) {
+                throw new BadRequestException(
+                  `Kit component "${comp.component.name}" requires tracking selection. Assemble the kit before selling it.`
+                );
+              }
               const compQty = Number(comp.qty) * qtyToExplode;
               const compMac = await computeMAC(comp.componentId);
 
@@ -669,11 +906,71 @@ export class InvoicesService {
             itemId: item.itemId,
             date: invoice.date,
             voucherId: voucher.id,
+            warehouseId: scope.warehouseId,
+            binId: scope.binId,
             qtyIn: isIn ? qty : 0,
             qtyOut: isOut ? qty : 0,
             rate: finalRate,
-            amount: finalAmount
+            amount: finalAmount,
+            batchNo: scope.batchNo,
+            lotNo: scope.lotNo,
+            expiryDate: scope.expiryDate,
+            expiryDateBs: scope.expiryDateBs
           });
+        }
+
+        if (scope.serialNumbers.length) {
+          if (isOut) {
+            const serialRows = await this.ensureSerialsAvailable(
+              tx,
+              user.companyId,
+              item.itemId,
+              scope.serialNumbers,
+              scope
+            );
+            await tx.serialNumber.updateMany({
+              where: { id: { in: serialRows.map((serial) => serial.id) } },
+              data: { status: "sold", salesInvoiceId: invoice.id }
+            });
+          } else if (isIn) {
+            const existing = await tx.serialNumber.findMany({
+              where: {
+                companyId: user.companyId,
+                itemId: item.itemId,
+                serialNo: { in: scope.serialNumbers }
+              },
+              select: { id: true, serialNo: true, status: true }
+            });
+            const duplicateAvailable = existing.find((serial) => serial.status === "available");
+            if (duplicateAvailable) {
+              throw new BadRequestException(`Serial number already available: ${duplicateAvailable.serialNo}`);
+            }
+            if (existing.length) {
+              await tx.serialNumber.updateMany({
+                where: { id: { in: existing.map((serial) => serial.id) } },
+                data: {
+                  status: "available",
+                  warehouseId: scope.warehouseId,
+                  binId: scope.binId,
+                  salesInvoiceId: null
+                }
+              });
+            }
+            const existingSet = new Set(existing.map((serial) => serial.serialNo.toLowerCase()));
+            const toCreate = scope.serialNumbers.filter((serial) => !existingSet.has(serial.toLowerCase()));
+            if (toCreate.length) {
+              await tx.serialNumber.createMany({
+                data: toCreate.map((serialNo) => ({
+                  companyId: user.companyId,
+                  itemId: item.itemId!,
+                  serialNo,
+                  warehouseId: scope.warehouseId,
+                  binId: scope.binId,
+                  status: "available"
+                }))
+              });
+            }
+          }
         }
       }
 
@@ -805,7 +1102,7 @@ export class InvoicesService {
       dueDateBs?: string;
       receivableAccountId: string;
       referenceNo?: string;
-      items: Array<{ itemId?: string; description?: string; qty: number; rate: number; taxCodeId?: string; taxCodeIds?: string[] }>;
+      items: InvoiceLineInput[];
       sundries?: Array<{ billSundryId?: string; name: string; type: "add" | "less"; rate?: number | null; amount: number }>;
       memo?: string;
       additionalNote?: string;
@@ -855,21 +1152,31 @@ export class InvoicesService {
               amount: item.amount,
               taxCodeId: item.taxCodeId,
               taxAmount: item.taxAmount,
-              taxes: {
-                create: (item.taxCodeIds || []).map((tId: string) => ({
-                  taxCodeId: tId,
-                  taxAmount: 0 // Will be computed if needed elsewhere, but following creation pattern
-                }))
-              }
+              warehouseId: item.warehouseId || null,
+              binId: item.binId || null,
+              batchNo: item.batchNo || null,
+              lotNo: item.lotNo || null,
+              expiryDate: item.expiryDate || null,
+              expiryDateBs: item.expiryDateBs || null,
+              serialNumbers: this.normalizeSerialNumbers(item.serialNumbers),
+              taxes: item.taxBreakdown?.length
+                ? {
+                  create: item.taxBreakdown.map((t: any) => ({
+                    taxCodeId: t.taxCodeId,
+                    taxAmount: t.taxAmount
+                  }))
+                }
+                : undefined
             }))
           },
           sundries: {
-            create: (input.sundries || []).map((s) => ({
+            create: preview.sundries.map((s: any) => ({
               billSundryId: s.billSundryId,
               name: s.name,
               type: s.type,
               rate: s.rate ? new Prisma.Decimal(s.rate) : null,
-              amount: new Prisma.Decimal(s.amount)
+              amount: s.amount,
+              accountId: s.accountId
             }))
           }
         }

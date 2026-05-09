@@ -21,6 +21,13 @@ type DraftInput = {
         qty?: number;
         taxCodeId?: string;
         taxAmount?: number;
+        warehouseId?: string | null;
+        binId?: string | null;
+        batchNo?: string | null;
+        lotNo?: string | null;
+        expiryDate?: Date | null;
+        expiryDateBs?: string | null;
+        serialNumbers?: string[];
     }>;
 };
 export declare class VouchersService {
@@ -28,6 +35,11 @@ export declare class VouchersService {
     constructor(prisma: PrismaService);
     private getInventorySettings;
     private parseDateOrNull;
+    private normalizeSerialNumbers;
+    private assertSerializedLine;
+    private normalizeInventoryLine;
+    private getScopedStock;
+    private ensureSerialsAvailable;
     private allocateOutgoingByBatch;
     private enforceVoucherRules;
     private toJsonSafe;
@@ -44,6 +56,7 @@ export declare class VouchersService {
             id: string;
             companyId: string;
             createdAt: Date;
+            serialNumbers: string[];
             partyId: string | null;
             voucherId: string;
             accountId: string;
@@ -53,8 +66,14 @@ export declare class VouchersService {
             credit: Prisma.Decimal;
             qty: Prisma.Decimal;
             taxAmount: Prisma.Decimal;
+            batchNo: string | null;
+            lotNo: string | null;
+            expiryDate: Date | null;
+            expiryDateBs: string | null;
             itemId: string | null;
             taxCodeId: string | null;
+            warehouseId: string | null;
+            binId: string | null;
         }[];
     } & {
         id: string;
@@ -87,6 +106,7 @@ export declare class VouchersService {
             id: string;
             companyId: string;
             createdAt: Date;
+            serialNumbers: string[];
             partyId: string | null;
             voucherId: string;
             accountId: string;
@@ -96,8 +116,14 @@ export declare class VouchersService {
             credit: Prisma.Decimal;
             qty: Prisma.Decimal;
             taxAmount: Prisma.Decimal;
+            batchNo: string | null;
+            lotNo: string | null;
+            expiryDate: Date | null;
+            expiryDateBs: string | null;
             itemId: string | null;
             taxCodeId: string | null;
+            warehouseId: string | null;
+            binId: string | null;
         }[];
     } & {
         id: string;
@@ -137,6 +163,7 @@ export declare class VouchersService {
             id: string;
             companyId: string;
             createdAt: Date;
+            serialNumbers: string[];
             partyId: string | null;
             voucherId: string;
             accountId: string;
@@ -146,8 +173,14 @@ export declare class VouchersService {
             credit: Prisma.Decimal;
             qty: Prisma.Decimal;
             taxAmount: Prisma.Decimal;
+            batchNo: string | null;
+            lotNo: string | null;
+            expiryDate: Date | null;
+            expiryDateBs: string | null;
             itemId: string | null;
             taxCodeId: string | null;
+            warehouseId: string | null;
+            binId: string | null;
         }[];
     } & {
         id: string;
@@ -188,6 +221,7 @@ export declare class VouchersService {
             id: string;
             companyId: string;
             createdAt: Date;
+            serialNumbers: string[];
             partyId: string | null;
             voucherId: string;
             accountId: string;
@@ -197,8 +231,14 @@ export declare class VouchersService {
             credit: Prisma.Decimal;
             qty: Prisma.Decimal;
             taxAmount: Prisma.Decimal;
+            batchNo: string | null;
+            lotNo: string | null;
+            expiryDate: Date | null;
+            expiryDateBs: string | null;
             itemId: string | null;
             taxCodeId: string | null;
+            warehouseId: string | null;
+            binId: string | null;
         }[];
     } & {
         id: string;
@@ -274,6 +314,7 @@ export declare class VouchersService {
                 id: string;
                 companyId: string;
                 createdAt: Date;
+                serialNumbers: string[];
                 partyId: string | null;
                 voucherId: string;
                 accountId: string;
@@ -283,8 +324,14 @@ export declare class VouchersService {
                 credit: Prisma.Decimal;
                 qty: Prisma.Decimal;
                 taxAmount: Prisma.Decimal;
+                batchNo: string | null;
+                lotNo: string | null;
+                expiryDate: Date | null;
+                expiryDateBs: string | null;
                 itemId: string | null;
                 taxCodeId: string | null;
+                warehouseId: string | null;
+                binId: string | null;
             })[];
         } & {
             id: string;

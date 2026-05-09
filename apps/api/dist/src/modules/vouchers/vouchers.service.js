@@ -36,6 +36,115 @@ let VouchersService = class VouchersService {
         const dt = value instanceof Date ? value : new Date(value);
         return Number.isNaN(dt.getTime()) ? null : dt;
     }
+    normalizeSerialNumbers(serialNumbers) {
+        const normalized = (serialNumbers ?? []).map((serial) => serial.trim()).filter(Boolean);
+        if (new Set(normalized.map((serial) => serial.toLowerCase())).size !== normalized.length) {
+            throw new common_1.BadRequestException("Duplicate serial numbers are not allowed on a line");
+        }
+        return normalized;
+    }
+    assertSerializedLine(item, qty, serialNumbers) {
+        const serials = this.normalizeSerialNumbers(serialNumbers);
+        if (!item.isSerialized) {
+            if (serials.length)
+                throw new common_1.BadRequestException("Serial numbers are only allowed for serialized items");
+            return serials;
+        }
+        const expected = Number(qty.abs().toString());
+        if (!Number.isInteger(expected))
+            throw new common_1.BadRequestException("Serialized item quantity must be a whole number");
+        if (serials.length !== expected) {
+            throw new common_1.BadRequestException(`Serialized item requires ${expected} serial number(s)`);
+        }
+        return serials;
+    }
+    async normalizeInventoryLine(tx, companyId, settings, item, line, qty) {
+        const warehouseId = line.warehouseId || settings.defaultWarehouseId || null;
+        const binId = line.binId || null;
+        const batchNo = line.batchNo?.trim() || null;
+        const lotNo = line.lotNo?.trim() || null;
+        const expiryDate = this.parseDateOrNull(line.expiryDate);
+        const expiryDateBs = line.expiryDateBs?.trim() || null;
+        if (item.isSerialized && !settings.serialTrackingEnabled) {
+            throw new common_1.BadRequestException("Enable serial tracking in inventory configuration before posting serialized items");
+        }
+        if (item.isKit && !settings.kitsEnabled) {
+            throw new common_1.BadRequestException("Enable kits in inventory configuration before posting kit vouchers");
+        }
+        if ((batchNo || item.tracksBatch) && !settings.batchTrackingEnabled) {
+            throw new common_1.BadRequestException("Batch tracking is disabled in inventory configuration");
+        }
+        if ((lotNo || item.tracksLot) && !settings.lotTrackingEnabled) {
+            throw new common_1.BadRequestException("Lot tracking is disabled in inventory configuration");
+        }
+        if ((expiryDate || expiryDateBs || item.tracksExpiry) && !settings.expiryTrackingEnabled) {
+            throw new common_1.BadRequestException("Expiry tracking is disabled in inventory configuration");
+        }
+        if (warehouseId && !settings.warehousesEnabled) {
+            throw new common_1.BadRequestException("Warehouse tracking is disabled in inventory configuration");
+        }
+        if (binId && !settings.binsEnabled) {
+            throw new common_1.BadRequestException("Bin tracking is disabled in inventory configuration");
+        }
+        if (settings.requireWarehouseOnMovements && !warehouseId) {
+            throw new common_1.BadRequestException("Warehouse is required for stock movements");
+        }
+        if (item.tracksBatch && !batchNo)
+            throw new common_1.BadRequestException("Batch number is required for this item");
+        if (item.tracksLot && !lotNo)
+            throw new common_1.BadRequestException("Lot number is required for this item");
+        if (item.tracksExpiry && !expiryDate && !expiryDateBs) {
+            throw new common_1.BadRequestException("Expiry date is required for this item");
+        }
+        if (warehouseId) {
+            const warehouse = await tx.warehouse.findFirst({ where: { id: warehouseId, companyId, isActive: true } });
+            if (!warehouse)
+                throw new common_1.BadRequestException("Warehouse not found");
+        }
+        if (binId) {
+            const bin = await tx.warehouseBin.findFirst({
+                where: { id: binId, companyId, warehouseId, isActive: true }
+            });
+            if (!bin)
+                throw new common_1.BadRequestException("Bin not found for selected warehouse");
+        }
+        const serialNumbers = this.assertSerializedLine(item, qty, line.serialNumbers);
+        return { warehouseId, binId, batchNo, lotNo, expiryDate, expiryDateBs, serialNumbers };
+    }
+    async getScopedStock(tx, companyId, itemId, scope) {
+        const balance = await tx.stockLedger.aggregate({
+            where: {
+                companyId,
+                itemId,
+                warehouseId: scope.warehouseId,
+                binId: scope.binId,
+                batchNo: scope.batchNo ?? undefined,
+                lotNo: scope.lotNo ?? undefined,
+                expiryDate: scope.expiryDate ?? undefined
+            },
+            _sum: { qtyIn: true, qtyOut: true }
+        });
+        return new client_1.Prisma.Decimal(balance._sum.qtyIn ?? 0).sub(new client_1.Prisma.Decimal(balance._sum.qtyOut ?? 0));
+    }
+    async ensureSerialsAvailable(tx, companyId, itemId, serialNumbers, scope) {
+        if (!serialNumbers.length)
+            return [];
+        const serialRows = await tx.serialNumber.findMany({
+            where: {
+                companyId,
+                itemId,
+                serialNo: { in: serialNumbers },
+                status: "available",
+                warehouseId: scope.warehouseId,
+                binId: scope.binId
+            },
+            select: { id: true, serialNo: true }
+        });
+        if (serialRows.length !== serialNumbers.length) {
+            throw new common_1.BadRequestException("One or more serial numbers are not available at the selected location");
+        }
+        return serialRows;
+    }
     async allocateOutgoingByBatch(tx, companyId, itemId, requiredQty) {
         const ledgerRows = await tx.stockLedger.findMany({
             where: { companyId, itemId },
@@ -336,7 +445,14 @@ let VouchersService = class VouchersService {
                 credit: new client_1.Prisma.Decimal(credit),
                 qty: new client_1.Prisma.Decimal(Number(line.qty || 0)),
                 taxCodeId: line.taxCodeId || null,
-                taxAmount: new client_1.Prisma.Decimal(line.taxAmount || 0)
+                taxAmount: new client_1.Prisma.Decimal(line.taxAmount || 0),
+                warehouseId: line.warehouseId || null,
+                binId: line.binId || null,
+                batchNo: line.batchNo?.trim() || null,
+                lotNo: line.lotNo?.trim() || null,
+                expiryDate: this.parseDateOrNull(line.expiryDate),
+                expiryDateBs: line.expiryDateBs?.trim() || null,
+                serialNumbers: this.normalizeSerialNumbers(line.serialNumbers)
             };
         });
     }
@@ -643,6 +759,7 @@ let VouchersService = class VouchersService {
                     where: { id: { in: itemIds }, companyId: user.companyId },
                     select: {
                         id: true,
+                        name: true,
                         type: true,
                         trackInventory: true,
                         isSerialized: true,
@@ -658,15 +775,6 @@ let VouchersService = class VouchersService {
                     const item = itemMap.get(l.itemId);
                     if (!item || item.type === "services" || item.trackInventory === false)
                         continue;
-                    if (item.isKit && !inventorySettings.kitsEnabled) {
-                        throw new common_1.BadRequestException("Enable kits in inventory configuration before posting kit vouchers");
-                    }
-                    if (item.isSerialized) {
-                        throw new common_1.BadRequestException("Serialized voucher posting requires serial number selection");
-                    }
-                    if (item.tracksBatch || item.tracksLot || item.tracksExpiry) {
-                        throw new common_1.BadRequestException("Tracked batch/lot/expiry voucher posting requires line tracking selection");
-                    }
                     const isStockIn = voucher.voucherType === client_1.VoucherType.purchase || voucher.voucherType === client_1.VoucherType.sales_return;
                     const isStockOut = voucher.voucherType === client_1.VoucherType.sales_invoice || voucher.voucherType === client_1.VoucherType.purchase_return;
                     let qtyIn = new client_1.Prisma.Decimal(0);
@@ -674,6 +782,15 @@ let VouchersService = class VouchersService {
                     let amount = new client_1.Prisma.Decimal(0);
                     let rate = new client_1.Prisma.Decimal(0);
                     const quantity = (l.qty && l.qty.equals(0) === false) ? l.qty : new client_1.Prisma.Decimal(1);
+                    const scope = await this.normalizeInventoryLine(tx, user.companyId, inventorySettings, item, {
+                        warehouseId: l.warehouseId,
+                        binId: l.binId,
+                        batchNo: l.batchNo,
+                        lotNo: l.lotNo,
+                        expiryDate: l.expiryDate,
+                        expiryDateBs: l.expiryDateBs,
+                        serialNumbers: l.serialNumbers
+                    }, quantity);
                     if (isStockIn) {
                         amount = l.debit;
                         if (voucher.voucherType === client_1.VoucherType.sales_return && amount.equals(0))
@@ -689,35 +806,36 @@ let VouchersService = class VouchersService {
                         rate = quantity.equals(0) ? new client_1.Prisma.Decimal(0) : amount.div(quantity);
                     }
                     if (qtyOut.gt(0)) {
-                        if (inventorySettings.allowNegativeStock) {
-                            stockEntries.push({
-                                companyId: user.companyId,
-                                itemId: l.itemId,
-                                date: voucher.voucherDate,
-                                dateBs: voucher.voucherDateBs || undefined,
-                                voucherId: voucher.id,
-                                qtyIn: new client_1.Prisma.Decimal(0),
-                                qtyOut,
-                                rate,
-                                amount
-                            });
-                            continue;
+                        if (!inventorySettings.allowNegativeStock) {
+                            const available = await this.getScopedStock(tx, user.companyId, l.itemId, scope);
+                            if (available.sub(qtyOut).lt(0)) {
+                                throw new common_1.BadRequestException(`Insufficient stock for ${item.name}`);
+                            }
                         }
-                        const allocations = await this.allocateOutgoingByBatch(tx, user.companyId, l.itemId, qtyOut);
-                        for (const alloc of allocations) {
-                            stockEntries.push({
-                                companyId: user.companyId,
-                                itemId: l.itemId,
-                                date: voucher.voucherDate,
-                                dateBs: voucher.voucherDateBs || undefined,
-                                voucherId: voucher.id,
-                                qtyIn: new client_1.Prisma.Decimal(0),
-                                qtyOut: alloc.qty,
-                                rate,
-                                amount: alloc.qty.mul(rate),
-                                batchNo: alloc.batchNo ?? undefined,
-                                lotNo: alloc.lotNo ?? undefined,
-                                expiryDate: this.parseDateOrNull(alloc.expiryDate) ?? undefined
+                        stockEntries.push({
+                            companyId: user.companyId,
+                            itemId: l.itemId,
+                            date: voucher.voucherDate,
+                            dateBs: voucher.voucherDateBs || undefined,
+                            voucherId: voucher.id,
+                            warehouseId: scope.warehouseId,
+                            binId: scope.binId,
+                            qtyIn: new client_1.Prisma.Decimal(0),
+                            qtyOut,
+                            rate,
+                            amount,
+                            batchNo: scope.batchNo,
+                            lotNo: scope.lotNo,
+                            expiryDate: scope.expiryDate,
+                            expiryDateBs: scope.expiryDateBs
+                        });
+                        if (scope.serialNumbers.length) {
+                            const serialRows = await this.ensureSerialsAvailable(tx, user.companyId, l.itemId, scope.serialNumbers, scope);
+                            await tx.serialNumber.updateMany({
+                                where: { id: { in: serialRows.map((serial) => serial.id) } },
+                                data: {
+                                    status: voucher.voucherType === client_1.VoucherType.purchase_return ? "returned" : "sold"
+                                }
                             });
                         }
                         continue;
@@ -728,11 +846,55 @@ let VouchersService = class VouchersService {
                         date: voucher.voucherDate,
                         dateBs: voucher.voucherDateBs || undefined,
                         voucherId: voucher.id,
+                        warehouseId: scope.warehouseId,
+                        binId: scope.binId,
                         qtyIn,
                         qtyOut,
                         rate,
-                        amount
+                        amount,
+                        batchNo: scope.batchNo,
+                        lotNo: scope.lotNo,
+                        expiryDate: scope.expiryDate,
+                        expiryDateBs: scope.expiryDateBs
                     });
+                    if (qtyIn.gt(0) && scope.serialNumbers.length) {
+                        const existing = await tx.serialNumber.findMany({
+                            where: {
+                                companyId: user.companyId,
+                                itemId: l.itemId,
+                                serialNo: { in: scope.serialNumbers }
+                            },
+                            select: { id: true, serialNo: true, status: true }
+                        });
+                        const duplicateAvailable = existing.find((serial) => serial.status === "available");
+                        if (duplicateAvailable) {
+                            throw new common_1.BadRequestException(`Serial number already available: ${duplicateAvailable.serialNo}`);
+                        }
+                        if (existing.length) {
+                            await tx.serialNumber.updateMany({
+                                where: { id: { in: existing.map((serial) => serial.id) } },
+                                data: {
+                                    status: "available",
+                                    warehouseId: scope.warehouseId,
+                                    binId: scope.binId
+                                }
+                            });
+                        }
+                        const existingSet = new Set(existing.map((serial) => serial.serialNo.toLowerCase()));
+                        const toCreate = scope.serialNumbers.filter((serial) => !existingSet.has(serial.toLowerCase()));
+                        if (toCreate.length) {
+                            await tx.serialNumber.createMany({
+                                data: toCreate.map((serialNo) => ({
+                                    companyId: user.companyId,
+                                    itemId: l.itemId,
+                                    serialNo,
+                                    warehouseId: scope.warehouseId,
+                                    binId: scope.binId,
+                                    status: "available"
+                                }))
+                            });
+                        }
+                    }
                 }
                 if (stockEntries.length) {
                     await tx.stockLedger.createMany({

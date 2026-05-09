@@ -45,8 +45,24 @@ import { listPaymentMethods } from "@/lib/api/payment-methods";
 import { listPurchaseTypes } from "@/lib/api/purchase-types";
 import AddPaymentMethodDialog from "@/components/app/add-payment-method-dialog";
 import AddPurchaseTypeDialog from "@/components/app/add-purchase-type-dialog";
+import { getInventorySettings, type InventorySettings } from "@/lib/api/inventory";
+import { listWarehouses, type Warehouse } from "@/lib/api/warehouses";
 
-type Line = { itemId: string; qty: string; rate: string; unit?: string; description?: string; expenseAccountId?: string };
+type Line = {
+    itemId: string;
+    qty: string;
+    rate: string;
+    unit?: string;
+    description?: string;
+    expenseAccountId?: string;
+    warehouseId?: string;
+    binId?: string;
+    batchNo?: string;
+    lotNo?: string;
+    expiryDate?: string;
+    expiryDateBs?: string;
+    serialText?: string;
+};
 type BillSundryRow = { id: string; sundryId?: string; name: string; type: "add" | "less"; ratePct: string; manualAmount?: string; isManual?: boolean };
 
 function useOutsideClick<T extends HTMLElement>(
@@ -397,6 +413,8 @@ function PurchaseCreateContent() {
     const [sundryOptions, setSundryOptions] = React.useState<BillSundryRecord[]>([]);
     const [paymentMethods, setPaymentMethods] = React.useState<any[]>([]);
     const [purchaseTypes, setPurchaseTypes] = React.useState<any[]>([]);
+    const [inventorySettings, setInventorySettings] = React.useState<InventorySettings | null>(null);
+    const [warehouses, setWarehouses] = React.useState<Warehouse[]>([]);
 
     const safeFocus = (el: HTMLElement | null) => {
         if (!el) return;
@@ -523,9 +541,11 @@ function PurchaseCreateContent() {
             listItems({ take: 200 }),
             listBillSundries({ take: 100 }),
             listPaymentMethods({ isActive: true }),
-            listPurchaseTypes({ isActive: true })
+            listPurchaseTypes({ isActive: true }),
+            getInventorySettings(),
+            listWarehouses({ isActive: true })
         ])
-            .then(([p, a, i, s, pm, pt]) => {
+            .then(([p, a, i, s, pm, pt, inv, wh]) => {
                 if (!alive) return;
                 setParties(normalizeList<PartyRecord>(p));
                 setAccounts(normalizeList<AccountRecord>(a));
@@ -534,6 +554,8 @@ function PurchaseCreateContent() {
                 setSundryOptions(opts);
                 setPaymentMethods(normalizeList<any>(pm));
                 setPurchaseTypes(normalizeList<any>(pt));
+                setInventorySettings(inv as InventorySettings);
+                setWarehouses(normalizeList<Warehouse>(wh));
 
                 // Auto-link default sundries if they exist in the options
                 setBillSundries(prev => prev.map(row => {
@@ -599,7 +621,14 @@ function PurchaseCreateContent() {
                             qty: String(Number(l.qty || 0)),
                             rate: l.qty && Number(l.qty) !== 0 ? String(Number(l.debit) / Number(l.qty)) : "0",
                             description: l.description,
-                            expenseAccountId: l.accountId
+                            expenseAccountId: l.accountId,
+                            warehouseId: l.warehouseId || "",
+                            binId: l.binId || "",
+                            batchNo: l.batchNo || "",
+                            lotNo: l.lotNo || "",
+                            expiryDate: l.expiryDate ? String(l.expiryDate).split("T")[0] : "",
+                            expiryDateBs: l.expiryDateBs || "",
+                            serialText: Array.isArray(l.serialNumbers) ? l.serialNumbers.join("\n") : ""
                         }));
                         if (itemLines.length > 0) setLines(itemLines);
 
@@ -692,6 +721,13 @@ function PurchaseCreateContent() {
             const item = items.find(it => it.id === patch.itemId);
             if (item) {
                 patch.unit = item.unit || "";
+                patch.warehouseId = inventorySettings?.defaultWarehouseId || "";
+                patch.binId = "";
+                patch.batchNo = "";
+                patch.lotNo = "";
+                patch.expiryDate = "";
+                patch.expiryDateBs = "";
+                patch.serialText = "";
             }
         }
         setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
@@ -702,7 +738,7 @@ function PurchaseCreateContent() {
     const addLine = () => {
         setLines((prev) => {
             setPendingFocusIndex(prev.length);
-            return [...prev, { itemId: "", qty: "", rate: "" }];
+            return [...prev, { itemId: "", qty: "", rate: "", warehouseId: inventorySettings?.defaultWarehouseId || "" }];
         });
     };
 
@@ -756,6 +792,27 @@ function PurchaseCreateContent() {
             if (isNaN(rate) || rate <= 0) {
                 throw new Error(`Line ${idx + 1}: Rate is required and must be greater than zero.`);
             }
+            const item = items.find(it => it.id === l.itemId);
+            const tracked = item && item.type !== "services" && item.trackInventory !== false && inventorySettings?.inventoryTrackingEnabled;
+            const serialNumbers = (l.serialText || "")
+                .split(/[\n,]+/)
+                .map((serial) => serial.trim())
+                .filter(Boolean);
+            if (tracked && inventorySettings?.requireWarehouseOnMovements && !l.warehouseId && !inventorySettings.defaultWarehouseId) {
+                throw new Error(`Line ${idx + 1}: Warehouse is required.`);
+            }
+            if (tracked && item?.tracksBatch && !l.batchNo?.trim()) {
+                throw new Error(`Line ${idx + 1}: Batch number is required.`);
+            }
+            if (tracked && item?.tracksLot && !l.lotNo?.trim()) {
+                throw new Error(`Line ${idx + 1}: Lot number is required.`);
+            }
+            if (tracked && item?.tracksExpiry && !l.expiryDate && !l.expiryDateBs) {
+                throw new Error(`Line ${idx + 1}: Expiry date is required.`);
+            }
+            if (tracked && item?.isSerialized && serialNumbers.length !== qty) {
+                throw new Error(`Line ${idx + 1}: Enter ${qty} serial number(s).`);
+            }
         });
 
         const payloadLines = lines.map((l) => {
@@ -768,7 +825,17 @@ function PurchaseCreateContent() {
                 debit: qty * rate,
                 qty,
                 description: l.description || "Purchase",
-                unit: l.unit
+                unit: l.unit,
+                warehouseId: l.warehouseId || undefined,
+                binId: l.binId || undefined,
+                batchNo: l.batchNo?.trim() || undefined,
+                lotNo: l.lotNo?.trim() || undefined,
+                expiryDate: l.expiryDate || undefined,
+                expiryDateBs: l.expiryDateBs || undefined,
+                serialNumbers: (l.serialText || "")
+                    .split(/[\n,]+/)
+                    .map((serial) => serial.trim())
+                    .filter(Boolean)
             };
         });
 
@@ -1155,9 +1222,26 @@ function PurchaseCreateContent() {
                                         const qty = Number(line.qty || 0);
                                         const rate = Number(line.rate || 0);
                                         const amt = qty * rate;
+                                        const selectedItem = items.find((it) => it.id === line.itemId);
+                                        const needsInventoryFields = Boolean(
+                                            inventorySettings?.inventoryTrackingEnabled &&
+                                            selectedItem &&
+                                            selectedItem.type !== "services" &&
+                                            selectedItem.trackInventory !== false &&
+                                            (
+                                                inventorySettings.warehousesEnabled ||
+                                                inventorySettings.batchTrackingEnabled ||
+                                                inventorySettings.lotTrackingEnabled ||
+                                                inventorySettings.expiryTrackingEnabled ||
+                                                inventorySettings.serialTrackingEnabled
+                                            )
+                                        );
+                                        const selectedWarehouse = warehouses.find((warehouse) => warehouse.id === line.warehouseId);
+                                        const bins = selectedWarehouse?.bins ?? [];
 
                                         return (
-                                            <tr key={idx} className="border-t border-slate-200/70 dark:border-slate-800/60">
+                                            <React.Fragment key={idx}>
+                                            <tr className="border-t border-slate-200/70 dark:border-slate-800/60">
                                                 <td className="px-4 py-3 text-muted-foreground font-medium">{idx + 1}</td>
                                                 <td className="px-4 py-3">
                                                     <div className="relative">
@@ -1341,6 +1425,34 @@ function PurchaseCreateContent() {
                                                     )}
                                                 </td>
                                             </tr>
+                                            {needsInventoryFields && (
+                                                <tr className="border-t border-slate-100 bg-slate-50/70 dark:border-slate-800 dark:bg-slate-900/40">
+                                                    <td />
+                                                    <td colSpan={6} className="px-4 py-3">
+                                                        <div className="grid gap-3 md:grid-cols-6">
+                                                            {inventorySettings?.warehousesEnabled && (
+                                                                <select value={line.warehouseId || inventorySettings.defaultWarehouseId || ""} disabled={!isEditMode} onChange={(event) => updateLine(idx, { warehouseId: event.target.value, binId: "" })} className="h-10 rounded-xl border bg-white px-3 text-xs dark:bg-slate-900">
+                                                                    <option value="">Warehouse</option>
+                                                                    {warehouses.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>)}
+                                                                </select>
+                                                            )}
+                                                            {inventorySettings?.binsEnabled && (
+                                                                <select value={line.binId || ""} disabled={!line.warehouseId || !isEditMode} onChange={(event) => updateLine(idx, { binId: event.target.value })} className="h-10 rounded-xl border bg-white px-3 text-xs dark:bg-slate-900">
+                                                                    <option value="">Bin</option>
+                                                                    {bins.map((bin) => <option key={bin.id} value={bin.id}>{bin.name}</option>)}
+                                                                </select>
+                                                            )}
+                                                            {inventorySettings?.batchTrackingEnabled && <Input value={line.batchNo || ""} onChange={(e) => updateLine(idx, { batchNo: e.target.value })} placeholder={selectedItem?.tracksBatch ? "Batch *" : "Batch"} className="h-10 rounded-xl text-xs" />}
+                                                            {inventorySettings?.lotTrackingEnabled && <Input value={line.lotNo || ""} onChange={(e) => updateLine(idx, { lotNo: e.target.value })} placeholder={selectedItem?.tracksLot ? "Lot *" : "Lot"} className="h-10 rounded-xl text-xs" />}
+                                                            {inventorySettings?.expiryTrackingEnabled && <Input type="date" value={line.expiryDate || ""} onChange={(e) => updateLine(idx, { expiryDate: e.target.value })} className="h-10 rounded-xl text-xs" />}
+                                                            {selectedItem?.isSerialized && inventorySettings?.serialTrackingEnabled && (
+                                                                <textarea value={line.serialText || ""} onChange={(event) => updateLine(idx, { serialText: event.target.value })} placeholder="Serial numbers" className="min-h-10 rounded-xl border bg-white px-3 py-2 text-xs dark:bg-slate-900 md:col-span-2" />
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                            </React.Fragment>
                                         );
                                     })}
 

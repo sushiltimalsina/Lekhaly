@@ -1,11 +1,31 @@
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import type { AuthUser } from "../../common/auth/auth.types";
+type InvoiceLineInput = {
+    itemId?: string;
+    description?: string;
+    qty: number;
+    rate: number;
+    taxCodeId?: string;
+    taxCodeIds?: string[];
+    warehouseId?: string | null;
+    binId?: string | null;
+    batchNo?: string | null;
+    lotNo?: string | null;
+    expiryDate?: Date | null;
+    expiryDateBs?: string | null;
+    serialNumbers?: string[];
+};
 export declare class InvoicesService {
     private prisma;
     constructor(prisma: PrismaService);
     private getCompany;
     private getInventorySettings;
+    private normalizeSerialNumbers;
+    private assertSerializedLine;
+    private normalizeInventoryLine;
+    private getScopedStock;
+    private ensureSerialsAvailable;
     private validateItems;
     private computeTotals;
     private enforceStockForSales;
@@ -18,14 +38,7 @@ export declare class InvoicesService {
         dueDateBs?: string;
         receivableAccountId: string;
         referenceNo?: string;
-        items: Array<{
-            itemId?: string;
-            description?: string;
-            qty: number;
-            rate: number;
-            taxCodeId?: string;
-            taxCodeIds?: string[];
-        }>;
+        items: InvoiceLineInput[];
         sundries?: Array<{
             billSundryId?: string;
             name: string;
@@ -67,6 +80,13 @@ export declare class InvoicesService {
             qty: number;
             rate: number;
             taxCodeIds?: string[];
+            warehouseId?: string | null;
+            binId?: string | null;
+            batchNo?: string | null;
+            lotNo?: string | null;
+            expiryDate?: Date | null;
+            expiryDateBs?: string | null;
+            serialNumbers?: string[];
         }[];
         sundries: {
             amount: Prisma.Decimal;
@@ -95,14 +115,7 @@ export declare class InvoicesService {
         dueDateBs?: string;
         receivableAccountId: string;
         referenceNo?: string;
-        items: Array<{
-            itemId?: string;
-            description?: string;
-            qty: number;
-            rate: number;
-            taxCodeId?: string;
-            taxCodeIds?: string[];
-        }>;
+        items: InvoiceLineInput[];
         sundries?: Array<{
             billSundryId?: string;
             name: string;
@@ -118,11 +131,18 @@ export declare class InvoicesService {
         items: {
             id: string;
             createdAt: Date;
+            serialNumbers: string[];
             description: string | null;
             qty: Prisma.Decimal;
             taxAmount: Prisma.Decimal;
+            batchNo: string | null;
+            lotNo: string | null;
+            expiryDate: Date | null;
+            expiryDateBs: string | null;
             itemId: string | null;
             taxCodeId: string | null;
+            warehouseId: string | null;
+            binId: string | null;
             amount: Prisma.Decimal;
             rate: Prisma.Decimal;
             landedCostAmount: Prisma.Decimal | null;
@@ -207,11 +227,18 @@ export declare class InvoicesService {
         } & {
             id: string;
             createdAt: Date;
+            serialNumbers: string[];
             description: string | null;
             qty: Prisma.Decimal;
             taxAmount: Prisma.Decimal;
+            batchNo: string | null;
+            lotNo: string | null;
+            expiryDate: Date | null;
+            expiryDateBs: string | null;
             itemId: string | null;
             taxCodeId: string | null;
+            warehouseId: string | null;
+            binId: string | null;
             amount: Prisma.Decimal;
             rate: Prisma.Decimal;
             landedCostAmount: Prisma.Decimal | null;
@@ -298,14 +325,7 @@ export declare class InvoicesService {
         dueDateBs?: string;
         receivableAccountId: string;
         referenceNo?: string;
-        items: Array<{
-            itemId?: string;
-            description?: string;
-            qty: number;
-            rate: number;
-            taxCodeId?: string;
-            taxCodeIds?: string[];
-        }>;
+        items: InvoiceLineInput[];
         sundries?: Array<{
             billSundryId?: string;
             name: string;
@@ -342,3 +362,4 @@ export declare class InvoicesService {
         saleTypeId: string | null;
     }>;
 }
+export {};

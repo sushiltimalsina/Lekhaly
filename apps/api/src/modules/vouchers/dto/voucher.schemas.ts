@@ -9,7 +9,14 @@ export const VoucherLineSchema = z.object({
   credit: z.number().nonnegative().default(0),
   qty: z.coerce.number().default(0),
   taxCodeId: z.string().uuid().optional(),
-  taxAmount: z.number().nonnegative().default(0)
+  taxAmount: z.number().nonnegative().default(0),
+  warehouseId: z.string().uuid().optional().nullable(),
+  binId: z.string().uuid().optional().nullable(),
+  batchNo: z.string().trim().max(120).optional(),
+  lotNo: z.string().trim().max(120).optional(),
+  expiryDate: z.coerce.date().optional(),
+  expiryDateBs: z.string().trim().max(20).optional(),
+  serialNumbers: z.array(z.string().trim().min(1).max(120)).optional()
 }).superRefine((data, ctx) => {
   if (data.taxCodeId && (!data.taxAmount || data.taxAmount <= 0)) {
     ctx.addIssue({ code: "custom", message: "Tax amount required when tax code is set", path: ["taxAmount"] });

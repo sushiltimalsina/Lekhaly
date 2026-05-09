@@ -8,6 +8,7 @@ export declare class VouchersController {
             id: string;
             companyId: string;
             createdAt: Date;
+            serialNumbers: string[];
             partyId: string | null;
             voucherId: string;
             accountId: string;
@@ -17,8 +18,14 @@ export declare class VouchersController {
             credit: import("@prisma/client/runtime/client").Decimal;
             qty: import("@prisma/client/runtime/client").Decimal;
             taxAmount: import("@prisma/client/runtime/client").Decimal;
+            batchNo: string | null;
+            lotNo: string | null;
+            expiryDate: Date | null;
+            expiryDateBs: string | null;
             itemId: string | null;
             taxCodeId: string | null;
+            warehouseId: string | null;
+            binId: string | null;
         }[];
     } & {
         id: string;
@@ -51,6 +58,7 @@ export declare class VouchersController {
             id: string;
             companyId: string;
             createdAt: Date;
+            serialNumbers: string[];
             partyId: string | null;
             voucherId: string;
             accountId: string;
@@ -60,8 +68,14 @@ export declare class VouchersController {
             credit: import("@prisma/client/runtime/client").Decimal;
             qty: import("@prisma/client/runtime/client").Decimal;
             taxAmount: import("@prisma/client/runtime/client").Decimal;
+            batchNo: string | null;
+            lotNo: string | null;
+            expiryDate: Date | null;
+            expiryDateBs: string | null;
             itemId: string | null;
             taxCodeId: string | null;
+            warehouseId: string | null;
+            binId: string | null;
         }[];
     } & {
         id: string;
@@ -98,6 +112,7 @@ export declare class VouchersController {
             id: string;
             companyId: string;
             createdAt: Date;
+            serialNumbers: string[];
             partyId: string | null;
             voucherId: string;
             accountId: string;
@@ -107,8 +122,14 @@ export declare class VouchersController {
             credit: import("@prisma/client/runtime/client").Decimal;
             qty: import("@prisma/client/runtime/client").Decimal;
             taxAmount: import("@prisma/client/runtime/client").Decimal;
+            batchNo: string | null;
+            lotNo: string | null;
+            expiryDate: Date | null;
+            expiryDateBs: string | null;
             itemId: string | null;
             taxCodeId: string | null;
+            warehouseId: string | null;
+            binId: string | null;
         }[];
     } & {
         id: string;
@@ -177,6 +198,7 @@ export declare class VouchersController {
                 id: string;
                 companyId: string;
                 createdAt: Date;
+                serialNumbers: string[];
                 partyId: string | null;
                 voucherId: string;
                 accountId: string;
@@ -186,8 +208,14 @@ export declare class VouchersController {
                 credit: import("@prisma/client/runtime/client").Decimal;
                 qty: import("@prisma/client/runtime/client").Decimal;
                 taxAmount: import("@prisma/client/runtime/client").Decimal;
+                batchNo: string | null;
+                lotNo: string | null;
+                expiryDate: Date | null;
+                expiryDateBs: string | null;
                 itemId: string | null;
                 taxCodeId: string | null;
+                warehouseId: string | null;
+                binId: string | null;
             })[];
         } & {
             id: string;
@@ -265,6 +293,7 @@ export declare class VouchersController {
             id: string;
             companyId: string;
             createdAt: Date;
+            serialNumbers: string[];
             partyId: string | null;
             voucherId: string;
             accountId: string;
@@ -274,8 +303,14 @@ export declare class VouchersController {
             credit: import("@prisma/client/runtime/client").Decimal;
             qty: import("@prisma/client/runtime/client").Decimal;
             taxAmount: import("@prisma/client/runtime/client").Decimal;
+            batchNo: string | null;
+            lotNo: string | null;
+            expiryDate: Date | null;
+            expiryDateBs: string | null;
             itemId: string | null;
             taxCodeId: string | null;
+            warehouseId: string | null;
+            binId: string | null;
         }[];
     } & {
         id: string;

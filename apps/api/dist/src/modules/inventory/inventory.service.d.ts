@@ -6,6 +6,8 @@ export declare class InventoryService {
     constructor(prisma: PrismaService);
     getOrCreateSettings(companyId: string, tx?: Prisma.TransactionClient): Promise<any>;
     getSettings(user: AuthUser): Promise<any>;
+    private ensureDefaultWarehouse;
+    private ensureDefaultBin;
     updateSettings(user: AuthUser, input: {
         inventoryTrackingEnabled?: boolean;
         warehousesEnabled?: boolean;
@@ -167,10 +169,10 @@ export declare class InventoryService {
         }[];
         expiringSoon: {
             qty: number;
-            itemId: string;
             batchNo: string | null;
             lotNo: string | null;
             expiryDate: Date | null;
+            itemId: string;
             _sum: {
                 qtyIn: Prisma.Decimal | null;
                 qtyOut: Prisma.Decimal | null;

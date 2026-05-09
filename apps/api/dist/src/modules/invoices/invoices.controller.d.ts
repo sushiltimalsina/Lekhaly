@@ -7,11 +7,18 @@ export declare class InvoicesController {
         items: {
             id: string;
             createdAt: Date;
+            serialNumbers: string[];
             description: string | null;
             qty: import("@prisma/client/runtime/client").Decimal;
             taxAmount: import("@prisma/client/runtime/client").Decimal;
+            batchNo: string | null;
+            lotNo: string | null;
+            expiryDate: Date | null;
+            expiryDateBs: string | null;
             itemId: string | null;
             taxCodeId: string | null;
+            warehouseId: string | null;
+            binId: string | null;
             amount: import("@prisma/client/runtime/client").Decimal;
             rate: import("@prisma/client/runtime/client").Decimal;
             landedCostAmount: import("@prisma/client/runtime/client").Decimal | null;
@@ -106,6 +113,13 @@ export declare class InvoicesController {
             qty: number;
             rate: number;
             taxCodeIds?: string[];
+            warehouseId?: string | null;
+            binId?: string | null;
+            batchNo?: string | null;
+            lotNo?: string | null;
+            expiryDate?: Date | null;
+            expiryDateBs?: string | null;
+            serialNumbers?: string[];
         }[];
         sundries: {
             amount: import("@prisma/client/runtime/client").Decimal;
@@ -161,11 +175,18 @@ export declare class InvoicesController {
         } & {
             id: string;
             createdAt: Date;
+            serialNumbers: string[];
             description: string | null;
             qty: import("@prisma/client/runtime/client").Decimal;
             taxAmount: import("@prisma/client/runtime/client").Decimal;
+            batchNo: string | null;
+            lotNo: string | null;
+            expiryDate: Date | null;
+            expiryDateBs: string | null;
             itemId: string | null;
             taxCodeId: string | null;
+            warehouseId: string | null;
+            binId: string | null;
             amount: import("@prisma/client/runtime/client").Decimal;
             rate: import("@prisma/client/runtime/client").Decimal;
             landedCostAmount: import("@prisma/client/runtime/client").Decimal | null;

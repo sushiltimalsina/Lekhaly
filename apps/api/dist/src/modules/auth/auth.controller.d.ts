@@ -102,6 +102,7 @@ export declare class AuthController {
             id: string;
             companyId: string;
             createdAt: Date;
+            serialNumbers: string[];
             partyId: string | null;
             voucherId: string;
             accountId: string;
@@ -111,8 +112,14 @@ export declare class AuthController {
             credit: import("@prisma/client/runtime/client").Decimal;
             qty: import("@prisma/client/runtime/client").Decimal;
             taxAmount: import("@prisma/client/runtime/client").Decimal;
+            batchNo: string | null;
+            lotNo: string | null;
+            expiryDate: Date | null;
+            expiryDateBs: string | null;
             itemId: string | null;
             taxCodeId: string | null;
+            warehouseId: string | null;
+            binId: string | null;
         }[] | {
             id: string;
             companyId: string;
@@ -120,17 +127,17 @@ export declare class AuthController {
             voucherId: string | null;
             date: Date;
             dateBs: string | null;
-            itemId: string;
-            amount: import("@prisma/client/runtime/client").Decimal;
-            rate: import("@prisma/client/runtime/client").Decimal;
-            warehouseId: string | null;
-            binId: string | null;
-            qtyIn: import("@prisma/client/runtime/client").Decimal;
-            qtyOut: import("@prisma/client/runtime/client").Decimal;
             batchNo: string | null;
             lotNo: string | null;
             expiryDate: Date | null;
             expiryDateBs: string | null;
+            itemId: string;
+            warehouseId: string | null;
+            binId: string | null;
+            amount: import("@prisma/client/runtime/client").Decimal;
+            rate: import("@prisma/client/runtime/client").Decimal;
+            qtyIn: import("@prisma/client/runtime/client").Decimal;
+            qtyOut: import("@prisma/client/runtime/client").Decimal;
         }[] | {
             id: string;
             companyId: string;
@@ -396,6 +403,7 @@ export declare class AuthController {
             id: string;
             companyId: string;
             createdAt: Date;
+            serialNumbers: string[];
             partyId: string | null;
             voucherId: string;
             accountId: string;
@@ -405,12 +413,19 @@ export declare class AuthController {
             credit: import("@prisma/client/runtime/client").Decimal;
             qty: import("@prisma/client/runtime/client").Decimal;
             taxAmount: import("@prisma/client/runtime/client").Decimal;
+            batchNo: string | null;
+            lotNo: string | null;
+            expiryDate: Date | null;
+            expiryDateBs: string | null;
             itemId: string | null;
             taxCodeId: string | null;
+            warehouseId: string | null;
+            binId: string | null;
         } | {
             id: string;
             companyId: string;
             createdAt: Date;
+            serialNumbers: string[];
             partyId: string | null;
             voucherId: string;
             accountId: string;
@@ -420,8 +435,14 @@ export declare class AuthController {
             credit: import("@prisma/client/runtime/client").Decimal;
             qty: import("@prisma/client/runtime/client").Decimal;
             taxAmount: import("@prisma/client/runtime/client").Decimal;
+            batchNo: string | null;
+            lotNo: string | null;
+            expiryDate: Date | null;
+            expiryDateBs: string | null;
             itemId: string | null;
             taxCodeId: string | null;
+            warehouseId: string | null;
+            binId: string | null;
         })[] | ({
             id: string;
             companyId: string;
@@ -557,6 +578,44 @@ export declare class AuthController {
         })[] | ({
             id: string;
             companyId: string;
+            name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            code: string | null;
+            isActive: boolean;
+            sortOrder: number;
+        } | {
+            id: string;
+            companyId: string;
+            name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            code: string | null;
+            isActive: boolean;
+            sortOrder: number;
+        })[] | ({
+            id: string;
+            companyId: string;
+            name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            code: string | null;
+            warehouseId: string;
+            isActive: boolean;
+            sortOrder: number;
+        } | {
+            id: string;
+            companyId: string;
+            name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            code: string | null;
+            warehouseId: string;
+            isActive: boolean;
+            sortOrder: number;
+        })[] | ({
+            id: string;
+            companyId: string;
             createdAt: Date;
             date: Date;
             dateBs: string | null;
@@ -607,17 +666,17 @@ export declare class AuthController {
             voucherId: string | null;
             date: Date;
             dateBs: string | null;
-            itemId: string;
-            amount: import("@prisma/client/runtime/client").Decimal;
-            rate: import("@prisma/client/runtime/client").Decimal;
-            warehouseId: string | null;
-            binId: string | null;
-            qtyIn: import("@prisma/client/runtime/client").Decimal;
-            qtyOut: import("@prisma/client/runtime/client").Decimal;
             batchNo: string | null;
             lotNo: string | null;
             expiryDate: Date | null;
             expiryDateBs: string | null;
+            itemId: string;
+            warehouseId: string | null;
+            binId: string | null;
+            amount: import("@prisma/client/runtime/client").Decimal;
+            rate: import("@prisma/client/runtime/client").Decimal;
+            qtyIn: import("@prisma/client/runtime/client").Decimal;
+            qtyOut: import("@prisma/client/runtime/client").Decimal;
         } | {
             id: string;
             companyId: string;
@@ -625,55 +684,17 @@ export declare class AuthController {
             voucherId: string | null;
             date: Date;
             dateBs: string | null;
-            itemId: string;
-            amount: import("@prisma/client/runtime/client").Decimal;
-            rate: import("@prisma/client/runtime/client").Decimal;
-            warehouseId: string | null;
-            binId: string | null;
-            qtyIn: import("@prisma/client/runtime/client").Decimal;
-            qtyOut: import("@prisma/client/runtime/client").Decimal;
             batchNo: string | null;
             lotNo: string | null;
             expiryDate: Date | null;
             expiryDateBs: string | null;
-        })[] | ({
-            id: string;
-            companyId: string;
-            name: string;
-            createdAt: Date;
-            updatedAt: Date;
-            code: string | null;
-            isActive: boolean;
-            sortOrder: number;
-        } | {
-            id: string;
-            companyId: string;
-            name: string;
-            createdAt: Date;
-            updatedAt: Date;
-            code: string | null;
-            isActive: boolean;
-            sortOrder: number;
-        })[] | ({
-            id: string;
-            companyId: string;
-            name: string;
-            createdAt: Date;
-            updatedAt: Date;
-            code: string | null;
-            isActive: boolean;
-            sortOrder: number;
-            warehouseId: string;
-        } | {
-            id: string;
-            companyId: string;
-            name: string;
-            createdAt: Date;
-            updatedAt: Date;
-            code: string | null;
-            isActive: boolean;
-            sortOrder: number;
-            warehouseId: string;
+            itemId: string;
+            warehouseId: string | null;
+            binId: string | null;
+            amount: import("@prisma/client/runtime/client").Decimal;
+            rate: import("@prisma/client/runtime/client").Decimal;
+            qtyIn: import("@prisma/client/runtime/client").Decimal;
+            qtyOut: import("@prisma/client/runtime/client").Decimal;
         })[] | ({
             id: string;
             companyId: string;
@@ -1331,6 +1352,25 @@ export declare class AuthController {
         }[] | {
             id: string;
             companyId: string;
+            name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            code: string | null;
+            isActive: boolean;
+            sortOrder: number;
+        }[] | {
+            id: string;
+            companyId: string;
+            name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            code: string | null;
+            warehouseId: string;
+            isActive: boolean;
+            sortOrder: number;
+        }[] | {
+            id: string;
+            companyId: string;
             createdAt: Date;
             date: Date;
             dateBs: string | null;
@@ -1351,25 +1391,6 @@ export declare class AuthController {
             isActive: boolean;
             rate: import("@prisma/client/runtime/client").Decimal | null;
             sortOrder: number;
-        }[] | {
-            id: string;
-            companyId: string;
-            name: string;
-            createdAt: Date;
-            updatedAt: Date;
-            code: string | null;
-            isActive: boolean;
-            sortOrder: number;
-        }[] | {
-            id: string;
-            companyId: string;
-            name: string;
-            createdAt: Date;
-            updatedAt: Date;
-            code: string | null;
-            isActive: boolean;
-            sortOrder: number;
-            warehouseId: string;
         }[] | {
             id: string;
             companyId: string;
@@ -1691,6 +1712,7 @@ export declare class AuthController {
             id: string;
             companyId: string;
             createdAt: Date;
+            serialNumbers: string[];
             partyId: string | null;
             voucherId: string;
             accountId: string;
@@ -1700,8 +1722,14 @@ export declare class AuthController {
             credit: import("@prisma/client/runtime/client").Decimal;
             qty: import("@prisma/client/runtime/client").Decimal;
             taxAmount: import("@prisma/client/runtime/client").Decimal;
+            batchNo: string | null;
+            lotNo: string | null;
+            expiryDate: Date | null;
+            expiryDateBs: string | null;
             itemId: string | null;
             taxCodeId: string | null;
+            warehouseId: string | null;
+            binId: string | null;
         }[] | {
             id: string;
             companyId: string;
@@ -1709,17 +1737,17 @@ export declare class AuthController {
             voucherId: string | null;
             date: Date;
             dateBs: string | null;
-            itemId: string;
-            amount: import("@prisma/client/runtime/client").Decimal;
-            rate: import("@prisma/client/runtime/client").Decimal;
-            warehouseId: string | null;
-            binId: string | null;
-            qtyIn: import("@prisma/client/runtime/client").Decimal;
-            qtyOut: import("@prisma/client/runtime/client").Decimal;
             batchNo: string | null;
             lotNo: string | null;
             expiryDate: Date | null;
             expiryDateBs: string | null;
+            itemId: string;
+            warehouseId: string | null;
+            binId: string | null;
+            amount: import("@prisma/client/runtime/client").Decimal;
+            rate: import("@prisma/client/runtime/client").Decimal;
+            qtyIn: import("@prisma/client/runtime/client").Decimal;
+            qtyOut: import("@prisma/client/runtime/client").Decimal;
         }[] | {
             id: string;
             companyId: string;
@@ -1985,6 +2013,7 @@ export declare class AuthController {
             id: string;
             companyId: string;
             createdAt: Date;
+            serialNumbers: string[];
             partyId: string | null;
             voucherId: string;
             accountId: string;
@@ -1994,12 +2023,19 @@ export declare class AuthController {
             credit: import("@prisma/client/runtime/client").Decimal;
             qty: import("@prisma/client/runtime/client").Decimal;
             taxAmount: import("@prisma/client/runtime/client").Decimal;
+            batchNo: string | null;
+            lotNo: string | null;
+            expiryDate: Date | null;
+            expiryDateBs: string | null;
             itemId: string | null;
             taxCodeId: string | null;
+            warehouseId: string | null;
+            binId: string | null;
         } | {
             id: string;
             companyId: string;
             createdAt: Date;
+            serialNumbers: string[];
             partyId: string | null;
             voucherId: string;
             accountId: string;
@@ -2009,8 +2045,14 @@ export declare class AuthController {
             credit: import("@prisma/client/runtime/client").Decimal;
             qty: import("@prisma/client/runtime/client").Decimal;
             taxAmount: import("@prisma/client/runtime/client").Decimal;
+            batchNo: string | null;
+            lotNo: string | null;
+            expiryDate: Date | null;
+            expiryDateBs: string | null;
             itemId: string | null;
             taxCodeId: string | null;
+            warehouseId: string | null;
+            binId: string | null;
         })[] | ({
             id: string;
             companyId: string;
@@ -2146,6 +2188,44 @@ export declare class AuthController {
         })[] | ({
             id: string;
             companyId: string;
+            name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            code: string | null;
+            isActive: boolean;
+            sortOrder: number;
+        } | {
+            id: string;
+            companyId: string;
+            name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            code: string | null;
+            isActive: boolean;
+            sortOrder: number;
+        })[] | ({
+            id: string;
+            companyId: string;
+            name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            code: string | null;
+            warehouseId: string;
+            isActive: boolean;
+            sortOrder: number;
+        } | {
+            id: string;
+            companyId: string;
+            name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            code: string | null;
+            warehouseId: string;
+            isActive: boolean;
+            sortOrder: number;
+        })[] | ({
+            id: string;
+            companyId: string;
             createdAt: Date;
             date: Date;
             dateBs: string | null;
@@ -2196,17 +2276,17 @@ export declare class AuthController {
             voucherId: string | null;
             date: Date;
             dateBs: string | null;
-            itemId: string;
-            amount: import("@prisma/client/runtime/client").Decimal;
-            rate: import("@prisma/client/runtime/client").Decimal;
-            warehouseId: string | null;
-            binId: string | null;
-            qtyIn: import("@prisma/client/runtime/client").Decimal;
-            qtyOut: import("@prisma/client/runtime/client").Decimal;
             batchNo: string | null;
             lotNo: string | null;
             expiryDate: Date | null;
             expiryDateBs: string | null;
+            itemId: string;
+            warehouseId: string | null;
+            binId: string | null;
+            amount: import("@prisma/client/runtime/client").Decimal;
+            rate: import("@prisma/client/runtime/client").Decimal;
+            qtyIn: import("@prisma/client/runtime/client").Decimal;
+            qtyOut: import("@prisma/client/runtime/client").Decimal;
         } | {
             id: string;
             companyId: string;
@@ -2214,55 +2294,17 @@ export declare class AuthController {
             voucherId: string | null;
             date: Date;
             dateBs: string | null;
-            itemId: string;
-            amount: import("@prisma/client/runtime/client").Decimal;
-            rate: import("@prisma/client/runtime/client").Decimal;
-            warehouseId: string | null;
-            binId: string | null;
-            qtyIn: import("@prisma/client/runtime/client").Decimal;
-            qtyOut: import("@prisma/client/runtime/client").Decimal;
             batchNo: string | null;
             lotNo: string | null;
             expiryDate: Date | null;
             expiryDateBs: string | null;
-        })[] | ({
-            id: string;
-            companyId: string;
-            name: string;
-            createdAt: Date;
-            updatedAt: Date;
-            code: string | null;
-            isActive: boolean;
-            sortOrder: number;
-        } | {
-            id: string;
-            companyId: string;
-            name: string;
-            createdAt: Date;
-            updatedAt: Date;
-            code: string | null;
-            isActive: boolean;
-            sortOrder: number;
-        })[] | ({
-            id: string;
-            companyId: string;
-            name: string;
-            createdAt: Date;
-            updatedAt: Date;
-            code: string | null;
-            isActive: boolean;
-            sortOrder: number;
-            warehouseId: string;
-        } | {
-            id: string;
-            companyId: string;
-            name: string;
-            createdAt: Date;
-            updatedAt: Date;
-            code: string | null;
-            isActive: boolean;
-            sortOrder: number;
-            warehouseId: string;
+            itemId: string;
+            warehouseId: string | null;
+            binId: string | null;
+            amount: import("@prisma/client/runtime/client").Decimal;
+            rate: import("@prisma/client/runtime/client").Decimal;
+            qtyIn: import("@prisma/client/runtime/client").Decimal;
+            qtyOut: import("@prisma/client/runtime/client").Decimal;
         })[] | ({
             id: string;
             companyId: string;
@@ -2920,6 +2962,25 @@ export declare class AuthController {
         }[] | {
             id: string;
             companyId: string;
+            name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            code: string | null;
+            isActive: boolean;
+            sortOrder: number;
+        }[] | {
+            id: string;
+            companyId: string;
+            name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            code: string | null;
+            warehouseId: string;
+            isActive: boolean;
+            sortOrder: number;
+        }[] | {
+            id: string;
+            companyId: string;
             createdAt: Date;
             date: Date;
             dateBs: string | null;
@@ -2940,25 +3001,6 @@ export declare class AuthController {
             isActive: boolean;
             rate: import("@prisma/client/runtime/client").Decimal | null;
             sortOrder: number;
-        }[] | {
-            id: string;
-            companyId: string;
-            name: string;
-            createdAt: Date;
-            updatedAt: Date;
-            code: string | null;
-            isActive: boolean;
-            sortOrder: number;
-        }[] | {
-            id: string;
-            companyId: string;
-            name: string;
-            createdAt: Date;
-            updatedAt: Date;
-            code: string | null;
-            isActive: boolean;
-            sortOrder: number;
-            warehouseId: string;
         }[] | {
             id: string;
             companyId: string;

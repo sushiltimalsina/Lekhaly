@@ -8,6 +8,13 @@ export type InvoiceItemInput = {
   rate: number;
   taxCodeId?: string;
   taxCodeIds?: string[];
+  warehouseId?: string | null;
+  binId?: string | null;
+  batchNo?: string | null;
+  lotNo?: string | null;
+  expiryDate?: string | null;
+  expiryDateBs?: string | null;
+  serialNumbers?: string[];
 };
 
 export type InvoiceDraftInput = {

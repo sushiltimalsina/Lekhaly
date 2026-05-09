@@ -19,6 +19,62 @@ export class InventoryService {
     return this.getOrCreateSettings(user.companyId);
   }
 
+  private async ensureDefaultWarehouse(companyId: string, preferredId?: string | null) {
+    if (preferredId) {
+      const warehouse = await this.prisma.warehouse.findFirst({
+        where: { id: preferredId, companyId, isActive: true }
+      });
+      if (!warehouse) throw new BadRequestException("Default warehouse not found");
+      return warehouse.id;
+    }
+
+    const active = await this.prisma.warehouse.findFirst({
+      where: { companyId, isActive: true },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }]
+    });
+    if (active) return active.id;
+
+    const named = await this.prisma.warehouse.findFirst({
+      where: { companyId, name: "Main Warehouse" }
+    });
+    if (named) {
+      const updated = await this.prisma.warehouse.update({
+        where: { id: named.id },
+        data: { isActive: true }
+      });
+      return updated.id;
+    }
+
+    const created = await this.prisma.warehouse.create({
+      data: { companyId, name: "Main Warehouse", code: "MAIN", sortOrder: 0 }
+    });
+    return created.id;
+  }
+
+  private async ensureDefaultBin(companyId: string, warehouseId: string) {
+    const active = await this.prisma.warehouseBin.findFirst({
+      where: { companyId, warehouseId, isActive: true },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }]
+    });
+    if (active) return active.id;
+
+    const named = await this.prisma.warehouseBin.findFirst({
+      where: { companyId, warehouseId, name: "Default Bin" }
+    });
+    if (named) {
+      const updated = await this.prisma.warehouseBin.update({
+        where: { id: named.id },
+        data: { isActive: true }
+      });
+      return updated.id;
+    }
+
+    const created = await this.prisma.warehouseBin.create({
+      data: { companyId, warehouseId, name: "Default Bin", code: "DEFAULT", sortOrder: 0 }
+    });
+    return created.id;
+  }
+
   async updateSettings(user: AuthUser, input: {
     inventoryTrackingEnabled?: boolean;
     warehousesEnabled?: boolean;
@@ -39,14 +95,25 @@ export class InventoryService {
       ...input
     };
 
+    if (next.inventoryTrackingEnabled && (next.binsEnabled || next.requireWarehouseOnMovements || next.defaultWarehouseId)) {
+      next.warehousesEnabled = true;
+    }
     if (!next.warehousesEnabled) {
       next.binsEnabled = false;
       next.requireWarehouseOnMovements = false;
       next.defaultWarehouseId = null;
     }
     if (!next.inventoryTrackingEnabled) {
+      next.warehousesEnabled = false;
+      next.binsEnabled = false;
+      next.batchTrackingEnabled = false;
+      next.lotTrackingEnabled = false;
+      next.expiryTrackingEnabled = false;
+      next.serialTrackingEnabled = false;
+      next.kitsEnabled = false;
       next.allowNegativeStock = false;
       next.requireWarehouseOnMovements = false;
+      next.defaultWarehouseId = null;
     }
     if (!next.binsEnabled) {
       next.defaultWarehouseId = next.defaultWarehouseId ?? null;
@@ -54,11 +121,11 @@ export class InventoryService {
 
     await this.assertSettingsCanChange(user.companyId, current, next);
 
-    if (next.defaultWarehouseId) {
-      const warehouse = await this.prisma.warehouse.findFirst({
-        where: { id: next.defaultWarehouseId, companyId: user.companyId, isActive: true }
-      });
-      if (!warehouse) throw new BadRequestException("Default warehouse not found");
+    if (next.inventoryTrackingEnabled && next.warehousesEnabled) {
+      next.defaultWarehouseId = await this.ensureDefaultWarehouse(user.companyId, next.defaultWarehouseId);
+    }
+    if (next.inventoryTrackingEnabled && next.binsEnabled && next.defaultWarehouseId) {
+      await this.ensureDefaultBin(user.companyId, next.defaultWarehouseId);
     }
 
     return this.prisma.inventorySettings.upsert({
