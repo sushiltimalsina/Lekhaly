@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import * as React from "react";
 import PageHeader from "@/components/app/page-header";
@@ -12,6 +12,19 @@ import { Button } from "@lekhaly/ui";
 import { Printer, RefreshCw, AlertCircle, Package, ArrowUp, ArrowDown, FileDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getDateRange } from "@/lib/dates/ranges";
+
+function PolicyBadge({ enabled, label, offLabel = "Not required" }: { enabled: boolean; label: string; offLabel?: string }) {
+    return (
+        <span className={cn(
+            "inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold ring-1 ring-inset",
+            enabled
+                ? "bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-900/20 dark:text-emerald-300 dark:ring-emerald-500/20"
+                : "bg-slate-50 text-slate-500 ring-slate-200 dark:bg-slate-900/40 dark:text-slate-400 dark:ring-slate-800"
+        )}>
+            {enabled ? label : offLabel}
+        </span>
+    );
+}
 
 export default function StockLedgerPage() {
     const initialRange = getDateRange("this_year");
@@ -67,7 +80,37 @@ export default function StockLedgerPage() {
                 </div>
             )
         },
-        { key: "unit", header: "Unit", width: 100, cell: (r) => <span className="text-xs uppercase font-medium">{r.unit ?? "â€”"}</span> },
+        { key: "unit", header: "Unit", width: 100, cell: (r) => <span className="text-xs uppercase font-medium">{r.unit ?? "—"}</span> },
+        {
+            key: "trackingPolicy",
+            header: "Stock Tracking",
+            width: 140,
+            cell: (r) => <PolicyBadge enabled={r.type === "goods" && r.trackInventory !== false} label="Tracked" offLabel="Not tracked" />
+        },
+        {
+            key: "serialPolicy",
+            header: "Serial Numbers",
+            width: 140,
+            cell: (r) => <PolicyBadge enabled={Boolean(r.isSerialized)} label="Required" />
+        },
+        {
+            key: "batchPolicy",
+            header: "Batch Number",
+            width: 140,
+            cell: (r) => <PolicyBadge enabled={Boolean(r.tracksBatch)} label="Required" />
+        },
+        {
+            key: "lotPolicy",
+            header: "Lot Number",
+            width: 130,
+            cell: (r) => <PolicyBadge enabled={Boolean(r.tracksLot)} label="Required" />
+        },
+        {
+            key: "expiryPolicy",
+            header: "Expiry Date",
+            width: 130,
+            cell: (r) => <PolicyBadge enabled={Boolean(r.tracksExpiry)} label="Required" />
+        },
         {
             key: "opening",
             header: <span className="w-full block text-right">Opening</span>,
@@ -153,4 +196,3 @@ export default function StockLedgerPage() {
         </div>
     );
 }
-

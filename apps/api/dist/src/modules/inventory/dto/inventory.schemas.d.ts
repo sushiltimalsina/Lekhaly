@@ -21,6 +21,15 @@ export declare const StockQuerySchema: z.ZodObject<{
     from: z.ZodOptional<z.ZodCoercedDate<unknown>>;
     to: z.ZodOptional<z.ZodCoercedDate<unknown>>;
 }, z.core.$strip>;
+export declare const StockAgingQuerySchema: z.ZodObject<{
+    asOf: z.ZodOptional<z.ZodCoercedDate<unknown>>;
+    asOfBs: z.ZodOptional<z.ZodString>;
+    includeZero: z.ZodOptional<z.ZodCoercedBoolean<unknown>>;
+    valuationMethod: z.ZodOptional<z.ZodEnum<{
+        fifo: "fifo";
+        weighted_average: "weighted_average";
+    }>>;
+}, z.core.$strip>;
 export declare const StockTransferSchema: z.ZodObject<{
     itemId: z.ZodString;
     fromWarehouseId: z.ZodString;
@@ -56,8 +65,8 @@ export declare const InventorySettingsSchema: z.ZodObject<{
     requireWarehouseOnMovements: z.ZodOptional<z.ZodBoolean>;
     defaultWarehouseId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     costingMethod: z.ZodOptional<z.ZodEnum<{
-        moving_average: "moving_average";
         fifo: "fifo";
+        moving_average: "moving_average";
     }>>;
 }, z.core.$strip>;
 export declare const SerialQuerySchema: z.ZodObject<{

@@ -109,6 +109,7 @@ import RatiosPage from "@/pages/reports/ratios";
 import ReceivableSummaryPage from "@/pages/reports/receivable-summary";
 import SalesRegisterPage from "@/pages/reports/sales-register";
 import SalesReturnRegisterPage from "@/pages/reports/sales-return-register";
+import StockAgingReportPage from "@/pages/reports/stock-aging";
 import StockLedgerPage from "@/pages/reports/stock-ledger";
 import TaxSummaryPage from "@/pages/reports/tax-summary";
 import TrialBalanceReportPage from "@/pages/reports/trial-balance";
@@ -305,6 +306,7 @@ export default function App() {
                 <Route path="/reports/receivable-summary" element={<ReceivableSummaryPage />} />
                 <Route path="/reports/sales-register" element={<SalesRegisterPage />} />
                 <Route path="/reports/sales-return-register" element={<SalesReturnRegisterPage />} />
+                <Route path="/reports/stock-aging" element={<StockAgingReportPage />} />
                 <Route path="/reports/stock-ledger" element={<StockLedgerPage />} />
                 <Route path="/reports/tax-summary" element={<TaxSummaryPage />} />
                 <Route path="/reports/trial-balance" element={<TrialBalanceReportPage />} />

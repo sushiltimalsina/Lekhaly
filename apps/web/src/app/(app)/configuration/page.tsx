@@ -185,7 +185,28 @@ function ConfigurationContent() {
     setBusy(true);
     setError(null);
     try {
-      const res = await updateInventorySettings({ ...inventorySettings, ...updates });
+      const payload: Partial<InventorySettings> = { ...inventorySettings, ...updates };
+      if (updates.inventoryTrackingEnabled === false) {
+        payload.warehousesEnabled = false;
+        payload.binsEnabled = false;
+        payload.batchTrackingEnabled = false;
+        payload.lotTrackingEnabled = false;
+        payload.expiryTrackingEnabled = false;
+        payload.serialTrackingEnabled = false;
+        payload.kitsEnabled = false;
+        payload.allowNegativeStock = false;
+        payload.requireWarehouseOnMovements = false;
+        payload.defaultWarehouseId = null;
+      }
+      if (updates.warehousesEnabled === false) {
+        payload.binsEnabled = false;
+        payload.requireWarehouseOnMovements = false;
+        payload.defaultWarehouseId = null;
+      }
+      if (updates.binsEnabled === false) {
+        payload.binsEnabled = false;
+      }
+      const res = await updateInventorySettings(payload);
       const whRes = await listWarehouses({ isActive: true });
       setInventorySettings(res);
       window.dispatchEvent(new CustomEvent("inventory-settings-updated", { detail: res }));

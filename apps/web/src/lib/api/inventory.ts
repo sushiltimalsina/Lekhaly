@@ -9,6 +9,12 @@ export type StockReportRow = {
   hsCode?: string | null;
   unit?: string | null;
   type: "goods" | "services";
+  trackInventory?: boolean;
+  isSerialized?: boolean;
+  isKit?: boolean;
+  tracksBatch?: boolean;
+  tracksLot?: boolean;
+  tracksExpiry?: boolean;
   parentGroup: string;
   reorderLevel?: number;
   safetyStock?: number;
@@ -33,6 +39,55 @@ export type StockReportRow = {
 export async function getStockReport(query?: { from?: string; to?: string }) {
   return apiRequest<StockReportRow[]>({
     path: "/inventory/report",
+    query,
+  });
+}
+
+export type StockAgingBucketKey = "0-30" | "31-60" | "61-90" | "91-180" | "181-365" | "365+";
+
+export type StockAgingLayer = {
+  date: string;
+  dateBs?: string | null;
+  ageDays: number;
+  qty: number;
+  value: number;
+  rate: number;
+  warehouseName?: string | null;
+  binName?: string | null;
+  batchNo?: string | null;
+  lotNo?: string | null;
+  expiryDate?: string | null;
+  expiryDateBs?: string | null;
+};
+
+export type StockAgingRow = {
+  itemId: string;
+  name: string;
+  sku?: string | null;
+  unit?: string | null;
+  group?: string | null;
+  isSerialized?: boolean;
+  isKit?: boolean;
+  tracksBatch?: boolean;
+  tracksLot?: boolean;
+  tracksExpiry?: boolean;
+  valuationMethod?: "fifo" | "weighted_average";
+  totalQty: number;
+  totalValue: number;
+  avgAgeDays: number;
+  oldestAgeDays: number;
+  buckets: Record<StockAgingBucketKey, { qty: number; value: number }>;
+  layers: StockAgingLayer[];
+};
+
+export type StockAgingReport = {
+  meta: { asOf: string; asOfBs?: string | null; valuationMethod?: "fifo" | "weighted_average"; buckets: StockAgingBucketKey[] };
+  rows: StockAgingRow[];
+};
+
+export async function getStockAgingReport(query?: { asOf?: string; asOfBs?: string; includeZero?: boolean; valuationMethod?: "fifo" | "weighted_average" }) {
+  return apiRequest<StockAgingReport>({
+    path: "/inventory/stock-aging",
     query,
   });
 }

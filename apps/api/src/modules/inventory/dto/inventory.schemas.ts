@@ -35,6 +35,13 @@ export const StockQuerySchema = z.object({
   to: z.coerce.date().optional()
 });
 
+export const StockAgingQuerySchema = z.object({
+  asOf: z.coerce.date().optional(),
+  asOfBs: z.string().trim().max(20).optional(),
+  includeZero: z.coerce.boolean().optional(),
+  valuationMethod: z.enum(["fifo", "weighted_average"]).optional()
+});
+
 export const StockTransferSchema = z.object({
   itemId: z.string().uuid(),
   fromWarehouseId: z.string().uuid(),

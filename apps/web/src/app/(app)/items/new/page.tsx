@@ -24,7 +24,6 @@ type ItemType = "goods" | "services";
 type TaxCode = { id: string; name: string; rate: number };
 type SimpleItem = { id: string; name: string; sku?: string; unit?: string };
 type BomLine = { componentId: string; componentName: string; qty: number };
-type Tab = "basic" | "pricing" | "inventory" | "accounting";
 
 export default function NewItemPage() {
   const router = useRouter();
@@ -39,7 +38,6 @@ export default function NewItemPage() {
   const [inventorySettings, setInventorySettings] = React.useState<InventorySettings | null>(null);
   const [addUnitOpen, setAddUnitOpen] = React.useState(false);
   const [addGroupOpen, setAddGroupOpen] = React.useState(false);
-  const [activeTab, setActiveTab] = React.useState<Tab>("basic");
 
   // BOM builder state
   const [bomLines, setBomLines] = React.useState<BomLine[]>([]);
@@ -139,7 +137,6 @@ export default function NewItemPage() {
   const features = inventoryFeatures(inventorySettings);
   const goodsInventoryEnabled = form.type === "goods" && features.inventory;
   const effectiveTrackInventory = goodsInventoryEnabled && form.trackInventory;
-  const showInventoryTab = features.inventory;
   const showOpeningStock = effectiveTrackInventory;
   const showAdvancedPolicies = hasItemPolicyTracking(features);
 
@@ -166,10 +163,6 @@ export default function NewItemPage() {
   React.useEffect(() => {
     if (!features.kits || !form.isKit) setBomLines([]);
   }, [features.kits, form.isKit]);
-
-  React.useEffect(() => {
-    if (!showInventoryTab && activeTab === "inventory") setActiveTab("basic");
-  }, [showInventoryTab, activeTab]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -215,15 +208,8 @@ export default function NewItemPage() {
     }
   };
 
-  const TABS = ([
-    { key: "basic", label: "Basic Info", icon: Package },
-    { key: "pricing", label: "Pricing", icon: DollarSign },
-    { key: "inventory", label: "Inventory Controls", icon: Layers },
-    { key: "accounting", label: "Accounting & Tax", icon: BookOpen },
-  ] as Array<{ key: Tab; label: string; icon: any }>).filter((tab) => tab.key !== "inventory" || showInventoryTab);
-
   return (
-    <div className="space-y-8 pb-24">
+    <div className="mx-auto max-w-5xl space-y-8 pb-24">
       <PageHeader
         title="Add New Item"
         description="Create a goods or services item with full inventory and accounting setup."
@@ -235,33 +221,12 @@ export default function NewItemPage() {
         }
       />
 
-      {/* Tab Nav */}
-      <div className="flex gap-1 rounded-2xl bg-muted/40 p-1 w-fit">
-        {TABS.map(({ key, label, icon: Icon }) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setActiveTab(key)}
-            className={cn(
-              "flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all",
-              activeTab === key
-                ? "bg-background shadow text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <Icon className="h-4 w-4" />
-            {label}
-          </button>
-        ))}
-      </div>
-
-      <form onSubmit={onSubmit} className="space-y-6">
+      <form onSubmit={onSubmit} className="space-y-8">
         {/* BASIC INFO */}
-        {activeTab === "basic" && (
-          <div className="grid gap-6 lg:grid-cols-2">
-            <section className="rounded-2xl border bg-card p-6 shadow-sm space-y-5 lg:col-span-2">
+        <div className="grid gap-6">
+          <section className="rounded-2xl border bg-card p-6 shadow-sm space-y-5">
               <SectionHeader icon={Package} title="Item Details" desc="Core identification info for this item." />
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-4">
                 <Field label="Item Name *">
                   <Input value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="e.g. Premium Ledger Paper" required />
                 </Field>
@@ -288,21 +253,19 @@ export default function NewItemPage() {
                     {(["goods", "services"] as const).map((t) => (
                       <button key={t} type="button" onClick={() => update("type", t)}
                         className={cn("rounded-xl border px-4 py-2 text-xs font-semibold transition-all", form.type === t ? "border-emerald-500 bg-emerald-600 text-white shadow-lg shadow-emerald-500/20" : "bg-background hover:bg-muted")}>
-                        {t === "goods" ? "📦 Goods" : "⚙️ Services"}
+                        {t === "goods" ? "Goods" : "Services"}
                       </button>
                     ))}
                   </div>
                 </Field>
               </div>
-            </section>
-          </div>
-        )}
+          </section>
+        </div>
 
         {/* PRICING */}
-        {activeTab === "pricing" && (
-          <section className="rounded-2xl border bg-card p-6 shadow-sm space-y-5">
+        <section className="rounded-2xl border bg-card p-6 shadow-sm space-y-5">
             <SectionHeader icon={DollarSign} title="Pricing & Opening Balance" desc="Set default prices and initial stock values." />
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4">
               <Field label="Sales Price">
                 <Input type="number" min="0" step="0.01" value={form.salesPrice} onChange={(e) => update("salesPrice", e.target.value)} placeholder="0.00" />
               </Field>
@@ -325,16 +288,15 @@ export default function NewItemPage() {
                 Opening Amount: <span className="font-black text-emerald-700 dark:text-emerald-400">{(Number(form.openingQty) * Number(form.openingPrice || 0)).toFixed(2)}</span>
               </div>
             )}
-          </section>
-        )}
+        </section>
 
         {/* INVENTORY CONTROLS */}
-        {activeTab === "inventory" && (
+        {features.inventory && (
           <div className="space-y-6">
             {goodsInventoryEnabled && (
               <section className="rounded-2xl border bg-card p-6 shadow-sm space-y-5">
                 <SectionHeader icon={AlertTriangle} title="Reorder & Low Stock Alerts" desc="Set thresholds to trigger automatic low-stock warnings." />
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4">
                   <Field label="Minimum Stock Level" hint="Alert shows when stock drops below this">
                     <Input type="number" min="0" step="0.01" value={form.minStockLevel} onChange={(e) => update("minStockLevel", e.target.value)} placeholder="e.g. 10" />
                   </Field>
@@ -460,8 +422,7 @@ export default function NewItemPage() {
         )}
 
         {/* ACCOUNTING */}
-        {activeTab === "accounting" && (
-          <section className="rounded-2xl border bg-card p-6 shadow-sm space-y-5">
+        <section className="rounded-2xl border bg-card p-6 shadow-sm space-y-5">
             <SectionHeader icon={BookOpen} title="Accounting & Tax" desc="Link this item to Chart of Accounts and configure tax." />
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Income Account ID">
@@ -501,8 +462,7 @@ export default function NewItemPage() {
                 </div>
               )}
             </div>
-          </section>
-        )}
+        </section>
 
         {/* Footer */}
         <div className="sticky bottom-0 flex items-center justify-between gap-4 rounded-2xl border bg-background/80 backdrop-blur px-6 py-4 shadow-xl">

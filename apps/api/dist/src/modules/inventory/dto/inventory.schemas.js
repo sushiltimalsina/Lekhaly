@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SerialQuerySchema = exports.InventorySettingsSchema = exports.InventoryAlertsQuerySchema = exports.StockTransferSchema = exports.StockQuerySchema = exports.StockAdjustmentSchema = void 0;
+exports.SerialQuerySchema = exports.InventorySettingsSchema = exports.InventoryAlertsQuerySchema = exports.StockTransferSchema = exports.StockAgingQuerySchema = exports.StockQuerySchema = exports.StockAdjustmentSchema = void 0;
 const zod_1 = require("zod");
 exports.StockAdjustmentSchema = zod_1.z.object({
     itemId: zod_1.z.string().uuid(),
@@ -34,6 +34,12 @@ exports.StockAdjustmentSchema = zod_1.z.object({
 exports.StockQuerySchema = zod_1.z.object({
     from: zod_1.z.coerce.date().optional(),
     to: zod_1.z.coerce.date().optional()
+});
+exports.StockAgingQuerySchema = zod_1.z.object({
+    asOf: zod_1.z.coerce.date().optional(),
+    asOfBs: zod_1.z.string().trim().max(20).optional(),
+    includeZero: zod_1.z.coerce.boolean().optional(),
+    valuationMethod: zod_1.z.enum(["fifo", "weighted_average"]).optional()
 });
 exports.StockTransferSchema = zod_1.z.object({
     itemId: zod_1.z.string().uuid(),

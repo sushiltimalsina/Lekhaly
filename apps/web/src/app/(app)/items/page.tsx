@@ -43,6 +43,11 @@ type StockColumnKey =
   | "type"
   | "parentGroup"
   | "unit"
+  | "trackingPolicy"
+  | "serialPolicy"
+  | "batchPolicy"
+  | "lotPolicy"
+  | "expiryPolicy"
   | "onHandQty"
   | "reservedQty"
   | "availableQty"
@@ -69,6 +74,11 @@ const STOCK_COLUMN_OPTIONS: { key: StockColumnKey; label: string; defaultVisible
   { key: "type", label: "Type", defaultVisible: true },
   { key: "parentGroup", label: "Group", defaultVisible: true },
   { key: "unit", label: "Unit", defaultVisible: true },
+  { key: "trackingPolicy", label: "Stock Tracking", defaultVisible: false },
+  { key: "serialPolicy", label: "Serial Numbers", defaultVisible: false },
+  { key: "batchPolicy", label: "Batch Number", defaultVisible: false },
+  { key: "lotPolicy", label: "Lot Number", defaultVisible: false },
+  { key: "expiryPolicy", label: "Expiry Date", defaultVisible: false },
   { key: "onHandQty", label: "On Hand", defaultVisible: false },
   { key: "reservedQty", label: "Reserved", defaultVisible: false },
   { key: "availableQty", label: "Available", defaultVisible: false },
@@ -209,6 +219,21 @@ function toIsoDate(date: Date) {
 function n(v: unknown) {
   const x = Number(v ?? 0);
   return Number.isFinite(x) ? x : 0;
+}
+
+function PolicyBadge({ enabled, label, offLabel = "Not required" }: { enabled: boolean; label: string; offLabel?: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold ring-1 ring-inset",
+        enabled
+          ? "bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-900/20 dark:text-emerald-300 dark:ring-emerald-500/20"
+          : "bg-slate-50 text-slate-500 ring-slate-200 dark:bg-slate-900/40 dark:text-slate-400 dark:ring-slate-800"
+      )}
+    >
+      {enabled ? label : offLabel}
+    </span>
+  );
 }
 
 function normalizeStockRow(r: ItemRow): ItemRow {
@@ -834,6 +859,36 @@ export default function ItemsPage() {
       cell: (r) => <div className="text-muted-foreground">{r.unit ?? "—"}</div>,
       width: 100
     },
+    trackingPolicy: {
+      key: "trackingPolicy",
+      header: "Stock Tracking",
+      cell: (r) => <PolicyBadge enabled={r.type === "goods" && r.trackInventory !== false} label="Tracked" offLabel="Not tracked" />,
+      width: 140
+    },
+    serialPolicy: {
+      key: "serialPolicy",
+      header: "Serial Numbers",
+      cell: (r) => <PolicyBadge enabled={Boolean(r.isSerialized)} label="Required" />,
+      width: 140
+    },
+    batchPolicy: {
+      key: "batchPolicy",
+      header: "Batch Number",
+      cell: (r) => <PolicyBadge enabled={Boolean(r.tracksBatch)} label="Required" />,
+      width: 140
+    },
+    lotPolicy: {
+      key: "lotPolicy",
+      header: "Lot Number",
+      cell: (r) => <PolicyBadge enabled={Boolean(r.tracksLot)} label="Required" />,
+      width: 130
+    },
+    expiryPolicy: {
+      key: "expiryPolicy",
+      header: "Expiry Date",
+      cell: (r) => <PolicyBadge enabled={Boolean(r.tracksExpiry)} label="Required" />,
+      width: 130
+    },
     onHandQty: {
       key: "onHandQty",
       header: "On Hand",
@@ -1131,6 +1186,11 @@ export default function ItemsPage() {
           case "type": return r.type;
           case "parentGroup": return r.parentGroup ?? "";
           case "unit": return r.unit ?? "";
+          case "trackingPolicy": return r.type === "goods" && r.trackInventory !== false ? "Tracked" : "Not tracked";
+          case "serialPolicy": return r.isSerialized ? "Required" : "Not required";
+          case "batchPolicy": return r.tracksBatch ? "Required" : "Not required";
+          case "lotPolicy": return r.tracksLot ? "Required" : "Not required";
+          case "expiryPolicy": return r.tracksExpiry ? "Required" : "Not required";
           case "onHandQty": return Number(r.onHandQty ?? 0);
           case "reservedQty": return Number(r.reservedQty ?? 0);
           case "availableQty": return Number(r.availableQty ?? 0);
@@ -2146,9 +2206,9 @@ export default function ItemsPage() {
                 <option value="">Select offset account</option>
                 {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
-              {features.batch && <Input placeholder="Batch no (optional)" value={adjustForm.batchNo} onChange={(e) => setAdjustForm((p) => ({ ...p, batchNo: e.target.value }))} />}
-              {features.lot && <Input placeholder="Lot no (optional)" value={adjustForm.lotNo} onChange={(e) => setAdjustForm((p) => ({ ...p, lotNo: e.target.value }))} />}
-              {features.expiry && <Input placeholder="Expiry (YYYY-MM-DD, optional)" value={adjustForm.expiryDate} onChange={(e) => setAdjustForm((p) => ({ ...p, expiryDate: e.target.value }))} />}
+              {features.batch && <Input placeholder="Batch Number (optional)" value={adjustForm.batchNo} onChange={(e) => setAdjustForm((p) => ({ ...p, batchNo: e.target.value }))} />}
+              {features.lot && <Input placeholder="Lot Number (optional)" value={adjustForm.lotNo} onChange={(e) => setAdjustForm((p) => ({ ...p, lotNo: e.target.value }))} />}
+              {features.expiry && <Input placeholder="Expiry Date (YYYY-MM-DD, optional)" value={adjustForm.expiryDate} onChange={(e) => setAdjustForm((p) => ({ ...p, expiryDate: e.target.value }))} />}
               <Input placeholder="Memo (optional)" value={adjustForm.memo} onChange={(e) => setAdjustForm((p) => ({ ...p, memo: e.target.value }))} />
               {features.negativeStock && <label className="flex items-center gap-2 text-sm sm:col-span-2">
                 <input type="checkbox" checked={adjustForm.allowNegativeOverride} onChange={(e) => setAdjustForm((p) => ({ ...p, allowNegativeOverride: e.target.checked }))} />
@@ -2186,9 +2246,9 @@ export default function ItemsPage() {
               {features.bins && <Input placeholder="To bin ID (optional)" value={transferForm.toBinId} onChange={(e) => setTransferForm((p) => ({ ...p, toBinId: e.target.value }))} />}
               <Input placeholder="Quantity" value={transferForm.qty} onChange={(e) => setTransferForm((p) => ({ ...p, qty: e.target.value }))} />
               <Input placeholder="Rate (optional)" value={transferForm.rate} onChange={(e) => setTransferForm((p) => ({ ...p, rate: e.target.value }))} />
-              {features.batch && <Input placeholder="Batch no (optional)" value={transferForm.batchNo} onChange={(e) => setTransferForm((p) => ({ ...p, batchNo: e.target.value }))} />}
-              {features.lot && <Input placeholder="Lot no (optional)" value={transferForm.lotNo} onChange={(e) => setTransferForm((p) => ({ ...p, lotNo: e.target.value }))} />}
-              {features.expiry && <Input placeholder="Expiry (YYYY-MM-DD, optional)" value={transferForm.expiryDate} onChange={(e) => setTransferForm((p) => ({ ...p, expiryDate: e.target.value }))} />}
+              {features.batch && <Input placeholder="Batch Number (optional)" value={transferForm.batchNo} onChange={(e) => setTransferForm((p) => ({ ...p, batchNo: e.target.value }))} />}
+              {features.lot && <Input placeholder="Lot Number (optional)" value={transferForm.lotNo} onChange={(e) => setTransferForm((p) => ({ ...p, lotNo: e.target.value }))} />}
+              {features.expiry && <Input placeholder="Expiry Date (YYYY-MM-DD, optional)" value={transferForm.expiryDate} onChange={(e) => setTransferForm((p) => ({ ...p, expiryDate: e.target.value }))} />}
               <Input placeholder="Memo (optional)" value={transferForm.memo} onChange={(e) => setTransferForm((p) => ({ ...p, memo: e.target.value }))} />
             </div>
             <div className="mt-4 flex justify-end">
@@ -2220,13 +2280,16 @@ export default function ItemsPage() {
                     <th className="p-2 text-right">Out</th>
                     <th className="p-2 text-right">Rate</th>
                     <th className="p-2 text-right">Amount</th>
+                    <th className="p-2 text-left">Batch Number</th>
+                    <th className="p-2 text-left">Lot Number</th>
+                    <th className="p-2 text-left">Expiry Date</th>
                   </tr>
                 </thead>
                 <tbody>
                   {ledgerLoading ? (
-                    <tr><td className="p-3 text-center text-muted-foreground" colSpan={6}>Loading…</td></tr>
+                    <tr><td className="p-3 text-center text-muted-foreground" colSpan={9}>Loading…</td></tr>
                   ) : ledgerEntries.length === 0 ? (
-                    <tr><td className="p-3 text-center text-muted-foreground" colSpan={6}>No movements found.</td></tr>
+                    <tr><td className="p-3 text-center text-muted-foreground" colSpan={9}>No movements found.</td></tr>
                   ) : ledgerEntries.map((entry) => (
                     <tr key={entry.id} className="border-t border-slate-200 dark:border-slate-800">
                       <td className="p-2">{String(entry.date).slice(0, 10)}</td>
@@ -2238,6 +2301,9 @@ export default function ItemsPage() {
                       <td className="p-2 text-right mono-numbers">{entry.qtyOut || 0}</td>
                       <td className="p-2 text-right mono-numbers">{entry.rate || 0}</td>
                       <td className="p-2 text-right mono-numbers">{entry.amount || 0}</td>
+                      <td className="p-2">{entry.batchNo || "—"}</td>
+                      <td className="p-2">{entry.lotNo || "—"}</td>
+                      <td className="p-2">{entry.expiryDate ? String(entry.expiryDate).slice(0, 10) : "—"}</td>
                     </tr>
                   ))}
                 </tbody>

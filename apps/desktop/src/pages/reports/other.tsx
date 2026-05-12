@@ -47,6 +47,7 @@ const reports = [
             { label: "Day Book", href: "/reports/day-book", icon: BookOpen, description: "View daily transaction entries chronologically." },
             { label: "Expenses Details", href: "/reports/expenses-details", icon: List, description: "Breakdown of all operational expenses." },
             { label: "Stock Ledger", href: "/reports/stock-ledger", icon: Package, description: "Item-wise stock movement and balances." },
+            { label: "Stock Aging Report", href: "/reports/stock-aging", icon: Package, description: "Aged stock quantity and value in Nepal reporting buckets." },
         ]
     },
     {
@@ -73,6 +74,7 @@ export default function OtherReportsPage() {
         ...group,
         items: group.items.filter(item =>
             (item.href !== "/reports/stock-ledger" || features.inventory) &&
+            (item.href !== "/reports/stock-aging" || features.inventory) &&
             (item.label.toLowerCase().includes(search.toLowerCase()) ||
             item.description.toLowerCase().includes(search.toLowerCase()))
         )

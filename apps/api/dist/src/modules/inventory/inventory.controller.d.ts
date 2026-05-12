@@ -7,6 +7,8 @@ export declare class InventoryController {
     updateSettings(user: AuthUser, body: any): Promise<{
         id: string;
         companyId: string;
+        createdAt: Date;
+        updatedAt: Date;
         inventoryTrackingEnabled: boolean;
         warehousesEnabled: boolean;
         binsEnabled: boolean;
@@ -19,8 +21,6 @@ export declare class InventoryController {
         requireWarehouseOnMovements: boolean;
         defaultWarehouseId: string | null;
         costingMethod: string;
-        createdAt: Date;
-        updatedAt: Date;
     }>;
     serials(user: AuthUser, query: any): Promise<({
         item: {
@@ -39,12 +39,12 @@ export declare class InventoryController {
     } & {
         id: string;
         companyId: string;
+        status: string;
         createdAt: Date;
         updatedAt: Date;
         itemId: string;
         warehouseId: string | null;
         binId: string | null;
-        status: string;
         serialNo: string;
         purchaseInvoiceId: string | null;
         salesInvoiceId: string | null;
@@ -61,6 +61,11 @@ export declare class InventoryController {
         unit: string | null;
         type: any;
         trackInventory: boolean;
+        isSerialized: boolean;
+        isKit: boolean;
+        tracksBatch: boolean;
+        tracksLot: boolean;
+        tracksExpiry: boolean;
         parentGroup: string;
         reorderLevel: number;
         safetyStock: number;
@@ -81,6 +86,59 @@ export declare class InventoryController {
         closingPrice: number;
         closingAmt: number;
     }[]>;
+    stockAging(user: AuthUser, query: any): Promise<{
+        meta: {
+            asOf: Date;
+            asOfBs: string | null;
+            valuationMethod: "fifo" | "weighted_average";
+            buckets: string[];
+        };
+        rows: never[];
+    } | {
+        meta: {
+            asOf: Date;
+            asOfBs: string | null;
+            valuationMethod: "fifo" | "weighted_average";
+            buckets: ("0-30" | "31-60" | "61-90" | "91-180" | "181-365" | "365+")[];
+        };
+        rows: {
+            itemId: string;
+            name: string;
+            sku: string | null;
+            unit: string | null;
+            group: string | null;
+            isSerialized: boolean;
+            isKit: boolean;
+            tracksBatch: boolean;
+            tracksLot: boolean;
+            tracksExpiry: boolean;
+            valuationMethod: "fifo" | "weighted_average";
+            totalQty: number;
+            totalValue: number;
+            avgAgeDays: number;
+            oldestAgeDays: number;
+            buckets: {
+                [k: string]: {
+                    qty: number;
+                    value: number;
+                };
+            };
+            layers: {
+                date: Date;
+                dateBs: string | null;
+                ageDays: number;
+                qty: number;
+                value: number;
+                rate: number;
+                warehouseName: string | null;
+                binName: string | null;
+                batchNo: string | null;
+                lotNo: string | null;
+                expiryDate: Date | null;
+                expiryDateBs: string | null;
+            }[];
+        }[];
+    }>;
     transfer(user: AuthUser, body: any): Promise<{
         ok: boolean;
         voucherId: string;
@@ -111,10 +169,10 @@ export declare class InventoryController {
         }[];
         expiringSoon: {
             qty: number;
-            itemId: string;
             batchNo: string | null;
             lotNo: string | null;
             expiryDate: Date | null;
+            itemId: string;
             _sum: {
                 qtyIn: import("@prisma/client/runtime/client").Decimal | null;
                 qtyOut: import("@prisma/client/runtime/client").Decimal | null;

@@ -128,8 +128,8 @@ export default function StockAdjustPage() {
               </div>
             )}
             <div className="grid gap-4 sm:grid-cols-3">
-              {features.batch && <Input placeholder={selectedItem?.tracksBatch ? "Batch No. *" : "Batch No."} value={batchNo} onChange={(e) => setBatchNo(e.target.value)} className="rounded-xl" />}
-              {features.lot && <Input placeholder={selectedItem?.tracksLot ? "Lot No. *" : "Lot No."} value={lotNo} onChange={(e) => setLotNo(e.target.value)} className="rounded-xl" />}
+              {features.batch && <Input placeholder={selectedItem?.tracksBatch ? "Batch Number *" : "Batch Number"} value={batchNo} onChange={(e) => setBatchNo(e.target.value)} className="rounded-xl" />}
+              {features.lot && <Input placeholder={selectedItem?.tracksLot ? "Lot Number *" : "Lot Number"} value={lotNo} onChange={(e) => setLotNo(e.target.value)} className="rounded-xl" />}
               {features.expiry && <Input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} className="rounded-xl" />}
             </div>
             {selectedItem?.isSerialized && features.serial && <div><label className="text-xs font-medium text-muted-foreground mb-1.5 block">Serial Numbers *</label><textarea value={serialText} onChange={(e) => setSerialText(e.target.value)} placeholder="One serial per line, or comma separated" className="min-h-24 w-full rounded-xl border bg-background px-3 py-2 text-sm" /></div>}
@@ -162,3 +162,4 @@ export default function StockAdjustPage() {
     </div>
   );
 }
+

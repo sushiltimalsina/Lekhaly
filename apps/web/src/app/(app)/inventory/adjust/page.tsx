@@ -386,9 +386,9 @@ export default function StockAdjustPage() {
                 </div>
               )}
               <div className="grid gap-4 sm:grid-cols-3">
-                {features.batch && <Input placeholder={selectedItem?.tracksBatch ? "Batch No. *" : "Batch No."} value={batchNo} onChange={(e) => setBatchNo(e.target.value)} className="rounded-xl" />}
-                {features.lot && <Input placeholder={selectedItem?.tracksLot ? "Lot No. *" : "Lot No."} value={lotNo} onChange={(e) => setLotNo(e.target.value)} className="rounded-xl" />}
-                {features.expiry && <Input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} className="rounded-xl" />}
+                {features.batch && <Input placeholder={selectedItem?.tracksBatch ? "Batch Number *" : "Batch Number"} value={batchNo} onChange={(e) => setBatchNo(e.target.value)} className="rounded-xl" />}
+                {features.lot && <Input placeholder={selectedItem?.tracksLot ? "Lot Number *" : "Lot Number"} value={lotNo} onChange={(e) => setLotNo(e.target.value)} className="rounded-xl" />}
+                {features.expiry && <Input type="date" aria-label="Expiry Date" title="Expiry Date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} className="rounded-xl" />}
               </div>
               {selectedItem?.isSerialized && features.serial && (
                 <div>

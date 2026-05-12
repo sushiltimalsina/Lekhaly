@@ -13,7 +13,8 @@ import {
   ArrowRight,
   FileSpreadsheet,
   FileText,
-  History
+  History,
+  Package
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -66,6 +67,14 @@ const reports = [
     icon: History,
     color: "text-pink-600 dark:text-pink-400",
     bg: "bg-pink-500/10"
+  },
+  {
+    title: "Stock Aging",
+    desc: "Nepal-format inventory aging by FIFO stock layers and value buckets.",
+    href: "/reports/stock-aging",
+    icon: Package,
+    color: "text-cyan-700 dark:text-cyan-300",
+    bg: "bg-cyan-500/10"
   },
 ];
 

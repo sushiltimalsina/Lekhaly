@@ -95,7 +95,24 @@ export class InventoryService {
       ...input
     };
 
-    if (next.inventoryTrackingEnabled && (next.binsEnabled || next.requireWarehouseOnMovements || next.defaultWarehouseId)) {
+    if (input.inventoryTrackingEnabled === false) {
+      next.warehousesEnabled = false;
+      next.binsEnabled = false;
+      next.batchTrackingEnabled = false;
+      next.lotTrackingEnabled = false;
+      next.expiryTrackingEnabled = false;
+      next.serialTrackingEnabled = false;
+      next.kitsEnabled = false;
+      next.allowNegativeStock = false;
+      next.requireWarehouseOnMovements = false;
+      next.defaultWarehouseId = null;
+    }
+    if (input.warehousesEnabled === false) {
+      next.binsEnabled = false;
+      next.requireWarehouseOnMovements = false;
+      next.defaultWarehouseId = null;
+    }
+    if (next.inventoryTrackingEnabled && input.warehousesEnabled !== false && (next.binsEnabled || next.requireWarehouseOnMovements || next.defaultWarehouseId)) {
       next.warehousesEnabled = true;
     }
     if (!next.warehousesEnabled) {
@@ -683,6 +700,11 @@ export class InventoryService {
           unit: item.unit,
           type: (item as any).type ?? "services",
           trackInventory: Boolean((item as any).trackInventory),
+          isSerialized: Boolean((item as any).isSerialized),
+          isKit: Boolean((item as any).isKit),
+          tracksBatch: Boolean((item as any).tracksBatch),
+          tracksLot: Boolean((item as any).tracksLot),
+          tracksExpiry: Boolean((item as any).tracksExpiry),
           parentGroup: item.group?.name ?? item.incomeAccount?.name ?? item.expenseAccount?.name ?? "—",
           reorderLevel: Number((item as any).reorderLevel ?? 0),
           safetyStock: Number((item as any).safetyStock ?? 0),
@@ -736,6 +758,11 @@ export class InventoryService {
         unit: item.unit,
         type: (item as any).type ?? "goods",
         trackInventory: Boolean((item as any).trackInventory),
+        isSerialized: Boolean((item as any).isSerialized),
+        isKit: Boolean((item as any).isKit),
+        tracksBatch: Boolean((item as any).tracksBatch),
+        tracksLot: Boolean((item as any).tracksLot),
+        tracksExpiry: Boolean((item as any).tracksExpiry),
         parentGroup: item.group?.name ?? item.incomeAccount?.name ?? item.expenseAccount?.name ?? "—",
         reorderLevel,
         safetyStock,
@@ -757,6 +784,187 @@ export class InventoryService {
         closingAmt: Number(closingAmt.toString())
       };
     });
+  }
+
+  async getStockAgingReport(user: AuthUser, filters: { asOf?: Date; asOfBs?: string; includeZero?: boolean; valuationMethod?: "fifo" | "weighted_average" }) {
+    const settings = await this.getOrCreateSettings(user.companyId);
+    const asOf = filters.asOf ? new Date(filters.asOf) : new Date();
+    asOf.setHours(23, 59, 59, 999);
+    const valuationMethod =
+      filters.valuationMethod ?? (settings.costingMethod === "moving_average" ? "weighted_average" : "fifo");
+
+    if (!settings.inventoryTrackingEnabled) {
+      return {
+        meta: { asOf, asOfBs: filters.asOfBs ?? null, valuationMethod, buckets: ["0-30", "31-60", "61-90", "91-180", "181-365", "365+"] },
+        rows: []
+      };
+    }
+
+    const [items, entries] = await Promise.all([
+      this.prisma.item.findMany({
+        where: {
+          companyId: user.companyId,
+          type: "goods",
+          trackInventory: { not: false }
+        },
+        orderBy: { name: "asc" },
+        include: { group: { select: { name: true } } }
+      }),
+      this.prisma.stockLedger.findMany({
+        where: { companyId: user.companyId, date: { lte: asOf } },
+        orderBy: [{ date: "asc" }, { createdAt: "asc" }],
+        include: {
+          item: { select: { id: true, name: true, sku: true, unit: true } },
+          warehouse: { select: { name: true, code: true } },
+          bin: { select: { name: true, code: true } }
+        }
+      })
+    ]);
+
+    type BucketKey = "0-30" | "31-60" | "61-90" | "91-180" | "181-365" | "365+";
+    type Layer = {
+      date: Date;
+      dateBs: string | null;
+      qty: number;
+      value: number;
+      rate: number;
+      warehouseName: string | null;
+      binName: string | null;
+      batchNo: string | null;
+      lotNo: string | null;
+      expiryDate: Date | null;
+      expiryDateBs: string | null;
+    };
+
+    const bucketKeys: BucketKey[] = ["0-30", "31-60", "61-90", "91-180", "181-365", "365+"];
+    const bucketForAge = (ageDays: number): BucketKey => {
+      if (ageDays <= 30) return "0-30";
+      if (ageDays <= 60) return "31-60";
+      if (ageDays <= 90) return "61-90";
+      if (ageDays <= 180) return "91-180";
+      if (ageDays <= 365) return "181-365";
+      return "365+";
+    };
+
+    const layersByItem = new Map<string, Layer[]>();
+    const getLayers = (itemId: string) => {
+      const current = layersByItem.get(itemId);
+      if (current) return current;
+      const next: Layer[] = [];
+      layersByItem.set(itemId, next);
+      return next;
+    };
+
+    for (const entry of entries) {
+      const layers = getLayers(entry.itemId);
+      const qtyIn = Number(entry.qtyIn.toString());
+      const qtyOut = Number(entry.qtyOut.toString());
+      const amount = Number(entry.amount.toString());
+      const rate = Number(entry.rate.toString());
+
+      if (qtyIn > 0) {
+        layers.push({
+          date: entry.date,
+          dateBs: entry.dateBs ?? null,
+          qty: qtyIn,
+          value: amount,
+          rate,
+          warehouseName: entry.warehouse?.name ?? null,
+          binName: entry.bin?.name ?? null,
+          batchNo: entry.batchNo ?? null,
+          lotNo: entry.lotNo ?? null,
+          expiryDate: entry.expiryDate ?? null,
+          expiryDateBs: entry.expiryDateBs ?? null
+        });
+      }
+
+      if (qtyOut > 0) {
+        let remainingOut = qtyOut;
+        for (const layer of layers) {
+          if (remainingOut <= 0) break;
+          if (layer.qty <= 0) continue;
+          const consumed = Math.min(layer.qty, remainingOut);
+          const valuePerUnit = layer.qty === 0 ? 0 : layer.value / layer.qty;
+          layer.qty -= consumed;
+          layer.value -= consumed * valuePerUnit;
+          remainingOut -= consumed;
+        }
+      }
+    }
+
+    const millisPerDay = 24 * 60 * 60 * 1000;
+    const rows = items.map((item) => {
+      const itemLayers = (layersByItem.get(item.id) ?? []).filter((layer) => layer.qty > 0.000001);
+      const fifoTotalQty = itemLayers.reduce((sum, layer) => sum + layer.qty, 0);
+      const fifoTotalValue = itemLayers.reduce((sum, layer) => sum + layer.value, 0);
+      const weightedAverageRate = fifoTotalQty > 0 ? fifoTotalValue / fifoTotalQty : 0;
+      const buckets = bucketKeys.reduce<Record<BucketKey, { qty: number; value: number }>>((acc, key) => {
+        acc[key] = { qty: 0, value: 0 };
+        return acc;
+      }, {} as Record<BucketKey, { qty: number; value: number }>);
+
+      let totalQty = 0;
+      let totalValue = 0;
+      let weightedAge = 0;
+      let oldestAgeDays = 0;
+
+      const layers = itemLayers.map((layer) => {
+        const ageDays = Math.max(0, Math.floor((asOf.getTime() - layer.date.getTime()) / millisPerDay));
+        const bucket = bucketForAge(ageDays);
+        const layerValue = valuationMethod === "weighted_average" ? layer.qty * weightedAverageRate : layer.value;
+        buckets[bucket].qty += layer.qty;
+        buckets[bucket].value += layerValue;
+        totalQty += layer.qty;
+        totalValue += layerValue;
+        weightedAge += layer.qty * ageDays;
+        oldestAgeDays = Math.max(oldestAgeDays, ageDays);
+        return {
+          date: layer.date,
+          dateBs: layer.dateBs,
+          ageDays,
+          qty: Number(layer.qty.toFixed(2)),
+          value: Number(layerValue.toFixed(2)),
+          rate: Number((valuationMethod === "weighted_average" ? weightedAverageRate : layer.rate).toFixed(2)),
+          warehouseName: layer.warehouseName,
+          binName: layer.binName,
+          batchNo: layer.batchNo,
+          lotNo: layer.lotNo,
+          expiryDate: layer.expiryDate,
+          expiryDateBs: layer.expiryDateBs
+        };
+      });
+
+      return {
+        itemId: item.id,
+        name: item.name,
+        sku: item.sku,
+        unit: item.unit,
+        group: item.group?.name ?? null,
+        isSerialized: Boolean((item as any).isSerialized),
+        isKit: Boolean((item as any).isKit),
+        tracksBatch: Boolean((item as any).tracksBatch),
+        tracksLot: Boolean((item as any).tracksLot),
+        tracksExpiry: Boolean((item as any).tracksExpiry),
+        valuationMethod,
+        totalQty: Number(totalQty.toFixed(2)),
+        totalValue: Number(totalValue.toFixed(2)),
+        avgAgeDays: totalQty > 0 ? Math.round(weightedAge / totalQty) : 0,
+        oldestAgeDays,
+        buckets: Object.fromEntries(bucketKeys.map((key) => [
+          key,
+          {
+            qty: Number(buckets[key].qty.toFixed(2)),
+            value: Number(buckets[key].value.toFixed(2))
+          }
+        ])),
+        layers
+      };
+    });
+
+    return {
+      meta: { asOf, asOfBs: filters.asOfBs ?? null, valuationMethod, buckets: bucketKeys },
+      rows: filters.includeZero === false ? rows.filter((row) => row.totalQty > 0) : rows
+    };
   }
 
   async transferStock(

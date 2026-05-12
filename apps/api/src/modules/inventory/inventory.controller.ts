@@ -7,6 +7,7 @@ import {
   InventoryAlertsQuerySchema,
   InventorySettingsSchema,
   SerialQuerySchema,
+  StockAgingQuerySchema,
   StockAdjustmentSchema,
   StockQuerySchema,
   StockTransferSchema
@@ -59,6 +60,15 @@ export class InventoryController {
     @Query(new ZodValidationPipe(StockQuerySchema)) query: any
   ) {
     return this.inventory.getStockReport(user, query);
+  }
+
+  @Get("stock-aging")
+  @RequirePerm("masters.read")
+  stockAging(
+    @CurrentUser() user: AuthUser,
+    @Query(new ZodValidationPipe(StockAgingQuerySchema)) query: any
+  ) {
+    return this.inventory.getStockAgingReport(user, query);
   }
 
   @Post("transfer")

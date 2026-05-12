@@ -12,7 +12,8 @@ import { Input } from "@lekhaly/ui";
 import { ArrowUpDown, CalendarDays, Check, Columns, Download, Eye, Plus, RotateCcw, Search, Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { listAccounts } from "@/lib/api/accounts";
-import { createItem, listItems, assembleItem, disassembleItem } from "@/lib/api/items";
+import { createItem, listItems } from "@/lib/api/items";
+import { assembleItem, disassembleItem } from "@/lib/api/items";
 import { createItemGroup, listItemGroups } from "@/lib/api/item-groups";
 import { createUnit, listUnits } from "@/lib/api/units";
 import {
@@ -42,6 +43,11 @@ type StockColumnKey =
   | "type"
   | "parentGroup"
   | "unit"
+  | "trackingPolicy"
+  | "serialPolicy"
+  | "batchPolicy"
+  | "lotPolicy"
+  | "expiryPolicy"
   | "onHandQty"
   | "reservedQty"
   | "availableQty"
@@ -68,6 +74,11 @@ const STOCK_COLUMN_OPTIONS: { key: StockColumnKey; label: string; defaultVisible
   { key: "type", label: "Type", defaultVisible: true },
   { key: "parentGroup", label: "Group", defaultVisible: true },
   { key: "unit", label: "Unit", defaultVisible: true },
+  { key: "trackingPolicy", label: "Stock Tracking", defaultVisible: false },
+  { key: "serialPolicy", label: "Serial Numbers", defaultVisible: false },
+  { key: "batchPolicy", label: "Batch Number", defaultVisible: false },
+  { key: "lotPolicy", label: "Lot Number", defaultVisible: false },
+  { key: "expiryPolicy", label: "Expiry Date", defaultVisible: false },
   { key: "onHandQty", label: "On Hand", defaultVisible: false },
   { key: "reservedQty", label: "Reserved", defaultVisible: false },
   { key: "availableQty", label: "Available", defaultVisible: false },
@@ -208,6 +219,21 @@ function toIsoDate(date: Date) {
 function n(v: unknown) {
   const x = Number(v ?? 0);
   return Number.isFinite(x) ? x : 0;
+}
+
+function PolicyBadge({ enabled, label, offLabel = "Not required" }: { enabled: boolean; label: string; offLabel?: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold ring-1 ring-inset",
+        enabled
+          ? "bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-900/20 dark:text-emerald-300 dark:ring-emerald-500/20"
+          : "bg-slate-50 text-slate-500 ring-slate-200 dark:bg-slate-900/40 dark:text-slate-400 dark:ring-slate-800"
+      )}
+    >
+      {enabled ? label : offLabel}
+    </span>
+  );
 }
 
 function normalizeStockRow(r: ItemRow): ItemRow {
@@ -730,70 +756,60 @@ export default function ItemsPage() {
         setSortBy((prev) => (prev === "alpha_asc" ? "alpha_desc" : "alpha_asc"))
       ),
       cell: (r) => (
-        <div className="flex flex-col gap-1.5 py-1">
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-foreground leading-none">{r.name}</span>
-            {features.kits && Boolean((r as any).isKit) && (
-              <span className="shrink-0 inline-flex items-center rounded-full bg-purple-100 dark:bg-purple-900/30 px-2 py-0.5 text-[10px] font-bold text-purple-700 dark:text-purple-400 ring-1 ring-purple-300/50">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="font-medium text-foreground truncate">{r.name}</div>
+            {features.kits && (r as any).isKit && (
+              <span className="shrink-0 inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 ring-1 ring-amber-300/50">
                 KIT
               </span>
             )}
-            {features.serial && Boolean((r as any).isSerialized) && (
-              <span className="shrink-0 inline-flex items-center rounded-full bg-blue-100 dark:bg-blue-900/30 px-2 py-0.5 text-[10px] font-bold text-blue-700 dark:text-blue-400 ring-1 ring-blue-300/50">
-                SERIAL
+            {features.serial && (r as any).isSerialized && (
+              <span className="shrink-0 inline-flex items-center rounded-full bg-blue-100 dark:bg-blue-900/30 px-2 py-0.5 text-[10px] font-bold text-blue-700 dark:text-blue-300 ring-1 ring-blue-300/50">
+                S/N
               </span>
             )}
-            {features.inventory && Boolean((r as any).isLowStock) && (
+            {features.inventory && (r as any).isLowStock && (
               <span className="shrink-0 inline-flex items-center rounded-full bg-red-100 dark:bg-red-900/30 px-2 py-0.5 text-[10px] font-bold text-red-700 dark:text-red-400 ring-1 ring-red-300/50">
                 LOW
               </span>
             )}
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            {features.inventory && (
-              <button
-                type="button"
-                onClick={() => openLedger(r)}
-                className="inline-flex h-6 items-center gap-1 rounded border border-slate-200 px-2 text-[10px] font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
-              >
-                <Eye className="h-3 w-3" />
-                Ledger
-              </button>
-            )}
-            {features.kits && Boolean((r as any).isKit) && (
+            {features.kits && (r as any).isKit && (
               <>
                 <button
                   type="button"
-                  onClick={() => {
-                    setAssembleItem(r);
-                    setAssembleMode("assemble");
-                    setAssembleQty("1");
-                    setAssembleMemo("");
-                    setAssembleOpen(true);
-                  }}
-                  className="inline-flex h-6 items-center gap-1 rounded border border-amber-200 bg-amber-50 px-2 text-[10px] font-bold text-amber-700 hover:bg-amber-100 dark:border-amber-900/50 dark:bg-amber-900/20 dark:text-amber-400 dark:hover:bg-amber-900/40 transition-colors"
+                  onClick={() => { setAssembleItem(r as any); setAssembleMode("assemble"); setAssembleQty(""); setAssembleMemo(""); setAssembleOpen(true); }}
+                  className="inline-flex h-7 items-center gap-1 rounded-md border border-amber-300 dark:border-amber-700 px-2 text-[11px] text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                  title="Assemble kit"
                 >
                   ▲ Assemble
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setAssembleItem(r);
-                    setAssembleMode("disassemble");
-                    setAssembleQty("1");
-                    setAssembleMemo("");
-                    setAssembleOpen(true);
-                  }}
-                  className="inline-flex h-6 items-center gap-1 rounded border border-slate-200 px-2 text-[10px] font-bold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
+                  onClick={() => { setAssembleItem(r as any); setAssembleMode("disassemble"); setAssembleQty(""); setAssembleMemo(""); setAssembleOpen(true); }}
+                  className="inline-flex h-7 items-center gap-1 rounded-md border border-slate-300 dark:border-slate-700 px-2 text-[11px] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  title="Disassemble kit"
                 >
                   ▼ Disassemble
                 </button>
               </>
             )}
+            {features.inventory && (
+              <button
+                type="button"
+                onClick={() => openLedger(r)}
+                className="inline-flex h-7 items-center gap-1 rounded-md border border-slate-200 px-2 text-[11px] text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                <Eye className="h-3.5 w-3.5" />
+                Ledger
+              </button>
+            )}
           </div>
         </div>
       ),
-      width: 280,
+      width: 320,
     },
     hsCode: {
       key: "hsCode",
@@ -842,6 +858,36 @@ export default function ItemsPage() {
       ),
       cell: (r) => <div className="text-muted-foreground">{r.unit ?? "—"}</div>,
       width: 100
+    },
+    trackingPolicy: {
+      key: "trackingPolicy",
+      header: "Stock Tracking",
+      cell: (r) => <PolicyBadge enabled={r.type === "goods" && r.trackInventory !== false} label="Tracked" offLabel="Not tracked" />,
+      width: 140
+    },
+    serialPolicy: {
+      key: "serialPolicy",
+      header: "Serial Numbers",
+      cell: (r) => <PolicyBadge enabled={Boolean(r.isSerialized)} label="Required" />,
+      width: 140
+    },
+    batchPolicy: {
+      key: "batchPolicy",
+      header: "Batch Number",
+      cell: (r) => <PolicyBadge enabled={Boolean(r.tracksBatch)} label="Required" />,
+      width: 140
+    },
+    lotPolicy: {
+      key: "lotPolicy",
+      header: "Lot Number",
+      cell: (r) => <PolicyBadge enabled={Boolean(r.tracksLot)} label="Required" />,
+      width: 130
+    },
+    expiryPolicy: {
+      key: "expiryPolicy",
+      header: "Expiry Date",
+      cell: (r) => <PolicyBadge enabled={Boolean(r.tracksExpiry)} label="Required" />,
+      width: 130
     },
     onHandQty: {
       key: "onHandQty",
@@ -1140,6 +1186,11 @@ export default function ItemsPage() {
           case "type": return r.type;
           case "parentGroup": return r.parentGroup ?? "";
           case "unit": return r.unit ?? "";
+          case "trackingPolicy": return r.type === "goods" && r.trackInventory !== false ? "Tracked" : "Not tracked";
+          case "serialPolicy": return r.isSerialized ? "Required" : "Not required";
+          case "batchPolicy": return r.tracksBatch ? "Required" : "Not required";
+          case "lotPolicy": return r.tracksLot ? "Required" : "Not required";
+          case "expiryPolicy": return r.tracksExpiry ? "Required" : "Not required";
           case "onHandQty": return Number(r.onHandQty ?? 0);
           case "reservedQty": return Number(r.reservedQty ?? 0);
           case "availableQty": return Number(r.availableQty ?? 0);
@@ -1302,6 +1353,19 @@ export default function ItemsPage() {
     }
   };
 
+  const importPreview = React.useMemo(() => {
+    const nameIdx = fieldMapping.name ?? -1;
+    if (nameIdx < 0) return { valid: 0, invalid: importRows.length };
+    let valid = 0;
+    let invalid = 0;
+    for (const row of importRows) {
+      const name = (row[nameIdx] || "").trim();
+      if (name) valid += 1;
+      else invalid += 1;
+    }
+    return { valid, invalid };
+  }, [fieldMapping, importRows]);
+
   const preImportIssues = React.useMemo(() => {
     const issues: Array<{ row: number; message: string }> = [];
     const nameIdx = fieldMapping.name ?? -1;
@@ -1333,14 +1397,6 @@ export default function ItemsPage() {
     }
     return issues;
   }, [fieldMapping, importRows]);
-
-  const importPreview = React.useMemo(() => {
-    const total = importRows.length;
-    const issueRows = new Set(preImportIssues.map((i) => i.row));
-    const invalid = issueRows.size;
-    const valid = Math.max(0, total - invalid);
-    return { valid, invalid };
-  }, [importRows, preImportIssues]);
 
   const runImportWizard = async () => {
     const nameIdx = fieldMapping.name ?? -1;
@@ -2142,7 +2198,7 @@ export default function ItemsPage() {
               <Input placeholder="Date (YYYY-MM-DD)" value={adjustForm.date} onChange={(e) => setAdjustForm((p) => ({ ...p, date: e.target.value }))} />
               <select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={adjustForm.itemId} onChange={(e) => setAdjustForm((p) => ({ ...p, itemId: e.target.value }))}>
                 <option value="">Select item</option>
-                {goodsRows.map((r) => <option key={r.id} value={r.id}>{r.name}{r.sku ? ` [${r.sku}]` : ""}</option>)}
+                {goodsRows.map((r) => <option key={r.id} value={r.id}>{r.name}{r.sku ? ` (${r.sku})` : ""}</option>)}
               </select>
               <Input placeholder="Quantity (+in / -out)" value={adjustForm.qty} onChange={(e) => setAdjustForm((p) => ({ ...p, qty: e.target.value }))} />
               <Input placeholder="Rate (optional)" value={adjustForm.rate} onChange={(e) => setAdjustForm((p) => ({ ...p, rate: e.target.value }))} />
@@ -2150,9 +2206,9 @@ export default function ItemsPage() {
                 <option value="">Select offset account</option>
                 {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
-              {features.batch && <Input placeholder="Batch no (optional)" value={adjustForm.batchNo} onChange={(e) => setAdjustForm((p) => ({ ...p, batchNo: e.target.value }))} />}
-              {features.lot && <Input placeholder="Lot no (optional)" value={adjustForm.lotNo} onChange={(e) => setAdjustForm((p) => ({ ...p, lotNo: e.target.value }))} />}
-              {features.expiry && <Input placeholder="Expiry (YYYY-MM-DD, optional)" value={adjustForm.expiryDate} onChange={(e) => setAdjustForm((p) => ({ ...p, expiryDate: e.target.value }))} />}
+              {features.batch && <Input placeholder="Batch Number (optional)" value={adjustForm.batchNo} onChange={(e) => setAdjustForm((p) => ({ ...p, batchNo: e.target.value }))} />}
+              {features.lot && <Input placeholder="Lot Number (optional)" value={adjustForm.lotNo} onChange={(e) => setAdjustForm((p) => ({ ...p, lotNo: e.target.value }))} />}
+              {features.expiry && <Input placeholder="Expiry Date (YYYY-MM-DD, optional)" value={adjustForm.expiryDate} onChange={(e) => setAdjustForm((p) => ({ ...p, expiryDate: e.target.value }))} />}
               <Input placeholder="Memo (optional)" value={adjustForm.memo} onChange={(e) => setAdjustForm((p) => ({ ...p, memo: e.target.value }))} />
               {features.negativeStock && <label className="flex items-center gap-2 text-sm sm:col-span-2">
                 <input type="checkbox" checked={adjustForm.allowNegativeOverride} onChange={(e) => setAdjustForm((p) => ({ ...p, allowNegativeOverride: e.target.checked }))} />
@@ -2182,7 +2238,7 @@ export default function ItemsPage() {
               <Input placeholder="Date (YYYY-MM-DD)" value={transferForm.date} onChange={(e) => setTransferForm((p) => ({ ...p, date: e.target.value }))} />
               <select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={transferForm.itemId} onChange={(e) => setTransferForm((p) => ({ ...p, itemId: e.target.value }))}>
                 <option value="">Select item</option>
-                {goodsRows.map((r) => <option key={r.id} value={r.id}>{r.name}{r.sku ? ` [${r.sku}]` : ""}</option>)}
+                {goodsRows.map((r) => <option key={r.id} value={r.id}>{r.name}{r.sku ? ` (${r.sku})` : ""}</option>)}
               </select>
               <Input placeholder="From warehouse ID" value={transferForm.fromWarehouseId} onChange={(e) => setTransferForm((p) => ({ ...p, fromWarehouseId: e.target.value }))} />
               <Input placeholder="To warehouse ID" value={transferForm.toWarehouseId} onChange={(e) => setTransferForm((p) => ({ ...p, toWarehouseId: e.target.value }))} />
@@ -2190,9 +2246,9 @@ export default function ItemsPage() {
               {features.bins && <Input placeholder="To bin ID (optional)" value={transferForm.toBinId} onChange={(e) => setTransferForm((p) => ({ ...p, toBinId: e.target.value }))} />}
               <Input placeholder="Quantity" value={transferForm.qty} onChange={(e) => setTransferForm((p) => ({ ...p, qty: e.target.value }))} />
               <Input placeholder="Rate (optional)" value={transferForm.rate} onChange={(e) => setTransferForm((p) => ({ ...p, rate: e.target.value }))} />
-              {features.batch && <Input placeholder="Batch no (optional)" value={transferForm.batchNo} onChange={(e) => setTransferForm((p) => ({ ...p, batchNo: e.target.value }))} />}
-              {features.lot && <Input placeholder="Lot no (optional)" value={transferForm.lotNo} onChange={(e) => setTransferForm((p) => ({ ...p, lotNo: e.target.value }))} />}
-              {features.expiry && <Input placeholder="Expiry (YYYY-MM-DD, optional)" value={transferForm.expiryDate} onChange={(e) => setTransferForm((p) => ({ ...p, expiryDate: e.target.value }))} />}
+              {features.batch && <Input placeholder="Batch Number (optional)" value={transferForm.batchNo} onChange={(e) => setTransferForm((p) => ({ ...p, batchNo: e.target.value }))} />}
+              {features.lot && <Input placeholder="Lot Number (optional)" value={transferForm.lotNo} onChange={(e) => setTransferForm((p) => ({ ...p, lotNo: e.target.value }))} />}
+              {features.expiry && <Input placeholder="Expiry Date (YYYY-MM-DD, optional)" value={transferForm.expiryDate} onChange={(e) => setTransferForm((p) => ({ ...p, expiryDate: e.target.value }))} />}
               <Input placeholder="Memo (optional)" value={transferForm.memo} onChange={(e) => setTransferForm((p) => ({ ...p, memo: e.target.value }))} />
             </div>
             <div className="mt-4 flex justify-end">
@@ -2210,7 +2266,7 @@ export default function ItemsPage() {
             <div className="mb-3 flex items-center justify-between">
               <div>
                 <div className="text-sm font-bold">Stock Movement Timeline</div>
-                <div className="text-xs text-muted-foreground">{ledgerItem?.name} {ledgerItem?.sku ? `[${ledgerItem.sku}]` : ""}</div>
+                <div className="text-xs text-muted-foreground">{ledgerItem?.name} {ledgerItem?.sku ? `(${ledgerItem.sku})` : ""}</div>
               </div>
               <Button size="sm" variant="outline" onClick={() => setLedgerOpen(false)}>Close</Button>
             </div>
@@ -2224,13 +2280,16 @@ export default function ItemsPage() {
                     <th className="p-2 text-right">Out</th>
                     <th className="p-2 text-right">Rate</th>
                     <th className="p-2 text-right">Amount</th>
+                    <th className="p-2 text-left">Batch Number</th>
+                    <th className="p-2 text-left">Lot Number</th>
+                    <th className="p-2 text-left">Expiry Date</th>
                   </tr>
                 </thead>
                 <tbody>
                   {ledgerLoading ? (
-                    <tr><td className="p-3 text-center text-muted-foreground" colSpan={6}>Loading…</td></tr>
+                    <tr><td className="p-3 text-center text-muted-foreground" colSpan={9}>Loading…</td></tr>
                   ) : ledgerEntries.length === 0 ? (
-                    <tr><td className="p-3 text-center text-muted-foreground" colSpan={6}>No movements found.</td></tr>
+                    <tr><td className="p-3 text-center text-muted-foreground" colSpan={9}>No movements found.</td></tr>
                   ) : ledgerEntries.map((entry) => (
                     <tr key={entry.id} className="border-t border-slate-200 dark:border-slate-800">
                       <td className="p-2">{String(entry.date).slice(0, 10)}</td>
@@ -2242,6 +2301,9 @@ export default function ItemsPage() {
                       <td className="p-2 text-right mono-numbers">{entry.qtyOut || 0}</td>
                       <td className="p-2 text-right mono-numbers">{entry.rate || 0}</td>
                       <td className="p-2 text-right mono-numbers">{entry.amount || 0}</td>
+                      <td className="p-2">{entry.batchNo || "—"}</td>
+                      <td className="p-2">{entry.lotNo || "—"}</td>
+                      <td className="p-2">{entry.expiryDate ? String(entry.expiryDate).slice(0, 10) : "—"}</td>
                     </tr>
                   ))}
                 </tbody>

@@ -1480,13 +1480,13 @@ function SalesCreateContent() {
                                 </select>
                               )}
                               {inventorySettings?.batchTrackingEnabled && (
-                                <Input value={line.batchNo || ""} onChange={(e) => updateLine(idx, { batchNo: e.target.value })} placeholder={selectedItem?.tracksBatch ? "Batch *" : "Batch"} className="h-10 rounded-xl text-xs" />
+                                <Input value={line.batchNo || ""} onChange={(e) => updateLine(idx, { batchNo: e.target.value })} placeholder={selectedItem?.tracksBatch ? "Batch Number *" : "Batch Number"} className="h-10 rounded-xl text-xs" />
                               )}
                               {inventorySettings?.lotTrackingEnabled && (
-                                <Input value={line.lotNo || ""} onChange={(e) => updateLine(idx, { lotNo: e.target.value })} placeholder={selectedItem?.tracksLot ? "Lot *" : "Lot"} className="h-10 rounded-xl text-xs" />
+                                <Input value={line.lotNo || ""} onChange={(e) => updateLine(idx, { lotNo: e.target.value })} placeholder={selectedItem?.tracksLot ? "Lot Number *" : "Lot Number"} className="h-10 rounded-xl text-xs" />
                               )}
                               {inventorySettings?.expiryTrackingEnabled && (
-                                <Input type="date" value={line.expiryDate || ""} onChange={(e) => updateLine(idx, { expiryDate: e.target.value })} className="h-10 rounded-xl text-xs" />
+                                <Input type="date" aria-label="Expiry Date" title="Expiry Date" value={line.expiryDate || ""} onChange={(e) => updateLine(idx, { expiryDate: e.target.value })} className="h-10 rounded-xl text-xs" />
                               )}
                               {selectedItem?.isSerialized && inventorySettings?.serialTrackingEnabled && (
                                 <textarea
