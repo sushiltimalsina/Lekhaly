@@ -89,6 +89,21 @@ export default function StockAgingReportPage() {
   }, []);
 
   const features = inventoryFeatures(inventorySettings);
+  const trackingOptions = React.useMemo<Array<{ value: TrackingFilter; label: string }>>(() => {
+    const options: Array<{ value: TrackingFilter; label: string }> = [{ value: "all", label: "All tracking" }];
+    if (features.serial) options.push({ value: "serialized", label: "Serialized" });
+    if (features.batch) options.push({ value: "batch", label: "Batch tracked" });
+    if (features.lot) options.push({ value: "lot", label: "Lot tracked" });
+    if (features.expiry) options.push({ value: "expiry", label: "Expiry tracked" });
+    if (features.kits) options.push({ value: "kit", label: "Assemblies/Kits" });
+    options.push({ value: "standard", label: "Standard items" });
+    return options;
+  }, [features.batch, features.expiry, features.kits, features.lot, features.serial]);
+  React.useEffect(() => {
+    if (!trackingOptions.some((option) => option.value === trackingFilter)) {
+      setTrackingFilter("all");
+    }
+  }, [trackingFilter, trackingOptions]);
   const groupOptions = React.useMemo(() => {
     return Array.from(new Set(rows.map((row) => row.group).filter(Boolean) as string[])).sort((a, b) => a.localeCompare(b));
   }, [rows]);
@@ -199,13 +214,7 @@ export default function StockAgingReportPage() {
                   {bucketLabels.map((bucket) => <option key={bucket.key} value={bucket.key}>{bucket.label}</option>)}
                 </select>
                 <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={trackingFilter} onChange={(e) => setTrackingFilter(e.target.value as TrackingFilter)}>
-                  <option value="all">All tracking</option>
-                  <option value="serialized">Serialized</option>
-                  <option value="batch">Batch tracked</option>
-                  <option value="lot">Lot tracked</option>
-                  <option value="expiry">Expiry tracked</option>
-                  <option value="kit">Assemblies/Kits</option>
-                  <option value="standard">Standard items</option>
+                  {trackingOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
                 <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={stockFilter} onChange={(e) => setStockFilter(e.target.value as "all" | "with_stock" | "zero_stock")}>
                   <option value="all">All stock</option>
