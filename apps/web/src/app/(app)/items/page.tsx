@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import PageHeader from "@/components/app/page-header";
 import FiltersBar from "@/components/app/filters-bar";
 import DataTable, { Column } from "@/components/app/data-table";
@@ -758,7 +759,7 @@ export default function ItemsPage() {
       cell: (r) => (
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="font-medium text-foreground truncate">{r.name}</div>
+            <Link href={`/reports/stock-ledger?itemId=${r.id}`} className="font-medium text-foreground truncate hover:text-primary hover:underline">{r.name}</Link>
             {features.kits && (r as any).isKit && (
               <span className="shrink-0 inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 ring-1 ring-amber-300/50">
                 KIT
@@ -797,14 +798,13 @@ export default function ItemsPage() {
               </>
             )}
             {features.inventory && (
-              <button
-                type="button"
-                onClick={() => openLedger(r)}
+              <Link
+                href={`/reports/stock-ledger?itemId=${r.id}`}
                 className="inline-flex h-7 items-center gap-1 rounded-md border border-slate-200 px-2 text-[11px] text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
               >
                 <Eye className="h-3.5 w-3.5" />
                 Ledger
-              </button>
+              </Link>
             )}
           </div>
         </div>

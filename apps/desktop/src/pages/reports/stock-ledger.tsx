@@ -1,15 +1,16 @@
 "use client";
 
 import * as React from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import PageHeader from "@/components/app/page-header";
 import AdvancedFilterBar from "@/components/app/advanced-filter-bar";
 import DataTable, { Column } from "@/components/app/data-table";
 import { MoneyText } from "@/components/app/money";
-import { getInventorySettings, getStockReport, StockReportRow, type InventorySettings } from "@/lib/api/inventory";
+import { getInventorySettings, getItemStockLedger, getStockReport, StockReportRow, type InventorySettings, type StockLedgerEntry } from "@/lib/api/inventory";
 import { inventoryFeatures } from "@/lib/inventory-features";
 import { Card, CardContent } from "@lekhaly/ui";
 import { Button } from "@lekhaly/ui";
-import { Printer, RefreshCw, AlertCircle, Package, ArrowUp, ArrowDown, FileDown } from "lucide-react";
+import { RefreshCw, Package, ArrowUp, ArrowDown, FileDown, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getDateRange } from "@/lib/dates/ranges";
 
@@ -27,6 +28,8 @@ function PolicyBadge({ enabled, label, offLabel = "Not required" }: { enabled: b
 }
 
 export default function StockLedgerPage() {
+    const [searchParams] = useSearchParams();
+    const selectedItemId = searchParams.get("itemId");
     const initialRange = getDateRange("this_year");
     const [from, setFrom] = React.useState<Date | null>(initialRange.from);
     const [to, setTo] = React.useState<Date | null>(initialRange.to);
@@ -35,11 +38,37 @@ export default function StockLedgerPage() {
     const [error, setError] = React.useState<string | null>(null);
     const [searchQuery, setSearchQuery] = React.useState("");
     const [inventorySettings, setInventorySettings] = React.useState<InventorySettings | null>(null);
+    const [itemLedger, setItemLedger] = React.useState<{
+        itemId: string;
+        item?: { id: string; name: string; sku?: string | null; unit?: string | null; group?: string | null };
+        openingQty?: number;
+        openingAmt?: number;
+        debitQty?: number;
+        debitAmt?: number;
+        creditQty?: number;
+        creditAmt?: number;
+        closingQty?: number;
+        closingAmt?: number;
+        entries: StockLedgerEntry[];
+    } | null>(null);
 
     async function run() {
         setLoading(true);
         setError(null);
         try {
+            if (selectedItemId) {
+                const [ledger, settings] = await Promise.all([
+                    getItemStockLedger(selectedItemId, {
+                        from: from?.toISOString(),
+                        to: to?.toISOString()
+                    }),
+                    getInventorySettings()
+                ]);
+                setInventorySettings(settings);
+                setItemLedger(settings.inventoryTrackingEnabled ? ledger : null);
+                setRows([]);
+                return;
+            }
             const [res, settings] = await Promise.all([
                 getStockReport({
                     from: from?.toISOString(),
@@ -48,6 +77,7 @@ export default function StockLedgerPage() {
                 getInventorySettings()
             ]);
             setInventorySettings(settings);
+            setItemLedger(null);
 
             let data = settings.inventoryTrackingEnabled && Array.isArray(res) ? res : [];
             if (searchQuery) {
@@ -66,16 +96,47 @@ export default function StockLedgerPage() {
     React.useEffect(() => {
         run();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [from, to, searchQuery]);
+    }, [from, to, searchQuery, selectedItemId]);
 
     const totalValue = rows.reduce((acc, r) => acc + (r.closingAmt ?? 0), 0);
     const features = inventoryFeatures(inventorySettings);
+    const itemLedgerColumns: Column<StockLedgerEntry>[] = [
+        { key: "date", header: "Date", width: 130, cell: (r) => <div className="text-xs font-medium">{new Date(r.date).toLocaleDateString()}</div> },
+        {
+            key: "voucher",
+            header: "Source",
+            width: 170,
+            cell: (r) => r.voucherId ? (
+                <Link to={`/vouchers/view/${r.voucherId}`} className="inline-flex items-center gap-1 font-semibold text-primary hover:underline">
+                    {r.voucherNumber || r.voucherType || "Voucher"}
+                    <ExternalLink className="h-3 w-3" />
+                </Link>
+            ) : <span className="text-muted-foreground">Opening / manual</span>
+        },
+        { key: "location", header: "Location", width: 180, cell: (r) => <span className="text-xs">{[r.warehouseName, r.binName].filter(Boolean).join(" / ") || "-"}</span> },
+        { key: "debitQty", header: <span className="block text-right text-emerald-600">Debit Qty</span>, align: "right", width: 110, cell: (r) => <span className="tabular-nums text-emerald-600">{r.qtyIn || "-"}</span> },
+        { key: "debitAmt", header: <span className="block text-right text-emerald-600">Debit Amount</span>, align: "right", width: 150, cell: (r) => <MoneyText value={r.debitAmt ?? 0} className="text-emerald-600 font-semibold" /> },
+        { key: "creditQty", header: <span className="block text-right text-red-600">Credit Qty</span>, align: "right", width: 110, cell: (r) => <span className="tabular-nums text-red-600">{r.qtyOut || "-"}</span> },
+        { key: "creditAmt", header: <span className="block text-right text-red-600">Credit Amount</span>, align: "right", width: 150, cell: (r) => <MoneyText value={r.creditAmt ?? 0} className="text-red-600 font-semibold" /> },
+        { key: "closingQty", header: <span className="block text-right">Closing Qty</span>, align: "right", width: 120, cell: (r) => <span className="font-black tabular-nums">{r.runningQty ?? 0}</span> },
+        { key: "closingAmt", header: <span className="block text-right">Closing Amount</span>, align: "right", width: 150, cell: (r) => <MoneyText value={r.runningAmt ?? 0} className="font-bold" /> },
+        ...(features.batch || features.lot || features.expiry ? [{
+            key: "tracking",
+            header: "Tracking",
+            width: 220,
+            cell: (r: StockLedgerEntry) => <span className="text-xs text-muted-foreground">{[
+                features.batch && r.batchNo && `Batch ${r.batchNo}`,
+                features.lot && r.lotNo && `Lot ${r.lotNo}`,
+                features.expiry && r.expiryDate && `Exp ${new Date(r.expiryDate).toLocaleDateString()}`
+            ].filter(Boolean).join(" / ") || "-"}</span>
+        } as Column<StockLedgerEntry>] : []),
+    ];
 
     const columns: Column<StockReportRow>[] = [
         {
-            key: "name", header: "Item Name", cell: (r) => (
+            key: "name", header: "Item / SKU", width: 260, cell: (r) => (
                 <div className="flex flex-col">
-                    <span className="font-bold text-foreground">{r.name}</span>
+                    <Link to={`/reports/stock-ledger?itemId=${r.id}`} className="font-bold text-foreground hover:text-primary hover:underline">{r.name}</Link>
                     {r.sku && <span className="text-[10px] text-muted-foreground uppercase">{r.sku}</span>}
                 </div>
             )
@@ -87,30 +148,30 @@ export default function StockLedgerPage() {
             width: 140,
             cell: (r) => <PolicyBadge enabled={r.type === "goods" && r.trackInventory !== false} label="Tracked" offLabel="Not tracked" />
         },
-        {
+        ...(features.serial ? [{
             key: "serialPolicy",
             header: "Serial Numbers",
             width: 140,
             cell: (r) => <PolicyBadge enabled={Boolean(r.isSerialized)} label="Required" />
-        },
-        {
+        } as Column<StockReportRow>] : []),
+        ...(features.batch ? [{
             key: "batchPolicy",
             header: "Batch Number",
             width: 140,
             cell: (r) => <PolicyBadge enabled={Boolean(r.tracksBatch)} label="Required" />
-        },
-        {
+        } as Column<StockReportRow>] : []),
+        ...(features.lot ? [{
             key: "lotPolicy",
             header: "Lot Number",
             width: 130,
             cell: (r) => <PolicyBadge enabled={Boolean(r.tracksLot)} label="Required" />
-        },
-        {
+        } as Column<StockReportRow>] : []),
+        ...(features.expiry ? [{
             key: "expiryPolicy",
             header: "Expiry Date",
             width: 130,
             cell: (r) => <PolicyBadge enabled={Boolean(r.tracksExpiry)} label="Required" />
-        },
+        } as Column<StockReportRow>] : []),
         {
             key: "opening",
             header: <span className="w-full block text-right">Opening</span>,
@@ -177,6 +238,29 @@ export default function StockLedgerPage() {
                 if (f.dateRange) { setFrom(f.dateRange.from); setTo(f.dateRange.to); }
             }} defaultRange="this_year" />
 
+            {selectedItemId && itemLedger ? (
+                <>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h2 className="text-xl font-black">{itemLedger.item?.name || "Selected Stock"}</h2>
+                            <p className="text-xs text-muted-foreground">{[itemLedger.item?.sku, itemLedger.item?.group, itemLedger.item?.unit].filter(Boolean).join(" / ")}</p>
+                        </div>
+                        <Link to="/reports/stock-ledger">
+                            <Button variant="outline" size="sm" className="rounded-xl">Back to all stock</Button>
+                        </Link>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 print:hidden">
+                        <Card className="border-border/50 shadow-none"><CardContent className="pt-5"><div className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">Opening Quantity</div><div className="mt-2 text-2xl font-black tabular-nums">{itemLedger.openingQty ?? 0}</div><MoneyText value={itemLedger.openingAmt ?? 0} className="text-xs text-muted-foreground" /></CardContent></Card>
+                        <Card className="border-border/50 shadow-none"><CardContent className="pt-5"><div className="text-[10px] uppercase font-bold tracking-widest text-emerald-600">Debit / Inward</div><div className="mt-2 text-2xl font-black tabular-nums">{itemLedger.debitQty ?? 0}</div><MoneyText value={itemLedger.debitAmt ?? 0} className="text-xs text-emerald-600" /></CardContent></Card>
+                        <Card className="border-border/50 shadow-none"><CardContent className="pt-5"><div className="text-[10px] uppercase font-bold tracking-widest text-red-600">Credit / Outward</div><div className="mt-2 text-2xl font-black tabular-nums">{itemLedger.creditQty ?? 0}</div><MoneyText value={itemLedger.creditAmt ?? 0} className="text-xs text-red-600" /></CardContent></Card>
+                        <Card className="border-border/50 bg-emerald-600/5 shadow-none"><CardContent className="pt-5"><div className="text-[10px] uppercase font-bold tracking-widest text-emerald-600">Closing Quantity</div><div className="mt-2 text-2xl font-black tabular-nums">{itemLedger.closingQty ?? 0}</div><MoneyText value={itemLedger.closingAmt ?? 0} className="text-xs font-semibold" /></CardContent></Card>
+                    </div>
+                    <Card className="border-border/50 glass-card overflow-hidden shadow-xl min-h-[400px]">
+                        <DataTable rows={itemLedger.entries} columns={itemLedgerColumns} loading={loading} emptyText="No stock movements found" className="border-none" />
+                    </Card>
+                </>
+            ) : (
+                <>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 print:hidden">
                 <Card className="border-border/50 bg-emerald-600/5 shadow-none overflow-hidden text-foreground">
                     <CardContent className="pt-6">
@@ -191,6 +275,8 @@ export default function StockLedgerPage() {
             <Card className="border-border/50 glass-card overflow-hidden shadow-xl min-h-[400px]">
                 <DataTable rows={rows} columns={columns} loading={loading} emptyText="No stock data found" className="border-none" />
             </Card>
+                </>
+            )}
                 </>
             )}
         </div>

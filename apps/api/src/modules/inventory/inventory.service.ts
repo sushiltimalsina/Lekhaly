@@ -331,44 +331,96 @@ export class InventoryService {
 
   async getStock(user: AuthUser, itemId: string, filters: { from?: Date; to?: Date }) {
     const item = await this.prisma.item.findFirst({
-      where: { id: itemId, companyId: user.companyId }
+      where: { id: itemId, companyId: user.companyId },
+      include: { group: { select: { name: true } } }
     });
     if (!item) throw new BadRequestException("Item not found");
     if ((item as any).type === "services" || (item as any).trackInventory === false) {
-      return { itemId, qty: new Prisma.Decimal(0), entries: [] };
+      return {
+        itemId,
+        item: { id: item.id, name: item.name, sku: item.sku, unit: item.unit, group: item.group?.name ?? null },
+        qty: 0,
+        openingQty: 0,
+        openingAmt: 0,
+        debitQty: 0,
+        debitAmt: 0,
+        creditQty: 0,
+        creditAmt: 0,
+        closingQty: 0,
+        closingAmt: 0,
+        entries: []
+      };
     }
 
-    const where: Prisma.StockLedgerWhereInput = { companyId: user.companyId, itemId };
+    const where: Prisma.StockLedgerWhereInput = { companyId: user.companyId, itemId, voucherId: { not: null } };
     if (filters.from || filters.to) {
       where.date = {};
       if (filters.from) (where.date as Prisma.DateTimeFilter).gte = filters.from;
       if (filters.to) (where.date as Prisma.DateTimeFilter).lte = filters.to;
     }
 
-    const entries = await this.prisma.stockLedger.findMany({
-      where,
-      orderBy: { date: "asc" },
-      include: {
-        voucher: {
-          select: {
-            id: true,
-            voucherNumber: true,
-            voucherType: true,
-            voucherDate: true
-          }
-        }
-      }
-    });
+    const openingWhere: Prisma.StockLedgerWhereInput = {
+      companyId: user.companyId,
+      itemId,
+      OR: [
+        { voucherId: null },
+        ...(filters.from ? [{ voucherId: { not: null }, date: { lt: filters.from } }] : [])
+      ]
+    };
 
-    let qty = new Prisma.Decimal(0);
-    for (const e of entries) {
-      qty = qty.add(e.qtyIn).sub(e.qtyOut);
+    const ledgerInclude = {
+      voucher: {
+        select: {
+          id: true,
+          voucherNumber: true,
+          voucherType: true,
+          voucherDate: true
+        }
+      },
+      warehouse: { select: { id: true, name: true, code: true } },
+      bin: { select: { id: true, name: true, code: true } }
+    } satisfies Prisma.StockLedgerInclude;
+
+    const [entries, openingEntries] = await Promise.all([
+      this.prisma.stockLedger.findMany({
+        where,
+        orderBy: [{ date: "asc" }, { createdAt: "asc" }],
+        include: ledgerInclude
+      }),
+      this.prisma.stockLedger.findMany({
+        where: openingWhere,
+        orderBy: [{ date: "asc" }, { createdAt: "asc" }],
+        include: ledgerInclude
+      })
+    ]);
+
+    let openingQty = new Prisma.Decimal(0);
+    let openingAmt = new Prisma.Decimal(0);
+    for (const e of openingEntries) {
+      openingQty = openingQty.add(e.qtyIn).sub(e.qtyOut);
+      if (e.qtyIn.gt(0)) openingAmt = openingAmt.add(e.amount);
+      if (e.qtyOut.gt(0)) openingAmt = openingAmt.sub(e.amount);
     }
 
-    return {
-      itemId,
-      qty,
-      entries: entries.map((e) => ({
+    let qty = openingQty;
+    let amount = openingAmt;
+    let debitQty = new Prisma.Decimal(0);
+    let debitAmt = new Prisma.Decimal(0);
+    let creditQty = new Prisma.Decimal(0);
+    let creditAmt = new Prisma.Decimal(0);
+    const mappedEntries = [];
+    for (const e of entries) {
+      if (e.qtyIn.gt(0)) {
+        debitQty = debitQty.add(e.qtyIn);
+        debitAmt = debitAmt.add(e.amount);
+      }
+      if (e.qtyOut.gt(0)) {
+        creditQty = creditQty.add(e.qtyOut);
+        creditAmt = creditAmt.add(e.amount);
+      }
+      qty = qty.add(e.qtyIn).sub(e.qtyOut);
+      amount = amount.add(e.qtyIn.gt(0) ? e.amount : new Prisma.Decimal(0)).sub(e.qtyOut.gt(0) ? e.amount : new Prisma.Decimal(0));
+      mappedEntries.push({
         id: e.id,
         date: e.date,
         dateBs: e.dateBs,
@@ -376,15 +428,38 @@ export class InventoryService {
         qtyOut: Number(e.qtyOut.toString()),
         rate: Number(e.rate.toString()),
         amount: Number(e.amount.toString()),
+        debitAmt: e.qtyIn.gt(0) ? Number(e.amount.toString()) : 0,
+        creditAmt: e.qtyOut.gt(0) ? Number(e.amount.toString()) : 0,
+        runningQty: Number(qty.toString()),
+        runningAmt: Number(amount.toString()),
         batchNo: e.batchNo ?? null,
         lotNo: e.lotNo ?? null,
         expiryDate: e.expiryDate ?? null,
         expiryDateBs: e.expiryDateBs ?? null,
+        warehouseId: e.warehouseId ?? null,
+        warehouseName: e.warehouse?.name ?? null,
+        binId: e.binId ?? null,
+        binName: e.bin?.name ?? null,
         voucherId: e.voucherId,
         voucherNumber: e.voucher?.voucherNumber ?? null,
         voucherType: e.voucher?.voucherType ?? null,
         voucherDate: e.voucher?.voucherDate ?? null
-      }))
+      });
+    }
+
+    return {
+      itemId,
+      item: { id: item.id, name: item.name, sku: item.sku, unit: item.unit, group: item.group?.name ?? null },
+      qty: Number(qty.toString()),
+      openingQty: Number(openingQty.toString()),
+      openingAmt: Number(openingAmt.toString()),
+      debitQty: Number(debitQty.toString()),
+      debitAmt: Number(debitAmt.toString()),
+      creditQty: Number(creditQty.toString()),
+      creditAmt: Number(creditAmt.toString()),
+      closingQty: Number(qty.toString()),
+      closingAmt: Number(amount.toString()),
+      entries: mappedEntries
     };
   }
 

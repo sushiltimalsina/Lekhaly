@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import PageHeader from "@/components/app/page-header";
 import StatusBadge, { DocStatus } from "@/components/app/status-badge";
@@ -201,7 +202,13 @@ export default function PurchaseDetailPage() {
                                             return (
                                                 <tr key={idx} className="group transition-colors">
                                                     <td className="py-5">
-                                                        <div className="font-bold text-foreground">{l.accountName || "Inventory Item"}</div>
+                                                        {l.itemId ? (
+                                                            <Link href={`/reports/stock-ledger?itemId=${l.itemId}`} className="font-bold text-foreground hover:text-primary hover:underline">
+                                                                {l.itemName || l.accountName || "Inventory Item"}
+                                                            </Link>
+                                                        ) : (
+                                                            <div className="font-bold text-foreground">{l.accountName || "Inventory Item"}</div>
+                                                        )}
                                                         <div className="text-xs text-muted-foreground mt-1">{l.description || "Purchase recorded"}</div>
                                                     </td>
                                                     <td className="py-5 text-right font-medium text-foreground">{qty || 1}</td>

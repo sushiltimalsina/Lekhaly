@@ -48,7 +48,22 @@ export declare class InventoryService {
         to?: Date;
     }): Promise<{
         itemId: string;
-        qty: Prisma.Decimal;
+        item: {
+            id: string;
+            name: string;
+            sku: string | null;
+            unit: string | null;
+            group: string | null;
+        };
+        qty: number;
+        openingQty: number;
+        openingAmt: number;
+        debitQty: number;
+        debitAmt: number;
+        creditQty: number;
+        creditAmt: number;
+        closingQty: number;
+        closingAmt: number;
         entries: {
             id: string;
             date: Date;
@@ -57,10 +72,18 @@ export declare class InventoryService {
             qtyOut: number;
             rate: number;
             amount: number;
+            debitAmt: number;
+            creditAmt: number;
+            runningQty: number;
+            runningAmt: number;
             batchNo: string | null;
             lotNo: string | null;
             expiryDate: Date | null;
             expiryDateBs: string | null;
+            warehouseId: string | null;
+            warehouseName: string | null;
+            binId: string | null;
+            binName: string | null;
             voucherId: string | null;
             voucherNumber: string | null;
             voucherType: import("@prisma/client").$Enums.VoucherType | null;

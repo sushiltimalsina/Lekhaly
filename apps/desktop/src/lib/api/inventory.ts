@@ -100,10 +100,18 @@ export type StockLedgerEntry = {
   qtyOut: number;
   rate: number;
   amount: number;
+  debitAmt?: number;
+  creditAmt?: number;
+  runningQty?: number;
+  runningAmt?: number;
   batchNo?: string | null;
   lotNo?: string | null;
   expiryDate?: string | null;
   expiryDateBs?: string | null;
+  warehouseId?: string | null;
+  warehouseName?: string | null;
+  binId?: string | null;
+  binName?: string | null;
   voucherId?: string | null;
   voucherNumber?: string | null;
   voucherType?: string | null;
@@ -111,7 +119,20 @@ export type StockLedgerEntry = {
 };
 
 export async function getItemStockLedger(itemId: string, query?: { from?: string; to?: string }) {
-  return apiRequest<{ itemId: string; qty: number; entries: StockLedgerEntry[] }>({
+  return apiRequest<{
+    itemId: string;
+    item?: { id: string; name: string; sku?: string | null; unit?: string | null; group?: string | null };
+    qty: number;
+    openingQty?: number;
+    openingAmt?: number;
+    debitQty?: number;
+    debitAmt?: number;
+    creditQty?: number;
+    creditAmt?: number;
+    closingQty?: number;
+    closingAmt?: number;
+    entries: StockLedgerEntry[];
+  }>({
     path: `/items/${itemId}/stock`,
     query,
   });
