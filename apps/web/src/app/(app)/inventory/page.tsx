@@ -23,24 +23,30 @@ import { cn } from "@/lib/utils";
 import {
   getStockReport,
   getInventoryAlerts,
+  getInventorySettings,
   type StockReportRow,
   type InventoryAlerts,
+  type InventorySettings,
 } from "@/lib/api/inventory";
+import { inventoryFeatures } from "@/lib/inventory-features";
 
 export default function InventoryDashboardPage() {
   const [rows, setRows] = React.useState<StockReportRow[]>([]);
   const [alerts, setAlerts] = React.useState<InventoryAlerts | null>(null);
+  const [inventorySettings, setInventorySettings] = React.useState<InventorySettings | null>(null);
   const [loading, setLoading] = React.useState(true);
 
   const refresh = React.useCallback(async () => {
     setLoading(true);
     try {
-      const [stockData, alertData] = await Promise.all([
+      const [stockData, alertData, settingsData] = await Promise.all([
         getStockReport(),
         getInventoryAlerts({ expiringWithinDays: 30, noMovementDays: 90, limit: 50 }),
+        getInventorySettings(),
       ]);
       setRows(Array.isArray(stockData) ? stockData : []);
       setAlerts(alertData);
+      setInventorySettings(settingsData);
     } catch {
       setRows([]);
       setAlerts(null);
@@ -58,6 +64,7 @@ export default function InventoryDashboardPage() {
   const totalSkus = goods.length;
   const lowStockCount = goods.filter((r) => r.isLowStock).length;
   const zeroStockCount = goods.filter((r) => (r.onHandQty ?? r.closingQty ?? 0) <= 0).length;
+  const features = inventoryFeatures(inventorySettings);
 
   // Group value by parentGroup for top-5 chart
   const groupValues = React.useMemo(() => {
@@ -102,22 +109,22 @@ export default function InventoryDashboardPage() {
             <RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} />
             Refresh
           </Button>
-          <Link href="/inventory/adjust">
+          {features.inventory && <Link href="/inventory/adjust">
             <Button
               size="sm"
               className="rounded-2xl h-12 px-5 bg-amber-600 hover:bg-amber-700 text-white border-none shadow-lg shadow-amber-500/20"
             >
               <Plus className="mr-2 h-4 w-4" /> Adjust Stock
             </Button>
-          </Link>
-          <Link href="/inventory/transfer">
+          </Link>}
+          {features.warehouses && <Link href="/inventory/transfer">
             <Button
               size="sm"
               className="rounded-2xl h-12 px-5 bg-blue-600 hover:bg-blue-700 text-white border-none shadow-lg shadow-blue-500/20"
             >
               <ArrowRightLeft className="mr-2 h-4 w-4" /> Transfer
             </Button>
-          </Link>
+          </Link>}
         </div>
       </div>
 
@@ -249,12 +256,14 @@ export default function InventoryDashboardPage() {
                   count={alerts.counts.zeroStock}
                   color="red"
                 />
-                <AlertRow
-                  icon={Clock}
-                  label="Expiring Soon (30 days)"
-                  count={alerts.counts.expiringSoon}
-                  color="orange"
-                />
+                {features.expiry && (
+                  <AlertRow
+                    icon={Clock}
+                    label="Expiring Soon (30 days)"
+                    count={alerts.counts.expiringSoon}
+                    color="orange"
+                  />
+                )}
                 <AlertRow
                   icon={AlertTriangle}
                   label="No Movement (90 days)"
@@ -265,7 +274,7 @@ export default function InventoryDashboardPage() {
             )}
 
             {/* Expiring soon detail */}
-            {alerts && alerts.expiringSoon.length > 0 && (
+            {features.expiry && alerts && alerts.expiringSoon.length > 0 && (
               <div className="mt-6 pt-4 border-t border-border/50">
                 <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">
                   Expiring Soon
@@ -305,27 +314,33 @@ export default function InventoryDashboardPage() {
           desc="View all items with stock levels"
           color="emerald"
         />
-        <QuickLink
-          href="/inventory/warehouses"
-          icon={Warehouse}
-          title="Warehouses"
-          desc="Manage storage locations & bins"
-          color="blue"
-        />
-        <QuickLink
-          href="/inventory/adjust"
-          icon={Plus}
-          title="Stock Adjustment"
-          desc="Increase or decrease item stock"
-          color="amber"
-        />
-        <QuickLink
-          href="/inventory/transfer"
-          icon={ArrowRightLeft}
-          title="Stock Transfer"
-          desc="Move stock between warehouses"
-          color="purple"
-        />
+        {features.warehouses && (
+          <QuickLink
+            href="/inventory/warehouses"
+            icon={Warehouse}
+            title="Warehouses"
+            desc="Manage storage locations & bins"
+            color="blue"
+          />
+        )}
+        {features.inventory && (
+          <QuickLink
+            href="/inventory/adjust"
+            icon={Plus}
+            title="Stock Adjustment"
+            desc="Increase or decrease item stock"
+            color="amber"
+          />
+        )}
+        {features.warehouses && (
+          <QuickLink
+            href="/inventory/transfer"
+            icon={ArrowRightLeft}
+            title="Stock Transfer"
+            desc="Move stock between warehouses"
+            color="purple"
+          />
+        )}
       </div>
     </div>
   );

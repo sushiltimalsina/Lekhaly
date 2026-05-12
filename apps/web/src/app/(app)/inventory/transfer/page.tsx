@@ -21,6 +21,7 @@ import {
   Package,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { hasLineTracking, inventoryFeatures } from "@/lib/inventory-features";
 import { getInventorySettings, transferInventoryStock, type InventorySettings } from "@/lib/api/inventory";
 import { listItems } from "@/lib/api/items";
 import {
@@ -101,8 +102,10 @@ export default function StockTransferPage() {
   const selectedItem = items.find((i) => i.id === itemId);
   const fromWarehouse = warehouses.find((w) => w.id === fromWarehouseId);
   const toWarehouse = warehouses.find((w) => w.id === toWarehouseId);
-  const fromBins = fromWarehouse?.bins?.filter((b) => b.isActive) ?? [];
-  const toBins = toWarehouse?.bins?.filter((b) => b.isActive) ?? [];
+  const features = inventoryFeatures(inventorySettings);
+  const fromBins = features.bins ? fromWarehouse?.bins?.filter((b) => b.isActive) ?? [] : [];
+  const toBins = features.bins ? toWarehouse?.bins?.filter((b) => b.isActive) ?? [] : [];
+  const showTrackingCard = hasLineTracking(features) && (features.batch || features.lot || features.expiry || (features.serial && selectedItem?.isSerialized));
   const amount = Number(qty) && Number(rate) ? Math.abs(Number(qty)) * Number(rate) : 0;
 
   const handleSubmit = async () => {
@@ -110,6 +113,7 @@ export default function StockTransferPage() {
     setSuccess(null);
 
     if (!itemId) return setError("Select an item");
+    if (!features.warehouses) return setError("Enable warehouses in inventory configuration before transferring stock");
     if (!fromWarehouseId) return setError("Select source warehouse");
     if (!toWarehouseId) return setError("Select destination warehouse");
     if (fromWarehouseId === toWarehouseId && (!fromBinId && !toBinId))
@@ -118,9 +122,9 @@ export default function StockTransferPage() {
       return setError("Source and destination cannot be the same");
     if (!qty || Number(qty) <= 0) return setError("Enter a positive quantity");
     if (!date.ad) return setError("Select a date");
-    if (selectedItem?.tracksBatch && !batchNo.trim()) return setError("Batch number is required for this item");
-    if (selectedItem?.tracksLot && !lotNo.trim()) return setError("Lot number is required for this item");
-    if (selectedItem?.tracksExpiry && !expiryDate) return setError("Expiry date is required for this item");
+    if (features.batch && selectedItem?.tracksBatch && !batchNo.trim()) return setError("Batch number is required for this item");
+    if (features.lot && selectedItem?.tracksLot && !lotNo.trim()) return setError("Lot number is required for this item");
+    if (features.expiry && selectedItem?.tracksExpiry && !expiryDate) return setError("Expiry date is required for this item");
 
     setSubmitting(true);
     try {
@@ -128,18 +132,18 @@ export default function StockTransferPage() {
       await transferInventoryStock({
         itemId,
         fromWarehouseId,
-        fromBinId: fromBinId || undefined,
+        fromBinId: features.bins ? fromBinId || undefined : undefined,
         toWarehouseId,
-        toBinId: toBinId || undefined,
+        toBinId: features.bins ? toBinId || undefined : undefined,
         qty: Number(qty),
         rate: rate ? Number(rate) : undefined,
         date: date.ad,
         dateBs: date.bs || undefined,
         memo: memo.trim() || undefined,
-        batchNo: batchNo.trim() || undefined,
-        lotNo: lotNo.trim() || undefined,
-        expiryDate: expiryDate || undefined,
-        serialNumbers: serialNumbers.length ? serialNumbers : undefined,
+        batchNo: features.batch ? batchNo.trim() || undefined : undefined,
+        lotNo: features.lot ? lotNo.trim() || undefined : undefined,
+        expiryDate: features.expiry ? expiryDate || undefined : undefined,
+        serialNumbers: features.serial && serialNumbers.length ? serialNumbers : undefined,
       });
       setSuccess("Stock transfer completed successfully!");
       setTimeout(() => {
@@ -195,8 +199,16 @@ export default function StockTransferPage() {
         </div>
       )}
 
+      {inventorySettings && !features.warehouses && (
+        <Card className="border-dashed border-border/70">
+          <CardContent className="py-10 text-center text-sm text-muted-foreground">
+            Enable Warehouses in Inventory Configuration to use stock transfers.
+          </CardContent>
+        </Card>
+      )}
+
       {/* Item Selection */}
-      <Card className="border-border/50 shadow-lg">
+      {features.warehouses && <Card className="border-border/50 shadow-lg">
         <CardContent className="pt-6 space-y-4">
           <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
             <Package className="h-3.5 w-3.5" /> Item
@@ -219,10 +231,10 @@ export default function StockTransferPage() {
             </div>
           )}
         </CardContent>
-      </Card>
+      </Card>}
 
       {/* Transfer direction: From → To */}
-      <div className="grid gap-4 lg:grid-cols-[1fr_auto_1fr]">
+      {features.warehouses && <div className="grid gap-4 lg:grid-cols-[1fr_auto_1fr]">
         {/* FROM */}
         <Card className="border-border/50 shadow-lg">
           <CardContent className="pt-6 space-y-4">
@@ -299,10 +311,10 @@ export default function StockTransferPage() {
             )}
           </CardContent>
         </Card>
-      </div>
+      </div>}
 
       {/* Quantity & Details */}
-      <Card className="border-border/50 shadow-lg">
+      {features.warehouses && <Card className="border-border/50 shadow-lg">
         <CardContent className="pt-6 space-y-4">
           <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Transfer Details
@@ -357,30 +369,30 @@ export default function StockTransferPage() {
             />
           </div>
         </CardContent>
-      </Card>
+      </Card>}
 
       {/* Batch/Lot */}
-      <Card className="border-border/50 shadow-lg">
+      {features.warehouses && showTrackingCard && <Card className="border-border/50 shadow-lg">
         <CardContent className="pt-6 space-y-4">
           <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Tracking
           </h3>
           <div className="grid gap-4 sm:grid-cols-3">
-            {inventorySettings?.batchTrackingEnabled && <Input placeholder={selectedItem?.tracksBatch ? "Batch No. *" : "Batch No."} value={batchNo} onChange={(e) => setBatchNo(e.target.value)} className="rounded-xl" />}
-            {inventorySettings?.lotTrackingEnabled && <Input placeholder={selectedItem?.tracksLot ? "Lot No. *" : "Lot No."} value={lotNo} onChange={(e) => setLotNo(e.target.value)} className="rounded-xl" />}
-            {inventorySettings?.expiryTrackingEnabled && <Input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} className="rounded-xl" />}
+            {features.batch && <Input placeholder={selectedItem?.tracksBatch ? "Batch No. *" : "Batch No."} value={batchNo} onChange={(e) => setBatchNo(e.target.value)} className="rounded-xl" />}
+            {features.lot && <Input placeholder={selectedItem?.tracksLot ? "Lot No. *" : "Lot No."} value={lotNo} onChange={(e) => setLotNo(e.target.value)} className="rounded-xl" />}
+            {features.expiry && <Input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} className="rounded-xl" />}
           </div>
-          {selectedItem?.isSerialized && inventorySettings?.serialTrackingEnabled && (
+          {selectedItem?.isSerialized && features.serial && (
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Serial Numbers *</label>
               <textarea value={serialText} onChange={(e) => setSerialText(e.target.value)} placeholder="One serial per line, or comma separated" className="min-h-24 w-full rounded-xl border bg-background px-3 py-2 text-sm" />
             </div>
           )}
         </CardContent>
-      </Card>
+      </Card>}
 
       {/* Preview & Submit */}
-      <Card className="border-blue-200 dark:border-blue-800/50 shadow-xl">
+      {features.warehouses && <Card className="border-blue-200 dark:border-blue-800/50 shadow-xl">
         <CardContent className="pt-6 space-y-4">
           <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Transfer Summary
@@ -443,7 +455,7 @@ export default function StockTransferPage() {
             {submitting ? "Transferring…" : "Execute Transfer"}
           </Button>
         </CardContent>
-      </Card>
+      </Card>}
     </div>
   );
 }

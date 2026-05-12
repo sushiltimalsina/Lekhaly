@@ -20,6 +20,7 @@ import {
   Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { hasLineTracking, inventoryFeatures } from "@/lib/inventory-features";
 import { adjustInventoryStock, getInventorySettings, type InventorySettings } from "@/lib/api/inventory";
 import { listItems } from "@/lib/api/items";
 import { listAccounts } from "@/lib/api/accounts";
@@ -110,6 +111,8 @@ export default function StockAdjustPage() {
   const selectedItem = items.find((i) => i.id === itemId);
   const selectedWarehouse = warehouses.find((warehouse) => warehouse.id === warehouseId);
   const availableBins = selectedWarehouse?.bins ?? [];
+  const features = inventoryFeatures(inventorySettings);
+  const showTrackingCard = hasLineTracking(features) && (features.warehouses || features.batch || features.lot || features.expiry || (features.serial && selectedItem?.isSerialized));
   const amount =
     Number(qty) && Number(rate) ? Math.abs(Number(qty)) * Number(rate) : 0;
 
@@ -121,10 +124,10 @@ export default function StockAdjustPage() {
     if (!qty || Number(qty) === 0) return setError("Enter a quantity");
     if (!accountId) return setError("Select an adjustment account");
     if (!date.ad) return setError("Select a date");
-    if (inventorySettings?.requireWarehouseOnMovements && !warehouseId) return setError("Select a warehouse");
-    if (selectedItem?.tracksBatch && !batchNo.trim()) return setError("Batch number is required for this item");
-    if (selectedItem?.tracksLot && !lotNo.trim()) return setError("Lot number is required for this item");
-    if (selectedItem?.tracksExpiry && !expiryDate) return setError("Expiry date is required for this item");
+    if (features.requireWarehouse && !warehouseId) return setError("Select a warehouse");
+    if (features.batch && selectedItem?.tracksBatch && !batchNo.trim()) return setError("Batch number is required for this item");
+    if (features.lot && selectedItem?.tracksLot && !lotNo.trim()) return setError("Lot number is required for this item");
+    if (features.expiry && selectedItem?.tracksExpiry && !expiryDate) return setError("Expiry date is required for this item");
     if (allowNegative && !overrideReason.trim())
       return setError("Override reason is required");
 
@@ -142,16 +145,16 @@ export default function StockAdjustPage() {
         qty: finalQty,
         rate: rate ? Number(rate) : undefined,
         accountId,
-        warehouseId: warehouseId || undefined,
-        binId: binId || undefined,
+        warehouseId: features.warehouses ? warehouseId || undefined : undefined,
+        binId: features.bins ? binId || undefined : undefined,
         date: date.ad,
         dateBs: date.bs || undefined,
         memo: memo.trim() || undefined,
-        batchNo: batchNo.trim() || undefined,
-        lotNo: lotNo.trim() || undefined,
-        expiryDate: expiryDate || undefined,
-        serialNumbers: serialNumbers.length ? serialNumbers : undefined,
-        allowNegativeOverride: allowNegative || undefined,
+        batchNo: features.batch ? batchNo.trim() || undefined : undefined,
+        lotNo: features.lot ? lotNo.trim() || undefined : undefined,
+        expiryDate: features.expiry ? expiryDate || undefined : undefined,
+        serialNumbers: features.serial && serialNumbers.length ? serialNumbers : undefined,
+        allowNegativeOverride: features.negativeStock && allowNegative || undefined,
         overrideReason: allowNegative ? overrideReason.trim() : undefined,
       });
       setSuccess("Stock adjustment posted successfully!");
@@ -352,12 +355,13 @@ export default function StockAdjustPage() {
           </Card>
 
           {/* Batch/Lot (optional) */}
+          {showTrackingCard && (
           <Card className="border-border/50 shadow-lg">
             <CardContent className="pt-6 space-y-4">
               <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                 Tracking
               </h3>
-              {inventorySettings?.warehousesEnabled && (
+              {features.warehouses && (
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Warehouse</label>
@@ -368,7 +372,7 @@ export default function StockAdjustPage() {
                       placeholder="Select warehouse..."
                     />
                   </div>
-                  {inventorySettings.binsEnabled && (
+                  {features.bins && (
                     <div>
                       <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Bin</label>
                       <SearchableSelect
@@ -382,11 +386,11 @@ export default function StockAdjustPage() {
                 </div>
               )}
               <div className="grid gap-4 sm:grid-cols-3">
-                {inventorySettings?.batchTrackingEnabled && <Input placeholder={selectedItem?.tracksBatch ? "Batch No. *" : "Batch No."} value={batchNo} onChange={(e) => setBatchNo(e.target.value)} className="rounded-xl" />}
-                {inventorySettings?.lotTrackingEnabled && <Input placeholder={selectedItem?.tracksLot ? "Lot No. *" : "Lot No."} value={lotNo} onChange={(e) => setLotNo(e.target.value)} className="rounded-xl" />}
-                {inventorySettings?.expiryTrackingEnabled && <Input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} className="rounded-xl" />}
+                {features.batch && <Input placeholder={selectedItem?.tracksBatch ? "Batch No. *" : "Batch No."} value={batchNo} onChange={(e) => setBatchNo(e.target.value)} className="rounded-xl" />}
+                {features.lot && <Input placeholder={selectedItem?.tracksLot ? "Lot No. *" : "Lot No."} value={lotNo} onChange={(e) => setLotNo(e.target.value)} className="rounded-xl" />}
+                {features.expiry && <Input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} className="rounded-xl" />}
               </div>
-              {selectedItem?.isSerialized && inventorySettings?.serialTrackingEnabled && (
+              {selectedItem?.isSerialized && features.serial && (
                 <div>
                   <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Serial Numbers *</label>
                   <textarea
@@ -399,9 +403,10 @@ export default function StockAdjustPage() {
               )}
             </CardContent>
           </Card>
+          )}
 
           {/* Negative stock override */}
-          {direction === "decrease" && (
+          {direction === "decrease" && features.negativeStock && (
             <Card className="border-amber-200 dark:border-amber-800/50 shadow-lg">
               <CardContent className="pt-6 space-y-4">
                 <div className="flex items-center gap-3">

@@ -19,6 +19,8 @@ import {
   Package,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getInventorySettings, type InventorySettings } from "@/lib/api/inventory";
+import { inventoryFeatures } from "@/lib/inventory-features";
 import {
   listWarehouses,
   createWarehouse,
@@ -33,6 +35,7 @@ import {
 
 export default function WarehousesPage() {
   const [warehouses, setWarehouses] = React.useState<WarehouseType[]>([]);
+  const [inventorySettings, setInventorySettings] = React.useState<InventorySettings | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<string | null>(null);
@@ -61,8 +64,12 @@ export default function WarehousesPage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await listWarehouses();
+      const [data, settings] = await Promise.all([
+        listWarehouses(),
+        getInventorySettings().catch(() => null),
+      ]);
       setWarehouses(Array.isArray(data) ? data : []);
+      setInventorySettings(settings);
     } catch (e: any) {
       setError(e?.message ?? "Failed to load warehouses");
     } finally {
@@ -73,6 +80,7 @@ export default function WarehousesPage() {
   React.useEffect(() => {
     refresh();
   }, [refresh]);
+  const features = inventoryFeatures(inventorySettings);
 
   // Auto-dismiss success
   React.useEffect(() => {
@@ -182,13 +190,15 @@ export default function WarehousesPage() {
             <RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} />
             Refresh
           </Button>
-          <Button
-            size="sm"
-            onClick={() => setCreateOpen(true)}
-            className="rounded-2xl h-12 px-5 bg-blue-600 hover:bg-blue-700 text-white border-none shadow-lg shadow-blue-500/20"
-          >
-            <Plus className="mr-2 h-4 w-4" /> New Warehouse
-          </Button>
+          {features.warehouses && (
+            <Button
+              size="sm"
+              onClick={() => setCreateOpen(true)}
+              className="rounded-2xl h-12 px-5 bg-blue-600 hover:bg-blue-700 text-white border-none shadow-lg shadow-blue-500/20"
+            >
+              <Plus className="mr-2 h-4 w-4" /> New Warehouse
+            </Button>
+          )}
         </div>
       </div>
 
@@ -205,8 +215,16 @@ export default function WarehousesPage() {
         </div>
       )}
 
+      {inventorySettings && !features.warehouses ? (
+        <Card className="border-dashed border-border/70">
+          <CardContent className="py-10 text-center text-sm text-muted-foreground">
+            Enable Warehouses in Inventory Configuration to manage storage locations.
+          </CardContent>
+        </Card>
+      ) : (
+      <>
       {/* Create warehouse inline form */}
-      {createOpen && (
+      {features.warehouses && createOpen && (
         <Card className="border-blue-200 dark:border-blue-800/50 shadow-lg">
           <CardContent className="pt-5 pb-5">
             <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-4 flex items-center gap-2">
@@ -264,12 +282,14 @@ export default function WarehousesPage() {
               <p className="text-sm text-muted-foreground mb-6">
                 Create your first warehouse to start tracking inventory locations.
               </p>
-              <Button
-                onClick={() => setCreateOpen(true)}
-                className="rounded-2xl h-12 px-6 bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                <Plus className="mr-2 h-4 w-4" /> Create Warehouse
-              </Button>
+              {features.warehouses && (
+                <Button
+                  onClick={() => setCreateOpen(true)}
+                  className="rounded-2xl h-12 px-6 bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  <Plus className="mr-2 h-4 w-4" /> Create Warehouse
+                </Button>
+              )}
             </CardContent>
           </Card>
         ) : (
@@ -278,17 +298,18 @@ export default function WarehousesPage() {
               <CardContent className="pt-5 pb-5">
                 {/* Warehouse row */}
                 <div className="flex items-center gap-4">
-                  {/* Expand toggle */}
-                  <button
-                    onClick={() => setExpandedId(expandedId === wh.id ? null : wh.id)}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted transition-colors shrink-0"
-                  >
-                    {expandedId === wh.id ? (
-                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </button>
+                  {features.bins && (
+                    <button
+                      onClick={() => setExpandedId(expandedId === wh.id ? null : wh.id)}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted transition-colors shrink-0"
+                    >
+                      {expandedId === wh.id ? (
+                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </button>
+                  )}
 
                   {/* Icon */}
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 shrink-0">
@@ -334,7 +355,7 @@ export default function WarehousesPage() {
                           )}
                         </div>
                         <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
-                          <span>{wh._count?.bins ?? wh.bins.length} bins</span>
+                          {features.bins && <span>{wh._count?.bins ?? wh.bins.length} bins</span>}
                           <span>{wh.totalStockQty ?? 0} units on hand</span>
                         </div>
                       </div>
@@ -367,7 +388,7 @@ export default function WarehousesPage() {
                 </div>
 
                 {/* Expanded: Bins */}
-                {expandedId === wh.id && (
+                {features.bins && expandedId === wh.id && (
                   <div className="mt-4 ml-12 pl-4 border-l-2 border-blue-100 dark:border-blue-900/50">
                     <div className="flex items-center justify-between mb-3">
                       <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
@@ -465,6 +486,8 @@ export default function WarehousesPage() {
           ))
         )}
       </div>
+      </>
+      )}
     </div>
   );
 }

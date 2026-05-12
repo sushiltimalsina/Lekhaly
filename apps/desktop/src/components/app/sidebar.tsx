@@ -37,6 +37,8 @@ import {
   Hammer
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { getInventorySettings, type InventorySettings } from "@/lib/api/inventory";
+import { inventoryFeatures, type InventoryFeatureSet } from "@/lib/inventory-features";
 
 type NavItem = {
   label: string;
@@ -214,6 +216,27 @@ const navData: NavItem[] = [
   },
 ];
 
+function isInventoryRouteVisible(item: NavItem, features: InventoryFeatureSet) {
+  if (item.href === "/inventory") return features.inventory;
+  if (item.href === "/inventory/assemblies") return features.kits;
+  if (item.href === "/inventory/warehouses") return features.warehouses;
+  if (item.href === "/inventory/adjust") return features.inventory;
+  if (item.href === "/inventory/transfer") return features.warehouses;
+  if (item.href === "/inventory/stock-counts") return features.inventory;
+  if (item.href === "/reports/stock-ledger") return features.inventory;
+  return true;
+}
+
+function filterInventoryNav(items: NavItem[], features: InventoryFeatureSet): NavItem[] {
+  return items
+    .map((item) => ({
+      ...item,
+      children: item.children ? filterInventoryNav(item.children, features) : undefined,
+    }))
+    .filter((item) => isInventoryRouteVisible(item, features))
+    .filter((item) => item.href || !item.children || item.children.length > 0);
+}
+
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   onNavigate?: () => void;
 }
@@ -221,6 +244,20 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
 export default function Sidebar({ className, onNavigate }: SidebarProps) {
   const [collapsed, setCollapsed] = React.useState(true);
   const [resetSignal, setResetSignal] = React.useState(0);
+  const [inventorySettings, setInventorySettings] = React.useState<InventorySettings | null>(null);
+  const visibleNavData = React.useMemo(
+    () => filterInventoryNav(navData, inventoryFeatures(inventorySettings)),
+    [inventorySettings]
+  );
+
+  React.useEffect(() => {
+    getInventorySettings().then(setInventorySettings).catch(() => setInventorySettings(null));
+    const handleInventorySettingsUpdated = (event: Event) => {
+      setInventorySettings((event as CustomEvent<InventorySettings>).detail ?? null);
+    };
+    window.addEventListener("inventory-settings-updated", handleInventorySettingsUpdated);
+    return () => window.removeEventListener("inventory-settings-updated", handleInventorySettingsUpdated);
+  }, []);
 
   React.useEffect(() => {
     const stored = typeof window !== "undefined" ? localStorage.getItem("lekhaly.sidebar.collapsed") : null;
@@ -281,7 +318,7 @@ export default function Sidebar({ className, onNavigate }: SidebarProps) {
 
       {/* Nav */}
       <nav className={cn("flex-1 overflow-y-auto py-2 space-y-1 custom-scrollbar", collapsed ? "px-2" : "px-4")}>
-        {navData.map((item, i) => (
+        {visibleNavData.map((item, i) => (
           <NavItemNode
             key={i}
             item={item}
@@ -436,6 +473,4 @@ function NavItemNode({
     </div>
   );
 }
-
-
 

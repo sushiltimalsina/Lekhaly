@@ -20,6 +20,8 @@ import {
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Input } from "@lekhaly/ui";
+import { getInventorySettings, type InventorySettings } from "@/lib/api/inventory";
+import { inventoryFeatures } from "@/lib/inventory-features";
 
 const reports = [
     {
@@ -60,12 +62,19 @@ const reports = [
 
 export default function OtherReportsPage() {
     const [search, setSearch] = React.useState("");
+    const [inventorySettings, setInventorySettings] = React.useState<InventorySettings | null>(null);
+    const features = inventoryFeatures(inventorySettings);
+
+    React.useEffect(() => {
+        getInventorySettings().then(setInventorySettings).catch(() => setInventorySettings(null));
+    }, []);
 
     const filteredReports = reports.map(group => ({
         ...group,
         items: group.items.filter(item =>
-            item.label.toLowerCase().includes(search.toLowerCase()) ||
-            item.description.toLowerCase().includes(search.toLowerCase())
+            (item.href !== "/reports/stock-ledger" || features.inventory) &&
+            (item.label.toLowerCase().includes(search.toLowerCase()) ||
+            item.description.toLowerCase().includes(search.toLowerCase()))
         )
     })).filter(group => group.items.length > 0);
 

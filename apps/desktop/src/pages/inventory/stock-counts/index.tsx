@@ -5,11 +5,14 @@ import { Button } from "@lekhaly/ui";
 import { Card, CardContent } from "@lekhaly/ui";
 import { ClipboardList, Plus, RefreshCw, AlertTriangle, ChevronRight, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getInventorySettings, type InventorySettings } from "@/lib/api/inventory";
+import { inventoryFeatures } from "@/lib/inventory-features";
 import { listStockCounts, type StockCount } from "@/lib/api/stock-counts";
 
 export default function StockCountsPage() {
   const navigate = useNavigate();
   const [counts, setCounts] = React.useState<StockCount[]>([]);
+  const [inventorySettings, setInventorySettings] = React.useState<InventorySettings | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -17,8 +20,12 @@ export default function StockCountsPage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await listStockCounts();
+      const [data, settings] = await Promise.all([
+        listStockCounts(),
+        getInventorySettings().catch(() => null),
+      ]);
       setCounts(Array.isArray(data) ? data : []);
+      setInventorySettings(settings);
     } catch (e: any) {
       setError(e?.message ?? "Failed to load stock counts");
     } finally {
@@ -29,6 +36,7 @@ export default function StockCountsPage() {
   React.useEffect(() => {
     refresh();
   }, [refresh]);
+  const features = inventoryFeatures(inventorySettings);
 
   return (
     <div className="space-y-6 pb-20 text-foreground animate-fade-in">
@@ -38,14 +46,23 @@ export default function StockCountsPage() {
           <Button variant="outline" size="sm" onClick={refresh} disabled={loading} className="rounded-2xl h-12 px-5">
             <RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} /> Refresh
           </Button>
-          <Button size="sm" onClick={() => navigate("/inventory/stock-counts/create")} className="rounded-2xl h-12 px-5 bg-orange-600 hover:bg-orange-700 text-white border-none shadow-lg shadow-orange-500/20">
-            <Plus className="mr-2 h-4 w-4" /> Start New Count
-          </Button>
+          {features.inventory && (
+            <Button size="sm" onClick={() => navigate("/inventory/stock-counts/create")} className="rounded-2xl h-12 px-5 bg-orange-600 hover:bg-orange-700 text-white border-none shadow-lg shadow-orange-500/20">
+              <Plus className="mr-2 h-4 w-4" /> Start New Count
+            </Button>
+          )}
         </div>
       </div>
 
       {error && <div className="rounded-xl border border-red-200 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 flex items-center gap-2"><AlertTriangle className="h-4 w-4 shrink-0" /> {error}</div>}
 
+      {inventorySettings && !features.inventory ? (
+        <Card className="border-dashed border-border/70">
+          <CardContent className="py-10 text-center text-sm text-muted-foreground">
+            Enable Inventory Tracking in Configuration to use physical stock counts.
+          </CardContent>
+        </Card>
+      ) : (
       <div className="grid gap-4">
         {loading ? (
           <div className="space-y-3">{[...Array(3)].map((_, i) => <div key={i} className="h-24 rounded-2xl bg-muted animate-pulse" />)}</div>
@@ -54,7 +71,7 @@ export default function StockCountsPage() {
             <ClipboardList className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <h3 className="font-bold text-lg text-foreground mb-2">No stock counts</h3>
             <p className="text-sm text-muted-foreground mb-6">Start a physical stock count to audit your inventory and record variances.</p>
-            <Button onClick={() => navigate("/inventory/stock-counts/create")} className="rounded-2xl h-12 px-6 bg-orange-600 hover:bg-orange-700 text-white"><Plus className="mr-2 h-4 w-4" /> Start New Count</Button>
+            {features.inventory && <Button onClick={() => navigate("/inventory/stock-counts/create")} className="rounded-2xl h-12 px-6 bg-orange-600 hover:bg-orange-700 text-white"><Plus className="mr-2 h-4 w-4" /> Start New Count</Button>}
           </CardContent></Card>
         ) : (
           counts.map((count) => (
@@ -80,6 +97,7 @@ export default function StockCountsPage() {
           ))
         )}
       </div>
+      )}
     </div>
   );
 }

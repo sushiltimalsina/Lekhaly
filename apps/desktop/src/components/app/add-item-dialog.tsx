@@ -3,11 +3,13 @@
 import * as React from "react";
 import { Input } from "@lekhaly/ui";
 import { createItem, type ItemType } from "@/lib/api/items";
+import { getInventorySettings, type InventorySettings } from "@/lib/api/inventory";
 import { listUnits, type UnitRecord } from "@/lib/api/units";
 import { listItemGroups, type ItemGroupRecord } from "@/lib/api/item-groups";
 import { listTaxes } from "@/lib/api/taxes";
 import { X, Save, PackagePlus, Info, Banknote, History, FileText, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { inventoryFeatures } from "@/lib/inventory-features";
 import { createPortal } from "react-dom";
 import AddUnitDialog from "./add-unit-dialog";
 import AddGroupDialog from "./add-group-dialog";
@@ -27,6 +29,7 @@ export default function AddItemDialog({ open, onClose, onSuccess }: AddItemDialo
     const [groups, setGroups] = React.useState<ItemGroupRecord[]>([]);
     const [taxes, setTaxes] = React.useState<TaxCode[]>([]);
     const [taxable, setTaxable] = React.useState(false);
+    const [inventorySettings, setInventorySettings] = React.useState<InventorySettings | null>(null);
 
     const [addUnitOpen, setAddUnitOpen] = React.useState(false);
     const [addGroupOpen, setAddGroupOpen] = React.useState(false);
@@ -64,8 +67,9 @@ export default function AddItemDialog({ open, onClose, onSuccess }: AddItemDialo
         Promise.all([
             listUnits({ take: 100 }),
             listItemGroups({ take: 100 }),
-            listTaxes({ take: 100 })
-        ]).then(([u, g, t]: any) => {
+            listTaxes({ take: 100 }),
+            getInventorySettings()
+        ]).then(([u, g, t, inv]: any) => {
             setUnits(normalizeList<UnitRecord>(u));
             setGroups(normalizeList<ItemGroupRecord>(g));
             setTaxes(normalizeList<any>(t).map((item: any) => ({
@@ -73,6 +77,7 @@ export default function AddItemDialog({ open, onClose, onSuccess }: AddItemDialo
                 name: item.name,
                 rate: item.rate
             })));
+            setInventorySettings(inv);
         }).catch(() => { });
     }, [open]);
 
@@ -88,6 +93,9 @@ export default function AddItemDialog({ open, onClose, onSuccess }: AddItemDialo
     }, [open]);
 
     if (!open) return null;
+
+    const features = inventoryFeatures(inventorySettings);
+    const showOpeningStock = form.type === "goods" && features.inventory;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -108,8 +116,8 @@ export default function AddItemDialog({ open, onClose, onSuccess }: AddItemDialo
                 purchasePrice: form.purchasePrice ? Number(form.purchasePrice) : undefined,
                 reorderLevel: form.reorderLevel ? Number(form.reorderLevel) : undefined,
                 safetyStock: form.safetyStock ? Number(form.safetyStock) : undefined,
-                openingQty: form.openingQty ? Number(form.openingQty) : undefined,
-                openingPrice: form.openingPrice ? Number(form.openingPrice) : undefined,
+                openingQty: showOpeningStock && form.openingQty ? Number(form.openingQty) : undefined,
+                openingPrice: showOpeningStock && form.openingPrice ? Number(form.openingPrice) : undefined,
                 groupId: form.groupId || undefined,
                 incomeAccountId: form.incomeAccountId.trim() || undefined,
                 expenseAccountId: form.expenseAccountId.trim() || undefined,
@@ -346,7 +354,7 @@ export default function AddItemDialog({ open, onClose, onSuccess }: AddItemDialo
                     </div>
 
                     {/* Section: Opening Stock */}
-                    {form.type === "goods" && (
+                    {showOpeningStock && (
                         <div className="space-y-4">
                             <div className="flex items-center gap-2 mb-2">
                                 <History className="h-4 w-4 text-orange-600" />

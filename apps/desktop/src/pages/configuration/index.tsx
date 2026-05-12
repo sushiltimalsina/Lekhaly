@@ -26,6 +26,12 @@ import { getCompany, updateCompany } from "@/lib/api/auth";
 import { getInventorySettings, updateInventorySettings, type InventorySettings } from "@/lib/api/inventory";
 import { listWarehouses, type Warehouse } from "@/lib/api/warehouses";
 
+function normalizeList<T>(input: unknown): T[] {
+  if (Array.isArray(input)) return input as T[];
+  const obj = input as { items?: T[]; data?: T[] } | null;
+  return obj?.items ?? obj?.data ?? [];
+}
+
 function NumberingRow({ 
   label, 
   prefix, 
@@ -195,11 +201,7 @@ export default function ConfigurationPage() {
 
   const fetchData = async () => {
     setLoading(true);
-    const normalizeList = <T,>(input: unknown): T[] => {
-      if (Array.isArray(input)) return input as T[];
-      const obj = input as { items?: T[]; data?: T[] } | null;
-      return obj?.items ?? obj?.data ?? [];
-    };
+    setError(null);
     try {
       const [uRes, gRes, sRes, pmRes, stRes, ptRes, cRes, invRes, whRes] = await Promise.all([
         listUnits({ take: 100 }),
@@ -336,9 +338,29 @@ export default function ConfigurationPage() {
     setError(null);
     try {
       const res = await updateInventorySettings({ ...inventorySettings, ...updates });
+      const whRes = await listWarehouses({ isActive: true });
       setInventorySettings(res);
+      window.dispatchEvent(new CustomEvent("inventory-settings-updated", { detail: res }));
+      setWarehouses(normalizeList<Warehouse>(whRes));
     } catch (e: any) {
       setError(e?.message ?? "Failed to update inventory settings.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const refreshInventoryConfiguration = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const [invRes, whRes] = await Promise.all([
+        getInventorySettings(),
+        listWarehouses({ isActive: true })
+      ]);
+      setInventorySettings(invRes);
+      setWarehouses(normalizeList<Warehouse>(whRes));
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to refresh inventory settings.");
     } finally {
       setBusy(false);
     }
@@ -996,7 +1018,8 @@ export default function ConfigurationPage() {
                 variant="outline" 
                 size="sm" 
                 className="rounded-xl"
-                onClick={(e) => { e.stopPropagation(); fetchData(); }}
+                disabled={busy}
+                onClick={(e) => { e.stopPropagation(); refreshInventoryConfiguration(); }}
               >
                 Refresh
               </Button>

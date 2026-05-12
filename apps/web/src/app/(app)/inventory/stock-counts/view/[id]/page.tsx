@@ -23,12 +23,15 @@ import {
   completeStockCount,
   type StockCount,
 } from "@/lib/api/stock-counts";
+import { getInventorySettings, type InventorySettings } from "@/lib/api/inventory";
+import { inventoryFeatures } from "@/lib/inventory-features";
 import { listAccounts } from "@/lib/api/accounts";
 
 export default function ViewStockCountPage() {
   const router = useRouter();
   const { id } = useParams() as { id: string };
   const [count, setCount] = React.useState<StockCount | null>(null);
+  const [inventorySettings, setInventorySettings] = React.useState<InventorySettings | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -42,8 +45,12 @@ export default function ViewStockCountPage() {
   const load = React.useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getStockCount(id);
+      const [data, settings] = await Promise.all([
+        getStockCount(id),
+        getInventorySettings().catch(() => null),
+      ]);
       setCount(data);
+      setInventorySettings(settings);
       
       const qtys: Record<string, string> = {};
       data.lines.forEach((l) => {
@@ -137,6 +144,7 @@ export default function ViewStockCountPage() {
   if (!count) return null;
 
   const isReadOnly = count.status === "completed" || count.status === "cancelled";
+  const features = inventoryFeatures(inventorySettings);
 
   return (
     <div className="space-y-6 pb-20 text-foreground max-w-6xl mx-auto animate-fade-in">
@@ -191,6 +199,13 @@ export default function ViewStockCountPage() {
         </div>
       )}
 
+      {inventorySettings && !features.inventory ? (
+        <Card className="border-dashed border-border/70">
+          <CardContent className="py-10 text-center text-sm text-muted-foreground">
+            Enable Inventory Tracking in Configuration to use physical stock counts.
+          </CardContent>
+        </Card>
+      ) : (
       <div className="grid gap-6 lg:grid-cols-4">
         <div className="lg:col-span-3">
           <Card className="border-border/50 shadow-lg">
@@ -215,7 +230,7 @@ export default function ViewStockCountPage() {
                         <tr key={line.id} className="hover:bg-muted/30 transition-colors">
                           <td className="p-4">
                             <div className="font-bold">{line.item?.name}</div>
-                            {(line.item?.sku || line.bin?.name) && (
+                            {(line.item?.sku || (features.bins && line.bin?.name)) && (
                               <div className="text-xs text-muted-foreground mt-0.5">
                                 {line.item?.sku} {line.item?.sku && line.bin?.name && "•"} {line.bin?.name && `Bin: ${line.bin.name}`}
                               </div>
@@ -265,10 +280,10 @@ export default function ViewStockCountPage() {
             <CardContent className="pt-6 space-y-4">
               <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Count Details</h3>
               <div className="space-y-3 text-sm">
-                <div className="flex justify-between">
+                {features.warehouses && <div className="flex justify-between">
                   <span className="text-muted-foreground">Warehouse</span>
                   <span className="font-medium text-right">{count.warehouse?.name || "All"}</span>
-                </div>
+                </div>}
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Created By</span>
                   <span className="font-medium text-right">{count.createdByUser?.name || "—"}</span>
@@ -330,6 +345,7 @@ export default function ViewStockCountPage() {
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }

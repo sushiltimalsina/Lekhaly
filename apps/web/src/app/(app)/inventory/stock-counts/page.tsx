@@ -15,11 +15,14 @@ import {
   Package,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getInventorySettings, type InventorySettings } from "@/lib/api/inventory";
+import { inventoryFeatures } from "@/lib/inventory-features";
 import { listStockCounts, type StockCount } from "@/lib/api/stock-counts";
 
 export default function StockCountsPage() {
   const router = useRouter();
   const [counts, setCounts] = React.useState<StockCount[]>([]);
+  const [inventorySettings, setInventorySettings] = React.useState<InventorySettings | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -27,8 +30,12 @@ export default function StockCountsPage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await listStockCounts();
+      const [data, settings] = await Promise.all([
+        listStockCounts(),
+        getInventorySettings().catch(() => null),
+      ]);
       setCounts(Array.isArray(data) ? data : []);
+      setInventorySettings(settings);
     } catch (e: any) {
       setError(e?.message ?? "Failed to load stock counts");
     } finally {
@@ -39,6 +46,7 @@ export default function StockCountsPage() {
   React.useEffect(() => {
     refresh();
   }, [refresh]);
+  const features = inventoryFeatures(inventorySettings);
 
   return (
     <div className="space-y-6 pb-20 text-foreground animate-fade-in">
@@ -59,13 +67,15 @@ export default function StockCountsPage() {
             <RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} />
             Refresh
           </Button>
-          <Button
-            size="sm"
-            onClick={() => router.push("/inventory/stock-counts/create")}
-            className="rounded-2xl h-12 px-5 bg-orange-600 hover:bg-orange-700 text-white border-none shadow-lg shadow-orange-500/20"
-          >
-            <Plus className="mr-2 h-4 w-4" /> Start New Count
-          </Button>
+          {features.inventory && (
+            <Button
+              size="sm"
+              onClick={() => router.push("/inventory/stock-counts/create")}
+              className="rounded-2xl h-12 px-5 bg-orange-600 hover:bg-orange-700 text-white border-none shadow-lg shadow-orange-500/20"
+            >
+              <Plus className="mr-2 h-4 w-4" /> Start New Count
+            </Button>
+          )}
         </div>
       </div>
 
@@ -75,6 +85,13 @@ export default function StockCountsPage() {
         </div>
       )}
 
+      {inventorySettings && !features.inventory ? (
+        <Card className="border-dashed border-border/70">
+          <CardContent className="py-10 text-center text-sm text-muted-foreground">
+            Enable Inventory Tracking in Configuration to use physical stock counts.
+          </CardContent>
+        </Card>
+      ) : (
       <div className="grid gap-4">
         {loading ? (
           <div className="space-y-3">
@@ -90,12 +107,14 @@ export default function StockCountsPage() {
               <p className="text-sm text-muted-foreground mb-6">
                 Start a physical stock count to audit your inventory and record variances.
               </p>
-              <Button
-                onClick={() => router.push("/inventory/stock-counts/create")}
-                className="rounded-2xl h-12 px-6 bg-orange-600 hover:bg-orange-700 text-white"
-              >
-                <Plus className="mr-2 h-4 w-4" /> Start New Count
-              </Button>
+              {features.inventory && (
+                <Button
+                  onClick={() => router.push("/inventory/stock-counts/create")}
+                  className="rounded-2xl h-12 px-6 bg-orange-600 hover:bg-orange-700 text-white"
+                >
+                  <Plus className="mr-2 h-4 w-4" /> Start New Count
+                </Button>
+              )}
             </CardContent>
           </Card>
         ) : (
@@ -130,7 +149,7 @@ export default function StockCountsPage() {
                     </div>
                     <div className="text-xs text-muted-foreground mt-1 flex items-center gap-3">
                       <span>Date: {new Date(count.countDate).toLocaleDateString()}</span>
-                      {count.warehouse && (
+                      {features.warehouses && count.warehouse && (
                         <span className="flex items-center gap-1">
                           • <Package className="h-3 w-3" /> {count.warehouse.name}
                         </span>
@@ -145,6 +164,7 @@ export default function StockCountsPage() {
           ))
         )}
       </div>
+      )}
     </div>
   );
 }

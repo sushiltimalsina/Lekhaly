@@ -22,25 +22,31 @@ import { cn } from "@/lib/utils";
 import {
   getStockReport,
   getInventoryAlerts,
+  getInventorySettings,
   type StockReportRow,
   type InventoryAlerts,
+  type InventorySettings,
 } from "@/lib/api/inventory";
+import { inventoryFeatures } from "@/lib/inventory-features";
 
 export default function InventoryDashboardPage() {
   const navigate = useNavigate();
   const [rows, setRows] = React.useState<StockReportRow[]>([]);
   const [alerts, setAlerts] = React.useState<InventoryAlerts | null>(null);
+  const [inventorySettings, setInventorySettings] = React.useState<InventorySettings | null>(null);
   const [loading, setLoading] = React.useState(true);
 
   const refresh = React.useCallback(async () => {
     setLoading(true);
     try {
-      const [stockData, alertData] = await Promise.all([
+      const [stockData, alertData, settingsData] = await Promise.all([
         getStockReport(),
         getInventoryAlerts({ expiringWithinDays: 30, noMovementDays: 90, limit: 50 }),
+        getInventorySettings(),
       ]);
       setRows(Array.isArray(stockData) ? stockData : []);
       setAlerts(alertData);
+      setInventorySettings(settingsData);
     } catch {
       setRows([]);
       setAlerts(null);
@@ -56,6 +62,7 @@ export default function InventoryDashboardPage() {
   const totalSkus = goods.length;
   const lowStockCount = goods.filter((r) => r.isLowStock).length;
   const zeroStockCount = goods.filter((r) => (r.onHandQty ?? r.closingQty ?? 0) <= 0).length;
+  const features = inventoryFeatures(inventorySettings);
 
   const groupValues = React.useMemo(() => {
     const map = new Map<string, number>();
@@ -77,12 +84,12 @@ export default function InventoryDashboardPage() {
           <Button variant="outline" size="sm" onClick={refresh} disabled={loading} className="rounded-2xl h-12 px-5">
             <RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} /> Refresh
           </Button>
-          <Button size="sm" onClick={() => navigate("/inventory/adjust")} className="rounded-2xl h-12 px-5 bg-amber-600 hover:bg-amber-700 text-white border-none shadow-lg shadow-amber-500/20">
+          {features.inventory && <Button size="sm" onClick={() => navigate("/inventory/adjust")} className="rounded-2xl h-12 px-5 bg-amber-600 hover:bg-amber-700 text-white border-none shadow-lg shadow-amber-500/20">
             <Plus className="mr-2 h-4 w-4" /> Adjust Stock
-          </Button>
-          <Button size="sm" onClick={() => navigate("/inventory/transfer")} className="rounded-2xl h-12 px-5 bg-blue-600 hover:bg-blue-700 text-white border-none shadow-lg shadow-blue-500/20">
+          </Button>}
+          {features.warehouses && <Button size="sm" onClick={() => navigate("/inventory/transfer")} className="rounded-2xl h-12 px-5 bg-blue-600 hover:bg-blue-700 text-white border-none shadow-lg shadow-blue-500/20">
             <ArrowRightLeft className="mr-2 h-4 w-4" /> Transfer
-          </Button>
+          </Button>}
         </div>
       </div>
 
@@ -147,7 +154,7 @@ export default function InventoryDashboardPage() {
                 {[
                   { icon: TrendingDown, label: "Below Reorder Level", count: alerts.counts.belowReorder, color: "amber" },
                   { icon: PackageX, label: "Zero Stock", count: alerts.counts.zeroStock, color: "red" },
-                  { icon: Clock, label: "Expiring Soon (30 days)", count: alerts.counts.expiringSoon, color: "orange" },
+                  ...(features.expiry ? [{ icon: Clock, label: "Expiring Soon (30 days)", count: alerts.counts.expiringSoon, color: "orange" }] : []),
                   { icon: AlertTriangle, label: "No Movement (90 days)", count: alerts.counts.noMovement, color: "slate" },
                 ].map(({ icon: Icon, label, count, color }) => (
                   <div key={label} className={cn("flex items-center justify-between rounded-xl px-4 py-3 transition-colors", `text-${color}-600 bg-${color}-50 dark:bg-${color}-900/20 dark:text-${color}-400`)}>
@@ -165,9 +172,9 @@ export default function InventoryDashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
           { href: "/items", icon: Package, title: "Items & Stock", desc: "View all items with stock levels" },
-          { href: "/inventory/warehouses", icon: Warehouse, title: "Warehouses", desc: "Manage storage locations & bins" },
-          { href: "/inventory/adjust", icon: Plus, title: "Stock Adjustment", desc: "Increase or decrease item stock" },
-          { href: "/inventory/transfer", icon: ArrowRightLeft, title: "Stock Transfer", desc: "Move stock between warehouses" },
+          ...(features.warehouses ? [{ href: "/inventory/warehouses", icon: Warehouse, title: "Warehouses", desc: "Manage storage locations & bins" }] : []),
+          ...(features.inventory ? [{ href: "/inventory/adjust", icon: Plus, title: "Stock Adjustment", desc: "Increase or decrease item stock" }] : []),
+          ...(features.warehouses ? [{ href: "/inventory/transfer", icon: ArrowRightLeft, title: "Stock Transfer", desc: "Move stock between warehouses" }] : []),
         ].map(({ href, icon: Icon, title, desc }) => (
           <div key={href} className="cursor-pointer group" onClick={() => navigate(href)}>
             <Card className="border-border/50 transition-all duration-200 hover:shadow-lg h-full">

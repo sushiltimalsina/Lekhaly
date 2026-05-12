@@ -13,9 +13,11 @@ import {
   Hammer, Save, AlertTriangle, CheckCircle2, ArrowLeft, Plus, Trash2, ArrowUp, ArrowDown, RotateCcw, Zap, Search
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getInventorySettings, type InventorySettings } from "@/lib/api/inventory";
 import { listItems, getItem, assembleItem, disassembleItem, type ItemRecord } from "@/lib/api/items";
 import { listBillSundries, type BillSundryRecord } from "@/lib/api/bill-sundries";
 import { toBs } from "@/lib/dates/bs";
+import { inventoryFeatures } from "@/lib/inventory-features";
 
 type DateValue = { ad: string; bs: string };
 type VLine = { id: string; itemId: string; qty: string; unit: string; rate: string; amount: number };
@@ -33,6 +35,7 @@ export default function AssemblyOrdersPage() {
   
   const [allItems, setAllItems] = React.useState<ItemRecord[]>([]);
   const [allSundries, setAllSundries] = React.useState<BillSundryRecord[]>([]);
+  const [inventorySettings, setInventorySettings] = React.useState<InventorySettings | null>(null);
   
   const [mode, setMode] = React.useState<"assemble" | "disassemble">("assemble");
   const [memo, setMemo] = React.useState("");
@@ -54,10 +57,15 @@ export default function AssemblyOrdersPage() {
     try { const d = await listBillSundries({ isActive: true, take: 100 }); setAllSundries(Array.isArray(d) ? d : (d as any)?.items || []); } catch {}
   }, []);
 
-  React.useEffect(() => { loadItems(); loadSundries(); }, [loadItems, loadSundries]);
+  const loadInventorySettings = React.useCallback(async () => {
+    try { setInventorySettings(await getInventorySettings()); } catch { setInventorySettings(null); }
+  }, []);
+
+  React.useEffect(() => { loadItems(); loadSundries(); loadInventorySettings(); }, [loadItems, loadSundries, loadInventorySettings]);
 
   const itemOpts = React.useMemo(() => allItems.filter(i => i.type !== "services").map(i => ({ id: i.id, name: `${i.name}${i.sku ? ` [${i.sku}]` : ""}`, _raw: i })), [allItems]);
   const sundryOpts = React.useMemo(() => allSundries.map(s => ({ id: s.id, name: s.name, _raw: s })), [allSundries]);
+  const features = inventoryFeatures(inventorySettings);
 
   const updateLine = (s: React.Dispatch<React.SetStateAction<VLine[]>>, i: number, p: Partial<VLine>) => s(prev => prev.map((l, idx) => idx === i ? calc({ ...l, ...p }) : l));
   const addRow = (s: React.Dispatch<React.SetStateAction<VLine[]>>) => s(p => [...p, mkLine()]);
@@ -108,6 +116,7 @@ export default function AssemblyOrdersPage() {
 
   const handleSubmit = async () => {
     setError(null); setSuccess(null);
+    if (!features.kits) return setError("Enable Kits & Assemblies in Inventory Configuration to use this page.");
     const kitLines = (mode === "assemble" ? generatedLines : consumedLines).filter(l => l.itemId && Number(l.qty) > 0);
     const compLines = (mode === "assemble" ? consumedLines : generatedLines).filter(l => l.itemId && Number(l.qty) > 0);
     const validSundries = sundries.filter(s => s.sundryId && Number(s.amount) > 0).map(s => ({ sundryId: s.sundryId, amount: Number(s.amount) }));
@@ -258,6 +267,16 @@ export default function AssemblyOrdersPage() {
         {error && <div className="mb-4 rounded-xl border border-red-600/30 bg-red-600/10 px-3 py-2 text-sm text-red-700 dark:text-red-300 flex items-center gap-2"><AlertTriangle className="h-4 w-4 shrink-0" /> {error}</div>}
         {success && <div className="mb-4 rounded-xl border border-emerald-600/30 bg-emerald-600/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300 flex items-center gap-2"><CheckCircle2 className="h-4 w-4 shrink-0" /> {success}</div>}
 
+        {!inventorySettings ? (
+          <div className="rounded-2xl border border-dashed border-slate-200 py-10 text-center text-sm text-muted-foreground dark:border-zinc-800">
+            Loading inventory configuration...
+          </div>
+        ) : !features.kits ? (
+          <div className="rounded-2xl border border-dashed border-slate-200 py-10 text-center text-sm text-muted-foreground dark:border-zinc-800">
+            Enable Kits & Assemblies in Inventory Configuration to assemble or disassemble stock.
+          </div>
+        ) : (
+          <>
         <section className="mb-6 flex flex-col sm:flex-row items-end justify-between gap-4">
           <div className="flex gap-2 w-full sm:w-[320px]">
             <button type="button" onClick={() => { setMode("assemble"); resetForm(); }} className={cn("flex-1 flex items-center justify-center gap-1.5 rounded-2xl h-11 text-sm font-bold transition-all border-2", mode === "assemble" ? "bg-emerald-600 text-white border-emerald-600 shadow-lg shadow-emerald-500/20" : "bg-transparent text-muted-foreground border-border hover:border-emerald-300")}><ArrowUp className="h-4 w-4" /> Assemble</button>
@@ -386,6 +405,8 @@ export default function AssemblyOrdersPage() {
             <Button onClick={handleSubmit} disabled={submitting} className={cn("rounded-2xl h-12 px-10 font-bold text-white shadow-lg border-none transition-all active:scale-95", accentColor, accentHover, accentShadow)}><Save className="mr-2 h-4 w-4" /> {submitting ? "Saving…" : "Save Document"}</Button>
           </div>
         </div>
+          </>
+        )}
       </div>
 
       <AddItemDialog open={addItemOpen} onClose={() => setAddItemOpen(false)} onSuccess={async () => { await loadItems(); setAddItemOpen(false); }} />

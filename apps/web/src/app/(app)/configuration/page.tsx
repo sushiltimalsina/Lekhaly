@@ -39,6 +39,12 @@ import { FiscalSecurityPanel, CreditManagementPanel } from "./components/Securit
 import { FiscalSessionsPanel } from "./components/FiscalSessionsPanel";
 import { InventoryConfigurationPanel } from "./components/InventoryConfigurationPanel";
 
+function normalizeList<T>(input: unknown): T[] {
+  if (Array.isArray(input)) return input as T[];
+  const obj = input as { items?: T[]; data?: T[] } | null;
+  return obj?.items ?? obj?.data ?? [];
+}
+
 export default function ConfigurationPage() {
   return (
     <React.Suspense fallback={null}>
@@ -104,11 +110,7 @@ function ConfigurationContent() {
 
   const fetchData = async () => {
     setLoading(true);
-    const normalizeList = <T,>(input: unknown): T[] => {
-      if (Array.isArray(input)) return input as T[];
-      const obj = input as { items?: T[]; data?: T[] } | null;
-      return obj?.items ?? obj?.data ?? [];
-    };
+    setError(null);
     try {
       const [uRes, gRes, sRes, pmRes, stRes, ptRes, cRes, sessRes, invRes, whRes] = await Promise.all([
         listUnits({ take: 100 }),
@@ -184,9 +186,29 @@ function ConfigurationContent() {
     setError(null);
     try {
       const res = await updateInventorySettings({ ...inventorySettings, ...updates });
+      const whRes = await listWarehouses({ isActive: true });
       setInventorySettings(res);
+      window.dispatchEvent(new CustomEvent("inventory-settings-updated", { detail: res }));
+      setWarehouses(normalizeList<Warehouse>(whRes));
     } catch (e: any) {
       setError(e?.message ?? "Failed to update inventory settings.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const refreshInventoryConfiguration = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const [invRes, whRes] = await Promise.all([
+        getInventorySettings(),
+        listWarehouses({ isActive: true })
+      ]);
+      setInventorySettings(invRes);
+      setWarehouses(normalizeList<Warehouse>(whRes));
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to refresh inventory settings.");
     } finally {
       setBusy(false);
     }
@@ -418,6 +440,7 @@ function ConfigurationContent() {
           busy={busy}
           expanded={expandedSection === "inventory"}
           onToggle={() => setExpandedSection(expandedSection === "inventory" ? null : "inventory")}
+          onRefresh={refreshInventoryConfiguration}
           onSave={saveInventorySettings}
         />
 

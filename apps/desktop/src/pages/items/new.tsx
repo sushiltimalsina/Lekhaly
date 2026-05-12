@@ -8,6 +8,7 @@ import { listTaxes } from "@/lib/api/taxes";
 import { listUnits, type UnitRecord } from "@/lib/api/units";
 import { listItemGroups, type ItemGroupRecord } from "@/lib/api/item-groups";
 import { cn } from "@/lib/utils";
+import { hasItemPolicyTracking, inventoryFeatures } from "@/lib/inventory-features";
 import { useNavigate, Link } from "react-router-dom";
 import {
   ArrowLeft, PackagePlus, Save, Plus, X, Layers,
@@ -132,12 +133,47 @@ export default function NewItemPage() {
     );
   }).slice(0, 8);
 
+  const features = inventoryFeatures(inventorySettings);
+  const goodsInventoryEnabled = form.type === "goods" && features.inventory;
+  const effectiveTrackInventory = goodsInventoryEnabled && form.trackInventory;
+  const showInventoryTab = features.inventory;
+  const showOpeningStock = effectiveTrackInventory;
+  const showAdvancedPolicies = hasItemPolicyTracking(features);
+
+  React.useEffect(() => {
+    if (!inventorySettings) return;
+    setForm((prev) => {
+      const next = { ...prev };
+      if (prev.type === "services" || !features.inventory) {
+        next.trackInventory = false;
+        next.minStockLevel = "";
+        next.reorderQty = "";
+        next.openingQty = "";
+        next.openingPrice = "";
+      }
+      if (!next.trackInventory || !features.serial) next.isSerialized = false;
+      if (!next.trackInventory || !features.batch) next.tracksBatch = false;
+      if (!next.trackInventory || !features.lot) next.tracksLot = false;
+      if (!next.trackInventory || !features.expiry) next.tracksExpiry = false;
+      if (prev.type === "services" || !features.kits) next.isKit = false;
+      return JSON.stringify(next) === JSON.stringify(prev) ? prev : next;
+    });
+  }, [inventorySettings, features.inventory, features.serial, features.batch, features.lot, features.expiry, features.kits, form.type]);
+
+  React.useEffect(() => {
+    if (!features.kits || !form.isKit) setBomLines([]);
+  }, [features.kits, form.isKit]);
+
+  React.useEffect(() => {
+    if (!showInventoryTab && activeTab === "inventory") setActiveTab("basic");
+  }, [showInventoryTab, activeTab]);
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
     if (!form.name.trim()) { setError("Item name is required."); return; }
-    if (form.isKit && bomLines.length === 0) { setError("A kit item must have at least one component."); return; }
+    if (features.kits && form.isKit && bomLines.length === 0) { setError("A kit item must have at least one component."); return; }
 
     setSaving(true);
     try {
@@ -149,21 +185,21 @@ export default function NewItemPage() {
         type: form.type,
         salesPrice: form.salesPrice ? Number(form.salesPrice) : undefined,
         purchasePrice: form.purchasePrice ? Number(form.purchasePrice) : undefined,
-        openingQty: form.openingQty ? Number(form.openingQty) : undefined,
-        openingPrice: form.openingPrice ? Number(form.openingPrice) : undefined,
+        openingQty: showOpeningStock && form.openingQty ? Number(form.openingQty) : undefined,
+        openingPrice: showOpeningStock && form.openingPrice ? Number(form.openingPrice) : undefined,
         groupId: form.groupId || undefined,
         incomeAccountId: form.incomeAccountId.trim() || undefined,
         expenseAccountId: form.expenseAccountId.trim() || undefined,
         taxCodeIds: taxable ? form.taxCodeIds : undefined,
-        minStockLevel: form.minStockLevel ? Number(form.minStockLevel) : undefined,
-        reorderQty: form.reorderQty ? Number(form.reorderQty) : undefined,
-        trackInventory: form.type === "goods" ? form.trackInventory : false,
-        isSerialized: form.type === "goods" && form.trackInventory ? form.isSerialized : false,
-        isKit: form.type === "goods" ? form.isKit : false,
-        tracksBatch: form.type === "goods" && form.trackInventory ? form.tracksBatch : false,
-        tracksLot: form.type === "goods" && form.trackInventory ? form.tracksLot : false,
-        tracksExpiry: form.type === "goods" && form.trackInventory ? form.tracksExpiry : false,
-        components: form.isKit
+        minStockLevel: effectiveTrackInventory && form.minStockLevel ? Number(form.minStockLevel) : undefined,
+        reorderQty: effectiveTrackInventory && form.reorderQty ? Number(form.reorderQty) : undefined,
+        trackInventory: effectiveTrackInventory,
+        isSerialized: effectiveTrackInventory && features.serial ? form.isSerialized : false,
+        isKit: form.type === "goods" && features.kits ? form.isKit : false,
+        tracksBatch: effectiveTrackInventory && features.batch ? form.tracksBatch : false,
+        tracksLot: effectiveTrackInventory && features.lot ? form.tracksLot : false,
+        tracksExpiry: effectiveTrackInventory && features.expiry ? form.tracksExpiry : false,
+        components: features.kits && form.isKit
           ? bomLines.map((l) => ({ componentId: l.componentId, qty: l.qty }))
           : undefined,
       } as any);
@@ -176,12 +212,12 @@ export default function NewItemPage() {
     }
   };
 
-  const TABS: { key: Tab; label: string; icon: any }[] = [
+  const TABS = ([
     { key: "basic", label: "Basic Info", icon: Package },
     { key: "pricing", label: "Pricing", icon: DollarSign },
     { key: "inventory", label: "Inventory Controls", icon: Layers },
     { key: "accounting", label: "Accounting & Tax", icon: BookOpen },
-  ];
+  ] as Array<{ key: Tab; label: string; icon: any }>).filter((tab) => tab.key !== "inventory" || showInventoryTab);
 
   return (
     <div className="space-y-8 pb-24">
@@ -268,14 +304,18 @@ export default function NewItemPage() {
               <Field label="Purchase Price">
                 <Input type="number" min="0" step="0.01" value={form.purchasePrice} onChange={(e) => update("purchasePrice", e.target.value)} placeholder="0.00" disabled={form.type === "services"} />
               </Field>
-              <Field label="Opening Quantity">
-                <Input type="number" min="0" step="0.01" value={form.openingQty} onChange={(e) => update("openingQty", e.target.value)} placeholder="0" disabled={form.type === "services"} />
-              </Field>
-              <Field label="Opening Price / Rate">
-                <Input type="number" min="0" step="0.01" value={form.openingPrice} onChange={(e) => update("openingPrice", e.target.value)} placeholder="0.00" disabled={form.type === "services"} />
-              </Field>
+              {showOpeningStock && (
+                <>
+                  <Field label="Opening Quantity">
+                    <Input type="number" min="0" step="0.01" value={form.openingQty} onChange={(e) => update("openingQty", e.target.value)} placeholder="0" />
+                  </Field>
+                  <Field label="Opening Price / Rate">
+                    <Input type="number" min="0" step="0.01" value={form.openingPrice} onChange={(e) => update("openingPrice", e.target.value)} placeholder="0.00" />
+                  </Field>
+                </>
+              )}
             </div>
-            {Number(form.openingQty) > 0 && (
+            {showOpeningStock && Number(form.openingQty) > 0 && (
               <div className="rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40 px-4 py-3 text-sm">
                 Opening Amount: <span className="font-black text-emerald-700 dark:text-emerald-400">{(Number(form.openingQty) * Number(form.openingPrice || 0)).toFixed(2)}</span>
               </div>
@@ -286,20 +326,22 @@ export default function NewItemPage() {
         {/* INVENTORY CONTROLS */}
         {activeTab === "inventory" && (
           <div className="space-y-6">
-            <section className="rounded-2xl border bg-card p-6 shadow-sm space-y-5">
-              <SectionHeader icon={AlertTriangle} title="Reorder & Low Stock Alerts" desc="Set thresholds to trigger automatic low-stock warnings." />
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Minimum Stock Level" hint="Alert shows when stock drops below this">
-                  <Input type="number" min="0" step="0.01" value={form.minStockLevel} onChange={(e) => update("minStockLevel", e.target.value)} placeholder="e.g. 10" disabled={form.type === "services"} />
-                </Field>
-                <Field label="Reorder Quantity" hint="Suggested qty when creating reorder PO">
-                  <Input type="number" min="0" step="0.01" value={form.reorderQty} onChange={(e) => update("reorderQty", e.target.value)} placeholder="e.g. 50" disabled={form.type === "services"} />
-                </Field>
-              </div>
-            </section>
+            {goodsInventoryEnabled && (
+              <section className="rounded-2xl border bg-card p-6 shadow-sm space-y-5">
+                <SectionHeader icon={AlertTriangle} title="Reorder & Low Stock Alerts" desc="Set thresholds to trigger automatic low-stock warnings." />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Minimum Stock Level" hint="Alert shows when stock drops below this">
+                    <Input type="number" min="0" step="0.01" value={form.minStockLevel} onChange={(e) => update("minStockLevel", e.target.value)} placeholder="e.g. 10" />
+                  </Field>
+                  <Field label="Reorder Quantity" hint="Suggested qty when creating reorder PO">
+                    <Input type="number" min="0" step="0.01" value={form.reorderQty} onChange={(e) => update("reorderQty", e.target.value)} placeholder="e.g. 50" />
+                  </Field>
+                </div>
+              </section>
+            )}
 
             <section className="rounded-2xl border bg-card p-6 shadow-sm space-y-5">
-              <SectionHeader icon={ShieldCheck} title="Advanced Tracking" desc="Enable serial number or kit/bundle behaviour." />
+              <SectionHeader icon={ShieldCheck} title="Inventory Policy" desc="Item-level stock behaviour follows company inventory configuration." />
               <div className="flex flex-col gap-4">
                 <Toggle
                   id="trackInventory"
@@ -307,53 +349,22 @@ export default function NewItemPage() {
                   desc="Maintain stock ledger quantities for this goods item."
                   checked={form.trackInventory}
                   onChange={(v) => update("trackInventory", v)}
-                  disabled={form.type === "services" || inventorySettings?.inventoryTrackingEnabled === false}
+                  disabled={!goodsInventoryEnabled}
                 />
-                <Toggle
-                  id="isSerialized"
-                  label="Serialized Item"
-                  desc="Each unit has a unique serial number tracked from purchase to sale."
-                  checked={form.isSerialized}
-                  onChange={(v) => update("isSerialized", v)}
-                  disabled={form.type === "services" || !form.trackInventory || inventorySettings?.serialTrackingEnabled === false}
-                />
-                <Toggle
-                  id="tracksBatch"
-                  label="Batch Tracked"
-                  desc="Require batch number when stock moves for this item."
-                  checked={form.tracksBatch}
-                  onChange={(v) => update("tracksBatch", v)}
-                  disabled={form.type === "services" || !form.trackInventory || inventorySettings?.batchTrackingEnabled === false}
-                />
-                <Toggle
-                  id="tracksLot"
-                  label="Lot Tracked"
-                  desc="Require lot number when stock moves for this item."
-                  checked={form.tracksLot}
-                  onChange={(v) => update("tracksLot", v)}
-                  disabled={form.type === "services" || !form.trackInventory || inventorySettings?.lotTrackingEnabled === false}
-                />
-                <Toggle
-                  id="tracksExpiry"
-                  label="Expiry Tracked"
-                  desc="Require expiry date when stock moves for this item."
-                  checked={form.tracksExpiry}
-                  onChange={(v) => update("tracksExpiry", v)}
-                  disabled={form.type === "services" || !form.trackInventory || inventorySettings?.expiryTrackingEnabled === false}
-                />
-                <Toggle
-                  id="isKit"
-                  label="Kit / Bundle Item"
-                  desc="When sold, automatically deducts the component items from stock instead of this item."
-                  checked={form.isKit}
-                  onChange={(v) => update("isKit", v)}
-                  disabled={form.type === "services" || inventorySettings?.kitsEnabled === false}
-                />
+                {showAdvancedPolicies && (
+                  <>
+                    {features.serial && <Toggle id="isSerialized" label="Serialized Item" desc="Each unit has a unique serial number tracked from purchase to sale." checked={form.isSerialized} onChange={(v) => update("isSerialized", v)} disabled={!effectiveTrackInventory} />}
+                    {features.batch && <Toggle id="tracksBatch" label="Batch Tracked" desc="Require batch number when stock moves for this item." checked={form.tracksBatch} onChange={(v) => update("tracksBatch", v)} disabled={!effectiveTrackInventory} />}
+                    {features.lot && <Toggle id="tracksLot" label="Lot Tracked" desc="Require lot number when stock moves for this item." checked={form.tracksLot} onChange={(v) => update("tracksLot", v)} disabled={!effectiveTrackInventory} />}
+                    {features.expiry && <Toggle id="tracksExpiry" label="Expiry Tracked" desc="Require expiry date when stock moves for this item." checked={form.tracksExpiry} onChange={(v) => update("tracksExpiry", v)} disabled={!effectiveTrackInventory} />}
+                    {features.kits && <Toggle id="isKit" label="Kit / Bundle Item" desc="When sold, automatically deducts the component items from stock instead of this item." checked={form.isKit} onChange={(v) => update("isKit", v)} disabled={form.type === "services"} />}
+                  </>
+                )}
               </div>
             </section>
 
             {/* BOM Builder */}
-            {form.isKit && (
+            {features.kits && form.isKit && (
               <section className="rounded-2xl border-2 border-amber-400/40 bg-amber-50/50 dark:bg-amber-900/10 p-6 shadow-sm space-y-4">
                 <div className="flex items-center gap-2">
                   <Layers className="h-5 w-5 text-amber-600" />

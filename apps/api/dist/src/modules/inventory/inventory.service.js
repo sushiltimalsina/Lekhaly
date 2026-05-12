@@ -117,7 +117,7 @@ let InventoryService = class InventoryService {
         if (next.inventoryTrackingEnabled && next.binsEnabled && next.defaultWarehouseId) {
             await this.ensureDefaultBin(user.companyId, next.defaultWarehouseId);
         }
-        return this.prisma.inventorySettings.upsert({
+        const saved = await this.prisma.inventorySettings.upsert({
             where: { companyId: user.companyId },
             create: {
                 companyId: user.companyId,
@@ -149,6 +149,22 @@ let InventoryService = class InventoryService {
                 costingMethod: next.costingMethod
             }
         });
+        const itemPolicyReset = {};
+        if (!saved.serialTrackingEnabled)
+            itemPolicyReset.isSerialized = false;
+        if (!saved.batchTrackingEnabled)
+            itemPolicyReset.tracksBatch = false;
+        if (!saved.lotTrackingEnabled)
+            itemPolicyReset.tracksLot = false;
+        if (!saved.expiryTrackingEnabled)
+            itemPolicyReset.tracksExpiry = false;
+        if (Object.keys(itemPolicyReset).length > 0) {
+            await this.prisma.item.updateMany({
+                where: { companyId: user.companyId },
+                data: itemPolicyReset
+            });
+        }
+        return saved;
     }
     async assertSettingsCanChange(companyId, current, next) {
         const guards = [

@@ -26,7 +26,6 @@ export class InventoryController {
 
   @Post("settings")
   @RequirePerm("masters.write")
-  @RequireStep("sensitive")
   updateSettings(
     @CurrentUser() user: AuthUser,
     @Body(new ZodValidationPipe(InventorySettingsSchema)) body: any

@@ -21,6 +21,8 @@ import { cn } from "@/lib/utils";
 import { createStockCount } from "@/lib/api/stock-counts";
 import { listItems } from "@/lib/api/items";
 import { listWarehouses } from "@/lib/api/warehouses";
+import { getInventorySettings, type InventorySettings } from "@/lib/api/inventory";
+import { inventoryFeatures } from "@/lib/inventory-features";
 
 export default function CreateStockCountPage() {
   const router = useRouter();
@@ -30,6 +32,7 @@ export default function CreateStockCountPage() {
 
   const [items, setItems] = React.useState<any[]>([]);
   const [warehouses, setWarehouses] = React.useState<any[]>([]);
+  const [inventorySettings, setInventorySettings] = React.useState<InventorySettings | null>(null);
 
   // Form State
   const [reference, setReference] = React.useState("");
@@ -38,26 +41,29 @@ export default function CreateStockCountPage() {
   const [memo, setMemo] = React.useState("");
 
   const [lines, setLines] = React.useState<any[]>([
-    { id: "1", itemId: "", binId: "", countedQty: "", note: "" },
+    { id: "1", itemId: "", binId: "", batchNo: "", lotNo: "", countedQty: "", note: "" },
   ]);
 
   React.useEffect(() => {
     (async () => {
       try {
-        const [iData, whData] = await Promise.all([
+        const [iData, whData, settingsData] = await Promise.all([
           listItems({ isActive: true, take: 5000 }),
           listWarehouses({ isActive: true }),
+          getInventorySettings(),
         ]);
-        setItems(Array.isArray(iData) ? iData.filter((i: any) => i.type !== "services") : []);
+        setInventorySettings(settingsData);
+        setItems(Array.isArray(iData) ? iData.filter((i: any) => i.type !== "services" && i.trackInventory !== false) : []);
         setWarehouses(Array.isArray(whData) ? whData : []);
       } catch {}
     })();
   }, []);
 
   const selectedWh = warehouses.find((w) => w.id === warehouseId);
+  const features = inventoryFeatures(inventorySettings);
   const whBins = selectedWh?.bins?.filter((b: any) => b.isActive) || [];
 
-  const addLine = () => setLines([...lines, { id: Date.now().toString(), itemId: "", binId: "", countedQty: "", note: "" }]);
+  const addLine = () => setLines([...lines, { id: Date.now().toString(), itemId: "", binId: "", batchNo: "", lotNo: "", countedQty: "", note: "" }]);
   const removeLine = (id: string) => setLines(lines.filter((l) => l.id !== id));
   const updateLine = (id: string, field: string, value: any) => {
     setLines(lines.map((l) => (l.id === id ? { ...l, [field]: value } : l)));
@@ -82,6 +88,8 @@ export default function CreateStockCountPage() {
         lines: validLines.map((l) => ({
           itemId: l.itemId,
           binId: l.binId || undefined,
+          batchNo: features.batch ? l.batchNo?.trim() || undefined : undefined,
+          lotNo: features.lot ? l.lotNo?.trim() || undefined : undefined,
           countedQty: l.countedQty ? Number(l.countedQty) : undefined,
           note: l.note || undefined,
         })),
@@ -130,8 +138,15 @@ export default function CreateStockCountPage() {
           <CheckCircle2 className="h-4 w-4 shrink-0" /> {success}
         </div>
       )}
+      {inventorySettings && !features.inventory && (
+        <Card className="border-dashed border-border/70">
+          <CardContent className="py-10 text-center text-sm text-muted-foreground">
+            Enable Inventory Tracking in Configuration to use physical counts.
+          </CardContent>
+        </Card>
+      )}
 
-      <Card className="border-border/50 shadow-lg">
+      {features.inventory && <Card className="border-border/50 shadow-lg">
         <CardContent className="pt-6 space-y-6">
           <div className="grid gap-6 sm:grid-cols-3">
             <div>
@@ -145,7 +160,7 @@ export default function CreateStockCountPage() {
                 className="rounded-xl h-11"
               />
             </div>
-            <div>
+            {features.warehouses && <div>
               <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1.5 block">
                 Warehouse Scope
               </label>
@@ -158,7 +173,7 @@ export default function CreateStockCountPage() {
                 }}
                 placeholder="Select Warehouse"
               />
-            </div>
+            </div>}
             <div>
               <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1.5 block">
                 Count Date
@@ -178,16 +193,18 @@ export default function CreateStockCountPage() {
             />
           </div>
         </CardContent>
-      </Card>
+      </Card>}
 
-      <Card className="border-border/50 shadow-lg">
+      {features.inventory && <Card className="border-border/50 shadow-lg">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead className="bg-muted/50 text-xs uppercase text-muted-foreground border-b border-border/50">
                 <tr>
                   <th className="px-4 py-3 font-bold w-[35%]">Item</th>
-                  {whBins.length > 0 && <th className="px-4 py-3 font-bold w-[20%]">Bin</th>}
+                  {features.bins && whBins.length > 0 && <th className="px-4 py-3 font-bold w-[20%]">Bin</th>}
+                  {features.batch && <th className="px-4 py-3 font-bold w-[16%]">Batch</th>}
+                  {features.lot && <th className="px-4 py-3 font-bold w-[16%]">Lot</th>}
                   <th className="px-4 py-3 font-bold w-[20%]">Counted Qty</th>
                   <th className="px-4 py-3 font-bold">Notes</th>
                   <th className="px-4 py-3 w-10"></th>
@@ -204,7 +221,7 @@ export default function CreateStockCountPage() {
                         placeholder="Select item..."
                       />
                     </td>
-                    {whBins.length > 0 && (
+                    {features.bins && whBins.length > 0 && (
                       <td className="p-2">
                         <SearchableSelect
                           options={[{ id: "", name: "Any" }, ...whBins.map((b: any) => ({ id: b.id, name: b.name }))]}
@@ -212,6 +229,16 @@ export default function CreateStockCountPage() {
                           onChange={(id) => updateLine(line.id, "binId", id)}
                           placeholder="Select bin..."
                         />
+                      </td>
+                    )}
+                    {features.batch && (
+                      <td className="p-2">
+                        <Input placeholder="Batch" value={line.batchNo} onChange={(e) => updateLine(line.id, "batchNo", e.target.value)} className="rounded-lg" />
+                      </td>
+                    )}
+                    {features.lot && (
+                      <td className="p-2">
+                        <Input placeholder="Lot" value={line.lotNo} onChange={(e) => updateLine(line.id, "lotNo", e.target.value)} className="rounded-lg" />
                       </td>
                     )}
                     <td className="p-2">
@@ -256,7 +283,7 @@ export default function CreateStockCountPage() {
             </Button>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
     </div>
   );
 }

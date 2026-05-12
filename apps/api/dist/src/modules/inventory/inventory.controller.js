@@ -58,7 +58,6 @@ __decorate([
 __decorate([
     (0, common_1.Post)("settings"),
     (0, auth_decorator_1.RequirePerm)("masters.write"),
-    (0, auth_decorator_1.RequireStep)("sensitive"),
     __param(0, (0, auth_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Body)(new zod_pipe_1.ZodValidationPipe(inventory_schemas_1.InventorySettingsSchema))),
     __metadata("design:type", Function),

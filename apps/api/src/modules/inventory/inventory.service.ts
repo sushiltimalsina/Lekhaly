@@ -128,7 +128,7 @@ export class InventoryService {
       await this.ensureDefaultBin(user.companyId, next.defaultWarehouseId);
     }
 
-    return this.prisma.inventorySettings.upsert({
+    const saved = await this.prisma.inventorySettings.upsert({
       where: { companyId: user.companyId },
       create: {
         companyId: user.companyId,
@@ -160,6 +160,20 @@ export class InventoryService {
         costingMethod: next.costingMethod
       }
     });
+
+    const itemPolicyReset: Prisma.ItemUpdateManyMutationInput = {};
+    if (!saved.serialTrackingEnabled) itemPolicyReset.isSerialized = false;
+    if (!saved.batchTrackingEnabled) itemPolicyReset.tracksBatch = false;
+    if (!saved.lotTrackingEnabled) itemPolicyReset.tracksLot = false;
+    if (!saved.expiryTrackingEnabled) itemPolicyReset.tracksExpiry = false;
+    if (Object.keys(itemPolicyReset).length > 0) {
+      await this.prisma.item.updateMany({
+        where: { companyId: user.companyId },
+        data: itemPolicyReset
+      });
+    }
+
+    return saved;
   }
 
   private async assertSettingsCanChange(companyId: string, current: any, next: any) {

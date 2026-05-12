@@ -10,6 +10,7 @@ import { Button } from "@lekhaly/ui";
 import { Input } from "@lekhaly/ui";
 import { ArrowRightLeft, Save, AlertTriangle, CheckCircle2, ChevronLeft, Info, ArrowRight, Warehouse, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { hasLineTracking, inventoryFeatures } from "@/lib/inventory-features";
 import { getInventorySettings, transferInventoryStock, type InventorySettings } from "@/lib/api/inventory";
 import { listItems } from "@/lib/api/items";
 import { listWarehouses, type Warehouse as WarehouseType } from "@/lib/api/warehouses";
@@ -52,25 +53,28 @@ export default function StockTransferPage() {
   const selectedItem = items.find((i) => i.id === itemId);
   const fromWh = warehouses.find((w) => w.id === fromWarehouseId);
   const toWh = warehouses.find((w) => w.id === toWarehouseId);
-  const fromBins = fromWh?.bins?.filter((b) => b.isActive) ?? [];
-  const toBins = toWh?.bins?.filter((b) => b.isActive) ?? [];
+  const features = inventoryFeatures(inventorySettings);
+  const fromBins = features.bins ? fromWh?.bins?.filter((b) => b.isActive) ?? [] : [];
+  const toBins = features.bins ? toWh?.bins?.filter((b) => b.isActive) ?? [] : [];
+  const showTrackingCard = hasLineTracking(features) && (features.batch || features.lot || features.expiry || (features.serial && selectedItem?.isSerialized));
   const amount = Number(qty) && Number(rate) ? Math.abs(Number(qty)) * Number(rate) : 0;
 
   const handleSubmit = async () => {
     setError(null); setSuccess(null);
     if (!itemId) return setError("Select an item");
+    if (!features.warehouses) return setError("Enable warehouses in inventory configuration before transferring stock");
     if (!fromWarehouseId) return setError("Select source warehouse");
     if (!toWarehouseId) return setError("Select destination warehouse");
     if (fromWarehouseId === toWarehouseId && fromBinId === toBinId) return setError("Source and destination cannot be the same");
     if (!qty || Number(qty) <= 0) return setError("Enter a positive quantity");
     if (!date.ad) return setError("Select a date");
-    if (selectedItem?.tracksBatch && !batchNo.trim()) return setError("Batch number is required for this item");
-    if (selectedItem?.tracksLot && !lotNo.trim()) return setError("Lot number is required for this item");
-    if (selectedItem?.tracksExpiry && !expiryDate) return setError("Expiry date is required for this item");
+    if (features.batch && selectedItem?.tracksBatch && !batchNo.trim()) return setError("Batch number is required for this item");
+    if (features.lot && selectedItem?.tracksLot && !lotNo.trim()) return setError("Lot number is required for this item");
+    if (features.expiry && selectedItem?.tracksExpiry && !expiryDate) return setError("Expiry date is required for this item");
     setSubmitting(true);
     try {
       const serialNumbers = serialText.split(/[\n,]+/).map((serial) => serial.trim()).filter(Boolean);
-      await transferInventoryStock({ itemId, fromWarehouseId, fromBinId: fromBinId || undefined, toWarehouseId, toBinId: toBinId || undefined, qty: Number(qty), rate: rate ? Number(rate) : undefined, date: date.ad, dateBs: date.bs || undefined, memo: memo.trim() || undefined, batchNo: batchNo.trim() || undefined, lotNo: lotNo.trim() || undefined, expiryDate: expiryDate || undefined, serialNumbers: serialNumbers.length ? serialNumbers : undefined });
+      await transferInventoryStock({ itemId, fromWarehouseId, fromBinId: features.bins ? fromBinId || undefined : undefined, toWarehouseId, toBinId: features.bins ? toBinId || undefined : undefined, qty: Number(qty), rate: rate ? Number(rate) : undefined, date: date.ad, dateBs: date.bs || undefined, memo: memo.trim() || undefined, batchNo: features.batch ? batchNo.trim() || undefined : undefined, lotNo: features.lot ? lotNo.trim() || undefined : undefined, expiryDate: features.expiry ? expiryDate || undefined : undefined, serialNumbers: features.serial && serialNumbers.length ? serialNumbers : undefined });
       setSuccess("Stock transfer completed!");
       setTimeout(() => { setItemId(""); setFromWarehouseId(""); setFromBinId(""); setToWarehouseId(""); setToBinId(""); setQty(""); setRate(""); setMemo(""); setBatchNo(""); setLotNo(""); setExpiryDate(""); setSerialText(""); setSuccess(null); }, 2000);
     } catch (e: any) { setError(e?.message ?? "Failed to transfer stock"); } finally { setSubmitting(false); }
@@ -84,16 +88,17 @@ export default function StockTransferPage() {
       </div>
       {error && <div className="rounded-xl border border-red-200 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 dark:text-red-300 flex items-center gap-2"><AlertTriangle className="h-4 w-4 shrink-0" /> {error}</div>}
       {success && <div className="rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-900/20 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300 flex items-center gap-2"><CheckCircle2 className="h-4 w-4 shrink-0" /> {success}</div>}
+      {inventorySettings && !features.warehouses && <Card className="border-dashed border-border/70"><CardContent className="py-10 text-center text-sm text-muted-foreground">Enable Warehouses in Inventory Configuration to use stock transfers.</CardContent></Card>}
 
       {/* Item */}
-      <Card className="border-border/50 shadow-lg"><CardContent className="pt-6 space-y-4">
+      {features.warehouses && <Card className="border-border/50 shadow-lg"><CardContent className="pt-6 space-y-4">
         <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2"><Package className="h-3.5 w-3.5" /> Item</h3>
         <SearchableSelect options={items.map((i) => ({ value: i.id, label: `${i.name}${i.sku ? ` [${i.sku}]` : ""}` }))} value={itemId} onChange={setItemId} placeholder="Search items..." />
         {selectedItem && <div className="flex items-center gap-4 text-sm"><span className="text-muted-foreground">Total stock:</span><span className="font-bold tabular-nums">{selectedItem.stock ?? 0} units</span></div>}
-      </CardContent></Card>
+      </CardContent></Card>}
 
       {/* From → To */}
-      <div className="grid gap-4 lg:grid-cols-[1fr_auto_1fr]">
+      {features.warehouses && <div className="grid gap-4 lg:grid-cols-[1fr_auto_1fr]">
         <Card className="border-border/50 shadow-lg"><CardContent className="pt-6 space-y-4">
           <h3 className="text-xs font-bold uppercase tracking-widest text-red-600 dark:text-red-400 flex items-center gap-2"><Warehouse className="h-3.5 w-3.5" /> Source (From)</h3>
           <SearchableSelect options={warehouses.map((w) => ({ value: w.id, label: `${w.name}${w.code ? ` (${w.code})` : ""}` }))} value={fromWarehouseId} onChange={(v) => { setFromWarehouseId(v); setFromBinId(""); }} placeholder="Select source warehouse" />
@@ -105,10 +110,10 @@ export default function StockTransferPage() {
           <SearchableSelect options={warehouses.map((w) => ({ value: w.id, label: `${w.name}${w.code ? ` (${w.code})` : ""}` }))} value={toWarehouseId} onChange={(v) => { setToWarehouseId(v); setToBinId(""); }} placeholder="Select destination warehouse" />
           {toBins.length > 0 && <SearchableSelect options={[{ value: "", label: "No specific bin" }, ...toBins.map((b) => ({ value: b.id, label: `${b.name}${b.code ? ` (${b.code})` : ""}` }))]} value={toBinId} onChange={setToBinId} placeholder="Select bin (optional)" />}
         </CardContent></Card>
-      </div>
+      </div>}
 
       {/* Qty & Details */}
-      <Card className="border-border/50 shadow-lg"><CardContent className="pt-6 space-y-4">
+      {features.warehouses && <Card className="border-border/50 shadow-lg"><CardContent className="pt-6 space-y-4">
         <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Transfer Details</h3>
         <div className="grid gap-4 sm:grid-cols-3">
           <div><label className="text-xs font-medium text-muted-foreground mb-1.5 block">Quantity *</label><Input type="number" placeholder="0" value={qty} onChange={(e) => setQty(e.target.value)} className="rounded-xl h-12 text-lg font-bold tabular-nums" /></div>
@@ -116,21 +121,21 @@ export default function StockTransferPage() {
           <div><label className="text-xs font-medium text-muted-foreground mb-1.5 block">Transfer Date *</label><DualDateInput value={date} onChange={setDate} /></div>
         </div>
         <div><label className="text-xs font-medium text-muted-foreground mb-1.5 block">Memo</label><Input placeholder="Reason for transfer" value={memo} onChange={(e) => setMemo(e.target.value)} className="rounded-xl" /></div>
-      </CardContent></Card>
+      </CardContent></Card>}
 
       {/* Batch/Lot */}
-      <Card className="border-border/50 shadow-lg"><CardContent className="pt-6 space-y-4">
+      {features.warehouses && showTrackingCard && <Card className="border-border/50 shadow-lg"><CardContent className="pt-6 space-y-4">
         <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Tracking</h3>
         <div className="grid gap-4 sm:grid-cols-3">
-          {inventorySettings?.batchTrackingEnabled && <Input placeholder={selectedItem?.tracksBatch ? "Batch No. *" : "Batch No."} value={batchNo} onChange={(e) => setBatchNo(e.target.value)} className="rounded-xl" />}
-          {inventorySettings?.lotTrackingEnabled && <Input placeholder={selectedItem?.tracksLot ? "Lot No. *" : "Lot No."} value={lotNo} onChange={(e) => setLotNo(e.target.value)} className="rounded-xl" />}
-          {inventorySettings?.expiryTrackingEnabled && <Input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} className="rounded-xl" />}
+          {features.batch && <Input placeholder={selectedItem?.tracksBatch ? "Batch No. *" : "Batch No."} value={batchNo} onChange={(e) => setBatchNo(e.target.value)} className="rounded-xl" />}
+          {features.lot && <Input placeholder={selectedItem?.tracksLot ? "Lot No. *" : "Lot No."} value={lotNo} onChange={(e) => setLotNo(e.target.value)} className="rounded-xl" />}
+          {features.expiry && <Input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} className="rounded-xl" />}
         </div>
-        {selectedItem?.isSerialized && inventorySettings?.serialTrackingEnabled && <div><label className="text-xs font-medium text-muted-foreground mb-1.5 block">Serial Numbers *</label><textarea value={serialText} onChange={(e) => setSerialText(e.target.value)} placeholder="One serial per line, or comma separated" className="min-h-24 w-full rounded-xl border bg-background px-3 py-2 text-sm" /></div>}
-      </CardContent></Card>
+        {selectedItem?.isSerialized && features.serial && <div><label className="text-xs font-medium text-muted-foreground mb-1.5 block">Serial Numbers *</label><textarea value={serialText} onChange={(e) => setSerialText(e.target.value)} placeholder="One serial per line, or comma separated" className="min-h-24 w-full rounded-xl border bg-background px-3 py-2 text-sm" /></div>}
+      </CardContent></Card>}
 
       {/* Submit */}
-      <Card className="border-blue-200 dark:border-blue-800/50 shadow-xl"><CardContent className="pt-6 space-y-4">
+      {features.warehouses && <Card className="border-blue-200 dark:border-blue-800/50 shadow-xl"><CardContent className="pt-6 space-y-4">
         <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Transfer Summary</h3>
         <div className="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-2xl bg-muted/50 border border-border/50">
           <div className="text-center sm:text-left flex-1 min-w-0"><div className="text-xs text-muted-foreground">From</div><div className="font-bold truncate">{fromWh?.name || "—"}</div></div>
@@ -142,7 +147,7 @@ export default function StockTransferPage() {
         <Button onClick={handleSubmit} disabled={submitting || !itemId || !fromWarehouseId || !toWarehouseId || !qty} className="w-full rounded-2xl h-12 font-bold bg-blue-600 hover:bg-blue-700 text-white border-none shadow-lg shadow-blue-500/20">
           <Save className="mr-2 h-4 w-4" />{submitting ? "Transferring…" : "Execute Transfer"}
         </Button>
-      </CardContent></Card>
+      </CardContent></Card>}
     </div>
   );
 }

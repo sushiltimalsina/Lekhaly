@@ -5,7 +5,8 @@ import PageHeader from "@/components/app/page-header";
 import AdvancedFilterBar from "@/components/app/advanced-filter-bar";
 import DataTable, { Column } from "@/components/app/data-table";
 import { MoneyText } from "@/components/app/money";
-import { getStockReport, StockReportRow } from "@/lib/api/inventory";
+import { getInventorySettings, getStockReport, StockReportRow, type InventorySettings } from "@/lib/api/inventory";
+import { inventoryFeatures } from "@/lib/inventory-features";
 import { Card, CardContent } from "@lekhaly/ui";
 import { Button } from "@lekhaly/ui";
 import { Printer, RefreshCw, AlertCircle, Package, ArrowUp, ArrowDown, FileDown } from "lucide-react";
@@ -20,17 +21,22 @@ export default function StockLedgerPage() {
     const [rows, setRows] = React.useState<StockReportRow[]>([]);
     const [error, setError] = React.useState<string | null>(null);
     const [searchQuery, setSearchQuery] = React.useState("");
+    const [inventorySettings, setInventorySettings] = React.useState<InventorySettings | null>(null);
 
     async function run() {
         setLoading(true);
         setError(null);
         try {
-            const res = await getStockReport({
-                from: from?.toISOString(),
-                to: to?.toISOString()
-            });
+            const [res, settings] = await Promise.all([
+                getStockReport({
+                    from: from?.toISOString(),
+                    to: to?.toISOString()
+                }),
+                getInventorySettings()
+            ]);
+            setInventorySettings(settings);
 
-            let data = Array.isArray(res) ? res : [];
+            let data = settings.inventoryTrackingEnabled && Array.isArray(res) ? res : [];
             if (searchQuery) {
                 const q = searchQuery.toLowerCase();
                 data = data.filter(r => r.name.toLowerCase().includes(q) || (r.sku && r.sku.toLowerCase().includes(q)));
@@ -50,6 +56,7 @@ export default function StockLedgerPage() {
     }, [from, to, searchQuery]);
 
     const totalValue = rows.reduce((acc, r) => acc + (r.closingAmt ?? 0), 0);
+    const features = inventoryFeatures(inventorySettings);
 
     const columns: Column<StockReportRow>[] = [
         {
@@ -115,6 +122,14 @@ export default function StockLedgerPage() {
                 </div>
             </div>
 
+            {inventorySettings && !features.inventory ? (
+                <Card className="border-dashed border-border/70">
+                    <CardContent className="py-12 text-center text-sm text-muted-foreground">
+                        Enable Inventory Tracking in Configuration to use the Stock Ledger.
+                    </CardContent>
+                </Card>
+            ) : (
+                <>
             <AdvancedFilterBar className="print:hidden" onSearch={setSearchQuery} onFilterChange={(f) => {
                 if (f.dateRange) { setFrom(f.dateRange.from); setTo(f.dateRange.to); }
             }} defaultRange="this_year" />
@@ -133,6 +148,8 @@ export default function StockLedgerPage() {
             <Card className="border-border/50 glass-card overflow-hidden shadow-xl min-h-[400px]">
                 <DataTable rows={rows} columns={columns} loading={loading} emptyText="No stock data found" className="border-none" />
             </Card>
+                </>
+            )}
         </div>
     );
 }

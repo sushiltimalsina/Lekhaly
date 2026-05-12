@@ -44,6 +44,7 @@ export function InventoryConfigurationPanel({
   busy,
   expanded,
   onToggle,
+  onRefresh,
   onSave
 }: {
   settings: InventorySettings | null;
@@ -52,6 +53,7 @@ export function InventoryConfigurationPanel({
   busy: boolean;
   expanded: boolean;
   onToggle: () => void;
+  onRefresh: () => void;
   onSave: (updates: Partial<InventorySettings>) => void;
 }) {
   return (
@@ -72,7 +74,7 @@ export function InventoryConfigurationPanel({
             <CardDescription>Choose how this company maintains stock movements</CardDescription>
           </div>
         </div>
-        <Button variant="outline" size="sm" disabled={busy} onClick={(e) => { e.stopPropagation(); onSave({}); }} className="rounded-xl">
+        <Button variant="outline" size="sm" disabled={busy || loading} onClick={(e) => { e.stopPropagation(); onRefresh(); }} className="rounded-xl">
           Refresh
         </Button>
       </CardHeader>

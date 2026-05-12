@@ -18,15 +18,18 @@ import { createUnit, listUnits } from "@/lib/api/units";
 import {
   adjustInventoryStock,
   getInventoryAlerts,
+  getInventorySettings,
   getItemStockLedger,
   getStockReport,
   InventoryAlerts,
+  type InventorySettings,
   StockLedgerEntry,
   StockReportRow,
   transferInventoryStock,
 } from "@/lib/api/inventory";
 import AddItemDialog from "@/components/app/add-item-dialog";
 import AddGroupDialog from "@/components/app/add-group-dialog";
+import { inventoryFeatures } from "@/lib/inventory-features";
 
 type ItemRow = StockReportRow;
 type DateValue = { ad: string; bs: string };
@@ -88,6 +91,23 @@ const DEFAULT_VISIBLE_STOCK_COLUMNS = STOCK_COLUMN_OPTIONS
 const ALL_STOCK_COLUMNS = STOCK_COLUMN_OPTIONS.map((column) => column.key);
 const MASTER_STOCK_KEY: StockColumnKey = "availableQty";
 const DEPENDENT_STOCK_KEYS: StockColumnKey[] = ["onHandQty", "reservedQty", "availableQty"];
+const STOCK_METRIC_KEYS: StockColumnKey[] = [
+  "onHandQty",
+  "reservedQty",
+  "availableQty",
+  "openingQty",
+  "openingAvgPrice",
+  "openingAmt",
+  "purchaseQty",
+  "purchaseAvgPrice",
+  "purchaseAmt",
+  "saleQty",
+  "saleAvgPrice",
+  "saleAmt",
+  "closingQty",
+  "closingPrice",
+  "closingAmt",
+];
 const COLUMN_PICKER_OPTIONS = STOCK_COLUMN_OPTIONS.filter(
   (column) => !["onHandQty", "reservedQty"].includes(column.key)
 );
@@ -331,6 +351,7 @@ export default function ItemsPage() {
   const [alerts, setAlerts] = React.useState<InventoryAlerts | null>(null);
   const [alertFilter, setAlertFilter] = React.useState<AlertFilter>("all");
   const [accounts, setAccounts] = React.useState<InventoryAccount[]>([]);
+  const [inventorySettings, setInventorySettings] = React.useState<InventorySettings | null>(null);
   const [adjustOpen, setAdjustOpen] = React.useState(false);
   const [adjustSubmitting, setAdjustSubmitting] = React.useState(false);
   const [transferOpen, setTransferOpen] = React.useState(false);
@@ -390,6 +411,19 @@ export default function ItemsPage() {
   const exportMenuWrapRef = React.useRef<HTMLDivElement | null>(null);
   const importFileRef = React.useRef<HTMLInputElement | null>(null);
   const popupOpen = dateMenuOpen || columnsMenuOpen || exportMenuOpen || adjustOpen || transferOpen || importWizardOpen;
+  const features = inventoryFeatures(inventorySettings);
+  const defaultVisibleColumnKeys = React.useMemo(
+    () => features.inventory ? DEFAULT_VISIBLE_STOCK_COLUMNS : DEFAULT_VISIBLE_STOCK_COLUMNS.filter((key) => !STOCK_METRIC_KEYS.includes(key)),
+    [features.inventory]
+  );
+  const allVisibleColumnKeys = React.useMemo(
+    () => features.inventory ? ALL_STOCK_COLUMNS : ALL_STOCK_COLUMNS.filter((key) => !STOCK_METRIC_KEYS.includes(key)),
+    [features.inventory]
+  );
+  const columnPickerOptions = React.useMemo(
+    () => features.inventory ? COLUMN_PICKER_OPTIONS : COLUMN_PICKER_OPTIONS.filter((column) => !STOCK_METRIC_KEYS.includes(column.key)),
+    [features.inventory]
+  );
 
   React.useEffect(() => {
     if (!popupOpen) return;
@@ -433,6 +467,14 @@ export default function ItemsPage() {
     window.localStorage.setItem(STOCK_COLUMN_STORAGE_KEY, JSON.stringify(visibleColumnKeys));
   }, [columnsReady, visibleColumnKeys]);
 
+  React.useEffect(() => {
+    let cancelled = false;
+    getInventorySettings()
+      .then((settings) => { if (!cancelled) setInventorySettings(settings); })
+      .catch(() => { if (!cancelled) setInventorySettings(null); });
+    return () => { cancelled = true; };
+  }, []);
+
   async function refresh(nextFromAd = fromDate.ad, nextToAd = toDate.ad) {
     setLoading(true);
     setError(null);
@@ -455,6 +497,11 @@ export default function ItemsPage() {
   }, [fromDate.ad, toDate.ad]);
 
   React.useEffect(() => {
+    if (!features.inventory) {
+      setAlerts(null);
+      setAlertFilter("all");
+      return;
+    }
     let cancelled = false;
     (async () => {
       try {
@@ -467,7 +514,7 @@ export default function ItemsPage() {
     return () => {
       cancelled = true;
     };
-  }, [rows.length]);
+  }, [rows.length, features.inventory]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -488,11 +535,11 @@ export default function ItemsPage() {
   }, []);
 
   const resetColumns = () => {
-    setVisibleColumnKeys(DEFAULT_VISIBLE_STOCK_COLUMNS);
+    setVisibleColumnKeys(defaultVisibleColumnKeys);
     setColumnsMenuOpen(false);
   };
   const showAllColumns = () => {
-    setVisibleColumnKeys(ALL_STOCK_COLUMNS);
+    setVisibleColumnKeys(allVisibleColumnKeys);
     setColumnsMenuOpen(false);
   };
   const clearDates = () => {
@@ -507,7 +554,7 @@ export default function ItemsPage() {
     setGroupFilter("all");
     setUnitFilter("all");
     clearDates();
-    setVisibleColumnKeys(DEFAULT_VISIBLE_STOCK_COLUMNS);
+    setVisibleColumnKeys(defaultVisibleColumnKeys);
     setDateMenuOpen(false);
     setColumnsMenuOpen(false);
     setExportMenuOpen(false);
@@ -567,6 +614,7 @@ export default function ItemsPage() {
     });
   };
   const openLedger = async (row: ItemRow) => {
+    if (!features.inventory) return;
     setLedgerItem(row);
     setLedgerOpen(true);
     setLedgerLoading(true);
@@ -685,32 +733,34 @@ export default function ItemsPage() {
         <div className="flex flex-col gap-1.5 py-1">
           <div className="flex items-center gap-2">
             <span className="font-medium text-foreground leading-none">{r.name}</span>
-            {Boolean((r as any).isKit) && (
+            {features.kits && Boolean((r as any).isKit) && (
               <span className="shrink-0 inline-flex items-center rounded-full bg-purple-100 dark:bg-purple-900/30 px-2 py-0.5 text-[10px] font-bold text-purple-700 dark:text-purple-400 ring-1 ring-purple-300/50">
                 KIT
               </span>
             )}
-            {Boolean((r as any).isSerialized) && (
+            {features.serial && Boolean((r as any).isSerialized) && (
               <span className="shrink-0 inline-flex items-center rounded-full bg-blue-100 dark:bg-blue-900/30 px-2 py-0.5 text-[10px] font-bold text-blue-700 dark:text-blue-400 ring-1 ring-blue-300/50">
                 SERIAL
               </span>
             )}
-            {Boolean((r as any).isLowStock) && (
+            {features.inventory && Boolean((r as any).isLowStock) && (
               <span className="shrink-0 inline-flex items-center rounded-full bg-red-100 dark:bg-red-900/30 px-2 py-0.5 text-[10px] font-bold text-red-700 dark:text-red-400 ring-1 ring-red-300/50">
                 LOW
               </span>
             )}
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <button
-              type="button"
-              onClick={() => openLedger(r)}
-              className="inline-flex h-6 items-center gap-1 rounded border border-slate-200 px-2 text-[10px] font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
-            >
-              <Eye className="h-3 w-3" />
-              Ledger
-            </button>
-            {Boolean((r as any).isKit) && (
+            {features.inventory && (
+              <button
+                type="button"
+                onClick={() => openLedger(r)}
+                className="inline-flex h-6 items-center gap-1 rounded border border-slate-200 px-2 text-[10px] font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
+              >
+                <Eye className="h-3 w-3" />
+                Ledger
+              </button>
+            )}
+            {features.kits && Boolean((r as any).isKit) && (
               <>
                 <button
                   type="button"
@@ -947,13 +997,14 @@ export default function ItemsPage() {
   };
 
   const computedVisibleKeys = React.useMemo(() => {
-    const selected = new Set(visibleColumnKeys);
-    const base = visibleColumnKeys.filter((key) => !DEPENDENT_STOCK_KEYS.includes(key));
+    const configuredKeys = features.inventory ? visibleColumnKeys : visibleColumnKeys.filter((key) => !STOCK_METRIC_KEYS.includes(key));
+    const selected = new Set(configuredKeys);
+    const base = configuredKeys.filter((key) => !DEPENDENT_STOCK_KEYS.includes(key));
     if (selected.has(MASTER_STOCK_KEY)) {
       return [...base, ...DEPENDENT_STOCK_KEYS];
     }
     return base;
-  }, [visibleColumnKeys]);
+  }, [visibleColumnKeys, features.inventory]);
 
   const columns: Column<ItemRow>[] = computedVisibleKeys.map((key) => allColumns[key]).filter(Boolean);
 
@@ -966,6 +1017,10 @@ export default function ItemsPage() {
   const submitAdjustment = async () => {
     setActionError(null);
     setActionSuccess(null);
+    if (!features.inventory) {
+      setActionError("Enable Inventory Tracking in Configuration to adjust stock.");
+      return;
+    }
     if (!adjustForm.itemId || !adjustForm.accountId || !adjustForm.date) {
       setActionError("Item, account and date are required.");
       return;
@@ -984,11 +1039,11 @@ export default function ItemsPage() {
         qty,
         rate: adjustForm.rate ? Number(adjustForm.rate) : undefined,
         memo: adjustForm.memo || undefined,
-        batchNo: adjustForm.batchNo || undefined,
-        lotNo: adjustForm.lotNo || undefined,
-        expiryDate: adjustForm.expiryDate || undefined,
-        allowNegativeOverride: adjustForm.allowNegativeOverride || undefined,
-        overrideReason: adjustForm.allowNegativeOverride ? adjustForm.overrideReason || undefined : undefined,
+        batchNo: features.batch ? adjustForm.batchNo || undefined : undefined,
+        lotNo: features.lot ? adjustForm.lotNo || undefined : undefined,
+        expiryDate: features.expiry ? adjustForm.expiryDate || undefined : undefined,
+        allowNegativeOverride: features.negativeStock && adjustForm.allowNegativeOverride ? true : undefined,
+        overrideReason: features.negativeStock && adjustForm.allowNegativeOverride ? adjustForm.overrideReason || undefined : undefined,
       });
       setActionSuccess("Stock adjustment posted.");
       setAdjustOpen(false);
@@ -1003,6 +1058,10 @@ export default function ItemsPage() {
   const submitTransfer = async () => {
     setActionError(null);
     setActionSuccess(null);
+    if (!features.warehouses) {
+      setActionError("Enable Warehouses in Inventory Configuration to transfer stock.");
+      return;
+    }
     if (!transferForm.itemId || !transferForm.fromWarehouseId || !transferForm.toWarehouseId || !transferForm.date) {
       setActionError("Item, source warehouse, destination warehouse and date are required.");
       return;
@@ -1017,16 +1076,16 @@ export default function ItemsPage() {
       await transferInventoryStock({
         itemId: transferForm.itemId,
         fromWarehouseId: transferForm.fromWarehouseId,
-        fromBinId: transferForm.fromBinId || undefined,
+        fromBinId: features.bins ? transferForm.fromBinId || undefined : undefined,
         toWarehouseId: transferForm.toWarehouseId,
-        toBinId: transferForm.toBinId || undefined,
+        toBinId: features.bins ? transferForm.toBinId || undefined : undefined,
         qty,
         rate: transferForm.rate ? Number(transferForm.rate) : undefined,
         date: transferForm.date,
         memo: transferForm.memo || undefined,
-        batchNo: transferForm.batchNo || undefined,
-        lotNo: transferForm.lotNo || undefined,
-        expiryDate: transferForm.expiryDate || undefined,
+        batchNo: features.batch ? transferForm.batchNo || undefined : undefined,
+        lotNo: features.lot ? transferForm.lotNo || undefined : undefined,
+        expiryDate: features.expiry ? transferForm.expiryDate || undefined : undefined,
       });
       setActionSuccess("Stock transfer posted.");
       setTransferOpen(false);
@@ -1041,6 +1100,10 @@ export default function ItemsPage() {
   const submitAssemble = async () => {
     setActionError(null);
     setActionSuccess(null);
+    if (!features.kits) {
+      setActionError("Enable Kits & Assemblies in Inventory Configuration to assemble stock.");
+      return;
+    }
     const qty = Number(assembleQty);
     if (!assembleItem_ || !Number.isFinite(qty) || qty <= 0) {
       setActionError("Select a kit item and enter a valid quantity.");
@@ -1523,12 +1586,16 @@ export default function ItemsPage() {
                 void handleImportFile(e.target.files?.[0] || null);
               }}
             />
-            <Button variant="outline" className="rounded-xl border-border/50" onClick={() => setAdjustOpen(true)}>
-              Adjust Stock
-            </Button>
-            <Button variant="outline" className="rounded-xl border-border/50" onClick={() => setTransferOpen(true)}>
-              Transfer Stock
-            </Button>
+            {features.inventory && (
+              <Button variant="outline" className="rounded-xl border-border/50" onClick={() => setAdjustOpen(true)}>
+                Adjust Stock
+              </Button>
+            )}
+            {features.warehouses && (
+              <Button variant="outline" className="rounded-xl border-border/50" onClick={() => setTransferOpen(true)}>
+                Transfer Stock
+              </Button>
+            )}
             <Button
               variant="outline"
               className="rounded-xl border-border/50"
@@ -1603,20 +1670,20 @@ export default function ItemsPage() {
             <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Total Items</div>
             <div className="mt-2 text-2xl font-black">{rows.length}</div>
           </div>
-          <div className="rounded-2xl border border-rose-100 bg-rose-50/40 p-4 shadow-sm dark:border-rose-900/40 dark:bg-rose-950/10">
+          {features.inventory && <div className="rounded-2xl border border-rose-100 bg-rose-50/40 p-4 shadow-sm dark:border-rose-900/40 dark:bg-rose-950/10">
             <div className="text-[10px] font-bold uppercase tracking-widest text-rose-500">Low Stock (Goods)</div>
             <div className="mt-2 text-2xl font-black text-rose-600 dark:text-rose-400">
               {goodsRows.filter((r) => Boolean(r.isLowStock)).length}
             </div>
-          </div>
-          <div className="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-4 shadow-sm dark:border-emerald-900/40 dark:bg-emerald-950/10">
+          </div>}
+          {features.inventory && <div className="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-4 shadow-sm dark:border-emerald-900/40 dark:bg-emerald-950/10">
             <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">Total Value (Goods)</div>
             <div className="mt-2 text-2xl font-black text-emerald-700 dark:text-emerald-400">
               <MoneyText value={goodsRows.reduce((sum, r) => sum + Number(r.closingAmt ?? 0), 0)} />
             </div>
-          </div>
+          </div>}
         </div>
-        {alerts ? (
+        {features.inventory && alerts ? (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <button type="button" onClick={() => applyAlertFilter("belowReorder")} className={cn("rounded-xl border border-amber-200/70 bg-amber-50/50 px-4 py-3 text-left dark:border-amber-900/40 dark:bg-amber-950/20", alertFilter === "belowReorder" && "ring-2 ring-amber-400")}>
               <div className="text-[10px] font-bold uppercase tracking-widest text-amber-700 dark:text-amber-400">Below Reorder</div>
@@ -1626,10 +1693,10 @@ export default function ItemsPage() {
               <div className="text-[10px] font-bold uppercase tracking-widest text-red-700 dark:text-red-400">Zero Stock</div>
               <div className="mt-1 text-lg font-black text-red-800 dark:text-red-300">{alerts.counts.zeroStock}</div>
             </button>
-            <button type="button" onClick={() => applyAlertFilter("expiringSoon")} className={cn("rounded-xl border border-blue-200/70 bg-blue-50/50 px-4 py-3 text-left dark:border-blue-900/40 dark:bg-blue-950/20", alertFilter === "expiringSoon" && "ring-2 ring-blue-400")}>
+            {features.expiry && <button type="button" onClick={() => applyAlertFilter("expiringSoon")} className={cn("rounded-xl border border-blue-200/70 bg-blue-50/50 px-4 py-3 text-left dark:border-blue-900/40 dark:bg-blue-950/20", alertFilter === "expiringSoon" && "ring-2 ring-blue-400")}>
               <div className="text-[10px] font-bold uppercase tracking-widest text-blue-700 dark:text-blue-400">Expiring Soon</div>
               <div className="mt-1 text-lg font-black text-blue-800 dark:text-blue-300">{alerts.counts.expiringSoon}</div>
-            </button>
+            </button>}
             <button type="button" onClick={() => applyAlertFilter("noMovement")} className={cn("rounded-xl border border-slate-200/70 bg-slate-50/70 px-4 py-3 text-left dark:border-slate-700 dark:bg-slate-900/40", alertFilter === "noMovement" && "ring-2 ring-slate-400")}>
               <div className="text-[10px] font-bold uppercase tracking-widest text-slate-700 dark:text-slate-300">No Movement</div>
               <div className="mt-1 text-lg font-black text-slate-800 dark:text-slate-200">{alerts.counts.noMovement}</div>
@@ -1763,7 +1830,7 @@ export default function ItemsPage() {
                     </div>
                     <div className="h-px bg-slate-200 dark:bg-slate-800 my-2" />
                     <div className="relative max-h-[360px] overflow-y-auto pr-1">
-                      {COLUMN_PICKER_OPTIONS.map((column) => {
+                      {columnPickerOptions.map((column) => {
                         const selected = visibleColumnKeys.includes(column.key);
                         const displayLabel =
                           column.key === MASTER_STOCK_KEY
@@ -2064,7 +2131,7 @@ export default function ItemsPage() {
           </div>
         </div>
       ) : null}
-      {adjustOpen ? (
+      {features.inventory && adjustOpen ? (
         <div className="fixed inset-0 z-[1600] bg-black/30 backdrop-blur-sm p-4" onClick={() => setAdjustOpen(false)}>
           <div className="mx-auto mt-10 w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl dark:border-slate-800 dark:bg-slate-950" onClick={(e) => e.stopPropagation()}>
             <div className="mb-3 flex items-center justify-between">
@@ -2083,15 +2150,15 @@ export default function ItemsPage() {
                 <option value="">Select offset account</option>
                 {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
-              <Input placeholder="Batch no (optional)" value={adjustForm.batchNo} onChange={(e) => setAdjustForm((p) => ({ ...p, batchNo: e.target.value }))} />
-              <Input placeholder="Lot no (optional)" value={adjustForm.lotNo} onChange={(e) => setAdjustForm((p) => ({ ...p, lotNo: e.target.value }))} />
-              <Input placeholder="Expiry (YYYY-MM-DD, optional)" value={adjustForm.expiryDate} onChange={(e) => setAdjustForm((p) => ({ ...p, expiryDate: e.target.value }))} />
+              {features.batch && <Input placeholder="Batch no (optional)" value={adjustForm.batchNo} onChange={(e) => setAdjustForm((p) => ({ ...p, batchNo: e.target.value }))} />}
+              {features.lot && <Input placeholder="Lot no (optional)" value={adjustForm.lotNo} onChange={(e) => setAdjustForm((p) => ({ ...p, lotNo: e.target.value }))} />}
+              {features.expiry && <Input placeholder="Expiry (YYYY-MM-DD, optional)" value={adjustForm.expiryDate} onChange={(e) => setAdjustForm((p) => ({ ...p, expiryDate: e.target.value }))} />}
               <Input placeholder="Memo (optional)" value={adjustForm.memo} onChange={(e) => setAdjustForm((p) => ({ ...p, memo: e.target.value }))} />
-              <label className="flex items-center gap-2 text-sm sm:col-span-2">
+              {features.negativeStock && <label className="flex items-center gap-2 text-sm sm:col-span-2">
                 <input type="checkbox" checked={adjustForm.allowNegativeOverride} onChange={(e) => setAdjustForm((p) => ({ ...p, allowNegativeOverride: e.target.checked }))} />
                 Allow negative override
-              </label>
-              {adjustForm.allowNegativeOverride ? (
+              </label>}
+              {features.negativeStock && adjustForm.allowNegativeOverride ? (
                 <Input className="sm:col-span-2" placeholder="Override reason" value={adjustForm.overrideReason} onChange={(e) => setAdjustForm((p) => ({ ...p, overrideReason: e.target.value }))} />
               ) : null}
             </div>
@@ -2101,7 +2168,7 @@ export default function ItemsPage() {
           </div>
         </div>
       ) : null}
-      {transferOpen ? (
+      {features.warehouses && transferOpen ? (
         <div className="fixed inset-0 z-[1600] bg-black/30 backdrop-blur-sm p-4" onClick={() => setTransferOpen(false)}>
           <div className="mx-auto mt-10 w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl dark:border-slate-800 dark:bg-slate-950" onClick={(e) => e.stopPropagation()}>
             <div className="mb-3 flex items-center justify-between">
@@ -2119,13 +2186,13 @@ export default function ItemsPage() {
               </select>
               <Input placeholder="From warehouse ID" value={transferForm.fromWarehouseId} onChange={(e) => setTransferForm((p) => ({ ...p, fromWarehouseId: e.target.value }))} />
               <Input placeholder="To warehouse ID" value={transferForm.toWarehouseId} onChange={(e) => setTransferForm((p) => ({ ...p, toWarehouseId: e.target.value }))} />
-              <Input placeholder="From bin ID (optional)" value={transferForm.fromBinId} onChange={(e) => setTransferForm((p) => ({ ...p, fromBinId: e.target.value }))} />
-              <Input placeholder="To bin ID (optional)" value={transferForm.toBinId} onChange={(e) => setTransferForm((p) => ({ ...p, toBinId: e.target.value }))} />
+              {features.bins && <Input placeholder="From bin ID (optional)" value={transferForm.fromBinId} onChange={(e) => setTransferForm((p) => ({ ...p, fromBinId: e.target.value }))} />}
+              {features.bins && <Input placeholder="To bin ID (optional)" value={transferForm.toBinId} onChange={(e) => setTransferForm((p) => ({ ...p, toBinId: e.target.value }))} />}
               <Input placeholder="Quantity" value={transferForm.qty} onChange={(e) => setTransferForm((p) => ({ ...p, qty: e.target.value }))} />
               <Input placeholder="Rate (optional)" value={transferForm.rate} onChange={(e) => setTransferForm((p) => ({ ...p, rate: e.target.value }))} />
-              <Input placeholder="Batch no (optional)" value={transferForm.batchNo} onChange={(e) => setTransferForm((p) => ({ ...p, batchNo: e.target.value }))} />
-              <Input placeholder="Lot no (optional)" value={transferForm.lotNo} onChange={(e) => setTransferForm((p) => ({ ...p, lotNo: e.target.value }))} />
-              <Input placeholder="Expiry (YYYY-MM-DD, optional)" value={transferForm.expiryDate} onChange={(e) => setTransferForm((p) => ({ ...p, expiryDate: e.target.value }))} />
+              {features.batch && <Input placeholder="Batch no (optional)" value={transferForm.batchNo} onChange={(e) => setTransferForm((p) => ({ ...p, batchNo: e.target.value }))} />}
+              {features.lot && <Input placeholder="Lot no (optional)" value={transferForm.lotNo} onChange={(e) => setTransferForm((p) => ({ ...p, lotNo: e.target.value }))} />}
+              {features.expiry && <Input placeholder="Expiry (YYYY-MM-DD, optional)" value={transferForm.expiryDate} onChange={(e) => setTransferForm((p) => ({ ...p, expiryDate: e.target.value }))} />}
               <Input placeholder="Memo (optional)" value={transferForm.memo} onChange={(e) => setTransferForm((p) => ({ ...p, memo: e.target.value }))} />
             </div>
             <div className="mt-4 flex justify-end">
@@ -2185,7 +2252,7 @@ export default function ItemsPage() {
       ) : null}
 
       {/* ── Assemble / Disassemble Modal ── */}
-      {assembleOpen && assembleItem_ ? (
+      {features.kits && assembleOpen && assembleItem_ ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl border bg-card p-6 shadow-2xl space-y-5">
             <div className="flex items-center justify-between">

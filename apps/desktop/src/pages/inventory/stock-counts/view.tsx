@@ -8,12 +8,15 @@ import { Input } from "@lekhaly/ui";
 import { ClipboardList, Save, AlertTriangle, CheckCircle2, ChevronLeft, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getStockCount, updateStockCount, completeStockCount, type StockCount } from "@/lib/api/stock-counts";
+import { getInventorySettings, type InventorySettings } from "@/lib/api/inventory";
+import { inventoryFeatures } from "@/lib/inventory-features";
 import { listAccounts } from "@/lib/api/accounts";
 
 export default function ViewStockCountPage() {
   const navigate = useNavigate();
   const { id } = useParams() as { id: string };
   const [count, setCount] = React.useState<StockCount | null>(null);
+  const [inventorySettings, setInventorySettings] = React.useState<InventorySettings | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -25,8 +28,12 @@ export default function ViewStockCountPage() {
   const load = React.useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getStockCount(id);
+      const [data, settings] = await Promise.all([
+        getStockCount(id),
+        getInventorySettings().catch(() => null),
+      ]);
       setCount(data);
+      setInventorySettings(settings);
       const qtys: Record<string, string> = {};
       data.lines.forEach((l) => { if (l.countedQty !== null && l.countedQty !== undefined) qtys[l.id] = l.countedQty.toString(); });
       setLineQtys(qtys);
@@ -67,6 +74,7 @@ export default function ViewStockCountPage() {
   if (!count) return null;
 
   const isReadOnly = count.status === "completed" || count.status === "cancelled";
+  const features = inventoryFeatures(inventorySettings);
 
   return (
     <div className="space-y-6 pb-20 text-foreground max-w-6xl mx-auto animate-fade-in">
@@ -80,6 +88,13 @@ export default function ViewStockCountPage() {
       {error && <div className="rounded-xl border border-red-200 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 flex items-center gap-2"><AlertTriangle className="h-4 w-4 shrink-0" /> {error}</div>}
       {success && <div className="rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-900/20 px-4 py-3 text-sm text-emerald-700 flex items-center gap-2"><CheckCircle2 className="h-4 w-4 shrink-0" /> {success}</div>}
 
+      {inventorySettings && !features.inventory ? (
+        <Card className="border-dashed border-border/70">
+          <CardContent className="py-10 text-center text-sm text-muted-foreground">
+            Enable Inventory Tracking in Configuration to use physical stock counts.
+          </CardContent>
+        </Card>
+      ) : (
       <div className="grid gap-6 lg:grid-cols-4">
         <div className="lg:col-span-3"><Card className="border-border/50 shadow-lg"><CardContent className="p-0">
           <div className="overflow-x-auto"><table className="w-full text-sm text-left"><thead className="bg-muted/50 text-xs uppercase text-muted-foreground border-b border-border/50"><tr><th className="px-4 py-3 font-bold w-[30%]">Item</th><th className="px-4 py-3 font-bold text-center">System Qty</th><th className="px-4 py-3 font-bold text-center w-[150px]">Counted Qty</th><th className="px-4 py-3 font-bold text-center">Variance</th><th className="px-4 py-3 font-bold">Notes</th></tr></thead><tbody className="divide-y divide-border/50">
@@ -103,7 +118,7 @@ export default function ViewStockCountPage() {
           <Card className="border-border/50 shadow-xl"><CardContent className="pt-6 space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Count Details</h3>
             <div className="space-y-3 text-sm">
-              <div className="flex justify-between"><span className="text-muted-foreground">Warehouse</span><span className="font-medium text-right">{count.warehouse?.name || "All"}</span></div>
+              {features.warehouses && <div className="flex justify-between"><span className="text-muted-foreground">Warehouse</span><span className="font-medium text-right">{count.warehouse?.name || "All"}</span></div>}
               <div className="flex justify-between"><span className="text-muted-foreground">Created By</span><span className="font-medium text-right">{count.createdByUser?.name || "—"}</span></div>
               {count.memo && <div className="pt-3 border-t"><span className="text-xs font-bold uppercase text-muted-foreground block mb-1">Memo</span><p className="text-muted-foreground">{count.memo}</p></div>}
             </div>
@@ -119,6 +134,7 @@ export default function ViewStockCountPage() {
           </CardContent></Card>}
         </div>
       </div>
+      )}
     </div>
   );
 }
