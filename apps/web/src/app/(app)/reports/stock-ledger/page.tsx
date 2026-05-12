@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import PageHeader from "@/components/app/page-header";
-import AdvancedFilterBar from "@/components/app/advanced-filter-bar";
+import ReportFilterBar, { type ReportFilterField } from "@/components/app/report-filter-bar";
 import DataTable, { Column } from "@/components/app/data-table";
 import { MoneyText } from "@/components/app/money";
 import { getInventorySettings, getItemStockLedger, getStockReport, StockReportRow, type InventorySettings, type StockLedgerEntry } from "@/lib/api/inventory";
@@ -13,7 +13,7 @@ import { Card, CardContent } from "@lekhaly/ui";
 import { Button } from "@lekhaly/ui";
 import { RefreshCw, Package, ArrowUp, ArrowDown, FileDown, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getDateRange } from "@/lib/dates/ranges";
+import { getDateRange, type DateRangeKey } from "@/lib/dates/ranges";
 
 function PolicyBadge({ enabled, label, offLabel = "Not required" }: { enabled: boolean; label: string; offLabel?: string }) {
     return (
@@ -33,12 +33,16 @@ function StockLedgerPageContent() {
     const searchParams = useSearchParams();
     const selectedItemId = searchParams.get("itemId");
     const initialRange = getDateRange("this_year");
+    const [dateRange, setDateRange] = React.useState<DateRangeKey>("this_year");
     const [from, setFrom] = React.useState<Date | null>(initialRange.from);
     const [to, setTo] = React.useState<Date | null>(initialRange.to);
     const [loading, setLoading] = React.useState(false);
     const [rows, setRows] = React.useState<StockReportRow[]>([]);
     const [error, setError] = React.useState<string | null>(null);
     const [searchQuery, setSearchQuery] = React.useState("");
+    const [movementFilter, setMovementFilter] = React.useState<"all" | "inward" | "outward">("all");
+    const [sourceFilter, setSourceFilter] = React.useState("all");
+    const [locationFilter, setLocationFilter] = React.useState("all");
     const [inventorySettings, setInventorySettings] = React.useState<InventorySettings | null>(null);
     const [itemLedger, setItemLedger] = React.useState<{
         itemId: string;
@@ -102,6 +106,75 @@ function StockLedgerPageContent() {
 
     const totalValue = rows.reduce((acc, r) => acc + (r.closingAmt ?? 0), 0);
     const features = inventoryFeatures(inventorySettings);
+    const sourceOptions = React.useMemo(() => {
+        const values = new Map<string, string>();
+        for (const entry of itemLedger?.entries ?? []) {
+            if (entry.voucherType) {
+                values.set(entry.voucherType, entry.voucherType.replace(/_/g, " "));
+            }
+        }
+        return [{ value: "all", label: "All Sources" }, ...Array.from(values, ([value, label]) => ({ value, label }))];
+    }, [itemLedger]);
+    const locationOptions = React.useMemo(() => {
+        const values = new Map<string, string>();
+        for (const entry of itemLedger?.entries ?? []) {
+            const key = features.bins ? (entry.binId || entry.warehouseId) : entry.warehouseId;
+            const label = features.bins
+                ? [entry.warehouseName, entry.binName].filter(Boolean).join(" / ")
+                : entry.warehouseName;
+            if (key && label) values.set(key, label);
+        }
+        return [{ value: "all", label: "All Locations" }, ...Array.from(values, ([value, label]) => ({ value, label }))];
+    }, [features.bins, itemLedger]);
+    const stockLedgerFilterFields: ReportFilterField[] = selectedItemId ? [
+        {
+            key: "movement",
+            label: "Movement",
+            value: movementFilter,
+            onChange: (value) => setMovementFilter(value as "all" | "inward" | "outward"),
+            options: [
+                { value: "all", label: "All Movements" },
+                { value: "inward", label: "Debit / Inward" },
+                { value: "outward", label: "Credit / Outward" }
+            ]
+        },
+        {
+            key: "source",
+            label: "Source",
+            value: sourceFilter,
+            onChange: setSourceFilter,
+            options: sourceOptions
+        },
+        {
+            key: "location",
+            label: features.bins ? "Warehouse / Bin" : "Warehouse",
+            value: locationFilter,
+            onChange: setLocationFilter,
+            hidden: !features.warehouses,
+            options: locationOptions
+        }
+    ] : [];
+    const filteredItemLedgerEntries = React.useMemo(() => {
+        const q = searchQuery.trim().toLowerCase();
+        return (itemLedger?.entries ?? []).filter((entry) => {
+            if (movementFilter === "inward" && !(entry.qtyIn > 0)) return false;
+            if (movementFilter === "outward" && !(entry.qtyOut > 0)) return false;
+            if (sourceFilter !== "all" && entry.voucherType !== sourceFilter) return false;
+            if (locationFilter !== "all") {
+                const key = features.bins ? (entry.binId || entry.warehouseId) : entry.warehouseId;
+                if (key !== locationFilter) return false;
+            }
+            if (!q) return true;
+            return [
+                entry.voucherNumber,
+                entry.voucherType,
+                entry.warehouseName,
+                entry.binName,
+                entry.batchNo,
+                entry.lotNo
+            ].some((value) => value?.toLowerCase().includes(q));
+        });
+    }, [features.bins, itemLedger, locationFilter, movementFilter, searchQuery, sourceFilter]);
     const itemLedgerColumns: Column<StockLedgerEntry>[] = [
         { key: "date", header: "Date", width: 130, cell: (r) => <div className="text-xs font-medium">{new Date(r.date).toLocaleDateString()}</div> },
         {
@@ -148,7 +221,7 @@ function StockLedgerPageContent() {
                 </div>
             )
         },
-        { key: "unit", header: "Unit", width: 100, cell: (r) => <span className="text-xs uppercase font-medium">{r.unit ?? "—"}</span> },
+        { key: "unit", header: "Unit", width: 100, cell: (r) => <span className="text-xs uppercase font-medium">{r.unit ?? "-"}</span> },
         {
             key: "trackingPolicy",
             header: "Stock Tracking",
@@ -241,16 +314,32 @@ function StockLedgerPageContent() {
                 </Card>
             ) : (
                 <>
-            <AdvancedFilterBar className="print:hidden" onSearch={setSearchQuery} onFilterChange={(f) => {
-                if (f.dateRange) { setFrom(f.dateRange.from); setTo(f.dateRange.to); }
-            }} defaultRange="this_year" />
+            <ReportFilterBar
+                className="print:hidden"
+                searchValue={searchQuery}
+                onSearch={setSearchQuery}
+                searchPlaceholder={selectedItemId ? "Search source, warehouse, batch..." : "Search item or SKU..."}
+                dateRange={dateRange}
+                onDateRangeChange={(range, dates) => {
+                    setDateRange(range);
+                    setFrom(dates.from);
+                    setTo(dates.to);
+                }}
+                fields={stockLedgerFilterFields}
+                onRun={run}
+            />
 
             {selectedItemId && itemLedger ? (
                 <>
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-4 rounded-3xl border border-border/60 bg-card/70 p-5 sm:flex-row sm:items-center sm:justify-between">
                         <div>
-                            <h2 className="text-xl font-black">{itemLedger.item?.name || "Selected Stock"}</h2>
-                            <p className="text-xs text-muted-foreground">{[itemLedger.item?.sku, itemLedger.item?.group, itemLedger.item?.unit].filter(Boolean).join(" / ")}</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Selected Item</p>
+                            <h2 className="mt-1 text-2xl font-black">{itemLedger.item?.name || "Selected Stock"}</h2>
+                            <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                                <span className="rounded-lg border border-border bg-background px-2.5 py-1 font-semibold">SKU: {itemLedger.item?.sku || "-"}</span>
+                                <span className="rounded-lg border border-border bg-background px-2.5 py-1 font-semibold">Unit: {itemLedger.item?.unit || "-"}</span>
+                                <span className="rounded-lg border border-border bg-background px-2.5 py-1 font-semibold">Group: {itemLedger.item?.group || "-"}</span>
+                            </div>
                         </div>
                         <Link href="/reports/stock-ledger">
                             <Button variant="outline" size="sm" className="rounded-xl">Back to all stock</Button>
@@ -263,7 +352,16 @@ function StockLedgerPageContent() {
                         <Card className="border-border/50 bg-emerald-600/5 shadow-none"><CardContent className="pt-5"><div className="text-[10px] uppercase font-bold tracking-widest text-emerald-600">Closing Quantity</div><div className="mt-2 text-2xl font-black tabular-nums">{itemLedger.closingQty ?? 0}</div><MoneyText value={itemLedger.closingAmt ?? 0} className="text-xs font-semibold" /></CardContent></Card>
                     </div>
                     <Card className="border-border/50 glass-card overflow-hidden shadow-xl min-h-[400px]">
-                        <DataTable rows={itemLedger.entries} columns={itemLedgerColumns} loading={loading} emptyText="No stock movements found" className="border-none" />
+                        <DataTable
+                            rows={filteredItemLedgerEntries}
+                            columns={itemLedgerColumns}
+                            loading={loading}
+                            emptyText="No stock movements found"
+                            className="border-none"
+                            onRowClick={(row) => {
+                                if (row.voucherId) router.push(`/vouchers/${row.voucherId}`);
+                            }}
+                        />
                     </Card>
                 </>
             ) : (
