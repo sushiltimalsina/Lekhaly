@@ -1,6 +1,7 @@
 
 export type DateRangeKey =
     | "today"
+    | "current_month"
     | "this_week"
     | "this_month"
     | "this_quarter"
@@ -40,6 +41,15 @@ export function getDateRange(key: DateRangeKey, calendar: "ad" | "bs" = "ad"): D
                 return { from: start, to: end };
             }
             case "this_month": {
+                const start = toJSDate(new NepaliDate(year, month, 1));
+                const nextMonth = month === 11 ? 0 : month + 1;
+                const nextYear = month === 11 ? year + 1 : year;
+                const end = toJSDate(new NepaliDate(nextYear, nextMonth, 1));
+                end.setDate(end.getDate() - 1);
+                end.setHours(23, 59, 59, 999);
+                return { from: start, to: end };
+            }
+            case "current_month": {
                 const start = toJSDate(new NepaliDate(year, month, 1));
                 const nextMonth = month === 11 ? 0 : month + 1;
                 const nextYear = month === 11 ? year + 1 : year;
@@ -100,6 +110,12 @@ export function getDateRange(key: DateRangeKey, calendar: "ad" | "bs" = "ad"): D
             to.setHours(23, 59, 59, 999);
             return { from, to };
         }
+        case "current_month": {
+            const from = new Date(today.getFullYear(), today.getMonth(), 1);
+            const to = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+            to.setHours(23, 59, 59, 999);
+            return { from, to };
+        }
         case "this_quarter": {
             const quarter = Math.floor(today.getMonth() / 3);
             const from = new Date(today.getFullYear(), quarter * 3, 1);
@@ -153,6 +169,7 @@ export function getDateRange(key: DateRangeKey, calendar: "ad" | "bs" = "ad"): D
 
 export const DATE_RANGE_LABELS: Record<DateRangeKey, string> = {
     today: "Today",
+    current_month: "Current Month",
     this_week: "This Week",
     this_month: "This Month",
     this_quarter: "This Quarter",

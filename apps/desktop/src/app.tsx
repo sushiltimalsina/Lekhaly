@@ -9,6 +9,7 @@ import Topbar from "@/components/app/topbar";
 import QuickActionsRail from "@/components/app/quick-actions";
 import OfflineSyncBanner from "@/components/app/offline-sync-banner";
 import CommandPalette from "@/components/app/command-palette";
+import { ToastContainer } from "@/components/app/toast";
 import { cn } from "@/lib/utils";
 
 // Auth Pages
@@ -36,6 +37,7 @@ import VendorsNewPage from "@/pages/vendors/new";
 // Items
 import ItemsListPage from "@/pages/items/index";
 import NewItemPage from "@/pages/items/new";
+import ItemDetailPage from "@/pages/items/view";
 
 // Inventory
 import InventoryDashboardPage from "@/pages/inventory/index";
@@ -182,6 +184,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
         {!isCreationPage && <Topbar />}
         <OfflineSyncBanner />
         <CommandPalette />
+        <ToastContainer />
 
         <main className={cn(
           "flex-1 scroll-smooth",
@@ -235,6 +238,7 @@ export default function App() {
                 {/* Items */}
                 <Route path="/items" element={<ItemsListPage />} />
                 <Route path="/items/new" element={<NewItemPage />} />
+                <Route path="/items/view/:id" element={<ItemDetailPage />} />
 
                 {/* Inventory */}
                 <Route path="/inventory" element={<InventoryDashboardPage />} />

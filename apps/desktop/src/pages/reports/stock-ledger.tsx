@@ -215,7 +215,7 @@ export default function StockLedgerPage() {
         {
             key: "name", header: "Item / SKU", width: 260, cell: (r) => (
                 <div className="flex flex-col">
-                    <Link to={`/reports/stock-ledger?itemId=${r.id}`} className="font-bold text-foreground hover:text-primary hover:underline">{r.name}</Link>
+                    <Link to={`/items/view/${r.id}`} className="font-bold text-foreground hover:text-primary hover:underline">{r.name}</Link>
                     {r.sku && <span className="text-[10px] text-muted-foreground uppercase">{r.sku}</span>}
                 </div>
             )
