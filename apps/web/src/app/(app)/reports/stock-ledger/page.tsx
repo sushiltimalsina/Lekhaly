@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import PageHeader from "@/components/app/page-header";
 import AdvancedFilterBar from "@/components/app/advanced-filter-bar";
 import DataTable, { Column } from "@/components/app/data-table";
@@ -29,6 +29,7 @@ function PolicyBadge({ enabled, label, offLabel = "Not required" }: { enabled: b
 }
 
 function StockLedgerPageContent() {
+    const router = useRouter();
     const searchParams = useSearchParams();
     const selectedItemId = searchParams.get("itemId");
     const initialRange = getDateRange("this_year");
@@ -114,7 +115,12 @@ function StockLedgerPageContent() {
                 </Link>
             ) : <span className="text-muted-foreground">Opening / manual</span>
         },
-        { key: "location", header: "Location", width: 180, cell: (r) => <span className="text-xs">{[r.warehouseName, r.binName].filter(Boolean).join(" / ") || "-"}</span> },
+        ...(features.warehouses ? [{
+            key: "location",
+            header: features.bins ? "Warehouse / Bin" : "Warehouse",
+            width: 180,
+            cell: (r: StockLedgerEntry) => <span className="text-xs">{[r.warehouseName, features.bins ? r.binName : null].filter(Boolean).join(" / ") || "-"}</span>
+        } as Column<StockLedgerEntry>] : []),
         { key: "debitQty", header: <span className="block text-right text-emerald-600">Debit Qty</span>, align: "right", width: 110, cell: (r) => <span className="tabular-nums text-emerald-600">{r.qtyIn || "-"}</span> },
         { key: "debitAmt", header: <span className="block text-right text-emerald-600">Debit Amount</span>, align: "right", width: 150, cell: (r) => <MoneyText value={r.debitAmt ?? 0} className="text-emerald-600 font-semibold" /> },
         { key: "creditQty", header: <span className="block text-right text-red-600">Credit Qty</span>, align: "right", width: 110, cell: (r) => <span className="tabular-nums text-red-600">{r.qtyOut || "-"}</span> },
@@ -274,7 +280,14 @@ function StockLedgerPageContent() {
             </div>
 
             <Card className="border-border/50 glass-card overflow-hidden shadow-xl min-h-[400px]">
-                <DataTable rows={rows} columns={columns} loading={loading} emptyText="No stock data found" className="border-none" />
+                <DataTable
+                    rows={rows}
+                    columns={columns}
+                    loading={loading}
+                    emptyText="No stock data found"
+                    className="border-none"
+                    onRowClick={(row) => router.push(`/reports/stock-ledger?itemId=${row.id}`)}
+                />
             </Card>
                 </>
             )}
