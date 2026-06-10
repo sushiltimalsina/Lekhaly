@@ -165,7 +165,7 @@ export type StockLedgerEntry = {
 export async function getItemStockLedger(itemId: string, query?: { from?: string; to?: string }) {
   return apiRequest<{
     itemId: string;
-    item?: { id: string; name: string; sku?: string | null; unit?: string | null; group?: string | null };
+    item?: { id: string; name: string; sku?: string | null; unit?: string | null; group?: string | null; isSerialized?: boolean; tracksBatch?: boolean; tracksLot?: boolean; tracksExpiry?: boolean };
     qty: number;
     openingQty?: number;
     openingAmt?: number;

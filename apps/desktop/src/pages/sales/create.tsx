@@ -281,6 +281,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                       e.preventDefault();
                       const item = filtered[activeIndex];
                       if (item) {
+                        window.lekhalyUnsavedChanges?.markDirty();
                         onChange(item.id, item);
                         setOpen(false);
                         setQuery("");
@@ -310,6 +311,7 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
                       type="button"
                       onMouseMove={() => setActiveIndex(idx)}
                       onClick={() => {
+                        window.lekhalyUnsavedChanges?.markDirty();
                         onChange(o.id, o);
                         setOpen(false);
                         setQuery("");
@@ -857,10 +859,12 @@ export default function SalesCreatePage() {
       }
       if (isOfflineQueuedResponse(res)) {
         setSuccess(res.message);
+        window.lekhalyUnsavedChanges?.clear();
         return;
       }
       const id = res?.id ?? res?.invoiceId ?? res?.data?.id;
       setSuccess(id ? `Saved draft: ${id}` : "Saved draft.");
+      window.lekhalyUnsavedChanges?.clear();
       if (!editId && id) {
         navigate(`/sales/create?id=${id}`, { replace: true });
       }
@@ -870,6 +874,13 @@ export default function SalesCreatePage() {
       setLoading(false);
     }
   };
+
+  React.useEffect(() => {
+    window.lekhalySaveDraftBeforeLeave = onSave;
+    return () => {
+      if (window.lekhalySaveDraftBeforeLeave === onSave) delete window.lekhalySaveDraftBeforeLeave;
+    };
+  }, [onSave]);
 
   const onPost = async () => {
     setError(null);
@@ -912,7 +923,12 @@ export default function SalesCreatePage() {
       <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
         <div className="mb-4">
           <Button
-            onClick={() => navigate("/sales")}
+            onClick={() => {
+              const goToRegistry = () => navigate("/sales");
+              const guard = window.lekhalyUnsavedChanges;
+              if (guard && !guard.requestNavigation(goToRegistry)) return;
+              goToRegistry();
+            }}
             className="rounded-full h-10 px-4 bg-white text-slate-900 border border-slate-200 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 dark:hover:bg-emerald-600 dark:hover:text-white dark:hover:border-emerald-600 transition-colors shadow-sm"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />

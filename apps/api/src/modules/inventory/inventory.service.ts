@@ -571,7 +571,17 @@ export class InventoryService {
     if ((item as any).type === "services" || (item as any).trackInventory === false) {
       return {
         itemId,
-        item: { id: item.id, name: item.name, sku: item.sku, unit: item.unit, group: item.group?.name ?? null },
+        item: {
+          id: item.id,
+          name: item.name,
+          sku: item.sku,
+          unit: item.unit,
+          group: item.group?.name ?? null,
+          isSerialized: Boolean((item as any).isSerialized),
+          tracksBatch: Boolean((item as any).tracksBatch),
+          tracksLot: Boolean((item as any).tracksLot),
+          tracksExpiry: Boolean((item as any).tracksExpiry)
+        },
         qty: 0,
         openingQty: 0,
         openingAmt: 0,
@@ -682,7 +692,17 @@ export class InventoryService {
 
     return {
       itemId,
-      item: { id: item.id, name: item.name, sku: item.sku, unit: item.unit, group: item.group?.name ?? null },
+      item: {
+        id: item.id,
+        name: item.name,
+        sku: item.sku,
+        unit: item.unit,
+        group: item.group?.name ?? null,
+        isSerialized: Boolean((item as any).isSerialized),
+        tracksBatch: Boolean((item as any).tracksBatch),
+        tracksLot: Boolean((item as any).tracksLot),
+        tracksExpiry: Boolean((item as any).tracksExpiry)
+      },
       qty: Number(qty.toString()),
       openingQty: Number(openingQty.toString()),
       openingAmt: Number(openingAmt.toString()),

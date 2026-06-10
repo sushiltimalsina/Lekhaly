@@ -135,12 +135,14 @@ const DualDateInput = React.forwardRef<HTMLInputElement, DualDateInputProps>(
     const handleAdCommit = (nextAd: string) => {
       if (!nextAd) {
         setError(null);
+        window.lekhalyUnsavedChanges?.markDirty();
         onChange({ ad: "", bs: "" });
         return;
       }
       try {
         const bs = adToBs(nextAd);
         setError(null);
+        window.lekhalyUnsavedChanges?.markDirty();
         onChange({ ad: nextAd, bs });
       } catch {
         setError("Invalid AD date");
@@ -150,12 +152,14 @@ const DualDateInput = React.forwardRef<HTMLInputElement, DualDateInputProps>(
     const handleBsCommit = (nextBs: string) => {
       if (!nextBs) {
         setError(null);
+        window.lekhalyUnsavedChanges?.markDirty();
         onChange({ ad: "", bs: "" });
         return;
       }
       try {
         const ad = bsToAd(nextBs);
         setError(null);
+        window.lekhalyUnsavedChanges?.markDirty();
         onChange({ ad, bs: nextBs });
       } catch {
         setError("Invalid BS date");
@@ -242,6 +246,7 @@ const DualDateInput = React.forwardRef<HTMLInputElement, DualDateInputProps>(
                 value={value.ad}
                 onChange={(ad) => {
                   const bs = adToBs(ad);
+                  window.lekhalyUnsavedChanges?.markDirty();
                   onChange({ ad, bs });
                   setOpen(false);
                   onEnterNext?.();

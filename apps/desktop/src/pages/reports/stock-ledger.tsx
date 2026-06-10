@@ -27,6 +27,18 @@ function PolicyBadge({ enabled, label, offLabel = "Not required" }: { enabled: b
     );
 }
 
+function formatSourceType(source?: string | null) {
+    if (!source) return "Voucher";
+    return source
+        .split("_")
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+        .join(" ");
+}
+
+function getVoucherHref(voucherId?: string | null) {
+    return voucherId ? `/vouchers/view/${voucherId}` : null;
+}
+
 export default function StockLedgerPage() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
@@ -45,7 +57,7 @@ export default function StockLedgerPage() {
     const [inventorySettings, setInventorySettings] = React.useState<InventorySettings | null>(null);
     const [itemLedger, setItemLedger] = React.useState<{
         itemId: string;
-        item?: { id: string; name: string; sku?: string | null; unit?: string | null; group?: string | null };
+        item?: { id: string; name: string; sku?: string | null; unit?: string | null; group?: string | null; isSerialized?: boolean; tracksBatch?: boolean; tracksLot?: boolean; tracksExpiry?: boolean };
         openingQty?: number;
         openingAmt?: number;
         debitQty?: number;
@@ -105,11 +117,17 @@ export default function StockLedgerPage() {
 
     const totalValue = rows.reduce((acc, r) => acc + (r.closingAmt ?? 0), 0);
     const features = inventoryFeatures(inventorySettings);
+    const selectedItem = itemLedger?.item;
+    const showItemTrackingColumn = Boolean(
+        (features.batch && selectedItem?.tracksBatch) ||
+        (features.lot && selectedItem?.tracksLot) ||
+        (features.expiry && selectedItem?.tracksExpiry)
+    );
     const sourceOptions = React.useMemo(() => {
         const values = new Map<string, string>();
         for (const entry of itemLedger?.entries ?? []) {
             if (entry.voucherType) {
-                values.set(entry.voucherType, entry.voucherType.replace(/_/g, " "));
+                values.set(entry.voucherType, formatSourceType(entry.voucherType));
             }
         }
         return [{ value: "all", label: "All Sources" }, ...Array.from(values, ([value, label]) => ({ value, label }))];
@@ -180,12 +198,29 @@ export default function StockLedgerPage() {
             key: "voucher",
             header: "Source",
             width: 170,
-            cell: (r) => r.voucherId ? (
-                <Link to={`/vouchers/view/${r.voucherId}`} className="inline-flex items-center gap-1 font-semibold text-primary hover:underline">
-                    {r.voucherNumber || r.voucherType || "Voucher"}
-                    <ExternalLink className="h-3 w-3" />
+            cell: (r) => getVoucherHref(r.voucherId) ? (
+                <Link to={getVoucherHref(r.voucherId)!} className="inline-flex flex-col font-semibold text-primary hover:underline">
+                    <span className="inline-flex items-center gap-1">
+                        {r.voucherNumber || formatSourceType(r.voucherType)}
+                        <ExternalLink className="h-3 w-3" />
+                    </span>
+                    <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{formatSourceType(r.voucherType)}</span>
                 </Link>
             ) : <span className="text-muted-foreground">Opening / manual</span>
+        },
+        {
+            key: "sourceType",
+            header: "Source Type",
+            width: 130,
+            cell: (r) => r.voucherId ? (
+                <span className="rounded-md border border-border bg-background px-2 py-1 text-[11px] font-semibold text-muted-foreground">
+                    {formatSourceType(r.voucherType)}
+                </span>
+            ) : (
+                <span className="rounded-md border border-dashed border-border px-2 py-1 text-[11px] text-muted-foreground">
+                    Opening
+                </span>
+            )
         },
         ...(features.warehouses ? [{
             key: "location",
@@ -199,14 +234,14 @@ export default function StockLedgerPage() {
         { key: "creditAmt", header: <span className="block text-right text-red-600">Credit Amount</span>, align: "right", width: 150, cell: (r) => <MoneyText value={r.creditAmt ?? 0} className="text-red-600 font-semibold" /> },
         { key: "closingQty", header: <span className="block text-right">Closing Qty</span>, align: "right", width: 120, cell: (r) => <span className="font-black tabular-nums">{r.runningQty ?? 0}</span> },
         { key: "closingAmt", header: <span className="block text-right">Closing Amount</span>, align: "right", width: 150, cell: (r) => <MoneyText value={r.runningAmt ?? 0} className="font-bold" /> },
-        ...(features.batch || features.lot || features.expiry ? [{
+        ...(showItemTrackingColumn ? [{
             key: "tracking",
             header: "Tracking",
             width: 220,
             cell: (r: StockLedgerEntry) => <span className="text-xs text-muted-foreground">{[
-                features.batch && r.batchNo && `Batch ${r.batchNo}`,
-                features.lot && r.lotNo && `Lot ${r.lotNo}`,
-                features.expiry && r.expiryDate && `Exp ${new Date(r.expiryDate).toLocaleDateString()}`
+                features.batch && selectedItem?.tracksBatch && r.batchNo && `Batch ${r.batchNo}`,
+                features.lot && selectedItem?.tracksLot && r.lotNo && `Lot ${r.lotNo}`,
+                features.expiry && selectedItem?.tracksExpiry && r.expiryDate && `Exp ${new Date(r.expiryDate).toLocaleDateString()}`
             ].filter(Boolean).join(" / ") || "-"}</span>
         } as Column<StockLedgerEntry>] : []),
     ];
@@ -358,7 +393,8 @@ export default function StockLedgerPage() {
                             emptyText="No stock movements found"
                             className="border-none"
                             onRowClick={(row) => {
-                                if (row.voucherId) navigate(`/vouchers/view/${row.voucherId}`);
+                                const href = getVoucherHref(row.voucherId);
+                                if (href) navigate(href);
                             }}
                         />
                     </Card>

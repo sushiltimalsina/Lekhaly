@@ -5,6 +5,7 @@ import Topbar from "@/components/app/topbar";
 import QuickActionsRail from "@/components/app/quick-actions";
 import CommandPalette from "@/components/app/command-palette";
 import OfflineSyncBanner from "@/components/app/offline-sync-banner";
+import UnsavedChangesGuard from "@/components/app/unsaved-changes-guard";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -79,6 +80,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {!isCreationPage && <Topbar />}
         <OfflineSyncBanner />
         <CommandPalette />
+        <UnsavedChangesGuard />
 
         {/* Content Wrapper */}
         <main className={cn(

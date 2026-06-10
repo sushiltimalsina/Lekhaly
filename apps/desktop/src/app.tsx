@@ -9,6 +9,7 @@ import Topbar from "@/components/app/topbar";
 import QuickActionsRail from "@/components/app/quick-actions";
 import OfflineSyncBanner from "@/components/app/offline-sync-banner";
 import CommandPalette from "@/components/app/command-palette";
+import UnsavedChangesGuard from "@/components/app/unsaved-changes-guard";
 import { ToastContainer } from "@/components/app/toast";
 import { cn } from "@/lib/utils";
 
@@ -185,6 +186,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
         {!isCreationPage && <Topbar />}
         <OfflineSyncBanner />
         <CommandPalette />
+        <UnsavedChangesGuard />
         <ToastContainer />
 
         <main className={cn(

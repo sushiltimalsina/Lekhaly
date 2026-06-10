@@ -493,7 +493,17 @@ let InventoryService = class InventoryService {
         if (item.type === "services" || item.trackInventory === false) {
             return {
                 itemId,
-                item: { id: item.id, name: item.name, sku: item.sku, unit: item.unit, group: item.group?.name ?? null },
+                item: {
+                    id: item.id,
+                    name: item.name,
+                    sku: item.sku,
+                    unit: item.unit,
+                    group: item.group?.name ?? null,
+                    isSerialized: Boolean(item.isSerialized),
+                    tracksBatch: Boolean(item.tracksBatch),
+                    tracksLot: Boolean(item.tracksLot),
+                    tracksExpiry: Boolean(item.tracksExpiry)
+                },
                 qty: 0,
                 openingQty: 0,
                 openingAmt: 0,
@@ -601,7 +611,17 @@ let InventoryService = class InventoryService {
         }
         return {
             itemId,
-            item: { id: item.id, name: item.name, sku: item.sku, unit: item.unit, group: item.group?.name ?? null },
+            item: {
+                id: item.id,
+                name: item.name,
+                sku: item.sku,
+                unit: item.unit,
+                group: item.group?.name ?? null,
+                isSerialized: Boolean(item.isSerialized),
+                tracksBatch: Boolean(item.tracksBatch),
+                tracksLot: Boolean(item.tracksLot),
+                tracksExpiry: Boolean(item.tracksExpiry)
+            },
             qty: Number(qty.toString()),
             openingQty: Number(openingQty.toString()),
             openingAmt: Number(openingAmt.toString()),

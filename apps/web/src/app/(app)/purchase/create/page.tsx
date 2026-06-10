@@ -910,16 +910,25 @@ function PurchaseCreateContent() {
             }
             if (isOfflineQueuedResponse(res)) {
                 setSuccess(res.message);
+                window.lekhalyUnsavedChanges?.clear();
                 return;
             }
             const id = editId ?? res?.id ?? res?.voucherId ?? res?.data?.id;
             setSuccess(id ? `Saved draft successfully.` : "Saved draft.");
+            window.lekhalyUnsavedChanges?.clear();
         } catch (e: any) {
             setError(e?.message ?? "Something went wrong.");
         } finally {
             setLoading(false);
         }
     };
+
+    React.useEffect(() => {
+        window.lekhalySaveDraftBeforeLeave = onSave;
+        return () => {
+            if (window.lekhalySaveDraftBeforeLeave === onSave) delete window.lekhalySaveDraftBeforeLeave;
+        };
+    }, [onSave]);
 
     const onPost = async () => {
         setError(null);
@@ -967,7 +976,12 @@ function PurchaseCreateContent() {
             <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
                 <div className="mb-4">
                     <Button
-                        onClick={() => router.push("/purchase")}
+                        onClick={() => {
+                            const goToRegistry = () => router.push("/purchase");
+                            const guard = window.lekhalyUnsavedChanges;
+                            if (guard && !guard.requestNavigation(goToRegistry)) return;
+                            goToRegistry();
+                        }}
                         className="rounded-full h-10 px-4 bg-white text-slate-900 border border-slate-200 hover:!bg-orange-600 hover:!text-white hover:!border-orange-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm"
                     >
                         <ArrowLeft className="mr-2 h-4 w-4" />

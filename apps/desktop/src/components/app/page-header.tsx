@@ -63,11 +63,20 @@ export default function PageHeader({ title, description, actions, breadcrumb, cl
   const shouldShowBack = showBack ?? shouldAutoShowBack(location.pathname, breadcrumb);
 
   const goBack = () => {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      navigate(-1);
-      return;
+    const navigateBack = () => {
+      if (typeof window !== "undefined" && window.history.length > 1) {
+        navigate(-1);
+        return;
+      }
+      navigate(backHref || getFallbackHref(location.pathname));
+    };
+
+    if (typeof window !== "undefined") {
+      const guard = window.lekhalyUnsavedChanges;
+      if (guard && !guard.requestNavigation(navigateBack)) return;
     }
-    navigate(backHref || getFallbackHref(location.pathname));
+
+    navigateBack();
   };
 
   return (
