@@ -48,6 +48,7 @@ const reports = [
             { label: "Expenses Details", href: "/reports/expenses-details", icon: List, description: "Breakdown of all operational expenses." },
             { label: "Stock Ledger", href: "/reports/stock-ledger", icon: Package, description: "Item-wise stock movement and balances." },
             { label: "Stock Aging Report", href: "/reports/stock-aging", icon: Package, description: "Aged stock quantity and value in Nepal reporting buckets." },
+            { label: "Stock Valuation", href: "/reports/stock-valuation", icon: Package, description: "Current stock value by item, warehouse, and open layers." },
         ]
     },
     {
@@ -75,6 +76,7 @@ export default function OtherReportsPage() {
         items: group.items.filter(item =>
             (item.href !== "/reports/stock-ledger" || features.inventory) &&
             (item.href !== "/reports/stock-aging" || features.inventory) &&
+            (item.href !== "/reports/stock-valuation" || features.inventory) &&
             (item.label.toLowerCase().includes(search.toLowerCase()) ||
             item.description.toLowerCase().includes(search.toLowerCase()))
         )

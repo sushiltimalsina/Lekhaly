@@ -113,6 +113,7 @@ import SalesRegisterPage from "@/pages/reports/sales-register";
 import SalesReturnRegisterPage from "@/pages/reports/sales-return-register";
 import StockAgingReportPage from "@/pages/reports/stock-aging";
 import StockLedgerPage from "@/pages/reports/stock-ledger";
+import StockValuationReportPage from "@/pages/reports/stock-valuation";
 import TaxSummaryPage from "@/pages/reports/tax-summary";
 import TrialBalanceReportPage from "@/pages/reports/trial-balance";
 import VatPage from "@/pages/reports/vat";
@@ -312,6 +313,7 @@ export default function App() {
                 <Route path="/reports/sales-return-register" element={<SalesReturnRegisterPage />} />
                 <Route path="/reports/stock-aging" element={<StockAgingReportPage />} />
                 <Route path="/reports/stock-ledger" element={<StockLedgerPage />} />
+                <Route path="/reports/stock-valuation" element={<StockValuationReportPage />} />
                 <Route path="/reports/tax-summary" element={<TaxSummaryPage />} />
                 <Route path="/reports/trial-balance" element={<TrialBalanceReportPage />} />
                 <Route path="/reports/vat" element={<VatPage />} />

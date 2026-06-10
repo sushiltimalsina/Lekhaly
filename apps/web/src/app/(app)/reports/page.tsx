@@ -76,6 +76,14 @@ const reports = [
     color: "text-cyan-700 dark:text-cyan-300",
     bg: "bg-cyan-500/10"
   },
+  {
+    title: "Stock Valuation",
+    desc: "Current inventory value from open stock layers with item-level costing.",
+    href: "/reports/stock-valuation",
+    icon: Package,
+    color: "text-emerald-700 dark:text-emerald-300",
+    bg: "bg-emerald-500/10"
+  },
 ];
 
 export default function ReportsPage() {
