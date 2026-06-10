@@ -251,6 +251,185 @@ let InventoryService = class InventoryService {
         }
         return serials;
     }
+    scopeWhere(scope) {
+        const where = {};
+        if (scope.warehouseId !== undefined)
+            where.warehouseId = scope.warehouseId;
+        if (scope.binId !== undefined)
+            where.binId = scope.binId;
+        if (scope.batchNo)
+            where.batchNo = scope.batchNo;
+        if (scope.lotNo)
+            where.lotNo = scope.lotNo;
+        if (scope.expiryDate)
+            where.expiryDate = scope.expiryDate;
+        return where;
+    }
+    async fallbackAverageCost(tx, companyId, itemId, scope) {
+        const rows = await tx.stockLedger.findMany({
+            where: {
+                companyId,
+                itemId,
+                ...this.scopeWhere(scope)
+            },
+            select: { qtyIn: true, qtyOut: true, amount: true }
+        });
+        let qty = new client_1.Prisma.Decimal(0);
+        let amount = new client_1.Prisma.Decimal(0);
+        for (const row of rows) {
+            qty = qty.add(row.qtyIn).sub(row.qtyOut);
+            if (row.qtyIn.gt(0))
+                amount = amount.add(row.amount);
+            if (row.qtyOut.gt(0))
+                amount = amount.sub(row.amount);
+        }
+        if (qty.lte(0))
+            return new client_1.Prisma.Decimal(0);
+        return amount.gt(0) ? amount.div(qty) : new client_1.Prisma.Decimal(0);
+    }
+    isMissingInventoryTableError(error) {
+        const err = error;
+        return err?.code === "P2021" || Boolean(err?.message?.includes("does not exist in the current database"));
+    }
+    async receiveInventoryLayer(tx, input) {
+        if (input.qty.lte(0))
+            return null;
+        const db = tx;
+        if (!db.inventoryLayer)
+            return null;
+        try {
+            return await db.inventoryLayer.create({
+                data: {
+                    companyId: input.companyId,
+                    itemId: input.itemId,
+                    sourceLedgerId: input.sourceLedgerId ?? null,
+                    sourceVoucherId: input.sourceVoucherId ?? null,
+                    sourceType: input.sourceType ?? "movement",
+                    warehouseId: input.warehouseId ?? null,
+                    binId: input.binId ?? null,
+                    batchNo: input.batchNo ?? null,
+                    lotNo: input.lotNo ?? null,
+                    expiryDate: input.expiryDate ?? null,
+                    expiryDateBs: input.expiryDateBs ?? null,
+                    receivedDate: input.date,
+                    qtyIn: input.qty,
+                    remainingQty: input.qty,
+                    unitCost: input.unitCost,
+                    totalCost: input.qty.mul(input.unitCost)
+                }
+            });
+        }
+        catch (error) {
+            if (this.isMissingInventoryTableError(error))
+                return null;
+            throw error;
+        }
+    }
+    async consumeInventoryCost(tx, input) {
+        if (input.qty.lte(0))
+            return { unitCost: new client_1.Prisma.Decimal(0), amount: new client_1.Prisma.Decimal(0), consumedQty: new client_1.Prisma.Decimal(0) };
+        const db = tx;
+        const where = {
+            companyId: input.companyId,
+            itemId: input.itemId,
+            remainingQty: { gt: new client_1.Prisma.Decimal(0) },
+            ...this.scopeWhere(input)
+        };
+        const layers = db.inventoryLayer
+            ? await db.inventoryLayer.findMany({
+                where,
+                orderBy: [
+                    input.costingMethod === "fifo" ? { receivedDate: "asc" } : { createdAt: "asc" },
+                    { id: "asc" }
+                ]
+            }).catch((error) => {
+                if (this.isMissingInventoryTableError(error))
+                    return [];
+                throw error;
+            })
+            : [];
+        if (!layers.length) {
+            const fallback = await this.fallbackAverageCost(tx, input.companyId, input.itemId, input);
+            if (!input.allowNegative) {
+                const stock = await tx.stockLedger.aggregate({
+                    where: { companyId: input.companyId, itemId: input.itemId, ...this.scopeWhere(input) },
+                    _sum: { qtyIn: true, qtyOut: true }
+                });
+                const available = new client_1.Prisma.Decimal(stock._sum.qtyIn ?? 0).sub(new client_1.Prisma.Decimal(stock._sum.qtyOut ?? 0));
+                if (available.lt(input.qty))
+                    throw new common_1.BadRequestException("Insufficient stock to consume inventory cost");
+            }
+            return { unitCost: fallback, amount: fallback.mul(input.qty), consumedQty: input.qty };
+        }
+        const totalQty = layers.reduce((sum, layer) => sum.add(layer.remainingQty), new client_1.Prisma.Decimal(0));
+        if (totalQty.lt(input.qty) && !input.allowNegative) {
+            throw new common_1.BadRequestException("Insufficient stock layers to consume inventory cost");
+        }
+        const weightedCost = totalQty.gt(0)
+            ? layers.reduce((sum, layer) => sum.add(layer.remainingQty.mul(layer.unitCost)), new client_1.Prisma.Decimal(0)).div(totalQty)
+            : new client_1.Prisma.Decimal(0);
+        let remaining = input.qty;
+        let amount = new client_1.Prisma.Decimal(0);
+        let consumedQty = new client_1.Prisma.Decimal(0);
+        for (const layer of layers) {
+            if (remaining.lte(0))
+                break;
+            const take = layer.remainingQty.gte(remaining) ? remaining : layer.remainingQty;
+            const cost = input.costingMethod === "fifo" ? layer.unitCost : weightedCost;
+            amount = amount.add(take.mul(cost));
+            consumedQty = consumedQty.add(take);
+            remaining = remaining.sub(take);
+            await db.inventoryLayer.update({
+                where: { id: layer.id },
+                data: { remainingQty: layer.remainingQty.sub(take) }
+            }).catch((error) => {
+                if (this.isMissingInventoryTableError(error))
+                    return null;
+                throw error;
+            });
+        }
+        if (remaining.gt(0) && input.allowNegative) {
+            const fallback = weightedCost.gt(0) ? weightedCost : await this.fallbackAverageCost(tx, input.companyId, input.itemId, input);
+            amount = amount.add(remaining.mul(fallback));
+            consumedQty = consumedQty.add(remaining);
+            remaining = new client_1.Prisma.Decimal(0);
+        }
+        const unitCost = input.qty.gt(0) ? amount.div(input.qty) : new client_1.Prisma.Decimal(0);
+        return { unitCost, amount, consumedQty };
+    }
+    async recordSerialMovements(tx, input) {
+        if (!input.serials.length)
+            return;
+        const db = tx;
+        if (!db.serialNumberMovement)
+            return;
+        try {
+            await db.serialNumberMovement.createMany({
+                data: input.serials.map((serial) => ({
+                    companyId: input.companyId,
+                    itemId: input.itemId,
+                    serialNumberId: serial.id,
+                    serialNo: serial.serialNo,
+                    voucherId: input.voucherId ?? null,
+                    stockLedgerId: input.stockLedgerId ?? null,
+                    movementType: input.movementType,
+                    statusFrom: serial.status ?? null,
+                    statusTo: input.statusTo ?? serial.status ?? null,
+                    fromWarehouseId: serial.warehouseId ?? null,
+                    fromBinId: serial.binId ?? null,
+                    toWarehouseId: input.toWarehouseId ?? null,
+                    toBinId: input.toBinId ?? null,
+                    movementDate: input.movementDate,
+                    movementDateBs: input.movementDateBs ?? null
+                }))
+            });
+        }
+        catch (error) {
+            if (this.isMissingInventoryTableError(error))
+                return;
+            throw error;
+        }
+    }
     async applyMovementPolicy(companyId, item, input, tx) {
         const settings = await this.getOrCreateSettings(companyId, tx);
         if (!settings.inventoryTrackingEnabled)
@@ -455,8 +634,8 @@ let InventoryService = class InventoryService {
         const qty = new client_1.Prisma.Decimal(input.qty);
         if (qty.equals(0))
             throw new common_1.BadRequestException("Quantity cannot be zero");
-        const rate = new client_1.Prisma.Decimal(input.rate ?? 0);
-        const amount = qty.abs().mul(rate);
+        const enteredRate = new client_1.Prisma.Decimal(input.rate ?? 0);
+        const enteredAmount = qty.abs().mul(enteredRate);
         const resolved = (0, nepali_date_1.resolveAdDate)(input.date, input.dateBs);
         const movement = await this.applyMovementPolicy(user.companyId, item, {
             warehouseId: input.warehouseId,
@@ -488,6 +667,22 @@ let InventoryService = class InventoryService {
             }
         }
         return this.prisma.$transaction(async (tx) => {
+            const cost = qty.lt(0)
+                ? await this.consumeInventoryCost(tx, {
+                    companyId: user.companyId,
+                    itemId: item.id,
+                    qty: qty.abs(),
+                    costingMethod: movement.settings.costingMethod,
+                    allowNegative: input.allowNegativeOverride || movement.settings.allowNegativeStock,
+                    warehouseId: movement.warehouseId,
+                    binId: movement.binId,
+                    batchNo: input.batchNo || null,
+                    lotNo: input.lotNo || null,
+                    expiryDate: input.expiryDate || null
+                })
+                : { unitCost: enteredRate, amount: enteredAmount };
+            const rate = cost.unitCost;
+            const amount = cost.amount;
             const voucher = await tx.voucher.create({
                 data: {
                     companyId: user.companyId,
@@ -542,7 +737,7 @@ let InventoryService = class InventoryService {
                     }
                 }
             });
-            await tx.stockLedger.create({
+            const ledger = await tx.stockLedger.create({
                 data: {
                     companyId: user.companyId,
                     itemId: item.id,
@@ -561,6 +756,24 @@ let InventoryService = class InventoryService {
                     expiryDateBs: input.expiryDateBs || null
                 }
             });
+            if (qty.gt(0)) {
+                await this.receiveInventoryLayer(tx, {
+                    companyId: user.companyId,
+                    itemId: item.id,
+                    qty,
+                    unitCost: rate,
+                    date: resolved.date,
+                    sourceLedgerId: ledger.id,
+                    sourceVoucherId: voucher.id,
+                    sourceType: "adjustment",
+                    warehouseId: movement.warehouseId,
+                    binId: movement.binId,
+                    batchNo: input.batchNo || null,
+                    lotNo: input.lotNo || null,
+                    expiryDate: input.expiryDate || null,
+                    expiryDateBs: input.expiryDateBs || null
+                });
+            }
             if (serialNumbers.length) {
                 if (qty.gt(0)) {
                     const existing = await tx.serialNumber.findMany({
@@ -580,6 +793,27 @@ let InventoryService = class InventoryService {
                             status: "available"
                         }))
                     });
+                    const createdSerials = await tx.serialNumber.findMany({
+                        where: {
+                            companyId: user.companyId,
+                            itemId: item.id,
+                            serialNo: { in: serialNumbers }
+                        },
+                        select: { id: true, serialNo: true, status: true, warehouseId: true, binId: true }
+                    });
+                    await this.recordSerialMovements(tx, {
+                        companyId: user.companyId,
+                        itemId: item.id,
+                        serials: createdSerials,
+                        voucherId: voucher.id,
+                        stockLedgerId: ledger.id,
+                        movementType: "adjustment_in",
+                        statusTo: "available",
+                        toWarehouseId: movement.warehouseId,
+                        toBinId: movement.binId,
+                        movementDate: resolved.date,
+                        movementDateBs: resolved.bs || null
+                    });
                 }
                 else {
                     const available = await tx.serialNumber.findMany({
@@ -591,7 +825,7 @@ let InventoryService = class InventoryService {
                             warehouseId: movement.warehouseId,
                             binId: movement.binId
                         },
-                        select: { id: true }
+                        select: { id: true, serialNo: true, status: true, warehouseId: true, binId: true }
                     });
                     if (available.length !== serialNumbers.length) {
                         throw new common_1.BadRequestException("One or more serial numbers are not available at the selected location");
@@ -599,6 +833,17 @@ let InventoryService = class InventoryService {
                     await tx.serialNumber.updateMany({
                         where: { id: { in: available.map((s) => s.id) } },
                         data: { status: "damaged" }
+                    });
+                    await this.recordSerialMovements(tx, {
+                        companyId: user.companyId,
+                        itemId: item.id,
+                        serials: available,
+                        voucherId: voucher.id,
+                        stockLedgerId: ledger.id,
+                        movementType: "adjustment_out",
+                        statusTo: "damaged",
+                        movementDate: resolved.date,
+                        movementDateBs: resolved.bs || null
                     });
                 }
             }
@@ -626,7 +871,9 @@ let InventoryService = class InventoryService {
         const openingWhere = filters.from
             ? { companyId: user.companyId, date: { lt: filters.from }, voucherId: { not: null } }
             : null;
-        const [periodEntries, openingEntries, openingSeedEntries, reservationRows] = await Promise.all([
+        const db = this.prisma;
+        const useCurrentLayerValuation = !filters.to || filters.to >= new Date(new Date().setHours(0, 0, 0, 0));
+        const [periodEntries, openingEntries, openingSeedEntries, reservationRows, layerRows] = await Promise.all([
             this.prisma.stockLedger.findMany({ where: periodWhere }),
             openingWhere ? this.prisma.stockLedger.findMany({ where: openingWhere }) : Promise.resolve([]),
             this.prisma.stockLedger.findMany({
@@ -645,7 +892,13 @@ let InventoryService = class InventoryService {
                     qty: true,
                     fulfilledQty: true
                 }
-            })
+            }),
+            useCurrentLayerValuation && db.inventoryLayer
+                ? db.inventoryLayer.findMany({
+                    where: { companyId: user.companyId, remainingQty: { gt: new client_1.Prisma.Decimal(0) } },
+                    select: { itemId: true, remainingQty: true, unitCost: true }
+                })
+                : Promise.resolve([])
         ]);
         const zero = new client_1.Prisma.Decimal(0);
         const reservedByItem = new Map();
@@ -658,6 +911,13 @@ let InventoryService = class InventoryService {
                 continue;
             const prev = reservedByItem.get(itemId) ?? zero;
             reservedByItem.set(itemId, prev.add(pending));
+        }
+        const layerValueByItem = new Map();
+        for (const layer of layerRows) {
+            const current = layerValueByItem.get(layer.itemId) ?? { qty: zero, amount: zero };
+            current.qty = current.qty.add(layer.remainingQty);
+            current.amount = current.amount.add(layer.remainingQty.mul(layer.unitCost));
+            layerValueByItem.set(layer.itemId, current);
         }
         const stats = new Map();
         const getStats = (itemId) => {
@@ -742,7 +1002,11 @@ let InventoryService = class InventoryService {
                 outAmt: zero
             };
             const closingQty = s.openQty.add(s.inQty).sub(s.outQty);
-            const closingAmt = s.openAmt.add(s.inAmt).sub(s.outAmt);
+            const ledgerClosingAmt = s.openAmt.add(s.inAmt).sub(s.outAmt);
+            const layerValue = layerValueByItem.get(item.id);
+            const closingAmt = useCurrentLayerValuation && layerValue && layerValue.qty.gt(0)
+                ? layerValue.amount
+                : ledgerClosingAmt;
             const reorderLevel = Number(item.reorderLevel ?? 0);
             const safetyStock = Number(item.safetyStock ?? 0);
             const onHandQty = Number(closingQty.toString());
@@ -1012,8 +1276,6 @@ let InventoryService = class InventoryService {
                 throw new common_1.BadRequestException("Destination bin not found");
         }
         const qty = new client_1.Prisma.Decimal(input.qty);
-        const rate = new client_1.Prisma.Decimal(input.rate ?? 0);
-        const amount = qty.mul(rate);
         const resolved = (0, nepali_date_1.resolveAdDate)(input.date, input.dateBs);
         const serialNumbers = this.assertSerializedQuantity(item, qty, input.serialNumbers);
         const sourceBalance = await this.prisma.stockLedger.aggregate({
@@ -1030,6 +1292,20 @@ let InventoryService = class InventoryService {
             throw new common_1.BadRequestException(`Insufficient source stock in ${fromWarehouse.name}. Available: ${sourceQty.toString()}, Requested: ${qty.toString()}`);
         }
         return this.prisma.$transaction(async (tx) => {
+            const transferCost = await this.consumeInventoryCost(tx, {
+                companyId: user.companyId,
+                itemId: input.itemId,
+                qty,
+                costingMethod: settings.costingMethod,
+                allowNegative: settings.allowNegativeStock,
+                warehouseId: input.fromWarehouseId,
+                binId: input.fromBinId ?? null,
+                batchNo: input.batchNo || null,
+                lotNo: input.lotNo || null,
+                expiryDate: input.expiryDate || null
+            });
+            const rate = transferCost.unitCost;
+            const amount = transferCost.amount;
             const voucher = await tx.voucher.create({
                 data: {
                     companyId: user.companyId,
@@ -1042,7 +1318,7 @@ let InventoryService = class InventoryService {
                     postedByUserId: user.sub
                 }
             });
-            await tx.stockLedger.create({
+            const sourceLedger = await tx.stockLedger.create({
                 data: {
                     companyId: user.companyId,
                     itemId: input.itemId,
@@ -1061,7 +1337,7 @@ let InventoryService = class InventoryService {
                     expiryDateBs: input.expiryDateBs || null
                 }
             });
-            await tx.stockLedger.create({
+            const destinationLedger = await tx.stockLedger.create({
                 data: {
                     companyId: user.companyId,
                     itemId: input.itemId,
@@ -1080,6 +1356,22 @@ let InventoryService = class InventoryService {
                     expiryDateBs: input.expiryDateBs || null
                 }
             });
+            await this.receiveInventoryLayer(tx, {
+                companyId: user.companyId,
+                itemId: input.itemId,
+                qty,
+                unitCost: rate,
+                date: resolved.date,
+                sourceLedgerId: destinationLedger.id,
+                sourceVoucherId: voucher.id,
+                sourceType: "transfer",
+                warehouseId: input.toWarehouseId,
+                binId: input.toBinId ?? null,
+                batchNo: input.batchNo || null,
+                lotNo: input.lotNo || null,
+                expiryDate: input.expiryDate || null,
+                expiryDateBs: input.expiryDateBs || null
+            });
             if (serialNumbers.length) {
                 const serialRows = await tx.serialNumber.findMany({
                     where: {
@@ -1090,7 +1382,7 @@ let InventoryService = class InventoryService {
                         warehouseId: input.fromWarehouseId,
                         binId: input.fromBinId ?? null
                     },
-                    select: { id: true }
+                    select: { id: true, serialNo: true, status: true, warehouseId: true, binId: true }
                 });
                 if (serialRows.length !== serialNumbers.length) {
                     throw new common_1.BadRequestException("One or more serial numbers are not available at the source location");
@@ -1101,6 +1393,19 @@ let InventoryService = class InventoryService {
                         warehouseId: input.toWarehouseId,
                         binId: input.toBinId ?? null
                     }
+                });
+                await this.recordSerialMovements(tx, {
+                    companyId: user.companyId,
+                    itemId: input.itemId,
+                    serials: serialRows,
+                    voucherId: voucher.id,
+                    stockLedgerId: sourceLedger.id,
+                    movementType: "transfer",
+                    statusTo: "available",
+                    toWarehouseId: input.toWarehouseId,
+                    toBinId: input.toBinId ?? null,
+                    movementDate: resolved.date,
+                    movementDateBs: resolved.bs || null
                 });
             }
             return { ok: true, voucherId: voucher.id };
@@ -1193,6 +1498,23 @@ let InventoryService = class InventoryService {
                 warehouse: { select: { id: true, name: true } },
                 bin: { select: { id: true, name: true } }
             }
+        });
+    }
+    async listSerialMovements(user, query) {
+        const db = this.prisma;
+        if (!db.serialNumberMovement)
+            return [];
+        const where = { companyId: user.companyId };
+        if (query.itemId)
+            where.itemId = query.itemId;
+        if (query.voucherId)
+            where.voucherId = query.voucherId;
+        if (query.serialNo)
+            where.serialNo = { contains: query.serialNo, mode: "insensitive" };
+        return db.serialNumberMovement.findMany({
+            where,
+            orderBy: [{ movementDate: "desc" }, { createdAt: "desc" }],
+            take: query.take ?? 200
         });
     }
 };

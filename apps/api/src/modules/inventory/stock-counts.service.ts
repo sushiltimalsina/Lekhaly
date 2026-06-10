@@ -257,10 +257,26 @@ export class StockCountsService {
             _avg: { rate: true }
           });
           const rate = rateAggr._avg.rate?.toNumber() || 0;
-          const totalAmt = rate * absQty;
+          let totalAmt = rate * absQty;
+          let unitCost = new Prisma.Decimal(rate);
+          if (direction === "out") {
+            const cost = await this.inventoryService.consumeInventoryCost(tx, {
+              companyId,
+              itemId: line.itemId,
+              qty: new Prisma.Decimal(absQty),
+              costingMethod: settings.costingMethod,
+              allowNegative: settings.allowNegativeStock,
+              warehouseId: existing.warehouseId,
+              binId: line.binId,
+              batchNo: line.batchNo,
+              lotNo: line.lotNo
+            });
+            unitCost = cost.unitCost;
+            totalAmt = Number(cost.amount.toString());
+          }
 
           // Add to stock ledger
-          await tx.stockLedger.create({
+          const ledger = await tx.stockLedger.create({
             data: {
               companyId,
               itemId: line.itemId,
@@ -270,12 +286,29 @@ export class StockCountsService {
               voucherId: voucher.id,
               qtyIn: direction === "in" ? absQty : 0,
               qtyOut: direction === "out" ? absQty : 0,
-              rate,
+              rate: unitCost,
               amount: totalAmt,
               batchNo: line.batchNo,
               lotNo: line.lotNo,
             }
           });
+
+          if (direction === "in") {
+            await this.inventoryService.receiveInventoryLayer(tx, {
+              companyId,
+              itemId: line.itemId,
+              qty: new Prisma.Decimal(absQty),
+              unitCost,
+              date: ledger.date,
+              sourceLedgerId: ledger.id,
+              sourceVoucherId: voucher.id,
+              sourceType: "stock_count",
+              warehouseId: existing.warehouseId,
+              binId: line.binId,
+              batchNo: line.batchNo,
+              lotNo: line.lotNo
+            });
+          }
 
           // Fetch item to know the inventory account (default to general inventory if not set)
           const item = await tx.item.findUnique({ where: { id: line.itemId }});

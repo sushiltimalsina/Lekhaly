@@ -62,10 +62,12 @@ describe("InventoryService", () => {
 
   it("returns stock summary", async () => {
     prisma.item.findFirst.mockResolvedValue({ id: "item-1" });
-    prisma.stockLedger.findMany.mockResolvedValue([
-      { qtyIn: new Prisma.Decimal(10), qtyOut: new Prisma.Decimal(0), rate: new Prisma.Decimal(10), amount: new Prisma.Decimal(100) },
-      { qtyIn: new Prisma.Decimal(0), qtyOut: new Prisma.Decimal(3), rate: new Prisma.Decimal(10), amount: new Prisma.Decimal(30) }
-    ]);
+    prisma.stockLedger.findMany
+      .mockResolvedValueOnce([
+        { qtyIn: new Prisma.Decimal(10), qtyOut: new Prisma.Decimal(0), rate: new Prisma.Decimal(10), amount: new Prisma.Decimal(100) },
+        { qtyIn: new Prisma.Decimal(0), qtyOut: new Prisma.Decimal(3), rate: new Prisma.Decimal(10), amount: new Prisma.Decimal(30) }
+      ])
+      .mockResolvedValueOnce([]);
 
     const result = await service.getStock(user, "item-1", {});
     expect(result.qty.toString()).toBe("7");

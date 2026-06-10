@@ -6,6 +6,7 @@ import { VouchersService } from "./vouchers.service";
 describe("VouchersService", () => {
   let service: VouchersService;
   let prisma: any;
+  let inventory: any;
   let tx: any;
 
   const user = { sub: "user-1", companyId: "company-1" } as AuthUser;
@@ -71,7 +72,16 @@ describe("VouchersService", () => {
 
     prisma.$transaction.mockImplementation((callback: (client: typeof tx) => any) => callback(tx));
 
-    service = new VouchersService(prisma);
+    inventory = {
+      consumeInventoryCost: jest.fn().mockResolvedValue({
+        unitCost: new Prisma.Decimal(0),
+        amount: new Prisma.Decimal(0),
+        consumedQty: new Prisma.Decimal(0)
+      }),
+      receiveInventoryLayer: jest.fn()
+    };
+
+    service = new VouchersService(prisma, inventory);
   });
 
   it("requires a party for sales invoice drafts", async () => {

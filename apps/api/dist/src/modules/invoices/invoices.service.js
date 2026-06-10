@@ -14,10 +14,13 @@ const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
 const prisma_service_1 = require("../../common/prisma/prisma.service");
 const nepali_date_1 = require("../../common/date/nepali-date");
+const inventory_service_1 = require("../inventory/inventory.service");
 let InvoicesService = class InvoicesService {
     prisma;
-    constructor(prisma) {
+    inventory;
+    constructor(prisma, inventory) {
         this.prisma = prisma;
+        this.inventory = inventory;
     }
     async getCompany(companyId) {
         const company = await this.prisma.company.findUnique({ where: { id: companyId } });
@@ -720,6 +723,18 @@ let InvoicesService = class InvoicesService {
                         qtyToExplode = qty - qtyToDeductKit;
                     }
                     if (qtyToDeductKit > 0) {
+                        const kitCost = await this.inventory.consumeInventoryCost(tx, {
+                            companyId: user.companyId,
+                            itemId: item.itemId,
+                            qty: new client_1.Prisma.Decimal(qtyToDeductKit),
+                            costingMethod: inventorySettings.costingMethod,
+                            allowNegative: inventorySettings.allowNegativeStock,
+                            warehouseId: scope.warehouseId,
+                            binId: scope.binId,
+                            batchNo: scope.batchNo,
+                            lotNo: scope.lotNo,
+                            expiryDate: scope.expiryDate
+                        });
                         stockLedgerData.push({
                             companyId: user.companyId,
                             itemId: item.itemId,
@@ -729,8 +744,8 @@ let InvoicesService = class InvoicesService {
                             binId: scope.binId,
                             qtyIn: 0,
                             qtyOut: qtyToDeductKit,
-                            rate: kitMac.avgCost,
-                            amount: qtyToDeductKit * kitMac.avgCost,
+                            rate: kitCost.unitCost,
+                            amount: kitCost.amount,
                             batchNo: scope.batchNo,
                             lotNo: scope.lotNo,
                             expiryDate: scope.expiryDate,
@@ -746,7 +761,13 @@ let InvoicesService = class InvoicesService {
                                 throw new common_1.BadRequestException(`Kit component "${comp.component.name}" requires tracking selection. Assemble the kit before selling it.`);
                             }
                             const compQty = Number(comp.qty) * qtyToExplode;
-                            const compMac = await computeMAC(comp.componentId);
+                            const compCost = await this.inventory.consumeInventoryCost(tx, {
+                                companyId: user.companyId,
+                                itemId: comp.componentId,
+                                qty: new client_1.Prisma.Decimal(compQty),
+                                costingMethod: inventorySettings.costingMethod,
+                                allowNegative: inventorySettings.allowNegativeStock
+                            });
                             stockLedgerData.push({
                                 companyId: user.companyId,
                                 itemId: comp.componentId,
@@ -754,8 +775,8 @@ let InvoicesService = class InvoicesService {
                                 voucherId: voucher.id,
                                 qtyIn: 0,
                                 qtyOut: compQty,
-                                rate: compMac.avgCost,
-                                amount: compQty * compMac.avgCost
+                                rate: compCost.unitCost,
+                                amount: compCost.amount
                             });
                         }
                     }
@@ -764,9 +785,20 @@ let InvoicesService = class InvoicesService {
                     let finalRate = rate;
                     let finalAmount = qty * rate;
                     if (isOut) {
-                        const stdMac = await computeMAC(item.itemId);
-                        finalRate = stdMac.avgCost;
-                        finalAmount = qty * stdMac.avgCost;
+                        const cost = await this.inventory.consumeInventoryCost(tx, {
+                            companyId: user.companyId,
+                            itemId: item.itemId,
+                            qty: qtyDecimal,
+                            costingMethod: inventorySettings.costingMethod,
+                            allowNegative: inventorySettings.allowNegativeStock,
+                            warehouseId: scope.warehouseId,
+                            binId: scope.binId,
+                            batchNo: scope.batchNo,
+                            lotNo: scope.lotNo,
+                            expiryDate: scope.expiryDate
+                        });
+                        finalRate = Number(cost.unitCost.toString());
+                        finalAmount = Number(cost.amount.toString());
                     }
                     stockLedgerData.push({
                         companyId: user.companyId,
@@ -835,7 +867,33 @@ let InvoicesService = class InvoicesService {
                 }
             }
             if (stockLedgerData.length > 0) {
-                await tx.stockLedger.createMany({ data: stockLedgerData });
+                for (const row of stockLedgerData) {
+                    const ledger = await tx.stockLedger.create({ data: row });
+                    const qtyIn = new client_1.Prisma.Decimal(String(row.qtyIn ?? 0));
+                    if (qtyIn.gt(0)) {
+                        const amount = new client_1.Prisma.Decimal(String(row.amount ?? 0));
+                        const movementDate = row.date instanceof Date ? row.date : new Date(row.date);
+                        const expiryDate = row.expiryDate
+                            ? row.expiryDate instanceof Date ? row.expiryDate : new Date(row.expiryDate)
+                            : null;
+                        await this.inventory.receiveInventoryLayer(tx, {
+                            companyId: user.companyId,
+                            itemId: row.itemId,
+                            qty: qtyIn,
+                            unitCost: qtyIn.gt(0) ? amount.div(qtyIn) : new client_1.Prisma.Decimal(0),
+                            date: movementDate,
+                            sourceLedgerId: ledger.id,
+                            sourceVoucherId: voucher.id,
+                            sourceType: invoice.type === "sales_return" ? "sales_return" : "invoice",
+                            warehouseId: row.warehouseId ?? null,
+                            binId: row.binId ?? null,
+                            batchNo: row.batchNo ?? null,
+                            lotNo: row.lotNo ?? null,
+                            expiryDate,
+                            expiryDateBs: row.expiryDateBs ?? null
+                        });
+                    }
+                }
             }
             return tx.invoice.update({
                 where: { id: invoice.id },
@@ -1020,6 +1078,7 @@ let InvoicesService = class InvoicesService {
 exports.InvoicesService = InvoicesService;
 exports.InvoicesService = InvoicesService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        inventory_service_1.InventoryService])
 ], InvoicesService);
 //# sourceMappingURL=invoices.service.js.map

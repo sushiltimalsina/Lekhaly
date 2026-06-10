@@ -101,3 +101,10 @@ export const SerialQuerySchema = z.object({
   q: z.string().trim().max(120).optional(),
   take: z.coerce.number().int().min(1).max(1000).optional()
 });
+
+export const SerialMovementQuerySchema = z.object({
+  itemId: z.string().uuid().optional(),
+  serialNo: z.string().trim().max(120).optional(),
+  voucherId: z.string().uuid().optional(),
+  take: z.coerce.number().int().min(1).max(1000).optional()
+});

@@ -24,8 +24,6 @@ export declare class InventoryService {
     }): Promise<{
         id: string;
         companyId: string;
-        createdAt: Date;
-        updatedAt: Date;
         inventoryTrackingEnabled: boolean;
         warehousesEnabled: boolean;
         binsEnabled: boolean;
@@ -38,10 +36,66 @@ export declare class InventoryService {
         requireWarehouseOnMovements: boolean;
         defaultWarehouseId: string | null;
         costingMethod: string;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     private assertSettingsCanChange;
     private normalizeSerialNumbers;
     private assertSerializedQuantity;
+    private scopeWhere;
+    private fallbackAverageCost;
+    private isMissingInventoryTableError;
+    receiveInventoryLayer(tx: Prisma.TransactionClient, input: {
+        companyId: string;
+        itemId: string;
+        qty: Prisma.Decimal;
+        unitCost: Prisma.Decimal;
+        date: Date;
+        sourceLedgerId?: string | null;
+        sourceVoucherId?: string | null;
+        sourceType?: string;
+        warehouseId?: string | null;
+        binId?: string | null;
+        batchNo?: string | null;
+        lotNo?: string | null;
+        expiryDate?: Date | null;
+        expiryDateBs?: string | null;
+    }): Promise<any>;
+    consumeInventoryCost(tx: Prisma.TransactionClient, input: {
+        companyId: string;
+        itemId: string;
+        qty: Prisma.Decimal;
+        costingMethod?: string | null;
+        allowNegative?: boolean;
+        warehouseId?: string | null;
+        binId?: string | null;
+        batchNo?: string | null;
+        lotNo?: string | null;
+        expiryDate?: Date | null;
+    }): Promise<{
+        unitCost: Prisma.Decimal;
+        amount: Prisma.Decimal;
+        consumedQty: Prisma.Decimal;
+    }>;
+    recordSerialMovements(tx: Prisma.TransactionClient, input: {
+        companyId: string;
+        itemId: string;
+        serials: Array<{
+            id: string;
+            serialNo: string;
+            status?: string | null;
+            warehouseId?: string | null;
+            binId?: string | null;
+        }>;
+        voucherId?: string | null;
+        stockLedgerId?: string | null;
+        movementType: string;
+        statusTo?: string | null;
+        toWarehouseId?: string | null;
+        toBinId?: string | null;
+        movementDate: Date;
+        movementDateBs?: string | null;
+    }): Promise<void>;
     private applyMovementPolicy;
     getStock(user: AuthUser, itemId: string, filters: {
         from?: Date;
@@ -255,10 +309,10 @@ export declare class InventoryService {
         }[];
         expiringSoon: {
             qty: number;
+            itemId: string;
             batchNo: string | null;
             lotNo: string | null;
             expiryDate: Date | null;
-            itemId: string;
             _sum: {
                 qtyIn: Prisma.Decimal | null;
                 qtyOut: Prisma.Decimal | null;
@@ -292,14 +346,20 @@ export declare class InventoryService {
     } & {
         id: string;
         companyId: string;
-        status: string;
         createdAt: Date;
         updatedAt: Date;
         itemId: string;
         warehouseId: string | null;
         binId: string | null;
+        status: string;
         serialNo: string;
         purchaseInvoiceId: string | null;
         salesInvoiceId: string | null;
     })[]>;
+    listSerialMovements(user: AuthUser, query: {
+        itemId?: string;
+        serialNo?: string;
+        voucherId?: string;
+        take?: number;
+    }): Promise<any>;
 }

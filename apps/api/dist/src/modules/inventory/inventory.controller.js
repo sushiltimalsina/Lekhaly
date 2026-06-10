@@ -33,6 +33,9 @@ let InventoryController = class InventoryController {
     serials(user, query) {
         return this.inventory.listSerialNumbers(user, query);
     }
+    serialMovements(user, query) {
+        return this.inventory.listSerialMovements(user, query);
+    }
     adjust(user, body) {
         return this.inventory.adjustStock(user, body);
     }
@@ -76,6 +79,15 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", void 0)
 ], InventoryController.prototype, "serials", null);
+__decorate([
+    (0, common_1.Get)("serial-movements"),
+    (0, auth_decorator_1.RequirePerm)("masters.read"),
+    __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Query)(new zod_pipe_1.ZodValidationPipe(inventory_schemas_1.SerialMovementQuerySchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], InventoryController.prototype, "serialMovements", null);
 __decorate([
     (0, common_1.Post)("adjustment"),
     (0, auth_decorator_1.RequirePerm)("masters.write"),

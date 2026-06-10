@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from "@nestjs/comm
 import { ItemType, Prisma, VoucherStatus, VoucherType } from "@prisma/client";
 import type { AuthUser } from "../../common/auth/auth.types";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { InventoryService } from "../inventory/inventory.service";
 
 type ItemInput = {
   name?: string;
@@ -46,7 +47,10 @@ const itemInclude = {
 
 @Injectable()
 export class ItemsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private inventory: InventoryService
+  ) {}
 
   async create(user: AuthUser, input: ItemInput) {
     const name = input.name?.trim();
@@ -101,7 +105,7 @@ export class ItemsService {
       });
 
       if (openingQty.gt(0)) {
-        await tx.stockLedger.create({
+        const ledger = await tx.stockLedger.create({
           data: {
             companyId: user.companyId,
             itemId: item.id,
@@ -112,6 +116,16 @@ export class ItemsService {
             rate: openingRate,
             amount: openingQty.mul(openingRate)
           }
+        });
+        await this.inventory.receiveInventoryLayer(tx, {
+          companyId: user.companyId,
+          itemId: item.id,
+          qty: openingQty,
+          unitCost: openingRate,
+          date: ledger.date,
+          sourceLedgerId: ledger.id,
+          sourceVoucherId: null,
+          sourceType: "opening"
         });
       }
 
@@ -226,9 +240,9 @@ export class ItemsService {
     const componentRows = components?.length
       ? components.map((c) => ({ componentId: c.componentId, qty: new Prisma.Decimal(c.consumedQty) }))
       : kit.components.map((c) => ({ componentId: c.componentId, qty: c.qty.mul(quantity) }));
-    const rate = new Prisma.Decimal(kit.purchasePrice ?? 0);
 
     return this.prisma.$transaction(async (tx) => {
+      const settings = await this.inventory.getOrCreateSettings(user.companyId, tx);
       const voucher = await tx.voucher.create({
         data: {
           companyId: user.companyId,
@@ -241,7 +255,16 @@ export class ItemsService {
         }
       });
 
+      let finishedCost = new Prisma.Decimal(0);
       for (const c of componentRows) {
+        const componentCost = await this.inventory.consumeInventoryCost(tx, {
+          companyId: user.companyId,
+          itemId: c.componentId,
+          qty: c.qty,
+          costingMethod: settings.costingMethod,
+          allowNegative: settings.allowNegativeStock
+        });
+        finishedCost = finishedCost.add(componentCost.amount);
         await tx.stockLedger.create({
           data: {
             companyId: user.companyId,
@@ -250,13 +273,14 @@ export class ItemsService {
             voucherId: voucher.id,
             qtyIn: new Prisma.Decimal(0),
             qtyOut: c.qty,
-            rate: new Prisma.Decimal(0),
-            amount: new Prisma.Decimal(0)
+            rate: componentCost.unitCost,
+            amount: componentCost.amount
           }
         });
       }
 
-      await tx.stockLedger.create({
+      const rate = quantity.gt(0) ? finishedCost.div(quantity) : new Prisma.Decimal(0);
+      const ledger = await tx.stockLedger.create({
         data: {
           companyId: user.companyId,
           itemId: kit.id,
@@ -267,6 +291,16 @@ export class ItemsService {
           rate,
           amount: quantity.mul(rate)
         }
+      });
+      await this.inventory.receiveInventoryLayer(tx, {
+        companyId: user.companyId,
+        itemId: kit.id,
+        qty: quantity,
+        unitCost: rate,
+        date: ledger.date,
+        sourceLedgerId: ledger.id,
+        sourceVoucherId: voucher.id,
+        sourceType: "assembly"
       });
 
       return { ok: true, voucherId: voucher.id, sundries: sundries ?? [] };
@@ -286,9 +320,9 @@ export class ItemsService {
     const componentRows = components?.length
       ? components.map((c) => ({ componentId: c.componentId, qty: new Prisma.Decimal(c.consumedQty) }))
       : kit.components.map((c) => ({ componentId: c.componentId, qty: c.qty.mul(quantity) }));
-    const rate = new Prisma.Decimal(kit.purchasePrice ?? 0);
 
     return this.prisma.$transaction(async (tx) => {
+      const settings = await this.inventory.getOrCreateSettings(user.companyId, tx);
       const voucher = await tx.voucher.create({
         data: {
           companyId: user.companyId,
@@ -301,6 +335,13 @@ export class ItemsService {
         }
       });
 
+      const kitCost = await this.inventory.consumeInventoryCost(tx, {
+        companyId: user.companyId,
+        itemId: kit.id,
+        qty: quantity,
+        costingMethod: settings.costingMethod,
+        allowNegative: settings.allowNegativeStock
+      });
       await tx.stockLedger.create({
         data: {
           companyId: user.companyId,
@@ -309,13 +350,16 @@ export class ItemsService {
           voucherId: voucher.id,
           qtyIn: new Prisma.Decimal(0),
           qtyOut: quantity,
-          rate,
-          amount: quantity.mul(rate)
+          rate: kitCost.unitCost,
+          amount: kitCost.amount
         }
       });
 
+      const totalComponentQty = componentRows.reduce((sum, row) => sum.add(row.qty), new Prisma.Decimal(0));
       for (const c of componentRows) {
-        await tx.stockLedger.create({
+        const allocatedAmount = totalComponentQty.gt(0) ? kitCost.amount.mul(c.qty).div(totalComponentQty) : new Prisma.Decimal(0);
+        const componentRate = c.qty.gt(0) ? allocatedAmount.div(c.qty) : new Prisma.Decimal(0);
+        const ledger = await tx.stockLedger.create({
           data: {
             companyId: user.companyId,
             itemId: c.componentId,
@@ -323,9 +367,19 @@ export class ItemsService {
             voucherId: voucher.id,
             qtyIn: c.qty,
             qtyOut: new Prisma.Decimal(0),
-            rate: new Prisma.Decimal(0),
-            amount: new Prisma.Decimal(0)
+            rate: componentRate,
+            amount: allocatedAmount
           }
+        });
+        await this.inventory.receiveInventoryLayer(tx, {
+          companyId: user.companyId,
+          itemId: c.componentId,
+          qty: c.qty,
+          unitCost: componentRate,
+          date: ledger.date,
+          sourceLedgerId: ledger.id,
+          sourceVoucherId: voucher.id,
+          sourceType: "disassembly"
         });
       }
 

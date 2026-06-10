@@ -6,6 +6,7 @@ import type { AuthUser } from "../../common/auth/auth.types";
 import {
   InventoryAlertsQuerySchema,
   InventorySettingsSchema,
+  SerialMovementQuerySchema,
   SerialQuerySchema,
   StockAgingQuerySchema,
   StockAdjustmentSchema,
@@ -41,6 +42,15 @@ export class InventoryController {
     @Query(new ZodValidationPipe(SerialQuerySchema)) query: any
   ) {
     return this.inventory.listSerialNumbers(user, query);
+  }
+
+  @Get("serial-movements")
+  @RequirePerm("masters.read")
+  serialMovements(
+    @CurrentUser() user: AuthUser,
+    @Query(new ZodValidationPipe(SerialMovementQuerySchema)) query: any
+  ) {
+    return this.inventory.listSerialMovements(user, query);
   }
 
   @Post("adjustment")

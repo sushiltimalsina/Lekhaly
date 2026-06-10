@@ -858,6 +858,65 @@ model StockLedger {
   @@index([companyId, warehouseId, binId, date])
 }
 
+model InventoryLayer {
+  id        String  @id @default(uuid())
+  companyId String
+  itemId    String
+
+  sourceLedgerId String?
+  sourceVoucherId String?
+  sourceType String @default("movement")
+
+  warehouseId String?
+  binId       String?
+  batchNo     String?
+  lotNo       String?
+  expiryDate  DateTime?
+  expiryDateBs String?
+
+  receivedDate DateTime
+  qtyIn        Decimal @db.Decimal(14, 2)
+  remainingQty Decimal @db.Decimal(14, 2)
+  unitCost     Decimal @db.Decimal(14, 6)
+  totalCost    Decimal @db.Decimal(14, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId, itemId, remainingQty])
+  @@index([companyId, itemId, warehouseId, binId])
+  @@index([companyId, itemId, batchNo, lotNo, expiryDate])
+  @@index([sourceLedgerId])
+}
+
+model SerialNumberMovement {
+  id        String @id @default(uuid())
+  companyId String
+  itemId    String
+  serialNumberId String
+
+  serialNo String
+  voucherId String?
+  stockLedgerId String?
+  movementType String
+
+  statusFrom String?
+  statusTo   String?
+  fromWarehouseId String?
+  fromBinId       String?
+  toWarehouseId   String?
+  toBinId         String?
+
+  movementDate DateTime
+  movementDateBs String?
+  createdAt DateTime @default(now())
+
+  @@index([companyId, itemId, movementDate])
+  @@index([companyId, serialNo])
+  @@index([serialNumberId, movementDate])
+  @@index([voucherId])
+}
+
 model ItemUomConversion {
   id        String @id @default(uuid())
   itemId    String

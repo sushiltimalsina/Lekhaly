@@ -18,10 +18,13 @@ const client_1 = require("@prisma/client");
 const prisma_service_1 = require("../../common/prisma/prisma.service");
 const crypto_1 = __importDefault(require("crypto"));
 const nepali_date_1 = require("../../common/date/nepali-date");
+const inventory_service_1 = require("../inventory/inventory.service");
 let VouchersService = class VouchersService {
     prisma;
-    constructor(prisma) {
+    inventory;
+    constructor(prisma, inventory) {
         this.prisma = prisma;
+        this.inventory = inventory;
     }
     async getInventorySettings(companyId, tx) {
         const db = (tx ?? this.prisma);
@@ -812,6 +815,20 @@ let VouchersService = class VouchersService {
                                 throw new common_1.BadRequestException(`Insufficient stock for ${item.name}`);
                             }
                         }
+                        const cost = await this.inventory.consumeInventoryCost(tx, {
+                            companyId: user.companyId,
+                            itemId: l.itemId,
+                            qty: qtyOut,
+                            costingMethod: inventorySettings.costingMethod,
+                            allowNegative: inventorySettings.allowNegativeStock,
+                            warehouseId: scope.warehouseId,
+                            binId: scope.binId,
+                            batchNo: scope.batchNo,
+                            lotNo: scope.lotNo,
+                            expiryDate: scope.expiryDate
+                        });
+                        rate = cost.unitCost;
+                        amount = cost.amount;
                         stockEntries.push({
                             companyId: user.companyId,
                             itemId: l.itemId,
@@ -897,9 +914,27 @@ let VouchersService = class VouchersService {
                     }
                 }
                 if (stockEntries.length) {
-                    await tx.stockLedger.createMany({
-                        data: stockEntries
-                    });
+                    for (const entry of stockEntries) {
+                        const ledger = await tx.stockLedger.create({ data: entry });
+                        if (entry.qtyIn.gt(0)) {
+                            await this.inventory.receiveInventoryLayer(tx, {
+                                companyId: entry.companyId,
+                                itemId: entry.itemId,
+                                qty: entry.qtyIn,
+                                unitCost: entry.rate,
+                                date: entry.date,
+                                sourceLedgerId: ledger.id,
+                                sourceVoucherId: entry.voucherId,
+                                sourceType: String(voucher.voucherType),
+                                warehouseId: entry.warehouseId ?? null,
+                                binId: entry.binId ?? null,
+                                batchNo: entry.batchNo ?? null,
+                                lotNo: entry.lotNo ?? null,
+                                expiryDate: entry.expiryDate ?? null,
+                                expiryDateBs: entry.expiryDateBs ?? null
+                            });
+                        }
+                    }
                 }
             }
             const result = await tx.voucher.findUnique({ where: { id: posted.id }, include: { lines: true } });
@@ -1145,6 +1180,7 @@ let VouchersService = class VouchersService {
 exports.VouchersService = VouchersService;
 exports.VouchersService = VouchersService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        inventory_service_1.InventoryService])
 ], VouchersService);
 //# sourceMappingURL=vouchers.service.js.map

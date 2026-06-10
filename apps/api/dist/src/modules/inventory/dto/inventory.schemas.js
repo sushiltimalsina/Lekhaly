@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SerialQuerySchema = exports.InventorySettingsSchema = exports.InventoryAlertsQuerySchema = exports.StockTransferSchema = exports.StockAgingQuerySchema = exports.StockQuerySchema = exports.StockAdjustmentSchema = void 0;
+exports.SerialMovementQuerySchema = exports.SerialQuerySchema = exports.InventorySettingsSchema = exports.InventoryAlertsQuerySchema = exports.StockTransferSchema = exports.StockAgingQuerySchema = exports.StockQuerySchema = exports.StockAdjustmentSchema = void 0;
 const zod_1 = require("zod");
 exports.StockAdjustmentSchema = zod_1.z.object({
     itemId: zod_1.z.string().uuid(),
@@ -95,6 +95,12 @@ exports.SerialQuerySchema = zod_1.z.object({
     itemId: zod_1.z.string().uuid().optional(),
     status: zod_1.z.enum(["available", "sold", "returned", "reserved", "damaged"]).optional(),
     q: zod_1.z.string().trim().max(120).optional(),
+    take: zod_1.z.coerce.number().int().min(1).max(1000).optional()
+});
+exports.SerialMovementQuerySchema = zod_1.z.object({
+    itemId: zod_1.z.string().uuid().optional(),
+    serialNo: zod_1.z.string().trim().max(120).optional(),
+    voucherId: zod_1.z.string().uuid().optional(),
     take: zod_1.z.coerce.number().int().min(1).max(1000).optional()
 });
 //# sourceMappingURL=inventory.schemas.js.map

@@ -13,6 +13,7 @@ exports.ItemsService = void 0;
 const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
 const prisma_service_1 = require("../../common/prisma/prisma.service");
+const inventory_service_1 = require("../inventory/inventory.service");
 const itemInclude = {
     group: true,
     incomeAccount: true,
@@ -24,8 +25,10 @@ const itemInclude = {
 };
 let ItemsService = class ItemsService {
     prisma;
-    constructor(prisma) {
+    inventory;
+    constructor(prisma, inventory) {
         this.prisma = prisma;
+        this.inventory = inventory;
     }
     async create(user, input) {
         const name = input.name?.trim();
@@ -77,7 +80,7 @@ let ItemsService = class ItemsService {
                 include: itemInclude
             });
             if (openingQty.gt(0)) {
-                await tx.stockLedger.create({
+                const ledger = await tx.stockLedger.create({
                     data: {
                         companyId: user.companyId,
                         itemId: item.id,
@@ -88,6 +91,16 @@ let ItemsService = class ItemsService {
                         rate: openingRate,
                         amount: openingQty.mul(openingRate)
                     }
+                });
+                await this.inventory.receiveInventoryLayer(tx, {
+                    companyId: user.companyId,
+                    itemId: item.id,
+                    qty: openingQty,
+                    unitCost: openingRate,
+                    date: ledger.date,
+                    sourceLedgerId: ledger.id,
+                    sourceVoucherId: null,
+                    sourceType: "opening"
                 });
             }
             return item;
@@ -186,8 +199,8 @@ let ItemsService = class ItemsService {
         const componentRows = components?.length
             ? components.map((c) => ({ componentId: c.componentId, qty: new client_1.Prisma.Decimal(c.consumedQty) }))
             : kit.components.map((c) => ({ componentId: c.componentId, qty: c.qty.mul(quantity) }));
-        const rate = new client_1.Prisma.Decimal(kit.purchasePrice ?? 0);
         return this.prisma.$transaction(async (tx) => {
+            const settings = await this.inventory.getOrCreateSettings(user.companyId, tx);
             const voucher = await tx.voucher.create({
                 data: {
                     companyId: user.companyId,
@@ -199,7 +212,16 @@ let ItemsService = class ItemsService {
                     postedByUserId: user.sub
                 }
             });
+            let finishedCost = new client_1.Prisma.Decimal(0);
             for (const c of componentRows) {
+                const componentCost = await this.inventory.consumeInventoryCost(tx, {
+                    companyId: user.companyId,
+                    itemId: c.componentId,
+                    qty: c.qty,
+                    costingMethod: settings.costingMethod,
+                    allowNegative: settings.allowNegativeStock
+                });
+                finishedCost = finishedCost.add(componentCost.amount);
                 await tx.stockLedger.create({
                     data: {
                         companyId: user.companyId,
@@ -208,12 +230,13 @@ let ItemsService = class ItemsService {
                         voucherId: voucher.id,
                         qtyIn: new client_1.Prisma.Decimal(0),
                         qtyOut: c.qty,
-                        rate: new client_1.Prisma.Decimal(0),
-                        amount: new client_1.Prisma.Decimal(0)
+                        rate: componentCost.unitCost,
+                        amount: componentCost.amount
                     }
                 });
             }
-            await tx.stockLedger.create({
+            const rate = quantity.gt(0) ? finishedCost.div(quantity) : new client_1.Prisma.Decimal(0);
+            const ledger = await tx.stockLedger.create({
                 data: {
                     companyId: user.companyId,
                     itemId: kit.id,
@@ -224,6 +247,16 @@ let ItemsService = class ItemsService {
                     rate,
                     amount: quantity.mul(rate)
                 }
+            });
+            await this.inventory.receiveInventoryLayer(tx, {
+                companyId: user.companyId,
+                itemId: kit.id,
+                qty: quantity,
+                unitCost: rate,
+                date: ledger.date,
+                sourceLedgerId: ledger.id,
+                sourceVoucherId: voucher.id,
+                sourceType: "assembly"
             });
             return { ok: true, voucherId: voucher.id, sundries: sundries ?? [] };
         });
@@ -236,8 +269,8 @@ let ItemsService = class ItemsService {
         const componentRows = components?.length
             ? components.map((c) => ({ componentId: c.componentId, qty: new client_1.Prisma.Decimal(c.consumedQty) }))
             : kit.components.map((c) => ({ componentId: c.componentId, qty: c.qty.mul(quantity) }));
-        const rate = new client_1.Prisma.Decimal(kit.purchasePrice ?? 0);
         return this.prisma.$transaction(async (tx) => {
+            const settings = await this.inventory.getOrCreateSettings(user.companyId, tx);
             const voucher = await tx.voucher.create({
                 data: {
                     companyId: user.companyId,
@@ -249,6 +282,13 @@ let ItemsService = class ItemsService {
                     postedByUserId: user.sub
                 }
             });
+            const kitCost = await this.inventory.consumeInventoryCost(tx, {
+                companyId: user.companyId,
+                itemId: kit.id,
+                qty: quantity,
+                costingMethod: settings.costingMethod,
+                allowNegative: settings.allowNegativeStock
+            });
             await tx.stockLedger.create({
                 data: {
                     companyId: user.companyId,
@@ -257,12 +297,15 @@ let ItemsService = class ItemsService {
                     voucherId: voucher.id,
                     qtyIn: new client_1.Prisma.Decimal(0),
                     qtyOut: quantity,
-                    rate,
-                    amount: quantity.mul(rate)
+                    rate: kitCost.unitCost,
+                    amount: kitCost.amount
                 }
             });
+            const totalComponentQty = componentRows.reduce((sum, row) => sum.add(row.qty), new client_1.Prisma.Decimal(0));
             for (const c of componentRows) {
-                await tx.stockLedger.create({
+                const allocatedAmount = totalComponentQty.gt(0) ? kitCost.amount.mul(c.qty).div(totalComponentQty) : new client_1.Prisma.Decimal(0);
+                const componentRate = c.qty.gt(0) ? allocatedAmount.div(c.qty) : new client_1.Prisma.Decimal(0);
+                const ledger = await tx.stockLedger.create({
                     data: {
                         companyId: user.companyId,
                         itemId: c.componentId,
@@ -270,9 +313,19 @@ let ItemsService = class ItemsService {
                         voucherId: voucher.id,
                         qtyIn: c.qty,
                         qtyOut: new client_1.Prisma.Decimal(0),
-                        rate: new client_1.Prisma.Decimal(0),
-                        amount: new client_1.Prisma.Decimal(0)
+                        rate: componentRate,
+                        amount: allocatedAmount
                     }
+                });
+                await this.inventory.receiveInventoryLayer(tx, {
+                    companyId: user.companyId,
+                    itemId: c.componentId,
+                    qty: c.qty,
+                    unitCost: componentRate,
+                    date: ledger.date,
+                    sourceLedgerId: ledger.id,
+                    sourceVoucherId: voucher.id,
+                    sourceType: "disassembly"
                 });
             }
             return { ok: true, voucherId: voucher.id, sundries: sundries ?? [] };
@@ -428,6 +481,7 @@ let ItemsService = class ItemsService {
 exports.ItemsService = ItemsService;
 exports.ItemsService = ItemsService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        inventory_service_1.InventoryService])
 ], ItemsService);
 //# sourceMappingURL=items.service.js.map

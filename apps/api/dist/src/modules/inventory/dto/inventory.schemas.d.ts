@@ -81,3 +81,9 @@ export declare const SerialQuerySchema: z.ZodObject<{
     q: z.ZodOptional<z.ZodString>;
     take: z.ZodOptional<z.ZodCoercedNumber<unknown>>;
 }, z.core.$strip>;
+export declare const SerialMovementQuerySchema: z.ZodObject<{
+    itemId: z.ZodOptional<z.ZodString>;
+    serialNo: z.ZodOptional<z.ZodString>;
+    voucherId: z.ZodOptional<z.ZodString>;
+    take: z.ZodOptional<z.ZodCoercedNumber<unknown>>;
+}, z.core.$strip>;

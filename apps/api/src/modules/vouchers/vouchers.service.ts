@@ -5,6 +5,7 @@ import { PrismaService } from "../../common/prisma/prisma.service";
 import type { AuthUser } from "../../common/auth/auth.types";
 import crypto from "crypto";
 import { resolveAdDate } from "../../common/date/nepali-date";
+import { InventoryService } from "../inventory/inventory.service";
 
 type DraftInput = {
   voucherType?: VoucherType;
@@ -59,7 +60,10 @@ type NormalizedVoucherInventoryLine = {
 
 @Injectable()
 export class VouchersService {
-  constructor(private prisma: PrismaService) { }
+  constructor(
+    private prisma: PrismaService,
+    private inventory: InventoryService
+  ) { }
 
   private async getInventorySettings(companyId: string, tx?: Prisma.TransactionClient) {
     const db = (tx ?? this.prisma) as any;
@@ -980,6 +984,20 @@ export class VouchersService {
                 throw new BadRequestException(`Insufficient stock for ${(item as any).name}`);
               }
             }
+            const cost = await this.inventory.consumeInventoryCost(tx, {
+              companyId: user.companyId,
+              itemId: l.itemId!,
+              qty: qtyOut,
+              costingMethod: inventorySettings.costingMethod,
+              allowNegative: inventorySettings.allowNegativeStock,
+              warehouseId: scope.warehouseId,
+              binId: scope.binId,
+              batchNo: scope.batchNo,
+              lotNo: scope.lotNo,
+              expiryDate: scope.expiryDate
+            });
+            rate = cost.unitCost;
+            amount = cost.amount;
             stockEntries.push({
               companyId: user.companyId,
               itemId: l.itemId!,
@@ -1067,9 +1085,27 @@ export class VouchersService {
         }
 
         if (stockEntries.length) {
-          await tx.stockLedger.createMany({
-            data: stockEntries
-          });
+          for (const entry of stockEntries) {
+            const ledger = await tx.stockLedger.create({ data: entry });
+            if (entry.qtyIn.gt(0)) {
+              await this.inventory.receiveInventoryLayer(tx, {
+                companyId: entry.companyId,
+                itemId: entry.itemId,
+                qty: entry.qtyIn,
+                unitCost: entry.rate,
+                date: entry.date,
+                sourceLedgerId: ledger.id,
+                sourceVoucherId: entry.voucherId,
+                sourceType: String(voucher.voucherType),
+                warehouseId: entry.warehouseId ?? null,
+                binId: entry.binId ?? null,
+                batchNo: entry.batchNo ?? null,
+                lotNo: entry.lotNo ?? null,
+                expiryDate: entry.expiryDate ?? null,
+                expiryDateBs: entry.expiryDateBs ?? null
+              });
+            }
+          }
         }
       }
 
