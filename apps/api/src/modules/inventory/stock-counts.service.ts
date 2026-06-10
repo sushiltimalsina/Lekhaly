@@ -284,6 +284,8 @@ export class StockCountsService {
               binId: line.binId,
               date: new Date(),
               voucherId: voucher.id,
+              sourceDocumentType: "stock_count",
+              sourceDocumentId: existing.id,
               qtyIn: direction === "in" ? absQty : 0,
               qtyOut: direction === "out" ? absQty : 0,
               rate: unitCost,

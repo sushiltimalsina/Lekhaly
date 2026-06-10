@@ -924,6 +924,8 @@ export class VouchersService {
           date: Date;
           dateBs?: string;
           voucherId: string;
+          sourceDocumentType?: string;
+          sourceDocumentId?: string;
           qtyIn: Prisma.Decimal;
           qtyOut: Prisma.Decimal;
           rate: Prisma.Decimal;
@@ -1004,6 +1006,8 @@ export class VouchersService {
               date: voucher.voucherDate,
               dateBs: voucher.voucherDateBs || undefined,
               voucherId: voucher.id,
+              sourceDocumentType: "voucher",
+              sourceDocumentId: voucher.id,
               warehouseId: scope.warehouseId,
               binId: scope.binId,
               qtyIn: new Prisma.Decimal(0),
@@ -1033,6 +1037,8 @@ export class VouchersService {
             date: voucher.voucherDate,
             dateBs: voucher.voucherDateBs || undefined,
             voucherId: voucher.id,
+            sourceDocumentType: "voucher",
+            sourceDocumentId: voucher.id,
             warehouseId: scope.warehouseId,
             binId: scope.binId,
             qtyIn,

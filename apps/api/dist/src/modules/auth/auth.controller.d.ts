@@ -137,6 +137,8 @@ export declare class AuthController {
             amount: import("@prisma/client/runtime/client").Decimal;
             qtyIn: import("@prisma/client/runtime/client").Decimal;
             qtyOut: import("@prisma/client/runtime/client").Decimal;
+            sourceDocumentType: string | null;
+            sourceDocumentId: string | null;
             rate: import("@prisma/client/runtime/client").Decimal;
         }[] | {
             id: string;
@@ -654,6 +656,8 @@ export declare class AuthController {
             amount: import("@prisma/client/runtime/client").Decimal;
             qtyIn: import("@prisma/client/runtime/client").Decimal;
             qtyOut: import("@prisma/client/runtime/client").Decimal;
+            sourceDocumentType: string | null;
+            sourceDocumentId: string | null;
             rate: import("@prisma/client/runtime/client").Decimal;
         } | {
             id: string;
@@ -672,6 +676,8 @@ export declare class AuthController {
             amount: import("@prisma/client/runtime/client").Decimal;
             qtyIn: import("@prisma/client/runtime/client").Decimal;
             qtyOut: import("@prisma/client/runtime/client").Decimal;
+            sourceDocumentType: string | null;
+            sourceDocumentId: string | null;
             rate: import("@prisma/client/runtime/client").Decimal;
         })[] | ({
             id: string;
@@ -1747,6 +1753,8 @@ export declare class AuthController {
             amount: import("@prisma/client/runtime/client").Decimal;
             qtyIn: import("@prisma/client/runtime/client").Decimal;
             qtyOut: import("@prisma/client/runtime/client").Decimal;
+            sourceDocumentType: string | null;
+            sourceDocumentId: string | null;
             rate: import("@prisma/client/runtime/client").Decimal;
         }[] | {
             id: string;
@@ -2264,6 +2272,8 @@ export declare class AuthController {
             amount: import("@prisma/client/runtime/client").Decimal;
             qtyIn: import("@prisma/client/runtime/client").Decimal;
             qtyOut: import("@prisma/client/runtime/client").Decimal;
+            sourceDocumentType: string | null;
+            sourceDocumentId: string | null;
             rate: import("@prisma/client/runtime/client").Decimal;
         } | {
             id: string;
@@ -2282,6 +2292,8 @@ export declare class AuthController {
             amount: import("@prisma/client/runtime/client").Decimal;
             qtyIn: import("@prisma/client/runtime/client").Decimal;
             qtyOut: import("@prisma/client/runtime/client").Decimal;
+            sourceDocumentType: string | null;
+            sourceDocumentId: string | null;
             rate: import("@prisma/client/runtime/client").Decimal;
         })[] | ({
             id: string;

@@ -35,8 +35,20 @@ function formatSourceType(source?: string | null) {
         .join(" ");
 }
 
-function getVoucherHref(voucherId?: string | null) {
-    return voucherId ? `/vouchers/view/${voucherId}` : null;
+function getSourceHref(row: StockLedgerEntry) {
+    if (row.sourceDocumentType === "invoice" && row.sourceDocumentId) {
+        if (row.voucherType === "sales_return") return `/sales-return/create?id=${row.sourceDocumentId}`;
+        if (row.voucherType === "purchase") return `/purchase/create?id=${row.sourceDocumentId}`;
+        if (row.voucherType === "purchase_return") return `/purchase-return/create?id=${row.sourceDocumentId}`;
+        return `/sales/view/${row.sourceDocumentId}`;
+    }
+    if (row.sourceDocumentType === "stock_count" && row.sourceDocumentId) return `/inventory/stock-counts/view/${row.sourceDocumentId}`;
+    if (row.sourceDocumentType === "voucher" && row.sourceDocumentId) {
+        if (row.voucherType === "purchase") return `/purchase/create?id=${row.sourceDocumentId}`;
+        if (row.voucherType === "purchase_return") return `/purchase-return/create?id=${row.sourceDocumentId}`;
+    }
+    if (row.voucherId) return `/vouchers/view/${row.voucherId}`;
+    return null;
 }
 
 export default function StockLedgerPage() {
@@ -198,8 +210,8 @@ export default function StockLedgerPage() {
             key: "voucher",
             header: "Source",
             width: 170,
-            cell: (r) => getVoucherHref(r.voucherId) ? (
-                <Link to={getVoucherHref(r.voucherId)!} className="inline-flex flex-col font-semibold text-primary hover:underline">
+            cell: (r) => getSourceHref(r) ? (
+                <Link to={getSourceHref(r)!} className="inline-flex flex-col font-semibold text-primary hover:underline">
                     <span className="inline-flex items-center gap-1">
                         {r.voucherNumber || formatSourceType(r.voucherType)}
                         <ExternalLink className="h-3 w-3" />
@@ -393,7 +405,7 @@ export default function StockLedgerPage() {
                             emptyText="No stock movements found"
                             className="border-none"
                             onRowClick={(row) => {
-                                const href = getVoucherHref(row.voucherId);
+                                const href = getSourceHref(row);
                                 if (href) navigate(href);
                             }}
                         />

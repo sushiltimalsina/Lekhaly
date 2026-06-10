@@ -140,6 +140,8 @@ export declare class AuthService {
             amount: Prisma.Decimal;
             qtyIn: Prisma.Decimal;
             qtyOut: Prisma.Decimal;
+            sourceDocumentType: string | null;
+            sourceDocumentId: string | null;
             rate: Prisma.Decimal;
         }[] | {
             id: string;
@@ -657,6 +659,8 @@ export declare class AuthService {
             amount: Prisma.Decimal;
             qtyIn: Prisma.Decimal;
             qtyOut: Prisma.Decimal;
+            sourceDocumentType: string | null;
+            sourceDocumentId: string | null;
             rate: Prisma.Decimal;
         } | {
             id: string;
@@ -675,6 +679,8 @@ export declare class AuthService {
             amount: Prisma.Decimal;
             qtyIn: Prisma.Decimal;
             qtyOut: Prisma.Decimal;
+            sourceDocumentType: string | null;
+            sourceDocumentId: string | null;
             rate: Prisma.Decimal;
         })[] | ({
             id: string;
@@ -1793,6 +1799,8 @@ export declare class AuthService {
             amount: Prisma.Decimal;
             qtyIn: Prisma.Decimal;
             qtyOut: Prisma.Decimal;
+            sourceDocumentType: string | null;
+            sourceDocumentId: string | null;
             rate: Prisma.Decimal;
         }[] | {
             id: string;
@@ -2310,6 +2318,8 @@ export declare class AuthService {
             amount: Prisma.Decimal;
             qtyIn: Prisma.Decimal;
             qtyOut: Prisma.Decimal;
+            sourceDocumentType: string | null;
+            sourceDocumentId: string | null;
             rate: Prisma.Decimal;
         } | {
             id: string;
@@ -2328,6 +2338,8 @@ export declare class AuthService {
             amount: Prisma.Decimal;
             qtyIn: Prisma.Decimal;
             qtyOut: Prisma.Decimal;
+            sourceDocumentType: string | null;
+            sourceDocumentId: string | null;
             rate: Prisma.Decimal;
         })[] | ({
             id: string;

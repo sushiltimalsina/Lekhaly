@@ -160,6 +160,8 @@ export type StockLedgerEntry = {
   voucherNumber?: string | null;
   voucherType?: string | null;
   voucherDate?: string | null;
+  sourceDocumentType?: string | null;
+  sourceDocumentId?: string | null;
 };
 
 export async function getItemStockLedger(itemId: string, query?: { from?: string; to?: string }) {

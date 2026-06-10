@@ -842,6 +842,8 @@ model StockLedger {
   dateBs   String?
   voucherId String?
   voucher   Voucher? @relation(fields: [voucherId], references: [id])
+  sourceDocumentType String?
+  sourceDocumentId   String?
 
   qtyIn  Decimal @db.Decimal(14, 2)
   qtyOut Decimal @db.Decimal(14, 2)
@@ -856,6 +858,7 @@ model StockLedger {
 
   @@index([companyId, itemId, date])
   @@index([companyId, warehouseId, binId, date])
+  @@index([companyId, sourceDocumentType, sourceDocumentId])
 }
 
 model InventoryLayer {

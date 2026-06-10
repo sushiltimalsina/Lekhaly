@@ -686,7 +686,9 @@ export class InventoryService {
         voucherId: e.voucherId,
         voucherNumber: e.voucher?.voucherNumber ?? null,
         voucherType: e.voucher?.voucherType ?? null,
-        voucherDate: e.voucher?.voucherDate ?? null
+        voucherDate: e.voucher?.voucherDate ?? null,
+        sourceDocumentType: e.sourceDocumentType ?? null,
+        sourceDocumentId: e.sourceDocumentId ?? null
       });
     }
 
@@ -873,6 +875,8 @@ export class InventoryService {
           date: resolved.date,
           dateBs: resolved.bs || null,
           voucherId: voucher.id,
+          sourceDocumentType: "adjustment",
+          sourceDocumentId: voucher.id,
           warehouseId: movement.warehouseId,
           binId: movement.binId,
           qtyIn: qty.gt(0) ? qty : new Prisma.Decimal(0),
@@ -1685,6 +1689,8 @@ export class InventoryService {
           date: resolved.date,
           dateBs: resolved.bs || null,
           voucherId: voucher.id,
+          sourceDocumentType: "transfer",
+          sourceDocumentId: voucher.id,
           warehouseId: input.fromWarehouseId,
           binId: input.fromBinId ?? null,
           qtyIn: new Prisma.Decimal(0),
@@ -1705,6 +1711,8 @@ export class InventoryService {
           date: resolved.date,
           dateBs: resolved.bs || null,
           voucherId: voucher.id,
+          sourceDocumentType: "transfer",
+          sourceDocumentId: voucher.id,
           warehouseId: input.toWarehouseId,
           binId: input.toBinId ?? null,
           qtyIn: qty,

@@ -7,6 +7,8 @@ export declare class InventoryController {
     updateSettings(user: AuthUser, body: any): Promise<{
         id: string;
         companyId: string;
+        createdAt: Date;
+        updatedAt: Date;
         inventoryTrackingEnabled: boolean;
         warehousesEnabled: boolean;
         binsEnabled: boolean;
@@ -19,8 +21,6 @@ export declare class InventoryController {
         requireWarehouseOnMovements: boolean;
         defaultWarehouseId: string | null;
         costingMethod: string;
-        createdAt: Date;
-        updatedAt: Date;
     }>;
     serials(user: AuthUser, query: any): Promise<({
         item: {
@@ -39,12 +39,12 @@ export declare class InventoryController {
     } & {
         id: string;
         companyId: string;
+        status: string;
         createdAt: Date;
         updatedAt: Date;
         itemId: string;
         warehouseId: string | null;
         binId: string | null;
-        status: string;
         serialNo: string;
         purchaseInvoiceId: string | null;
         salesInvoiceId: string | null;
@@ -213,10 +213,10 @@ export declare class InventoryController {
         }[];
         expiringSoon: {
             qty: number;
-            itemId: string;
             batchNo: string | null;
             lotNo: string | null;
             expiryDate: Date | null;
+            itemId: string;
             _sum: {
                 qtyIn: import("@prisma/client/runtime/client").Decimal | null;
                 qtyOut: import("@prisma/client/runtime/client").Decimal | null;
