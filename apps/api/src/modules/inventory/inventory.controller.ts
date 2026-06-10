@@ -11,6 +11,7 @@ import {
   StockAgingQuerySchema,
   StockAdjustmentSchema,
   StockQuerySchema,
+  StockValuationQuerySchema,
   StockTransferSchema
 } from "./dto/inventory.schemas";
 import { InventoryService } from "./inventory.service";
@@ -79,6 +80,15 @@ export class InventoryController {
     @Query(new ZodValidationPipe(StockAgingQuerySchema)) query: any
   ) {
     return this.inventory.getStockAgingReport(user, query);
+  }
+
+  @Get("valuation")
+  @RequirePerm("masters.read")
+  valuation(
+    @CurrentUser() user: AuthUser,
+    @Query(new ZodValidationPipe(StockValuationQuerySchema)) query: any
+  ) {
+    return this.inventory.getStockValuationReport(user, query);
   }
 
   @Post("transfer")

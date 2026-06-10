@@ -30,6 +30,13 @@ export declare const StockAgingQuerySchema: z.ZodObject<{
         weighted_average: "weighted_average";
     }>>;
 }, z.core.$strip>;
+export declare const StockValuationQuerySchema: z.ZodObject<{
+    itemId: z.ZodOptional<z.ZodString>;
+    warehouseId: z.ZodOptional<z.ZodString>;
+    groupId: z.ZodOptional<z.ZodString>;
+    q: z.ZodOptional<z.ZodString>;
+    includeZero: z.ZodOptional<z.ZodCoercedBoolean<unknown>>;
+}, z.core.$strip>;
 export declare const StockTransferSchema: z.ZodObject<{
     itemId: z.ZodString;
     fromWarehouseId: z.ZodString;

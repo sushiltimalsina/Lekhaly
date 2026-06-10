@@ -42,6 +42,14 @@ export const StockAgingQuerySchema = z.object({
   valuationMethod: z.enum(["fifo", "weighted_average"]).optional()
 });
 
+export const StockValuationQuerySchema = z.object({
+  itemId: z.string().uuid().optional(),
+  warehouseId: z.string().uuid().optional(),
+  groupId: z.string().uuid().optional(),
+  q: z.string().trim().max(120).optional(),
+  includeZero: z.coerce.boolean().optional()
+});
+
 export const StockTransferSchema = z.object({
   itemId: z.string().uuid(),
   fromWarehouseId: z.string().uuid(),

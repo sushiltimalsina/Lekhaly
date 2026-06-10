@@ -92,6 +92,50 @@ export async function getStockAgingReport(query?: { asOf?: string; asOfBs?: stri
   });
 }
 
+export type StockValuationLayer = {
+  receivedDate: string;
+  warehouseId?: string | null;
+  warehouseName?: string | null;
+  binId?: string | null;
+  binName?: string | null;
+  batchNo?: string | null;
+  lotNo?: string | null;
+  expiryDate?: string | null;
+  expiryDateBs?: string | null;
+  qty: number;
+  unitCost: number;
+  value: number;
+};
+
+export type StockValuationRow = {
+  itemId: string;
+  name: string;
+  sku?: string | null;
+  unit?: string | null;
+  group?: string | null;
+  isSerialized?: boolean;
+  isKit?: boolean;
+  tracksBatch?: boolean;
+  tracksLot?: boolean;
+  tracksExpiry?: boolean;
+  totalQty: number;
+  avgCost: number;
+  totalValue: number;
+  layers: StockValuationLayer[];
+};
+
+export type StockValuationReport = {
+  meta: { valuationSource: "layers" | "ledger" | "disabled"; costingMethod?: "moving_average" | "fifo"; generatedAt?: string };
+  rows: StockValuationRow[];
+};
+
+export async function getStockValuationReport(query?: { itemId?: string; warehouseId?: string; groupId?: string; q?: string; includeZero?: boolean }) {
+  return apiRequest<StockValuationReport>({
+    path: "/inventory/valuation",
+    query,
+  });
+}
+
 export type StockLedgerEntry = {
   id: string;
   date: string;

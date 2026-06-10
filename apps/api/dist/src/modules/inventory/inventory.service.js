@@ -897,6 +897,10 @@ let InventoryService = class InventoryService {
                 ? db.inventoryLayer.findMany({
                     where: { companyId: user.companyId, remainingQty: { gt: new client_1.Prisma.Decimal(0) } },
                     select: { itemId: true, remainingQty: true, unitCost: true }
+                }).catch((error) => {
+                    if (this.isMissingInventoryTableError(error))
+                        return [];
+                    throw error;
                 })
                 : Promise.resolve([])
         ]);
@@ -1213,6 +1217,170 @@ let InventoryService = class InventoryService {
             rows: filters.includeZero === false ? rows.filter((row) => row.totalQty > 0) : rows
         };
     }
+    async getStockValuationReport(user, filters) {
+        const settings = await this.getOrCreateSettings(user.companyId);
+        if (!settings.inventoryTrackingEnabled) {
+            return { meta: { valuationSource: "disabled", costingMethod: settings.costingMethod }, rows: [] };
+        }
+        const itemWhere = {
+            companyId: user.companyId,
+            type: "goods",
+            trackInventory: true
+        };
+        if (filters.itemId)
+            itemWhere.id = filters.itemId;
+        if (filters.groupId)
+            itemWhere.groupId = filters.groupId;
+        if (filters.q) {
+            itemWhere.OR = [
+                { name: { contains: filters.q, mode: "insensitive" } },
+                { sku: { contains: filters.q, mode: "insensitive" } }
+            ];
+        }
+        const items = await this.prisma.item.findMany({
+            where: itemWhere,
+            include: { group: { select: { id: true, name: true } } },
+            orderBy: { name: "asc" }
+        });
+        const itemMap = new Map(items.map((item) => [item.id, item]));
+        const itemIds = items.map((item) => item.id);
+        if (!itemIds.length) {
+            return { meta: { valuationSource: "layers", costingMethod: settings.costingMethod }, rows: [] };
+        }
+        const db = this.prisma;
+        const layerRows = db.inventoryLayer
+            ? await db.inventoryLayer.findMany({
+                where: {
+                    companyId: user.companyId,
+                    itemId: { in: itemIds },
+                    remainingQty: { gt: new client_1.Prisma.Decimal(0) },
+                    ...(filters.warehouseId ? { warehouseId: filters.warehouseId } : {})
+                },
+                orderBy: [{ receivedDate: "asc" }, { createdAt: "asc" }]
+            }).catch((error) => {
+                if (this.isMissingInventoryTableError(error))
+                    return [];
+                throw error;
+            })
+            : [];
+        let valuationSource = "layers";
+        const layersByItem = new Map();
+        if (layerRows.length) {
+            for (const layer of layerRows) {
+                const list = layersByItem.get(layer.itemId) ?? [];
+                list.push(layer);
+                layersByItem.set(layer.itemId, list);
+            }
+        }
+        else {
+            valuationSource = "ledger";
+            const ledgerRows = await this.prisma.stockLedger.findMany({
+                where: {
+                    companyId: user.companyId,
+                    itemId: { in: itemIds },
+                    ...(filters.warehouseId ? { warehouseId: filters.warehouseId } : {})
+                },
+                include: {
+                    warehouse: { select: { id: true, name: true } },
+                    bin: { select: { id: true, name: true } }
+                },
+                orderBy: [{ date: "asc" }, { createdAt: "asc" }]
+            });
+            const buckets = new Map();
+            for (const row of ledgerRows) {
+                const key = [
+                    row.itemId,
+                    row.warehouseId ?? "",
+                    row.binId ?? "",
+                    row.batchNo ?? "",
+                    row.lotNo ?? "",
+                    row.expiryDate ? row.expiryDate.toISOString() : ""
+                ].join("__");
+                const current = buckets.get(key) ?? {
+                    itemId: row.itemId,
+                    warehouseId: row.warehouseId,
+                    warehouse: row.warehouse,
+                    binId: row.binId,
+                    bin: row.bin,
+                    batchNo: row.batchNo,
+                    lotNo: row.lotNo,
+                    expiryDate: row.expiryDate,
+                    expiryDateBs: row.expiryDateBs,
+                    receivedDate: row.date,
+                    remainingQty: new client_1.Prisma.Decimal(0),
+                    unitCost: new client_1.Prisma.Decimal(0),
+                    totalValue: new client_1.Prisma.Decimal(0)
+                };
+                current.remainingQty = current.remainingQty.add(row.qtyIn).sub(row.qtyOut);
+                if (row.qtyIn.gt(0))
+                    current.totalValue = current.totalValue.add(row.amount);
+                if (row.qtyOut.gt(0))
+                    current.totalValue = current.totalValue.sub(row.amount);
+                current.unitCost = current.remainingQty.gt(0) ? current.totalValue.div(current.remainingQty) : new client_1.Prisma.Decimal(0);
+                buckets.set(key, current);
+            }
+            for (const bucket of buckets.values()) {
+                if (bucket.remainingQty.lte(0))
+                    continue;
+                const list = layersByItem.get(bucket.itemId) ?? [];
+                list.push(bucket);
+                layersByItem.set(bucket.itemId, list);
+            }
+        }
+        const rows = items.map((item) => {
+            const itemLayers = layersByItem.get(item.id) ?? [];
+            const totalQty = itemLayers.reduce((sum, layer) => sum.add(layer.remainingQty), new client_1.Prisma.Decimal(0));
+            const totalValue = itemLayers.reduce((sum, layer) => {
+                const value = layer.totalValue instanceof client_1.Prisma.Decimal
+                    ? layer.totalValue
+                    : layer.remainingQty.mul(layer.unitCost);
+                return sum.add(value);
+            }, new client_1.Prisma.Decimal(0));
+            const avgCost = totalQty.gt(0) ? totalValue.div(totalQty) : new client_1.Prisma.Decimal(0);
+            return {
+                itemId: item.id,
+                name: item.name,
+                sku: item.sku,
+                unit: item.unit,
+                group: item.group?.name ?? null,
+                isSerialized: Boolean(item.isSerialized),
+                isKit: Boolean(item.isKit),
+                tracksBatch: Boolean(item.tracksBatch),
+                tracksLot: Boolean(item.tracksLot),
+                tracksExpiry: Boolean(item.tracksExpiry),
+                totalQty: Number(totalQty.toString()),
+                avgCost: Number(avgCost.toFixed(6)),
+                totalValue: Number(totalValue.toFixed(2)),
+                layers: itemLayers.map((layer) => {
+                    const qty = new client_1.Prisma.Decimal(layer.remainingQty ?? 0);
+                    const unitCost = new client_1.Prisma.Decimal(layer.unitCost ?? 0);
+                    const value = layer.totalValue instanceof client_1.Prisma.Decimal ? layer.totalValue : qty.mul(unitCost);
+                    return {
+                        receivedDate: layer.receivedDate,
+                        warehouseId: layer.warehouseId ?? null,
+                        warehouseName: layer.warehouse?.name ?? null,
+                        binId: layer.binId ?? null,
+                        binName: layer.bin?.name ?? null,
+                        batchNo: layer.batchNo ?? null,
+                        lotNo: layer.lotNo ?? null,
+                        expiryDate: layer.expiryDate ?? null,
+                        expiryDateBs: layer.expiryDateBs ?? null,
+                        qty: Number(qty.toString()),
+                        unitCost: Number(unitCost.toFixed(6)),
+                        value: Number(value.toFixed(2))
+                    };
+                })
+            };
+        });
+        return {
+            meta: {
+                valuationSource,
+                costingMethod: settings.costingMethod,
+                generatedAt: new Date()
+            },
+            rows: filters.includeZero === false ? rows.filter((row) => row.totalQty > 0) : rows
+        };
+    }
     async transferStock(user, input) {
         const item = await this.prisma.item.findFirst({
             where: { id: input.itemId, companyId: user.companyId }
@@ -1515,6 +1683,10 @@ let InventoryService = class InventoryService {
             where,
             orderBy: [{ movementDate: "desc" }, { createdAt: "desc" }],
             take: query.take ?? 200
+        }).catch((error) => {
+            if (this.isMissingInventoryTableError(error))
+                return [];
+            throw error;
         });
     }
 };

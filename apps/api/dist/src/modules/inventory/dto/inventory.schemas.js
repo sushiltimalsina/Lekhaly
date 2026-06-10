@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SerialMovementQuerySchema = exports.SerialQuerySchema = exports.InventorySettingsSchema = exports.InventoryAlertsQuerySchema = exports.StockTransferSchema = exports.StockAgingQuerySchema = exports.StockQuerySchema = exports.StockAdjustmentSchema = void 0;
+exports.SerialMovementQuerySchema = exports.SerialQuerySchema = exports.InventorySettingsSchema = exports.InventoryAlertsQuerySchema = exports.StockTransferSchema = exports.StockValuationQuerySchema = exports.StockAgingQuerySchema = exports.StockQuerySchema = exports.StockAdjustmentSchema = void 0;
 const zod_1 = require("zod");
 exports.StockAdjustmentSchema = zod_1.z.object({
     itemId: zod_1.z.string().uuid(),
@@ -40,6 +40,13 @@ exports.StockAgingQuerySchema = zod_1.z.object({
     asOfBs: zod_1.z.string().trim().max(20).optional(),
     includeZero: zod_1.z.coerce.boolean().optional(),
     valuationMethod: zod_1.z.enum(["fifo", "weighted_average"]).optional()
+});
+exports.StockValuationQuerySchema = zod_1.z.object({
+    itemId: zod_1.z.string().uuid().optional(),
+    warehouseId: zod_1.z.string().uuid().optional(),
+    groupId: zod_1.z.string().uuid().optional(),
+    q: zod_1.z.string().trim().max(120).optional(),
+    includeZero: zod_1.z.coerce.boolean().optional()
 });
 exports.StockTransferSchema = zod_1.z.object({
     itemId: zod_1.z.string().uuid(),
