@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { getItem, type ItemRecord } from "@/lib/api/items";
 import { getItemStockLedger, getInventorySettings, type InventorySettings, type StockLedgerEntry } from "@/lib/api/inventory";
 import { inventoryFeatures } from "@/lib/inventory-features";
@@ -57,9 +57,11 @@ function StatCard({ label, value, sub, icon: Icon, accent }: { label: string; va
 export default function ItemDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get("tab") === "ledger" ? "ledger" : "overview";
   const [item, setItem] = React.useState<ItemRecord | null>(null);
   const [loading, setLoading] = React.useState(true);
-  const [tab, setTab] = React.useState<Tab>("overview");
+  const [tab, setTab] = React.useState<Tab>(initialTab);
   const [settings, setSettings] = React.useState<InventorySettings | null>(null);
   const [ledger, setLedger] = React.useState<{
     openingQty?: number; openingAmt?: number;
@@ -102,6 +104,9 @@ export default function ItemDetailPage() {
   }
 
   React.useEffect(() => { loadItem(); }, [id]);
+  React.useEffect(() => {
+    setTab(searchParams.get("tab") === "ledger" ? "ledger" : "overview");
+  }, [searchParams]);
   React.useEffect(() => { if (tab === "ledger" || tab === "overview") loadLedger(); }, [id, tracked, tab]);
 
   const ledgerColumns: Column<StockLedgerEntry>[] = [
@@ -153,6 +158,15 @@ export default function ItemDetailPage() {
         <span className="text-foreground font-medium truncate max-w-[300px]">{item.name}</span>
       </div>
 
+      <button
+        type="button"
+        onClick={() => navigate("/items")}
+        className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-transparent bg-transparent px-4 text-sm font-bold text-slate-950 transition-colors hover:border-orange-600 hover:bg-orange-600 hover:text-white dark:text-white"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        <span>Back to all items</span>
+      </button>
+
       {/* Hero Card */}
       <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-muted/20 p-6 sm:p-8">
         <div className="absolute top-0 right-0 h-40 w-40 bg-gradient-to-bl from-primary/5 to-transparent rounded-bl-full" />
@@ -176,9 +190,6 @@ export default function ItemDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <Button variant="outline" size="sm" className="rounded-xl h-10 gap-2" onClick={() => navigate("/items")}>
-              <ArrowLeft className="h-4 w-4" /> Back
-            </Button>
             <Button variant="outline" size="sm" className="rounded-xl h-10 gap-2" onClick={() => { loadItem(); loadLedger(); }}>
               <RefreshCw className="h-4 w-4" /> Refresh
             </Button>

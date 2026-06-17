@@ -261,7 +261,7 @@ export default function StockValuationReportPage() {
               loading={loading}
               emptyText="No stock valuation data found"
               className="border-none"
-              onRowClick={(row) => navigate(`/reports/stock-ledger?itemId=${row.itemId}`)}
+              onRowClick={(row) => navigate(`/items/view/${row.itemId}?tab=ledger`)}
             />
           </Card>
         </>

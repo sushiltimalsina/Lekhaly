@@ -263,7 +263,7 @@ function StockLedgerPageContent() {
         {
             key: "name", header: "Item / SKU", width: 260, cell: (r) => (
                 <div className="flex flex-col">
-                    <Link href={`/reports/stock-ledger?itemId=${r.id}`} className="font-bold text-foreground hover:text-primary hover:underline">{r.name}</Link>
+                    <Link href={`/items/${r.id}?tab=ledger`} className="font-bold text-foreground hover:text-primary hover:underline">{r.name}</Link>
                     {r.sku && <span className="text-[10px] text-muted-foreground uppercase">{r.sku}</span>}
                 </div>
             )
@@ -434,7 +434,7 @@ function StockLedgerPageContent() {
                     loading={loading}
                     emptyText="No stock data found"
                     className="border-none"
-                    onRowClick={(row) => router.push(`/reports/stock-ledger?itemId=${row.id}`)}
+                    onRowClick={(row) => router.push(`/items/${row.id}?tab=ledger`)}
                 />
             </Card>
                 </>

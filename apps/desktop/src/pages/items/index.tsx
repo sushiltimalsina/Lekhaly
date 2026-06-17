@@ -799,7 +799,7 @@ export default function ItemsPage() {
             )}
             {features.inventory && (
               <Link
-                to={`/reports/stock-ledger?itemId=${r.id}`}
+                to={`/items/view/${r.id}?tab=ledger`}
                 className="inline-flex h-7 items-center gap-1 rounded-md border border-slate-200 px-2 text-[11px] text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
               >
                 <Eye className="h-3.5 w-3.5" />

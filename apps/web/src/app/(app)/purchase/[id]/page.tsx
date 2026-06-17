@@ -203,7 +203,7 @@ export default function PurchaseDetailPage() {
                                                 <tr key={idx} className="group transition-colors">
                                                     <td className="py-5">
                                                         {l.itemId ? (
-                                                            <Link href={`/reports/stock-ledger?itemId=${l.itemId}`} className="font-bold text-foreground hover:text-primary hover:underline">
+                                                            <Link href={`/items/${l.itemId}?tab=ledger`} className="font-bold text-foreground hover:text-primary hover:underline">
                                                                 {l.itemName || l.accountName || "Inventory Item"}
                                                             </Link>
                                                         ) : (

@@ -203,7 +203,7 @@ export default function SalesDetailPage() {
                                                 <tr key={idx} className="group transition-colors">
                                                     <td className="py-5">
                                                         {it.itemId ? (
-                                                            <Link href={`/reports/stock-ledger?itemId=${it.itemId}`} className="font-bold text-foreground hover:text-primary hover:underline">
+                                                            <Link href={`/items/${it.itemId}?tab=ledger`} className="font-bold text-foreground hover:text-primary hover:underline">
                                                                 {it.itemName || it.name || it.itemId || "—"}
                                                             </Link>
                                                         ) : (
