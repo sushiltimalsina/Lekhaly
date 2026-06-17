@@ -161,35 +161,37 @@ export default function ReportFilterBar({
   }, []);
 
   return (
-    <div ref={containerRef} className={cn("relative rounded-[24px] border border-border/60 bg-card/80 p-4 shadow-sm", className)}>
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative min-w-[260px] flex-1">
+    <div ref={containerRef} className={cn("relative rounded-2xl border border-border/60 bg-card/80 p-3 shadow-sm", className)}>
+      <div className="flex flex-wrap items-center gap-2.5 xl:flex-nowrap">
+        <div className="relative min-w-[240px] flex-[1_1_320px]">
           <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={searchValue}
             onChange={(event) => onSearch?.(event.target.value)}
             placeholder={searchPlaceholder}
-            className="h-11 rounded-2xl pl-10"
+            className="h-11 rounded-xl border-border/70 bg-background/80 pl-10"
           />
         </div>
 
-        <div className="flex items-center gap-2 px-2 text-sm font-bold uppercase tracking-widest text-muted-foreground">
+        <div className="flex h-11 shrink-0 items-center gap-2 rounded-xl border border-transparent px-1.5 text-xs font-black uppercase tracking-widest text-muted-foreground">
           <Filter className="h-4 w-4" />
-          Filters:
+          Filters
         </div>
 
-        <div className="relative">
+        <div className="relative shrink-0">
           <button
             type="button"
             onClick={() => setRangeOpen((open) => !open)}
-            className="flex min-h-11 min-w-[280px] items-center justify-between gap-3 rounded-2xl border border-border bg-background px-4 py-2 text-left shadow-sm transition hover:border-orange-300 dark:hover:border-orange-500/60"
+            className="flex h-11 w-[300px] items-center justify-between gap-2 rounded-xl border border-border bg-background/90 px-3 text-left shadow-sm transition hover:border-orange-300 dark:hover:border-orange-500/60"
           >
             <span className="flex items-center gap-2">
-              <CalendarDays className="h-4 w-4 text-orange-500" />
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-orange-500/10 text-orange-500">
+                <CalendarDays className="h-3.5 w-3.5" />
+              </span>
               <span className="flex min-w-0 flex-col">
                 <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Date Range</span>
-                <span className="max-w-[240px] truncate text-xs font-black uppercase tracking-widest text-foreground">{DATE_RANGE_LABELS[dateRange]}</span>
-                <span className="mt-0.5 max-w-[250px] truncate rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-[10px] font-black text-orange-700 dark:border-orange-500/30 dark:bg-orange-500/10 dark:text-orange-200">
+                <span className="max-w-[220px] truncate text-xs font-black uppercase tracking-widest text-foreground">{DATE_RANGE_LABELS[dateRange]}</span>
+                <span className="mt-0.5 max-w-[220px] truncate rounded-full border border-orange-200 bg-orange-50 px-1.5 py-0.5 text-[9px] font-black leading-none text-orange-700 dark:border-orange-500/30 dark:bg-orange-500/10 dark:text-orange-200">
                   [{selectedRangeDates}]
                 </span>
               </span>
@@ -219,12 +221,12 @@ export default function ReportFilterBar({
         </div>
 
         {visibleFields.map((field) => (
-          <label key={field.key} className="flex h-11 items-center gap-2 rounded-2xl border border-border bg-background px-3">
+          <label key={field.key} className="flex h-11 shrink-0 items-center gap-2 rounded-xl border border-border bg-background/90 px-3 shadow-sm">
             <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{field.label}</span>
             <select
               value={field.value}
               onChange={(event) => field.onChange(event.target.value)}
-              className="bg-transparent text-xs font-black uppercase tracking-widest outline-none"
+              className="max-w-[150px] bg-transparent text-xs font-black uppercase tracking-widest outline-none"
             >
               {field.options.map((option) => (
                 <option key={option.value} value={option.value}>{option.label}</option>
@@ -234,7 +236,7 @@ export default function ReportFilterBar({
         ))}
 
         {onRun && (
-          <Button onClick={onRun} className="h-11 rounded-2xl px-6">
+          <Button onClick={onRun} className="h-11 shrink-0 rounded-xl px-5 xl:ml-auto">
             <Play className="mr-2 h-4 w-4" />
             {runLabel}
           </Button>
@@ -242,9 +244,15 @@ export default function ReportFilterBar({
       </div>
 
       {dateRange === "custom" && customOpen && (
-        <div className="absolute right-4 top-[calc(100%+0.75rem)] z-[65] w-[min(760px,calc(100vw-3rem))] rounded-3xl border border-orange-300 bg-orange-50 p-5 text-orange-950 shadow-2xl shadow-orange-950/10 dark:border-orange-500/40 dark:bg-orange-950 dark:text-orange-50 dark:shadow-black/50">
-          <div className="mb-3 text-[10px] font-black uppercase tracking-widest text-orange-700 dark:text-orange-300">
-            Custom Date Range - Current month opens by default
+        <div className="absolute right-3 top-[calc(100%+0.6rem)] z-[65] w-[min(680px,calc(100vw-3rem))] rounded-2xl border border-orange-300 bg-orange-50 p-4 text-orange-950 shadow-2xl shadow-orange-950/10 dark:border-orange-500/40 dark:bg-orange-950 dark:text-orange-50 dark:shadow-black/50">
+          <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-widest text-orange-700 dark:text-orange-300">Custom Date Range</div>
+              <div className="text-xs font-semibold text-orange-900/70 dark:text-orange-100/70">Current month is loaded first. Pick From and To dates.</div>
+            </div>
+            <div className="w-fit rounded-full border border-orange-300 bg-white/70 px-2.5 py-1 text-[10px] font-black text-orange-800 dark:border-orange-500/40 dark:bg-orange-500/10 dark:text-orange-100">
+              [{selectedRangeDates}]
+            </div>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             <DualDateInput
@@ -260,7 +268,7 @@ export default function ReportFilterBar({
               accentColor="bg-orange-600"
             />
           </div>
-          <div className="mt-4 flex justify-end">
+          <div className="mt-4 flex justify-end border-t border-orange-200 pt-3 dark:border-orange-500/20">
             <Button type="button" onClick={() => setCustomOpen(false)} className="rounded-xl bg-orange-600 text-white hover:bg-orange-700">
               Apply Custom Range
             </Button>

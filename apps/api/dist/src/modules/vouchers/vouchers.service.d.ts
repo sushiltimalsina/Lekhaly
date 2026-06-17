@@ -57,32 +57,30 @@ export declare class VouchersService {
         lines: {
             id: string;
             companyId: string;
-            warehouseId: string | null;
             createdAt: Date;
             serialNumbers: string[];
-            itemId: string | null;
-            binId: string | null;
-            batchNo: string | null;
-            lotNo: string | null;
-            taxCodeId: string | null;
             partyId: string | null;
-            qty: Prisma.Decimal;
-            expiryDate: Date | null;
-            expiryDateBs: string | null;
             voucherId: string;
-            lineNo: number;
             accountId: string;
+            lineNo: number;
             description: string | null;
             debit: Prisma.Decimal;
             credit: Prisma.Decimal;
+            qty: Prisma.Decimal;
             taxAmount: Prisma.Decimal;
+            batchNo: string | null;
+            lotNo: string | null;
+            expiryDate: Date | null;
+            expiryDateBs: string | null;
+            itemId: string | null;
+            taxCodeId: string | null;
+            warehouseId: string | null;
+            binId: string | null;
         }[];
     } & {
         id: string;
         companyId: string;
         status: import("@prisma/client").$Enums.VoucherStatus;
-        memo: string | null;
-        createdByUserId: string | null;
         createdAt: Date;
         updatedAt: Date;
         voucherType: import("@prisma/client").$Enums.VoucherType;
@@ -92,11 +90,13 @@ export declare class VouchersService {
         voucherDateBs: string | null;
         vendorInvoiceNo: string | null;
         vendorInvoiceDate: Date | null;
+        memo: string | null;
         additionalNote: string | null;
         source: string;
         postedAt: Date | null;
         voidedAt: Date | null;
         partyId: string | null;
+        createdByUserId: string | null;
         postedByUserId: string | null;
         voidedByUserId: string | null;
         reversalOfVoucherId: string | null;
@@ -107,32 +107,30 @@ export declare class VouchersService {
         lines: {
             id: string;
             companyId: string;
-            warehouseId: string | null;
             createdAt: Date;
             serialNumbers: string[];
-            itemId: string | null;
-            binId: string | null;
-            batchNo: string | null;
-            lotNo: string | null;
-            taxCodeId: string | null;
             partyId: string | null;
-            qty: Prisma.Decimal;
-            expiryDate: Date | null;
-            expiryDateBs: string | null;
             voucherId: string;
-            lineNo: number;
             accountId: string;
+            lineNo: number;
             description: string | null;
             debit: Prisma.Decimal;
             credit: Prisma.Decimal;
+            qty: Prisma.Decimal;
             taxAmount: Prisma.Decimal;
+            batchNo: string | null;
+            lotNo: string | null;
+            expiryDate: Date | null;
+            expiryDateBs: string | null;
+            itemId: string | null;
+            taxCodeId: string | null;
+            warehouseId: string | null;
+            binId: string | null;
         }[];
     } & {
         id: string;
         companyId: string;
         status: import("@prisma/client").$Enums.VoucherStatus;
-        memo: string | null;
-        createdByUserId: string | null;
         createdAt: Date;
         updatedAt: Date;
         voucherType: import("@prisma/client").$Enums.VoucherType;
@@ -142,11 +140,13 @@ export declare class VouchersService {
         voucherDateBs: string | null;
         vendorInvoiceNo: string | null;
         vendorInvoiceDate: Date | null;
+        memo: string | null;
         additionalNote: string | null;
         source: string;
         postedAt: Date | null;
         voidedAt: Date | null;
         partyId: string | null;
+        createdByUserId: string | null;
         postedByUserId: string | null;
         voidedByUserId: string | null;
         reversalOfVoucherId: string | null;
@@ -164,32 +164,30 @@ export declare class VouchersService {
         lines: {
             id: string;
             companyId: string;
-            warehouseId: string | null;
             createdAt: Date;
             serialNumbers: string[];
-            itemId: string | null;
-            binId: string | null;
-            batchNo: string | null;
-            lotNo: string | null;
-            taxCodeId: string | null;
             partyId: string | null;
-            qty: Prisma.Decimal;
-            expiryDate: Date | null;
-            expiryDateBs: string | null;
             voucherId: string;
-            lineNo: number;
             accountId: string;
+            lineNo: number;
             description: string | null;
             debit: Prisma.Decimal;
             credit: Prisma.Decimal;
+            qty: Prisma.Decimal;
             taxAmount: Prisma.Decimal;
+            batchNo: string | null;
+            lotNo: string | null;
+            expiryDate: Date | null;
+            expiryDateBs: string | null;
+            itemId: string | null;
+            taxCodeId: string | null;
+            warehouseId: string | null;
+            binId: string | null;
         }[];
     } & {
         id: string;
         companyId: string;
         status: import("@prisma/client").$Enums.VoucherStatus;
-        memo: string | null;
-        createdByUserId: string | null;
         createdAt: Date;
         updatedAt: Date;
         voucherType: import("@prisma/client").$Enums.VoucherType;
@@ -199,11 +197,13 @@ export declare class VouchersService {
         voucherDateBs: string | null;
         vendorInvoiceNo: string | null;
         vendorInvoiceDate: Date | null;
+        memo: string | null;
         additionalNote: string | null;
         source: string;
         postedAt: Date | null;
         voidedAt: Date | null;
         partyId: string | null;
+        createdByUserId: string | null;
         postedByUserId: string | null;
         voidedByUserId: string | null;
         reversalOfVoucherId: string | null;
@@ -215,39 +215,37 @@ export declare class VouchersService {
         reversalVoucherId: string;
     }>;
     getById(user: AuthUser, voucherId: string): Promise<{
-        lines: {
-            id: string;
-            companyId: string;
-            warehouseId: string | null;
-            createdAt: Date;
-            serialNumbers: string[];
-            itemId: string | null;
-            binId: string | null;
-            batchNo: string | null;
-            lotNo: string | null;
-            taxCodeId: string | null;
-            partyId: string | null;
-            qty: Prisma.Decimal;
-            expiryDate: Date | null;
-            expiryDateBs: string | null;
-            voucherId: string;
-            lineNo: number;
-            accountId: string;
-            description: string | null;
-            debit: Prisma.Decimal;
-            credit: Prisma.Decimal;
-            taxAmount: Prisma.Decimal;
-        }[];
         party: {
             id: string;
             name: string;
         } | null;
+        lines: {
+            id: string;
+            companyId: string;
+            createdAt: Date;
+            serialNumbers: string[];
+            partyId: string | null;
+            voucherId: string;
+            accountId: string;
+            lineNo: number;
+            description: string | null;
+            debit: Prisma.Decimal;
+            credit: Prisma.Decimal;
+            qty: Prisma.Decimal;
+            taxAmount: Prisma.Decimal;
+            batchNo: string | null;
+            lotNo: string | null;
+            expiryDate: Date | null;
+            expiryDateBs: string | null;
+            itemId: string | null;
+            taxCodeId: string | null;
+            warehouseId: string | null;
+            binId: string | null;
+        }[];
     } & {
         id: string;
         companyId: string;
         status: import("@prisma/client").$Enums.VoucherStatus;
-        memo: string | null;
-        createdByUserId: string | null;
         createdAt: Date;
         updatedAt: Date;
         voucherType: import("@prisma/client").$Enums.VoucherType;
@@ -257,11 +255,13 @@ export declare class VouchersService {
         voucherDateBs: string | null;
         vendorInvoiceNo: string | null;
         vendorInvoiceDate: Date | null;
+        memo: string | null;
         additionalNote: string | null;
         source: string;
         postedAt: Date | null;
         voidedAt: Date | null;
         partyId: string | null;
+        createdByUserId: string | null;
         postedByUserId: string | null;
         voidedByUserId: string | null;
         reversalOfVoucherId: string | null;
@@ -284,44 +284,6 @@ export declare class VouchersService {
         take?: number;
     }): Promise<{
         data: ({
-            lines: ({
-                item: {
-                    id: string;
-                    name: string;
-                    sku: string | null;
-                } | null;
-                party: {
-                    id: string;
-                    name: string;
-                } | null;
-                account: {
-                    id: string;
-                    name: string;
-                    code: string;
-                };
-            } & {
-                id: string;
-                companyId: string;
-                warehouseId: string | null;
-                createdAt: Date;
-                serialNumbers: string[];
-                itemId: string | null;
-                binId: string | null;
-                batchNo: string | null;
-                lotNo: string | null;
-                taxCodeId: string | null;
-                partyId: string | null;
-                qty: Prisma.Decimal;
-                expiryDate: Date | null;
-                expiryDateBs: string | null;
-                voucherId: string;
-                lineNo: number;
-                accountId: string;
-                description: string | null;
-                debit: Prisma.Decimal;
-                credit: Prisma.Decimal;
-                taxAmount: Prisma.Decimal;
-            })[];
             stockLedger: {
                 id: string;
                 itemId: string;
@@ -335,12 +297,48 @@ export declare class VouchersService {
                 panNumber: string | null;
                 vatNumber: string | null;
             } | null;
+            lines: ({
+                party: {
+                    id: string;
+                    name: string;
+                } | null;
+                item: {
+                    id: string;
+                    name: string;
+                    sku: string | null;
+                } | null;
+                account: {
+                    id: string;
+                    name: string;
+                    code: string;
+                };
+            } & {
+                id: string;
+                companyId: string;
+                createdAt: Date;
+                serialNumbers: string[];
+                partyId: string | null;
+                voucherId: string;
+                accountId: string;
+                lineNo: number;
+                description: string | null;
+                debit: Prisma.Decimal;
+                credit: Prisma.Decimal;
+                qty: Prisma.Decimal;
+                taxAmount: Prisma.Decimal;
+                batchNo: string | null;
+                lotNo: string | null;
+                expiryDate: Date | null;
+                expiryDateBs: string | null;
+                itemId: string | null;
+                taxCodeId: string | null;
+                warehouseId: string | null;
+                binId: string | null;
+            })[];
         } & {
             id: string;
             companyId: string;
             status: import("@prisma/client").$Enums.VoucherStatus;
-            memo: string | null;
-            createdByUserId: string | null;
             createdAt: Date;
             updatedAt: Date;
             voucherType: import("@prisma/client").$Enums.VoucherType;
@@ -350,11 +348,13 @@ export declare class VouchersService {
             voucherDateBs: string | null;
             vendorInvoiceNo: string | null;
             vendorInvoiceDate: Date | null;
+            memo: string | null;
             additionalNote: string | null;
             source: string;
             postedAt: Date | null;
             voidedAt: Date | null;
             partyId: string | null;
+            createdByUserId: string | null;
             postedByUserId: string | null;
             voidedByUserId: string | null;
             reversalOfVoucherId: string | null;

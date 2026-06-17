@@ -346,7 +346,13 @@ function StockLedgerPageContent() {
     return (
         <div className="space-y-6 pb-20 text-foreground">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between print:hidden">
-                <PageHeader title="Stock Ledger" description="Real-time movement and valuation of inventory items." />
+                <PageHeader
+                    title="Stock Ledger"
+                    description="Real-time movement and valuation of inventory items."
+                    showBack={Boolean(selectedItemId)}
+                    backHref="/reports/stock-ledger"
+                    backLabel="Back to all stocks"
+                />
                 <div className="flex items-center gap-2">
                     <Button variant="outline" size="sm" onClick={run} disabled={loading} className="rounded-xl h-10"><RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} /> Refresh</Button>
                     <Button size="sm" className="rounded-xl h-10 shadow-lg shadow-emerald-500/10 bg-emerald-600 hover:bg-emerald-700 text-white border-none"><FileDown className="mr-2 h-4 w-4" /> Export Report</Button>
@@ -373,12 +379,11 @@ function StockLedgerPageContent() {
                     setTo(dates.to);
                 }}
                 fields={stockLedgerFilterFields}
-                onRun={run}
             />
 
             {selectedItemId && itemLedger ? (
                 <>
-                    <div className="flex flex-col gap-4 rounded-3xl border border-border/60 bg-card/70 p-5 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="rounded-2xl border border-border/60 bg-card/70 p-5">
                         <div>
                             <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Selected Item</p>
                             <h2 className="mt-1 text-2xl font-black">{itemLedger.item?.name || "Selected Stock"}</h2>
@@ -388,9 +393,6 @@ function StockLedgerPageContent() {
                                 <span className="rounded-lg border border-border bg-background px-2.5 py-1 font-semibold">Group: {itemLedger.item?.group || "-"}</span>
                             </div>
                         </div>
-                        <Link href="/reports/stock-ledger">
-                            <Button variant="outline" size="sm" className="rounded-xl">Back to all stock</Button>
-                        </Link>
                     </div>
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 print:hidden">
                         <Card className="border-border/50 shadow-none"><CardContent className="pt-5"><div className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">Opening Quantity</div><div className="mt-2 text-2xl font-black tabular-nums">{itemLedger.openingQty ?? 0}</div><MoneyText value={itemLedger.openingAmt ?? 0} className="text-xs text-muted-foreground" /></CardContent></Card>

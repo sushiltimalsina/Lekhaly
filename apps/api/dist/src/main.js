@@ -43,7 +43,12 @@ async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     const origins = process.env.CORS_ORIGINS
         ? process.env.CORS_ORIGINS.split(",").map((o) => o.trim())
-        : ["http://localhost:3000", "http://localhost:1420"];
+        : [
+            "http://localhost:3000",
+            "http://localhost:1420",
+            "http://localhost:1430",
+            "http://127.0.0.1:1430"
+        ];
     app.enableCors({
         origin: origins,
         credentials: true,
