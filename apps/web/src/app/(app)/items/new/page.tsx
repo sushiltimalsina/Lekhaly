@@ -4,14 +4,14 @@ import * as React from "react";
 import PageHeader from "@/components/app/page-header";
 import { Input } from "@lekhaly/ui";
 import { Button } from "@lekhaly/ui";
-import { createItem, listItems } from "@/lib/api/items";
+import { createItem, getItem, listItems, updateItem } from "@/lib/api/items";
 import { getInventorySettings, type InventorySettings } from "@/lib/api/inventory";
 import { listTaxes } from "@/lib/api/taxes";
 import { listUnits, type UnitRecord } from "@/lib/api/units";
 import { listItemGroups, type ItemGroupRecord } from "@/lib/api/item-groups";
 import { cn } from "@/lib/utils";
 import { hasItemPolicyTracking, inventoryFeatures } from "@/lib/inventory-features";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft, PackagePlus, Save, Plus, X, Layers,
   ShieldCheck, AlertTriangle, Package, BookOpen, DollarSign
@@ -27,6 +27,9 @@ type BomLine = { componentId: string; componentName: string; qty: number };
 
 export default function NewItemPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get("edit");
+  const isEditMode = Boolean(editId);
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<string | null>(null);
@@ -108,6 +111,44 @@ export default function NewItemPage() {
     getInventorySettings().then(setInventorySettings).catch(() => setInventorySettings(null));
   }, []);
 
+  React.useEffect(() => {
+    if (!editId) return;
+    getItem(editId).then((item: any) => {
+      setForm((prev) => ({
+        ...prev,
+        name: item.name ?? "",
+        sku: item.sku ?? "",
+        hsCode: item.hsCode ?? "",
+        unit: item.unit ?? "",
+        type: item.type === "services" ? "services" : "goods",
+        salesPrice: item.salesPrice != null ? String(item.salesPrice) : "",
+        purchasePrice: item.purchasePrice != null ? String(item.purchasePrice) : "",
+        openingQty: "",
+        openingPrice: "",
+        groupId: item.groupId ?? "",
+        incomeAccountId: item.incomeAccountId ?? "",
+        expenseAccountId: item.expenseAccountId ?? "",
+        taxCodeIds: Array.isArray(item.taxCodeIds) ? item.taxCodeIds : [],
+        minStockLevel: item.minStockLevel != null ? String(item.minStockLevel) : item.reorderLevel != null ? String(item.reorderLevel) : "",
+        reorderQty: item.reorderQty != null ? String(item.reorderQty) : "",
+        trackInventory: item.trackInventory !== false,
+        isSerialized: Boolean(item.isSerialized),
+        isKit: Boolean(item.isKit),
+        tracksBatch: Boolean(item.tracksBatch),
+        tracksLot: Boolean(item.tracksLot),
+        tracksExpiry: Boolean(item.tracksExpiry),
+      }));
+      setTaxable(Array.isArray(item.taxCodeIds) && item.taxCodeIds.length > 0);
+      if (Array.isArray(item.components)) {
+        setBomLines(item.components.map((component: any) => ({
+          componentId: component.componentId,
+          componentName: component.component?.name || component.componentName || component.name || "Component",
+          qty: Number(component.qty ?? 1),
+        })));
+      }
+    }).catch((err: any) => setError(err?.message ?? "Failed to load item for editing."));
+  }, [editId]);
+
   const update = (key: keyof typeof form, value: any) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
@@ -173,7 +214,7 @@ export default function NewItemPage() {
 
     setSaving(true);
     try {
-      await createItem({
+      const payload = {
         name: form.name.trim(),
         sku: form.sku.trim() || undefined,
         hsCode: form.hsCode.trim() || undefined,
@@ -181,8 +222,8 @@ export default function NewItemPage() {
         type: form.type,
         salesPrice: form.salesPrice ? Number(form.salesPrice) : undefined,
         purchasePrice: form.purchasePrice ? Number(form.purchasePrice) : undefined,
-        openingQty: showOpeningStock && form.openingQty ? Number(form.openingQty) : undefined,
-        openingPrice: showOpeningStock && form.openingPrice ? Number(form.openingPrice) : undefined,
+        openingQty: !isEditMode && showOpeningStock && form.openingQty ? Number(form.openingQty) : undefined,
+        openingPrice: !isEditMode && showOpeningStock && form.openingPrice ? Number(form.openingPrice) : undefined,
         groupId: form.groupId || undefined,
         incomeAccountId: form.incomeAccountId.trim() || undefined,
         expenseAccountId: form.expenseAccountId.trim() || undefined,
@@ -198,11 +239,18 @@ export default function NewItemPage() {
         components: features.kits && form.isKit
           ? bomLines.map((l) => ({ componentId: l.componentId, qty: l.qty }))
           : undefined,
-      } as any);
-      setSuccess("Item created successfully!");
-      setTimeout(() => router.push("/items"), 600);
+      } as any;
+      if (editId) {
+        await updateItem(editId, payload);
+        setSuccess("Item updated successfully!");
+        setTimeout(() => router.push(`/items/${editId}`), 600);
+      } else {
+        await createItem(payload);
+        setSuccess("Item created successfully!");
+        setTimeout(() => router.push("/items"), 600);
+      }
     } catch (err: any) {
-      setError(err?.message ?? "Failed to create item.");
+      setError(err?.message ?? (isEditMode ? "Failed to update item." : "Failed to create item."));
     } finally {
       setSaving(false);
     }
@@ -211,8 +259,8 @@ export default function NewItemPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-8 pb-24">
       <PageHeader
-        title="Add New Item"
-        description="Create a goods or services item with full inventory and accounting setup."
+        title={isEditMode ? "Edit Item" : "Add New Item"}
+        description={isEditMode ? "Update item details, pricing, and inventory policy." : "Create a goods or services item with full inventory and accounting setup."}
         icon={PackagePlus}
         actions={
           <Link href="/items" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition">
@@ -480,7 +528,7 @@ export default function NewItemPage() {
               className="rounded-2xl h-12 px-8 bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20"
             >
               <Save className="h-4 w-4 mr-2" />
-              {saving ? "Saving..." : "Create Item"}
+              {saving ? "Saving..." : isEditMode ? "Update Item" : "Create Item"}
             </Button>
           </div>
         </div>

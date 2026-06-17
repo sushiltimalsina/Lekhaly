@@ -8,9 +8,8 @@ import DataTable, { Column } from "@/components/app/data-table";
 import { MoneyText } from "@/components/app/money";
 import { getInventorySettings, getItemStockLedger, getStockReport, StockReportRow, type InventorySettings, type StockLedgerEntry } from "@/lib/api/inventory";
 import { inventoryFeatures } from "@/lib/inventory-features";
-import { Card, CardContent } from "@lekhaly/ui";
-import { Button } from "@lekhaly/ui";
-import { RefreshCw, Package, ArrowUp, ArrowDown, FileDown, ExternalLink } from "lucide-react";
+import { Button, Card, CardContent, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@lekhaly/ui";
+import { RefreshCw, Package, ArrowUp, ArrowDown, FileDown, ExternalLink, FileSpreadsheet, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getDateRange, type DateRangeKey } from "@/lib/dates/ranges";
 
@@ -49,6 +48,67 @@ function getSourceHref(row: StockLedgerEntry) {
     }
     if (row.voucherId) return `/vouchers/view/${row.voucherId}`;
     return null;
+}
+
+function safeFileName(value: string) {
+    return value.trim().replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "").toLowerCase() || "stock_ledger";
+}
+
+function csvEscape(value: unknown) {
+    const text = String(value ?? "");
+    return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+async function saveBlob(blob: Blob, fileName: string) {
+    const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+    if (isTauri) {
+        try {
+            const { invoke } = await import("@tauri-apps/api/core");
+            const bytes = Array.from(new Uint8Array(await blob.arrayBuffer()));
+            const savedPath = await invoke<string | null>("save_export_file", { fileName, bytes });
+            if (savedPath) return;
+        } catch (error) {
+            console.error("Desktop export failed, falling back to browser download.", error);
+        }
+    }
+
+    const picker = (window as any).showSaveFilePicker as
+        | ((opts: {
+            suggestedName?: string;
+            types?: Array<{ description?: string; accept: Record<string, string[]> }>;
+        }) => Promise<any>)
+        | undefined;
+
+    if (picker) {
+        try {
+            const ext = fileName.split(".").pop()?.toLowerCase() || "";
+            const mime =
+                ext === "csv"
+                    ? "text/csv"
+                    : ext === "xlsx"
+                        ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        : "application/pdf";
+            const handle = await picker({
+                suggestedName: fileName,
+                types: [{ description: "Export file", accept: { [mime]: [`.${ext}`] } }],
+            });
+            const writable = await handle.createWritable();
+            await writable.write(blob);
+            await writable.close();
+            return;
+        } catch {
+            // Use regular download fallback if save picker is cancelled or unavailable.
+        }
+    }
+
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = fileName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
 }
 
 export default function StockLedgerPage() {
@@ -204,6 +264,88 @@ export default function StockLedgerPage() {
             ].some((value) => value?.toLowerCase().includes(q));
         });
     }, [features.bins, itemLedger, locationFilter, movementFilter, searchQuery, sourceFilter]);
+    const buildExportRows = () => {
+        if (selectedItemId && itemLedger) {
+            const title = `${itemLedger.item?.name || "Selected Stock"} Stock Ledger`;
+            const summaryRows = [
+                ["Item", itemLedger.item?.name || ""],
+                ["SKU", itemLedger.item?.sku || ""],
+                ["Unit", itemLedger.item?.unit || ""],
+                ["Opening Qty", itemLedger.openingQty ?? 0],
+                ["Debit / Inward", itemLedger.debitQty ?? 0],
+                ["Credit / Outward", itemLedger.creditQty ?? 0],
+                ["Closing Qty", itemLedger.closingQty ?? 0],
+                ["Closing Amount", itemLedger.closingAmt ?? 0],
+            ];
+            const header = ["Date", "Source", "Location", "Debit Qty", "Debit Amount", "Credit Qty", "Credit Amount", "Closing Qty", "Closing Amount", "Tracking"];
+            const rows = filteredItemLedgerEntries.map((entry) => [
+                new Date(entry.date).toLocaleDateString(),
+                entry.voucherNumber || formatSourceType(entry.voucherType) || "Opening / manual",
+                [entry.warehouseName, features.bins ? entry.binName : null].filter(Boolean).join(" / "),
+                entry.qtyIn || "",
+                entry.debitAmt ?? 0,
+                entry.qtyOut || "",
+                entry.creditAmt ?? 0,
+                entry.runningQty ?? 0,
+                entry.runningAmt ?? 0,
+                [entry.batchNo && `Batch ${entry.batchNo}`, entry.lotNo && `Lot ${entry.lotNo}`, entry.expiryDate && `Exp ${new Date(entry.expiryDate).toLocaleDateString()}`].filter(Boolean).join(" / "),
+            ]);
+            return { title, fileBase: safeFileName(itemLedger.item?.name || "stock_ledger"), summaryRows, header, rows };
+        }
+
+        const title = "Stock Ledger";
+        const summaryRows = [["Total Inventory Value", totalValue]];
+        const header = ["Item", "SKU", "Unit", "Opening", "Inward", "Outward", "Closing Qty", "Value"];
+        const exportRows = rows.map((row) => [
+            row.name,
+            row.sku || "",
+            row.unit || "",
+            row.openingQty,
+            row.purchaseQty,
+            row.saleQty,
+            row.closingQty,
+            row.closingAmt,
+        ]);
+        return { title, fileBase: "stock_ledger", summaryRows, header, rows: exportRows };
+    };
+
+    const exportCsv = async () => {
+        const report = buildExportRows();
+        const lines = [[report.title], [], ["Summary"], ...report.summaryRows, [], report.header, ...report.rows];
+        await saveBlob(new Blob([lines.map((row) => row.map(csvEscape).join(",")).join("\n")], { type: "text/csv;charset=utf-8;" }), `${report.fileBase}.csv`);
+    };
+
+    const exportExcel = async () => {
+        const report = buildExportRows();
+        const XLSX = await import("xlsx");
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([[report.title], [], ...report.summaryRows]), "Summary");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([report.header, ...report.rows]), "Stock Ledger");
+        const output = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+        await saveBlob(new Blob([output], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `${report.fileBase}.xlsx`);
+    };
+
+    const exportPdf = async () => {
+        const report = buildExportRows();
+        const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
+        const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+        doc.setFontSize(14);
+        doc.text(report.title, 40, 36);
+        autoTable(doc, { body: report.summaryRows.map((row) => row.map(String)), startY: 54, theme: "grid", styles: { fontSize: 9 } });
+        autoTable(doc, { head: [report.header], body: report.rows.map((row) => row.map((value) => String(value ?? ""))), startY: (doc as any).lastAutoTable.finalY + 18, styles: { fontSize: 8 }, headStyles: { fillColor: [31, 41, 55] } });
+        await saveBlob(doc.output("blob"), `${report.fileBase}.pdf`);
+    };
+
+    const runExport = async (format: "pdf" | "xlsx" | "csv") => {
+        try {
+            if (format === "pdf") await exportPdf();
+            if (format === "xlsx") await exportExcel();
+            if (format === "csv") await exportCsv();
+        } catch (error: any) {
+            console.error("Stock ledger export failed", error);
+            window.alert(error?.message ? `Export failed: ${error.message}` : "Export failed. Please try again.");
+        }
+    };
     const itemLedgerColumns: Column<StockLedgerEntry>[] = [
         { key: "date", header: "Date", width: 130, cell: (r) => <div className="text-xs font-medium">{new Date(r.date).toLocaleDateString()}</div> },
         {
@@ -354,7 +496,16 @@ export default function StockLedgerPage() {
                 />
                 <div className="flex items-center gap-2">
                     <Button variant="outline" size="sm" onClick={run} disabled={loading} className="rounded-xl h-10"><RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} /> Refresh</Button>
-                    <Button size="sm" className="rounded-xl h-10 shadow-lg shadow-emerald-500/10 bg-emerald-600 hover:bg-emerald-700 text-white border-none"><FileDown className="mr-2 h-4 w-4" /> Export Report</Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button size="sm" className="rounded-xl h-10 shadow-lg shadow-emerald-500/10 bg-emerald-600 hover:bg-emerald-700 text-white border-none"><FileDown className="mr-2 h-4 w-4" /> Export Report</Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="min-w-[180px] rounded-2xl p-2">
+                            <DropdownMenuItem onClick={() => void runExport("pdf")} className="rounded-xl cursor-pointer"><FileText className="mr-2 h-4 w-4" /> PDF</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => void runExport("xlsx")} className="rounded-xl cursor-pointer"><FileSpreadsheet className="mr-2 h-4 w-4" /> Excel (.xlsx)</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => void runExport("csv")} className="rounded-xl cursor-pointer"><FileDown className="mr-2 h-4 w-4" /> CSV</DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
             </div>
 

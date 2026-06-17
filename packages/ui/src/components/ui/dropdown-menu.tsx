@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 const DropdownMenuContext = React.createContext<{
     open: boolean
     setOpen: (open: boolean) => void
+    containerRef: React.RefObject<HTMLDivElement | null>
 } | null>(null)
 
 export function DropdownMenu({ children }: { children: React.ReactNode }) {
@@ -26,7 +27,7 @@ export function DropdownMenu({ children }: { children: React.ReactNode }) {
     }, [open])
 
     return (
-        <DropdownMenuContext.Provider value={{ open, setOpen }}>
+        <DropdownMenuContext.Provider value={{ open, setOpen, containerRef }}>
             <div className="relative inline-block" ref={containerRef} data-dropdown-container>
                 {children}
             </div>
@@ -84,7 +85,7 @@ export function DropdownMenuContent({
         if (!context.open) return
 
         const updatePosition = () => {
-            const container = document.querySelector('[data-dropdown-container]')
+            const container = context.containerRef.current
             if (!container) return
 
             const rect = container.getBoundingClientRect()
@@ -116,6 +117,8 @@ export function DropdownMenuContent({
             {/* Content */}
             <div
                 ref={contentRef}
+                onMouseDown={(event) => event.stopPropagation()}
+                onClick={(event) => event.stopPropagation()}
                 className={cn(
                     "fixed z-[10000] overflow-hidden rounded-[20px] border border-slate-200 bg-white p-1 shadow-xl shadow-slate-200/50 outline-none dark:border-slate-800 dark:bg-slate-950 dark:shadow-none animate-in fade-in zoom-in-95 duration-150",
                     className

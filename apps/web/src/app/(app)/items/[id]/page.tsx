@@ -8,7 +8,7 @@ import { getInventorySettings, getItemStockLedger, type InventorySettings, type 
 import { inventoryFeatures } from "@/lib/inventory-features";
 import { MoneyText } from "@/components/app/money";
 import DataTable, { Column } from "@/components/app/data-table";
-import { Button, Card, CardContent } from "@lekhaly/ui";
+import { Button, Card, CardContent, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@lekhaly/ui";
 import { cn } from "@/lib/utils";
 import {
   AlertTriangle,
@@ -20,6 +20,9 @@ import {
   Calendar,
   Edit,
   ExternalLink,
+  FileDown,
+  FileSpreadsheet,
+  FileText,
   Hash,
   Layers,
   Package,
@@ -76,6 +79,55 @@ function StatCard({
       </CardContent>
     </Card>
   );
+}
+
+function safeFileName(value: string) {
+  return value.trim().replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "").toLowerCase() || "item";
+}
+
+function csvEscape(value: unknown) {
+  const text = String(value ?? "");
+  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+async function saveBlob(blob: Blob, fileName: string) {
+  const picker = (window as any).showSaveFilePicker as
+    | ((opts: {
+        suggestedName?: string;
+        types?: Array<{ description?: string; accept: Record<string, string[]> }>;
+      }) => Promise<any>)
+    | undefined;
+
+  if (picker) {
+    try {
+      const ext = fileName.split(".").pop()?.toLowerCase() || "";
+      const mime =
+        ext === "csv"
+          ? "text/csv"
+          : ext === "xlsx"
+          ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          : "application/pdf";
+      const handle = await picker({
+        suggestedName: fileName,
+        types: [{ description: "Export file", accept: { [mime]: [`.${ext}`] } }],
+      });
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      return;
+    } catch {
+      // Fall back to default download if the picker is cancelled or unavailable.
+    }
+  }
+
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = fileName;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  URL.revokeObjectURL(url);
 }
 
 function ItemDetailPageContent() {
@@ -182,6 +234,61 @@ function ItemDetailPageContent() {
     { key: "amt", header: <span className="block text-right">Value</span>, align: "right", width: 140, cell: (r) => <MoneyText value={r.runningAmt ?? 0} className="font-semibold" /> },
   ];
 
+  const buildExportRows = () => {
+    const summaryRows = [
+      ["Name", item?.name ?? ""],
+      ["SKU", item?.sku ?? ""],
+      ["Type", isGoods ? "Goods" : "Services"],
+      ["Unit", item?.unit ?? ""],
+      ["Sales Price", item?.salesPrice ?? 0],
+      ["Purchase Price", item?.purchasePrice ?? 0],
+      ["Opening Qty", ledger?.openingQty ?? 0],
+      ["Debit / Inward", ledger?.debitQty ?? 0],
+      ["Credit / Outward", ledger?.creditQty ?? 0],
+      ["Closing Qty", ledger?.closingQty ?? 0],
+      ["Closing Amount", ledger?.closingAmt ?? 0],
+    ];
+    const movementHeader = ["Date", "Source", "Location", "In", "Out", "Rate", "Balance", "Value"];
+    const movementRows = (ledger?.entries ?? []).map((entry) => [
+      new Date(entry.date).toLocaleDateString(),
+      entry.voucherNumber || entry.voucherType || "Opening / manual",
+      [entry.warehouseName, entry.binName].filter(Boolean).join(" / "),
+      entry.qtyIn || "",
+      entry.qtyOut || "",
+      entry.rate ?? 0,
+      entry.runningQty ?? 0,
+      entry.runningAmt ?? 0,
+    ]);
+    return { summaryRows, movementHeader, movementRows };
+  };
+
+  const exportCsv = async () => {
+    const { summaryRows, movementHeader, movementRows } = buildExportRows();
+    const rows = [["Item Summary"], ...summaryRows, [], ["Stock Movements"], movementHeader, ...movementRows];
+    await saveBlob(new Blob([rows.map((row) => row.map(csvEscape).join(",")).join("\n")], { type: "text/csv;charset=utf-8;" }), `${safeFileName(item?.name ?? "item")}_stock.csv`);
+  };
+
+  const exportExcel = async () => {
+    const { summaryRows, movementHeader, movementRows } = buildExportRows();
+    const XLSX = await import("xlsx");
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["Item Summary"], ...summaryRows]), "Summary");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([movementHeader, ...movementRows]), "Stock Ledger");
+    const output = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    await saveBlob(new Blob([output], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `${safeFileName(item?.name ?? "item")}_stock.xlsx`);
+  };
+
+  const exportPdf = async () => {
+    const { summaryRows, movementHeader, movementRows } = buildExportRows();
+    const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
+    const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+    doc.setFontSize(14);
+    doc.text(`${item?.name ?? "Item"} - Stock Report`, 40, 36);
+    autoTable(doc, { body: summaryRows.map((row) => row.map(String)), startY: 54, theme: "grid", styles: { fontSize: 9 } });
+    autoTable(doc, { head: [movementHeader], body: movementRows.map((row) => row.map((value) => String(value ?? ""))), startY: (doc as any).lastAutoTable.finalY + 18, styles: { fontSize: 8 }, headStyles: { fillColor: [31, 41, 55] } });
+    await saveBlob(doc.output("blob"), `${safeFileName(item?.name ?? "item")}_stock.pdf`);
+  };
+
   if (loading) {
     return (
       <div className="space-y-6 animate-pulse">
@@ -222,14 +329,28 @@ function ItemDetailPageContent() {
         <span className="max-w-[300px] truncate font-medium text-foreground">{item.name}</span>
       </div>
 
-      <button
-        type="button"
-        onClick={() => router.push("/items")}
-        className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-transparent bg-transparent px-4 text-sm font-bold text-slate-950 transition-colors hover:border-orange-600 hover:bg-orange-600 hover:text-white dark:text-white"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        <span>Back to all items</span>
-      </button>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <button
+          type="button"
+          onClick={() => router.push("/items")}
+          className="inline-flex h-10 w-fit items-center justify-center gap-2 rounded-full border border-transparent bg-transparent px-4 text-sm font-bold text-slate-950 transition-colors hover:border-orange-600 hover:bg-orange-600 hover:text-white dark:text-white"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span>Back to all items</span>
+        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="sm" className="h-10 w-fit rounded-full bg-emerald-600 px-4 text-white shadow-lg shadow-emerald-500/15 hover:bg-emerald-700">
+              <FileDown className="mr-2 h-4 w-4" /> Export
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-[180px] rounded-2xl p-2">
+            <DropdownMenuItem onClick={exportPdf} className="cursor-pointer rounded-xl"><FileText className="mr-2 h-4 w-4" /> PDF</DropdownMenuItem>
+            <DropdownMenuItem onClick={exportExcel} className="cursor-pointer rounded-xl"><FileSpreadsheet className="mr-2 h-4 w-4" /> Excel (.xlsx)</DropdownMenuItem>
+            <DropdownMenuItem onClick={exportCsv} className="cursor-pointer rounded-xl"><FileDown className="mr-2 h-4 w-4" /> CSV</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
       <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-muted/20 p-6 sm:p-8">
         <div className="absolute right-0 top-0 h-40 w-40 rounded-bl-full bg-gradient-to-bl from-primary/5 to-transparent" />
