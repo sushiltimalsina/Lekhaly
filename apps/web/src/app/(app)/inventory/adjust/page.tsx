@@ -36,6 +36,12 @@ type ItemOption = {
   tracksBatch?: boolean;
   tracksLot?: boolean;
   tracksExpiry?: boolean;
+  defaultWarehouseId?: string | null;
+  defaultBinId?: string | null;
+  defaultBatchNo?: string | null;
+  defaultLotNo?: string | null;
+  defaultExpiryDate?: string | null;
+  defaultExpiryDateBs?: string | null;
 };
 type AccountOption = { id: string; name: string; code?: string; type?: string };
 
@@ -100,6 +106,12 @@ export default function StockAdjustPage() {
               tracksBatch: i.tracksBatch,
               tracksLot: i.tracksLot,
               tracksExpiry: i.tracksExpiry,
+              defaultWarehouseId: i.defaultWarehouseId,
+              defaultBinId: i.defaultBinId,
+              defaultBatchNo: i.defaultBatchNo,
+              defaultLotNo: i.defaultLotNo,
+              defaultExpiryDate: i.defaultExpiryDate,
+              defaultExpiryDateBs: i.defaultExpiryDateBs,
             }))
         );
         setAccounts(
@@ -126,6 +138,15 @@ export default function StockAdjustPage() {
   const showTrackingCard = hasLineTracking(features) && (features.warehouses || features.batch || features.lot || features.expiry || (features.serial && selectedItem?.isSerialized));
   const amount =
     Number(qty) && Number(rate) ? Math.abs(Number(qty)) * Number(rate) : 0;
+
+  React.useEffect(() => {
+    if (!selectedItem) return;
+    setWarehouseId(selectedItem.defaultWarehouseId || inventorySettings?.defaultWarehouseId || "");
+    setBinId(selectedItem.defaultBinId || "");
+    setBatchNo(selectedItem.defaultBatchNo || "");
+    setLotNo(selectedItem.defaultLotNo || "");
+    setExpiryDate(selectedItem.defaultExpiryDate ? String(selectedItem.defaultExpiryDate).split("T")[0] : "");
+  }, [selectedItem?.id]);
 
   const handleSubmit = async () => {
     setError(null);

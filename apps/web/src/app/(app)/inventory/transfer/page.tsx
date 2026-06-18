@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { hasLineTracking, inventoryFeatures } from "@/lib/inventory-features";
-import { getInventorySettings, transferInventoryStock, type InventorySettings } from "@/lib/api/inventory";
+import { getInventorySettings, getTrackedStockOptions, transferInventoryStock, type InventorySettings, type TrackedStockOption } from "@/lib/api/inventory";
 import { listItems } from "@/lib/api/items";
 import {
   listWarehouses,
@@ -39,6 +39,12 @@ type ItemOption = {
   tracksBatch?: boolean;
   tracksLot?: boolean;
   tracksExpiry?: boolean;
+  defaultWarehouseId?: string | null;
+  defaultBinId?: string | null;
+  defaultBatchNo?: string | null;
+  defaultLotNo?: string | null;
+  defaultExpiryDate?: string | null;
+  defaultExpiryDateBs?: string | null;
 };
 
 export default function StockTransferPage() {
@@ -69,6 +75,7 @@ export default function StockTransferPage() {
   const [lotNo, setLotNo] = React.useState("");
   const [expiryDate, setExpiryDate] = React.useState("");
   const [serialText, setSerialText] = React.useState("");
+  const [trackingOptions, setTrackingOptions] = React.useState<TrackedStockOption[]>([]);
 
   // Load master data
   React.useEffect(() => {
@@ -92,6 +99,12 @@ export default function StockTransferPage() {
               tracksBatch: i.tracksBatch,
               tracksLot: i.tracksLot,
               tracksExpiry: i.tracksExpiry,
+              defaultWarehouseId: i.defaultWarehouseId,
+              defaultBinId: i.defaultBinId,
+              defaultBatchNo: i.defaultBatchNo,
+              defaultLotNo: i.defaultLotNo,
+              defaultExpiryDate: i.defaultExpiryDate,
+              defaultExpiryDateBs: i.defaultExpiryDateBs,
             }))
         );
         setWarehouses(Array.isArray(whData) ? whData : []);
@@ -107,6 +120,35 @@ export default function StockTransferPage() {
   const toBins = features.bins ? toWarehouse?.bins?.filter((b) => b.isActive) ?? [] : [];
   const showTrackingCard = hasLineTracking(features) && (features.batch || features.lot || features.expiry || (features.serial && selectedItem?.isSerialized));
   const amount = Number(qty) && Number(rate) ? Math.abs(Number(qty)) * Number(rate) : 0;
+  const trackingSelectOptions = trackingOptions.map((option, index) => ({
+    value: String(index),
+    label: [
+      option.batchNo && `Batch ${option.batchNo}`,
+      option.lotNo && `Lot ${option.lotNo}`,
+      option.expiryDate && `Exp ${String(option.expiryDate).split("T")[0]}`,
+      option.binName && `Bin ${option.binName}`,
+      `Qty ${option.qty}`,
+    ].filter(Boolean).join(" / "),
+  }));
+
+  React.useEffect(() => {
+    if (!selectedItem) return;
+    setFromWarehouseId(selectedItem.defaultWarehouseId || inventorySettings?.defaultWarehouseId || "");
+    setFromBinId(selectedItem.defaultBinId || "");
+    setBatchNo(selectedItem.defaultBatchNo || "");
+    setLotNo(selectedItem.defaultLotNo || "");
+    setExpiryDate(selectedItem.defaultExpiryDate ? String(selectedItem.defaultExpiryDate).split("T")[0] : "");
+  }, [selectedItem?.id]);
+
+  React.useEffect(() => {
+    if (!itemId || !fromWarehouseId) {
+      setTrackingOptions([]);
+      return;
+    }
+    getTrackedStockOptions({ itemId, warehouseId: fromWarehouseId, binId: fromBinId || undefined })
+      .then((res) => setTrackingOptions(res.options ?? []))
+      .catch(() => setTrackingOptions([]));
+  }, [itemId, fromWarehouseId, fromBinId]);
 
   const handleSubmit = async () => {
     setError(null);
@@ -376,6 +418,21 @@ export default function StockTransferPage() {
           <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Tracking
           </h3>
+          {trackingSelectOptions.length > 0 && (
+            <SearchableSelect
+              options={[{ value: "", label: "Choose available batch / lot / expiry" }, ...trackingSelectOptions]}
+              value=""
+              onChange={(value) => {
+                const option = trackingOptions[Number(value)];
+                if (!option) return;
+                setBatchNo(option.batchNo || "");
+                setLotNo(option.lotNo || "");
+                setExpiryDate(option.expiryDate ? String(option.expiryDate).split("T")[0] : "");
+                setRate(option.rate ? String(option.rate) : rate);
+              }}
+              placeholder="Choose from available source stock..."
+            />
+          )}
           <div className="grid gap-4 sm:grid-cols-3">
             {features.batch && <Input placeholder={selectedItem?.tracksBatch ? "Batch Number *" : "Batch Number"} value={batchNo} onChange={(e) => setBatchNo(e.target.value)} className="rounded-xl" />}
             {features.lot && <Input placeholder={selectedItem?.tracksLot ? "Lot Number *" : "Lot Number"} value={lotNo} onChange={(e) => setLotNo(e.target.value)} className="rounded-xl" />}

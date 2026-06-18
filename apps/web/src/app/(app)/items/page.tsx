@@ -25,7 +25,9 @@ import {
   getInventorySettings,
   getItemStockLedger,
   getStockReport,
+  getTrackedStockOptions,
   InventoryAlerts,
+  type TrackedStockOption,
   type InventorySettings,
   StockLedgerEntry,
   StockReportRow,
@@ -447,6 +449,7 @@ export default function ItemsPage() {
     expiryDateBs: "",
     serialText: "",
   });
+  const [transferTrackingOptions, setTransferTrackingOptions] = React.useState<TrackedStockOption[]>([]);
   const dateMenuWrapRef = React.useRef<HTMLDivElement | null>(null);
   const columnsMenuWrapRef = React.useRef<HTMLDivElement | null>(null);
   const exportMenuWrapRef = React.useRef<HTMLDivElement | null>(null);
@@ -1081,6 +1084,55 @@ export default function ItemsPage() {
   const destinationBins = destinationWarehouse?.bins ?? [];
   const sourceBinSelectOptions = [{ value: "", label: "No bin / default" }, ...sourceBins.map((bin) => ({ value: bin.id, label: `${bin.name}${bin.code ? ` (${bin.code})` : ""}` }))];
   const destinationBinSelectOptions = [{ value: "", label: "No bin / default" }, ...destinationBins.map((bin) => ({ value: bin.id, label: `${bin.name}${bin.code ? ` (${bin.code})` : ""}` }))];
+  const transferTrackingSelectOptions = transferTrackingOptions.map((option, index) => ({
+    value: String(index),
+    label: [
+      option.batchNo && `Batch ${option.batchNo}`,
+      option.lotNo && `Lot ${option.lotNo}`,
+      option.expiryDate && `Exp ${String(option.expiryDate).split("T")[0]}`,
+      `Qty ${option.qty}`,
+    ].filter(Boolean).join(" / "),
+  }));
+
+  React.useEffect(() => {
+    if (!selectedAdjustmentItem) return;
+    setAdjustForm((prev) => ({
+      ...prev,
+      warehouseId: selectedAdjustmentItem.defaultWarehouseId || prev.warehouseId || inventorySettings?.defaultWarehouseId || "",
+      binId: selectedAdjustmentItem.defaultBinId || "",
+      batchNo: selectedAdjustmentItem.defaultBatchNo || "",
+      lotNo: selectedAdjustmentItem.defaultLotNo || "",
+      expiryDate: selectedAdjustmentItem.defaultExpiryDate ? String(selectedAdjustmentItem.defaultExpiryDate).split("T")[0] : "",
+      expiryDateBs: selectedAdjustmentItem.defaultExpiryDateBs || "",
+    }));
+  }, [selectedAdjustmentItem?.id]);
+
+  React.useEffect(() => {
+    if (!selectedTransferItem) return;
+    setTransferForm((prev) => ({
+      ...prev,
+      fromWarehouseId: selectedTransferItem.defaultWarehouseId || prev.fromWarehouseId || inventorySettings?.defaultWarehouseId || "",
+      fromBinId: selectedTransferItem.defaultBinId || "",
+      batchNo: selectedTransferItem.defaultBatchNo || "",
+      lotNo: selectedTransferItem.defaultLotNo || "",
+      expiryDate: selectedTransferItem.defaultExpiryDate ? String(selectedTransferItem.defaultExpiryDate).split("T")[0] : "",
+      expiryDateBs: selectedTransferItem.defaultExpiryDateBs || "",
+    }));
+  }, [selectedTransferItem?.id]);
+
+  React.useEffect(() => {
+    if (!transferForm.itemId || !transferForm.fromWarehouseId) {
+      setTransferTrackingOptions([]);
+      return;
+    }
+    getTrackedStockOptions({
+      itemId: transferForm.itemId,
+      warehouseId: transferForm.fromWarehouseId,
+      binId: transferForm.fromBinId || undefined,
+    })
+      .then((res) => setTransferTrackingOptions(res.options ?? []))
+      .catch(() => setTransferTrackingOptions([]));
+  }, [transferForm.itemId, transferForm.fromWarehouseId, transferForm.fromBinId]);
 
   React.useEffect(() => {
     if (adjustForm.binId && !adjustBins.some((bin) => bin.id === adjustForm.binId)) {
@@ -2370,6 +2422,27 @@ export default function ItemsPage() {
                 </label>
               </section>
               <section className="grid gap-3 rounded-2xl border border-border/70 bg-background/60 p-4 sm:grid-cols-2">
+                {transferTrackingSelectOptions.length > 0 && (
+                  <div className="sm:col-span-2">
+                    <SearchableSelect
+                      options={[{ value: "", label: "Choose available batch / lot / expiry" }, ...transferTrackingSelectOptions]}
+                      value=""
+                      onChange={(value) => {
+                        const option = transferTrackingOptions[Number(value)];
+                        if (!option) return;
+                        setTransferForm((p) => ({
+                          ...p,
+                          batchNo: option.batchNo || "",
+                          lotNo: option.lotNo || "",
+                          expiryDate: option.expiryDate ? String(option.expiryDate).split("T")[0] : "",
+                          expiryDateBs: option.expiryDateBs || "",
+                          rate: option.rate ? String(option.rate) : p.rate,
+                        }));
+                      }}
+                      placeholder="Choose from available source stock..."
+                    />
+                  </div>
+                )}
                 {features.batch && <Input placeholder="Batch Number" value={transferForm.batchNo} onChange={(e) => setTransferForm((p) => ({ ...p, batchNo: e.target.value }))} />}
                 {features.lot && <Input placeholder="Lot Number" value={transferForm.lotNo} onChange={(e) => setTransferForm((p) => ({ ...p, lotNo: e.target.value }))} />}
                 {features.expiry && <DualDateInput label="Expiry Date" value={{ ad: transferForm.expiryDate, bs: transferForm.expiryDateBs }} onChange={(next) => setTransferForm((p) => ({ ...p, expiryDate: next.ad, expiryDateBs: next.bs }))} required={Boolean(selectedTransferItem?.tracksExpiry)} />}

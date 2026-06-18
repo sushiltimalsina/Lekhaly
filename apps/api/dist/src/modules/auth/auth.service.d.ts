@@ -528,6 +528,12 @@ export declare class AuthService {
             tracksExpiry: boolean;
             minStockLevel: Prisma.Decimal | null;
             reorderQty: Prisma.Decimal | null;
+            defaultWarehouseId: string | null;
+            defaultBinId: string | null;
+            defaultBatchNo: string | null;
+            defaultLotNo: string | null;
+            defaultExpiryDate: Date | null;
+            defaultExpiryDateBs: string | null;
         } | {
             id: string;
             companyId: string;
@@ -556,6 +562,12 @@ export declare class AuthService {
             tracksExpiry: boolean;
             minStockLevel: Prisma.Decimal | null;
             reorderQty: Prisma.Decimal | null;
+            defaultWarehouseId: string | null;
+            defaultBinId: string | null;
+            defaultBatchNo: string | null;
+            defaultLotNo: string | null;
+            defaultExpiryDate: Date | null;
+            defaultExpiryDateBs: string | null;
         })[] | ({
             id: string;
             companyId: string;
@@ -1346,6 +1358,12 @@ export declare class AuthService {
             tracksExpiry: boolean;
             minStockLevel: Prisma.Decimal | null;
             reorderQty: Prisma.Decimal | null;
+            defaultWarehouseId: string | null;
+            defaultBinId: string | null;
+            defaultBatchNo: string | null;
+            defaultLotNo: string | null;
+            defaultExpiryDate: Date | null;
+            defaultExpiryDateBs: string | null;
         }[] | {
             id: string;
             companyId: string;
@@ -2187,6 +2205,12 @@ export declare class AuthService {
             tracksExpiry: boolean;
             minStockLevel: Prisma.Decimal | null;
             reorderQty: Prisma.Decimal | null;
+            defaultWarehouseId: string | null;
+            defaultBinId: string | null;
+            defaultBatchNo: string | null;
+            defaultLotNo: string | null;
+            defaultExpiryDate: Date | null;
+            defaultExpiryDateBs: string | null;
         } | {
             id: string;
             companyId: string;
@@ -2215,6 +2239,12 @@ export declare class AuthService {
             tracksExpiry: boolean;
             minStockLevel: Prisma.Decimal | null;
             reorderQty: Prisma.Decimal | null;
+            defaultWarehouseId: string | null;
+            defaultBinId: string | null;
+            defaultBatchNo: string | null;
+            defaultLotNo: string | null;
+            defaultExpiryDate: Date | null;
+            defaultExpiryDateBs: string | null;
         })[] | ({
             id: string;
             companyId: string;
@@ -3005,6 +3035,12 @@ export declare class AuthService {
             tracksExpiry: boolean;
             minStockLevel: Prisma.Decimal | null;
             reorderQty: Prisma.Decimal | null;
+            defaultWarehouseId: string | null;
+            defaultBinId: string | null;
+            defaultBatchNo: string | null;
+            defaultLotNo: string | null;
+            defaultExpiryDate: Date | null;
+            defaultExpiryDateBs: string | null;
         }[] | {
             id: string;
             companyId: string;

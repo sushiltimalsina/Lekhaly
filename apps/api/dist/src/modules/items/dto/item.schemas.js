@@ -33,6 +33,12 @@ exports.CreateItemSchema = zod_1.z.object({
     tracksBatch: zod_1.z.boolean().optional(),
     tracksLot: zod_1.z.boolean().optional(),
     tracksExpiry: zod_1.z.boolean().optional(),
+    defaultWarehouseId: zod_1.z.string().uuid().optional(),
+    defaultBinId: zod_1.z.string().uuid().optional(),
+    defaultBatchNo: zod_1.z.string().trim().max(64).optional(),
+    defaultLotNo: zod_1.z.string().trim().max(64).optional(),
+    defaultExpiryDate: zod_1.z.coerce.date().optional(),
+    defaultExpiryDateBs: zod_1.z.string().trim().max(20).optional(),
     components: zod_1.z.array(zod_1.z.object({
         componentId: zod_1.z.string().uuid(),
         qty: zod_1.z.number().positive()

@@ -28,6 +28,12 @@ export type ItemRecord = {
   tracksBatch?: boolean;
   tracksLot?: boolean;
   tracksExpiry?: boolean;
+  defaultWarehouseId?: string | null;
+  defaultBinId?: string | null;
+  defaultBatchNo?: string | null;
+  defaultLotNo?: string | null;
+  defaultExpiryDate?: string | null;
+  defaultExpiryDateBs?: string | null;
   components?: Array<{ componentId: string; qty: number }>;
   stock?: number;
 };

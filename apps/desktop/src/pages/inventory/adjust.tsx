@@ -54,7 +54,7 @@ export default function StockAdjustPage() {
         if (settingsData.defaultWarehouseId) setWarehouseId(settingsData.defaultWarehouseId);
         const itemList = Array.isArray(iData) ? iData : (iData as any)?.items ?? [];
         const accountList = Array.isArray(aData) ? aData : (aData as any)?.accounts ?? (aData as any)?.items ?? [];
-        setItems(itemList.filter((i: any) => i.type !== "services" && i.trackInventory !== false).map((i: any) => ({ id: i.id, name: i.name, sku: i.sku, stock: i.stock ?? 0, isSerialized: i.isSerialized, tracksBatch: i.tracksBatch, tracksLot: i.tracksLot, tracksExpiry: i.tracksExpiry })));
+        setItems(itemList.filter((i: any) => i.type !== "services" && i.trackInventory !== false).map((i: any) => ({ id: i.id, name: i.name, sku: i.sku, stock: i.stock ?? 0, isSerialized: i.isSerialized, tracksBatch: i.tracksBatch, tracksLot: i.tracksLot, tracksExpiry: i.tracksExpiry, defaultWarehouseId: i.defaultWarehouseId, defaultBinId: i.defaultBinId, defaultBatchNo: i.defaultBatchNo, defaultLotNo: i.defaultLotNo, defaultExpiryDate: i.defaultExpiryDate, defaultExpiryDateBs: i.defaultExpiryDateBs })));
         setAccounts(accountList.filter((a: any) => a.isPostable !== false).map((a: any) => ({ id: a.id, name: a.name, code: a.code, type: a.type })));
       } catch (error: any) {
         setError(error?.message ?? "Failed to load items and accounts.");
@@ -74,6 +74,15 @@ export default function StockAdjustPage() {
   const features = inventoryFeatures(inventorySettings);
   const showTrackingCard = hasLineTracking(features) && (features.warehouses || features.batch || features.lot || features.expiry || (features.serial && selectedItem?.isSerialized));
   const amount = Number(qty) && Number(rate) ? Math.abs(Number(qty)) * Number(rate) : 0;
+
+  React.useEffect(() => {
+    if (!selectedItem) return;
+    setWarehouseId(selectedItem.defaultWarehouseId || inventorySettings?.defaultWarehouseId || "");
+    setBinId(selectedItem.defaultBinId || "");
+    setBatchNo(selectedItem.defaultBatchNo || "");
+    setLotNo(selectedItem.defaultLotNo || "");
+    setExpiryDate(selectedItem.defaultExpiryDate ? String(selectedItem.defaultExpiryDate).split("T")[0] : "");
+  }, [selectedItem?.id]);
   const projectedStock = (selectedItem?.stock ?? 0) + (direction === "increase" ? Math.abs(Number(qty) || 0) : -Math.abs(Number(qty) || 0));
 
   const handleSubmit = async () => {

@@ -26,6 +26,11 @@ export declare class InventoryService {
         defaultWarehouseId?: string | null;
         costingMethod?: "moving_average" | "fifo";
     }): Promise<{
+        id: string;
+        companyId: string;
+        createdAt: Date;
+        updatedAt: Date;
+        defaultWarehouseId: string | null;
         inventoryTrackingEnabled: boolean;
         warehousesEnabled: boolean;
         binsEnabled: boolean;
@@ -36,12 +41,7 @@ export declare class InventoryService {
         kitsEnabled: boolean;
         allowNegativeStock: boolean;
         requireWarehouseOnMovements: boolean;
-        defaultWarehouseId: string | null;
         costingMethod: string;
-        id: string;
-        companyId: string;
-        createdAt: Date;
-        updatedAt: Date;
     }>;
     private assertSettingsCanChange;
     private normalizeSerialNumbers;
@@ -196,6 +196,12 @@ export declare class InventoryService {
         tracksBatch: boolean;
         tracksLot: boolean;
         tracksExpiry: boolean;
+        defaultWarehouseId: any;
+        defaultBinId: any;
+        defaultBatchNo: any;
+        defaultLotNo: any;
+        defaultExpiryDate: any;
+        defaultExpiryDateBs: any;
         parentGroup: string;
         reorderLevel: number;
         safetyStock: number;
@@ -374,10 +380,10 @@ export declare class InventoryService {
         }[];
         expiringSoon: {
             qty: number;
-            itemId: string;
             batchNo: string | null;
             lotNo: string | null;
             expiryDate: Date | null;
+            itemId: string;
             _sum: {
                 qtyIn: Prisma.Decimal | null;
                 qtyOut: Prisma.Decimal | null;
@@ -396,31 +402,66 @@ export declare class InventoryService {
         take?: number;
     }): Promise<({
         item: {
-            name: string;
             id: string;
+            name: string;
             sku: string | null;
         };
         warehouse: {
-            name: string;
             id: string;
+            name: string;
         } | null;
         bin: {
-            name: string;
             id: string;
+            name: string;
         } | null;
     } & {
+        id: string;
+        companyId: string;
+        status: string;
+        createdAt: Date;
+        updatedAt: Date;
         itemId: string;
         warehouseId: string | null;
         binId: string | null;
-        status: string;
         serialNo: string;
-        id: string;
-        companyId: string;
-        createdAt: Date;
-        updatedAt: Date;
         purchaseInvoiceId: string | null;
         salesInvoiceId: string | null;
     })[]>;
+    getTrackedStockOptions(user: AuthUser, query: {
+        itemId: string;
+        warehouseId?: string;
+        binId?: string;
+    }): Promise<{
+        item: {
+            id: string;
+            name: string;
+            sku: string | null;
+            isSerialized: boolean;
+            tracksBatch: boolean;
+            tracksLot: boolean;
+            tracksExpiry: boolean;
+        };
+        options: {
+            warehouseId: any;
+            warehouseName: string | null;
+            binId: any;
+            binName: string | null;
+            batchNo: any;
+            lotNo: any;
+            expiryDate: any;
+            expiryDateBs: any;
+            qty: number;
+            value: number;
+            rate: number;
+            receivedDate: any;
+        }[];
+        serials: never[] | {
+            id: string;
+            warehouseId: string | null;
+            binId: string | null;
+            serialNo: string;
+        }[];
+    }>;
     listSerialMovements(user: AuthUser, query: {
         itemId?: string;
         serialNo?: string;

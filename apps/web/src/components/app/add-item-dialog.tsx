@@ -6,6 +6,7 @@ import { createItem, type ItemType } from "@/lib/api/items";
 import { getInventorySettings, type InventorySettings } from "@/lib/api/inventory";
 import { listUnits, type UnitRecord } from "@/lib/api/units";
 import { listItemGroups, type ItemGroupRecord } from "@/lib/api/item-groups";
+import { listWarehouses, type Warehouse } from "@/lib/api/warehouses";
 import { listTaxes } from "@/lib/api/taxes";
 import { X, Save, PackagePlus, Info, Banknote, History, FileText, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -13,6 +14,8 @@ import { inventoryFeatures } from "@/lib/inventory-features";
 import { createPortal } from "react-dom";
 import AddUnitDialog from "./add-unit-dialog";
 import AddGroupDialog from "./add-group-dialog";
+import SearchableSelect from "./searchable-select";
+import DualDateInput from "./dual-date-input";
 
 type AddItemDialogProps = {
     open: boolean;
@@ -27,6 +30,7 @@ export default function AddItemDialog({ open, onClose, onSuccess }: AddItemDialo
     const [error, setError] = React.useState<string | null>(null);
     const [units, setUnits] = React.useState<UnitRecord[]>([]);
     const [groups, setGroups] = React.useState<ItemGroupRecord[]>([]);
+    const [warehouses, setWarehouses] = React.useState<Warehouse[]>([]);
     const [taxes, setTaxes] = React.useState<TaxCode[]>([]);
     const [taxable, setTaxable] = React.useState(false);
     const [inventorySettings, setInventorySettings] = React.useState<InventorySettings | null>(null);
@@ -50,6 +54,16 @@ export default function AddItemDialog({ open, onClose, onSuccess }: AddItemDialo
         incomeAccountId: "",
         expenseAccountId: "",
         taxCodeIds: [] as string[],
+        trackInventory: true,
+        tracksBatch: false,
+        tracksLot: false,
+        tracksExpiry: false,
+        defaultWarehouseId: "",
+        defaultBinId: "",
+        defaultBatchNo: "",
+        defaultLotNo: "",
+        defaultExpiryDate: "",
+        defaultExpiryDateBs: "",
     });
 
     const update = (key: keyof typeof form, value: any) => {
@@ -68,8 +82,9 @@ export default function AddItemDialog({ open, onClose, onSuccess }: AddItemDialo
             listUnits({ take: 100 }),
             listItemGroups({ take: 100 }),
             listTaxes({ take: 100 }),
-            getInventorySettings()
-        ]).then(([u, g, t, inv]: any) => {
+            getInventorySettings(),
+            listWarehouses({ isActive: true })
+        ]).then(([u, g, t, inv, wh]: any) => {
             setUnits(normalizeList<UnitRecord>(u));
             setGroups(normalizeList<ItemGroupRecord>(g));
             setTaxes(normalizeList<any>(t).map((item: any) => ({
@@ -78,6 +93,7 @@ export default function AddItemDialog({ open, onClose, onSuccess }: AddItemDialo
                 rate: item.rate
             })));
             setInventorySettings(inv);
+            setWarehouses(normalizeList<Warehouse>(wh));
         }).catch(() => { });
     }, [open]);
 
@@ -92,10 +108,37 @@ export default function AddItemDialog({ open, onClose, onSuccess }: AddItemDialo
         };
     }, [open]);
 
-    if (!open) return null;
-
     const features = inventoryFeatures(inventorySettings);
-    const showOpeningStock = form.type === "goods" && features.inventory;
+    const showOpeningStock = form.type === "goods" && features.inventory && form.trackInventory;
+    const selectedDefaultWarehouse = warehouses.find((warehouse) => warehouse.id === form.defaultWarehouseId);
+    const defaultBins = selectedDefaultWarehouse?.bins ?? [];
+
+    React.useEffect(() => {
+        if (!open || !inventorySettings) return;
+        setForm((prev) => {
+            const next = { ...prev };
+            if (prev.type === "services" || !features.inventory) next.trackInventory = false;
+            if (!next.trackInventory || !features.batch) next.tracksBatch = false;
+            if (!next.trackInventory || !features.lot) next.tracksLot = false;
+            if (!next.trackInventory || !features.expiry) next.tracksExpiry = false;
+            if (!features.warehouses) {
+                next.defaultWarehouseId = "";
+                next.defaultBinId = "";
+            } else if (!next.defaultWarehouseId && inventorySettings.defaultWarehouseId) {
+                next.defaultWarehouseId = inventorySettings.defaultWarehouseId;
+            }
+            if (!features.bins) next.defaultBinId = "";
+            if (!next.trackInventory || !next.tracksBatch) next.defaultBatchNo = "";
+            if (!next.trackInventory || !next.tracksLot) next.defaultLotNo = "";
+            if (!next.trackInventory || !next.tracksExpiry) {
+                next.defaultExpiryDate = "";
+                next.defaultExpiryDateBs = "";
+            }
+            return JSON.stringify(next) === JSON.stringify(prev) ? prev : next;
+        });
+    }, [open, inventorySettings, features.inventory, features.warehouses, features.bins, features.batch, features.lot, features.expiry, form.type]);
+
+    if (!open) return null;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -122,6 +165,16 @@ export default function AddItemDialog({ open, onClose, onSuccess }: AddItemDialo
                 incomeAccountId: form.incomeAccountId.trim() || undefined,
                 expenseAccountId: form.expenseAccountId.trim() || undefined,
                 taxCodeIds: taxable ? form.taxCodeIds : undefined,
+                trackInventory: form.type === "goods" && features.inventory ? form.trackInventory : false,
+                tracksBatch: showOpeningStock && features.batch ? form.tracksBatch : false,
+                tracksLot: showOpeningStock && features.lot ? form.tracksLot : false,
+                tracksExpiry: showOpeningStock && features.expiry ? form.tracksExpiry : false,
+                defaultWarehouseId: showOpeningStock && features.warehouses ? form.defaultWarehouseId || undefined : undefined,
+                defaultBinId: showOpeningStock && features.bins ? form.defaultBinId || undefined : undefined,
+                defaultBatchNo: showOpeningStock && features.batch && form.tracksBatch ? form.defaultBatchNo.trim() || undefined : undefined,
+                defaultLotNo: showOpeningStock && features.lot && form.tracksLot ? form.defaultLotNo.trim() || undefined : undefined,
+                defaultExpiryDate: showOpeningStock && features.expiry && form.tracksExpiry ? form.defaultExpiryDate || undefined : undefined,
+                defaultExpiryDateBs: showOpeningStock && features.expiry && form.tracksExpiry ? form.defaultExpiryDateBs || undefined : undefined,
             });
             onSuccess(res);
             onClose();
@@ -130,6 +183,8 @@ export default function AddItemDialog({ open, onClose, onSuccess }: AddItemDialo
                 name: "", sku: "", hsCode: "", unit: "", type: "goods",
                 salesPrice: "", purchasePrice: "", reorderLevel: "", safetyStock: "", openingQty: "", openingPrice: "",
                 groupId: "", incomeAccountId: "", expenseAccountId: "", taxCodeIds: []
+                , trackInventory: true, tracksBatch: false, tracksLot: false, tracksExpiry: false,
+                defaultWarehouseId: "", defaultBinId: "", defaultBatchNo: "", defaultLotNo: "", defaultExpiryDate: "", defaultExpiryDateBs: ""
             });
             setTaxable(false);
         } catch (err: any) {
@@ -403,6 +458,41 @@ export default function AddItemDialog({ open, onClose, onSuccess }: AddItemDialo
                                         className="h-12 rounded-2xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
                                     />
                                 </label>
+                            </div>
+                            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-900/40">
+                                <div className="mb-4 text-xs font-bold uppercase tracking-wider text-slate-500">Default Stock Identity</div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    {features.warehouses && (
+                                        <label className="space-y-1.5">
+                                            <span className="ml-1 text-xs font-bold text-slate-600 dark:text-slate-400">WAREHOUSE</span>
+                                            <SearchableSelect options={[{ id: "", name: "No default warehouse" }, ...warehouses]} valueId={form.defaultWarehouseId} onChange={(id) => setForm((prev) => ({ ...prev, defaultWarehouseId: id, defaultBinId: "" }))} placeholder="Search warehouse..." />
+                                        </label>
+                                    )}
+                                    {features.bins && (
+                                        <label className="space-y-1.5">
+                                            <span className="ml-1 text-xs font-bold text-slate-600 dark:text-slate-400">BIN</span>
+                                            <SearchableSelect options={[{ id: "", name: form.defaultWarehouseId ? "No default bin" : "Choose warehouse first" }, ...defaultBins]} valueId={form.defaultBinId} onChange={(id) => update("defaultBinId", id)} placeholder="Search bin..." disabled={!form.defaultWarehouseId} />
+                                        </label>
+                                    )}
+                                    {features.batch && (
+                                        <label className="space-y-1.5">
+                                            <span className="ml-1 text-xs font-bold text-slate-600 dark:text-slate-400">BATCH NO.</span>
+                                            <Input value={form.defaultBatchNo} onChange={(e) => { update("defaultBatchNo", e.target.value); update("tracksBatch", Boolean(e.target.value.trim())); }} placeholder="Batch no." className="h-12 rounded-2xl bg-white dark:bg-slate-950" />
+                                        </label>
+                                    )}
+                                    {features.lot && (
+                                        <label className="space-y-1.5">
+                                            <span className="ml-1 text-xs font-bold text-slate-600 dark:text-slate-400">LOT NO.</span>
+                                            <Input value={form.defaultLotNo} onChange={(e) => { update("defaultLotNo", e.target.value); update("tracksLot", Boolean(e.target.value.trim())); }} placeholder="Lot no." className="h-12 rounded-2xl bg-white dark:bg-slate-950" />
+                                        </label>
+                                    )}
+                                    {features.expiry && (
+                                        <div className="col-span-2 space-y-1.5">
+                                            <span className="ml-1 text-xs font-bold text-slate-600 dark:text-slate-400">EXPIRY DATE</span>
+                                            <DualDateInput value={{ ad: form.defaultExpiryDate, bs: form.defaultExpiryDateBs }} onChange={({ ad, bs }) => { update("defaultExpiryDate", ad); update("defaultExpiryDateBs", bs); update("tracksExpiry", Boolean(ad || bs)); }} accentColor="bg-orange-600" />
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     )}

@@ -1312,6 +1312,12 @@ export class InventoryService {
           tracksBatch: Boolean((item as any).tracksBatch),
           tracksLot: Boolean((item as any).tracksLot),
           tracksExpiry: Boolean((item as any).tracksExpiry),
+          defaultWarehouseId: (item as any).defaultWarehouseId ?? null,
+          defaultBinId: (item as any).defaultBinId ?? null,
+          defaultBatchNo: (item as any).defaultBatchNo ?? null,
+          defaultLotNo: (item as any).defaultLotNo ?? null,
+          defaultExpiryDate: (item as any).defaultExpiryDate ?? null,
+          defaultExpiryDateBs: (item as any).defaultExpiryDateBs ?? null,
           parentGroup: item.group?.name ?? item.incomeAccount?.name ?? item.expenseAccount?.name ?? "—",
           reorderLevel: Number((item as any).reorderLevel ?? 0),
           safetyStock: Number((item as any).safetyStock ?? 0),
@@ -1374,6 +1380,12 @@ export class InventoryService {
         tracksBatch: Boolean((item as any).tracksBatch),
         tracksLot: Boolean((item as any).tracksLot),
         tracksExpiry: Boolean((item as any).tracksExpiry),
+        defaultWarehouseId: (item as any).defaultWarehouseId ?? null,
+        defaultBinId: (item as any).defaultBinId ?? null,
+        defaultBatchNo: (item as any).defaultBatchNo ?? null,
+        defaultLotNo: (item as any).defaultLotNo ?? null,
+        defaultExpiryDate: (item as any).defaultExpiryDate ?? null,
+        defaultExpiryDateBs: (item as any).defaultExpiryDateBs ?? null,
         parentGroup: item.group?.name ?? item.incomeAccount?.name ?? item.expenseAccount?.name ?? "—",
         reorderLevel,
         safetyStock,
@@ -2088,6 +2100,93 @@ export class InventoryService {
         bin: { select: { id: true, name: true } }
       }
     });
+  }
+
+  async getTrackedStockOptions(
+    user: AuthUser,
+    query: { itemId: string; warehouseId?: string; binId?: string }
+  ) {
+    const item = await this.prisma.item.findFirst({
+      where: { id: query.itemId, companyId: user.companyId },
+      select: {
+        id: true,
+        name: true,
+        sku: true,
+        isSerialized: true,
+        tracksBatch: true,
+        tracksLot: true,
+        tracksExpiry: true
+      }
+    });
+    if (!item) throw new BadRequestException("Item not found");
+
+    const db = this.prisma as any;
+    let layers: any[] = [];
+    try {
+      layers = await db.inventoryLayer.groupBy({
+        by: ["warehouseId", "binId", "batchNo", "lotNo", "expiryDate", "expiryDateBs"],
+        where: {
+          companyId: user.companyId,
+          itemId: query.itemId,
+          remainingQty: { gt: new Prisma.Decimal(0) },
+          warehouseId: query.warehouseId ?? undefined,
+          binId: query.binId ?? undefined
+        },
+        _sum: { remainingQty: true, totalCost: true },
+        _avg: { unitCost: true },
+        _min: { receivedDate: true }
+      });
+    } catch (error) {
+      if (!this.isMissingInventoryTableError(error)) throw error;
+    }
+
+    const warehouseIds = Array.from(new Set(layers.map((layer) => layer.warehouseId).filter(Boolean))) as string[];
+    const binIds = Array.from(new Set(layers.map((layer) => layer.binId).filter(Boolean))) as string[];
+    const [warehouses, bins, serials] = await Promise.all([
+      warehouseIds.length
+        ? this.prisma.warehouse.findMany({ where: { id: { in: warehouseIds }, companyId: user.companyId }, select: { id: true, name: true } })
+        : Promise.resolve([]),
+      binIds.length
+        ? this.prisma.warehouseBin.findMany({ where: { id: { in: binIds }, companyId: user.companyId }, select: { id: true, name: true } })
+        : Promise.resolve([]),
+      item.isSerialized
+        ? this.prisma.serialNumber.findMany({
+            where: {
+              companyId: user.companyId,
+              itemId: item.id,
+              status: "available",
+              warehouseId: query.warehouseId ?? undefined,
+              binId: query.binId ?? undefined
+            },
+            select: { id: true, serialNo: true, warehouseId: true, binId: true },
+            orderBy: { serialNo: "asc" }
+          })
+        : Promise.resolve([])
+    ]);
+    const warehouseMap = new Map(warehouses.map((warehouse) => [warehouse.id, warehouse.name]));
+    const binMap = new Map(bins.map((bin) => [bin.id, bin.name]));
+
+    return {
+      item,
+      options: layers
+        .map((layer) => ({
+          warehouseId: layer.warehouseId ?? null,
+          warehouseName: layer.warehouseId ? warehouseMap.get(layer.warehouseId) ?? null : null,
+          binId: layer.binId ?? null,
+          binName: layer.binId ? binMap.get(layer.binId) ?? null : null,
+          batchNo: layer.batchNo ?? null,
+          lotNo: layer.lotNo ?? null,
+          expiryDate: layer.expiryDate ?? null,
+          expiryDateBs: layer.expiryDateBs ?? null,
+          qty: Number((layer._sum.remainingQty ?? 0).toString()),
+          value: Number((layer._sum.totalCost ?? 0).toString()),
+          rate: Number((layer._avg.unitCost ?? 0).toString()),
+          receivedDate: layer._min.receivedDate ?? null
+        }))
+        .filter((layer) => layer.qty > 0)
+        .sort((a, b) => String(a.receivedDate ?? "").localeCompare(String(b.receivedDate ?? ""))),
+      serials
+    };
   }
 
   async listSerialMovements(

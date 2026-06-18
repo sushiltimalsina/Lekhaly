@@ -15,6 +15,12 @@ export type StockReportRow = {
   tracksBatch?: boolean;
   tracksLot?: boolean;
   tracksExpiry?: boolean;
+  defaultWarehouseId?: string | null;
+  defaultBinId?: string | null;
+  defaultBatchNo?: string | null;
+  defaultLotNo?: string | null;
+  defaultExpiryDate?: string | null;
+  defaultExpiryDateBs?: string | null;
   parentGroup: string;
   reorderLevel?: number;
   safetyStock?: number;
@@ -129,9 +135,37 @@ export type StockValuationReport = {
   rows: StockValuationRow[];
 };
 
+export type TrackedStockOption = {
+  warehouseId?: string | null;
+  warehouseName?: string | null;
+  binId?: string | null;
+  binName?: string | null;
+  batchNo?: string | null;
+  lotNo?: string | null;
+  expiryDate?: string | null;
+  expiryDateBs?: string | null;
+  qty: number;
+  value: number;
+  rate: number;
+  receivedDate?: string | null;
+};
+
+export type TrackedStockOptions = {
+  item: { id: string; name: string; sku?: string | null; isSerialized?: boolean; tracksBatch?: boolean; tracksLot?: boolean; tracksExpiry?: boolean };
+  options: TrackedStockOption[];
+  serials: Array<{ id: string; serialNo: string; warehouseId?: string | null; binId?: string | null }>;
+};
+
 export async function getStockValuationReport(query?: { itemId?: string; warehouseId?: string; binId?: string; groupId?: string; q?: string; includeZero?: boolean }) {
   return apiRequest<StockValuationReport>({
     path: "/inventory/valuation",
+    query,
+  });
+}
+
+export async function getTrackedStockOptions(query: { itemId: string; warehouseId?: string; binId?: string }) {
+  return apiRequest<TrackedStockOptions>({
+    path: "/inventory/tracked-stock",
     query,
   });
 }

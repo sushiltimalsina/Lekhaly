@@ -11,6 +11,7 @@ import {
   StockAgingQuerySchema,
   StockAdjustmentSchema,
   StockQuerySchema,
+  TrackedStockQuerySchema,
   StockValuationQuerySchema,
   StockTransferSchema
 } from "./dto/inventory.schemas";
@@ -88,6 +89,15 @@ export class InventoryController {
     @Query(new ZodValidationPipe(StockValuationQuerySchema)) query: any
   ) {
     return this.inventory.getStockValuationReport(user, query);
+  }
+
+  @Get("tracked-stock")
+  @RequirePerm("masters.read")
+  trackedStock(
+    @CurrentUser() user: AuthUser,
+    @Query(new ZodValidationPipe(TrackedStockQuerySchema)) query: any
+  ) {
+    return this.inventory.getTrackedStockOptions(user, query);
   }
 
   @Post("transfer")

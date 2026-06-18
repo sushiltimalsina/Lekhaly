@@ -33,6 +33,12 @@ export declare const CreateItemSchema: z.ZodObject<{
     tracksBatch: z.ZodOptional<z.ZodBoolean>;
     tracksLot: z.ZodOptional<z.ZodBoolean>;
     tracksExpiry: z.ZodOptional<z.ZodBoolean>;
+    defaultWarehouseId: z.ZodOptional<z.ZodString>;
+    defaultBinId: z.ZodOptional<z.ZodString>;
+    defaultBatchNo: z.ZodOptional<z.ZodString>;
+    defaultLotNo: z.ZodOptional<z.ZodString>;
+    defaultExpiryDate: z.ZodOptional<z.ZodCoercedDate<unknown>>;
+    defaultExpiryDateBs: z.ZodOptional<z.ZodString>;
     components: z.ZodOptional<z.ZodArray<z.ZodObject<{
         componentId: z.ZodString;
         qty: z.ZodNumber;
@@ -72,6 +78,12 @@ export declare const UpdateItemSchema: z.ZodObject<{
     tracksBatch: z.ZodOptional<z.ZodOptional<z.ZodBoolean>>;
     tracksLot: z.ZodOptional<z.ZodOptional<z.ZodBoolean>>;
     tracksExpiry: z.ZodOptional<z.ZodOptional<z.ZodBoolean>>;
+    defaultWarehouseId: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    defaultBinId: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    defaultBatchNo: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    defaultLotNo: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    defaultExpiryDate: z.ZodOptional<z.ZodOptional<z.ZodCoercedDate<unknown>>>;
+    defaultExpiryDateBs: z.ZodOptional<z.ZodOptional<z.ZodString>>;
     components: z.ZodOptional<z.ZodOptional<z.ZodArray<z.ZodObject<{
         componentId: z.ZodString;
         qty: z.ZodNumber;

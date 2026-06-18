@@ -33,6 +33,12 @@ export const CreateItemSchema = z.object({
   tracksBatch: z.boolean().optional(),
   tracksLot: z.boolean().optional(),
   tracksExpiry: z.boolean().optional(),
+  defaultWarehouseId: z.string().uuid().optional(),
+  defaultBinId: z.string().uuid().optional(),
+  defaultBatchNo: z.string().trim().max(64).optional(),
+  defaultLotNo: z.string().trim().max(64).optional(),
+  defaultExpiryDate: z.coerce.date().optional(),
+  defaultExpiryDateBs: z.string().trim().max(20).optional(),
   // Bill of Materials (kit components)
   components: z.array(z.object({
     componentId: z.string().uuid(),

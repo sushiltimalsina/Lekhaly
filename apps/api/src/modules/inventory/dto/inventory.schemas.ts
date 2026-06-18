@@ -51,6 +51,12 @@ export const StockValuationQuerySchema = z.object({
   includeZero: z.coerce.boolean().optional()
 });
 
+export const TrackedStockQuerySchema = z.object({
+  itemId: z.string().uuid(),
+  warehouseId: z.string().uuid().optional(),
+  binId: z.string().uuid().optional()
+});
+
 export const StockTransferSchema = z.object({
   itemId: z.string().uuid(),
   fromWarehouseId: z.string().uuid(),

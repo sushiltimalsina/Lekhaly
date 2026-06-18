@@ -41,6 +41,10 @@ let ItemsService = class ItemsService {
         const openingQty = new client_1.Prisma.Decimal(type === "goods" ? input.openingQty ?? 0 : 0);
         const openingRate = new client_1.Prisma.Decimal(input.openingPrice ?? input.purchasePrice ?? 0);
         const inventoryPolicy = await this.resolveInventoryPolicy(user.companyId, input, type);
+        const settings = await this.inventory.getOrCreateSettings(user.companyId);
+        const defaultWarehouseId = input.defaultWarehouseId || settings.defaultWarehouseId || null;
+        const defaultBinId = input.defaultBinId || null;
+        this.validateDefaultTracking(input, inventoryPolicy);
         return this.prisma.$transaction(async (tx) => {
             const item = await tx.item.create({
                 data: {
@@ -67,6 +71,12 @@ let ItemsService = class ItemsService {
                     tracksBatch: inventoryPolicy.tracksBatch,
                     tracksLot: inventoryPolicy.tracksLot,
                     tracksExpiry: inventoryPolicy.tracksExpiry,
+                    defaultWarehouseId,
+                    defaultBinId,
+                    defaultBatchNo: this.clean(input.defaultBatchNo),
+                    defaultLotNo: this.clean(input.defaultLotNo),
+                    defaultExpiryDate: input.defaultExpiryDate ?? null,
+                    defaultExpiryDateBs: this.clean(input.defaultExpiryDateBs),
                     itemTaxCodes: taxCodeIds.length
                         ? { create: taxCodeIds.map((taxCodeId) => ({ taxCodeId })) }
                         : undefined,
@@ -91,7 +101,13 @@ let ItemsService = class ItemsService {
                         qtyIn: openingQty,
                         qtyOut: new client_1.Prisma.Decimal(0),
                         rate: openingRate,
-                        amount: openingQty.mul(openingRate)
+                        amount: openingQty.mul(openingRate),
+                        warehouseId: defaultWarehouseId,
+                        binId: defaultBinId,
+                        batchNo: this.clean(input.defaultBatchNo),
+                        lotNo: this.clean(input.defaultLotNo),
+                        expiryDate: input.defaultExpiryDate ?? null,
+                        expiryDateBs: this.clean(input.defaultExpiryDateBs)
                     }
                 });
                 await this.inventory.receiveInventoryLayer(tx, {
@@ -102,7 +118,13 @@ let ItemsService = class ItemsService {
                     date: ledger.date,
                     sourceLedgerId: ledger.id,
                     sourceVoucherId: null,
-                    sourceType: "opening"
+                    sourceType: "opening",
+                    warehouseId: defaultWarehouseId,
+                    binId: defaultBinId,
+                    batchNo: this.clean(input.defaultBatchNo),
+                    lotNo: this.clean(input.defaultLotNo),
+                    expiryDate: input.defaultExpiryDate ?? null,
+                    expiryDateBs: this.clean(input.defaultExpiryDateBs)
                 });
             }
             return item;
@@ -115,6 +137,7 @@ let ItemsService = class ItemsService {
         }
         await this.validateRelations(user.companyId, input, id);
         const inventoryPolicy = await this.resolveInventoryPolicy(user.companyId, input, input.type ?? item.type, item);
+        this.validateDefaultTracking(input, inventoryPolicy);
         const taxCodeIds = input.taxCodeIds || input.taxCodeId !== undefined ? this.taxCodeIds(input) : null;
         return this.prisma.$transaction(async (tx) => {
             if (taxCodeIds) {
@@ -419,6 +442,15 @@ let ItemsService = class ItemsService {
         if (input.groupId && !(await this.prisma.itemGroup.findFirst({ where: { id: input.groupId, companyId } }))) {
             throw new common_1.BadRequestException("Invalid item group");
         }
+        if (input.defaultWarehouseId && !(await this.prisma.warehouse.findFirst({ where: { id: input.defaultWarehouseId, companyId, isActive: true } }))) {
+            throw new common_1.BadRequestException("Invalid default warehouse");
+        }
+        if (input.defaultBinId) {
+            const bin = await this.prisma.warehouseBin.findFirst({ where: { id: input.defaultBinId, companyId, isActive: true } });
+            if (!bin || (input.defaultWarehouseId && bin.warehouseId !== input.defaultWarehouseId)) {
+                throw new common_1.BadRequestException("Invalid default bin");
+            }
+        }
         const accountIds = [input.incomeAccountId, input.expenseAccountId].filter(Boolean);
         if (accountIds.length) {
             const count = await this.prisma.chartOfAccount.count({ where: { id: { in: accountIds }, companyId } });
@@ -464,8 +496,31 @@ let ItemsService = class ItemsService {
             tracksBatch: inventoryPolicy.tracksBatch,
             tracksLot: inventoryPolicy.tracksLot,
             tracksExpiry: inventoryPolicy.tracksExpiry,
+            defaultWarehouseId: input.defaultWarehouseId !== undefined ? input.defaultWarehouseId || null : undefined,
+            defaultBinId: input.defaultBinId !== undefined ? input.defaultBinId || null : undefined,
+            defaultBatchNo: input.defaultBatchNo !== undefined ? this.clean(input.defaultBatchNo) : undefined,
+            defaultLotNo: input.defaultLotNo !== undefined ? this.clean(input.defaultLotNo) : undefined,
+            defaultExpiryDate: input.defaultExpiryDate !== undefined ? input.defaultExpiryDate : undefined,
+            defaultExpiryDateBs: input.defaultExpiryDateBs !== undefined ? this.clean(input.defaultExpiryDateBs) : undefined,
             isActive: input.isActive
         };
+    }
+    validateDefaultTracking(input, inventoryPolicy) {
+        if (!inventoryPolicy.trackInventory) {
+            if (input.defaultWarehouseId || input.defaultBinId || input.defaultBatchNo || input.defaultLotNo || input.defaultExpiryDate || input.defaultExpiryDateBs) {
+                throw new common_1.BadRequestException("Default inventory tracking fields require item stock tracking");
+            }
+            return;
+        }
+        if (input.defaultBatchNo && !inventoryPolicy.tracksBatch) {
+            throw new common_1.BadRequestException("Enable batch tracking for this item before setting a default batch number");
+        }
+        if (input.defaultLotNo && !inventoryPolicy.tracksLot) {
+            throw new common_1.BadRequestException("Enable lot tracking for this item before setting a default lot number");
+        }
+        if ((input.defaultExpiryDate || input.defaultExpiryDateBs) && !inventoryPolicy.tracksExpiry) {
+            throw new common_1.BadRequestException("Enable expiry tracking for this item before setting a default expiry date");
+        }
     }
     taxCodeIds(input) {
         return Array.from(new Set([...(input.taxCodeIds ?? []), input.taxCodeId].filter(Boolean)));

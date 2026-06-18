@@ -11,7 +11,7 @@ import { Input } from "@lekhaly/ui";
 import { ArrowRightLeft, Save, AlertTriangle, CheckCircle2, ChevronLeft, Info, ArrowRight, Warehouse, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { hasLineTracking, inventoryFeatures } from "@/lib/inventory-features";
-import { getInventorySettings, transferInventoryStock, type InventorySettings } from "@/lib/api/inventory";
+import { getInventorySettings, getTrackedStockOptions, transferInventoryStock, type InventorySettings, type TrackedStockOption } from "@/lib/api/inventory";
 import { listItems } from "@/lib/api/items";
 import { listWarehouses, type Warehouse as WarehouseType } from "@/lib/api/warehouses";
 
@@ -38,13 +38,14 @@ export default function StockTransferPage() {
   const [lotNo, setLotNo] = React.useState("");
   const [expiryDate, setExpiryDate] = React.useState("");
   const [serialText, setSerialText] = React.useState("");
+  const [trackingOptions, setTrackingOptions] = React.useState<TrackedStockOption[]>([]);
 
   React.useEffect(() => {
     (async () => {
       try {
         const [iData, whData, settingsData] = await Promise.all([listItems({ isActive: true, take: 1000 }), listWarehouses({ isActive: true }), getInventorySettings()]);
         setInventorySettings(settingsData);
-        setItems((Array.isArray(iData) ? iData : []).filter((i: any) => i.type !== "services" && i.trackInventory !== false).map((i: any) => ({ id: i.id, name: i.name, sku: i.sku, stock: i.stock ?? 0, isSerialized: i.isSerialized, tracksBatch: i.tracksBatch, tracksLot: i.tracksLot, tracksExpiry: i.tracksExpiry })));
+        setItems((Array.isArray(iData) ? iData : []).filter((i: any) => i.type !== "services" && i.trackInventory !== false).map((i: any) => ({ id: i.id, name: i.name, sku: i.sku, stock: i.stock ?? 0, isSerialized: i.isSerialized, tracksBatch: i.tracksBatch, tracksLot: i.tracksLot, tracksExpiry: i.tracksExpiry, defaultWarehouseId: i.defaultWarehouseId, defaultBinId: i.defaultBinId, defaultBatchNo: i.defaultBatchNo, defaultLotNo: i.defaultLotNo, defaultExpiryDate: i.defaultExpiryDate, defaultExpiryDateBs: i.defaultExpiryDateBs })));
         setWarehouses(Array.isArray(whData) ? whData : []);
       } catch {}
     })();
@@ -58,6 +59,24 @@ export default function StockTransferPage() {
   const toBins = features.bins ? toWh?.bins?.filter((b) => b.isActive) ?? [] : [];
   const showTrackingCard = hasLineTracking(features) && (features.batch || features.lot || features.expiry || (features.serial && selectedItem?.isSerialized));
   const amount = Number(qty) && Number(rate) ? Math.abs(Number(qty)) * Number(rate) : 0;
+  const trackingSelectOptions = trackingOptions.map((option, index) => ({ value: String(index), label: [option.batchNo && `Batch ${option.batchNo}`, option.lotNo && `Lot ${option.lotNo}`, option.expiryDate && `Exp ${String(option.expiryDate).split("T")[0]}`, option.binName && `Bin ${option.binName}`, `Qty ${option.qty}`].filter(Boolean).join(" / ") }));
+
+  React.useEffect(() => {
+    if (!selectedItem) return;
+    setFromWarehouseId(selectedItem.defaultWarehouseId || inventorySettings?.defaultWarehouseId || "");
+    setFromBinId(selectedItem.defaultBinId || "");
+    setBatchNo(selectedItem.defaultBatchNo || "");
+    setLotNo(selectedItem.defaultLotNo || "");
+    setExpiryDate(selectedItem.defaultExpiryDate ? String(selectedItem.defaultExpiryDate).split("T")[0] : "");
+  }, [selectedItem?.id]);
+
+  React.useEffect(() => {
+    if (!itemId || !fromWarehouseId) {
+      setTrackingOptions([]);
+      return;
+    }
+    getTrackedStockOptions({ itemId, warehouseId: fromWarehouseId, binId: fromBinId || undefined }).then((res) => setTrackingOptions(res.options ?? [])).catch(() => setTrackingOptions([]));
+  }, [itemId, fromWarehouseId, fromBinId]);
 
   const handleSubmit = async () => {
     setError(null); setSuccess(null);
@@ -133,6 +152,21 @@ export default function StockTransferPage() {
       {/* Batch/Lot Number */}
       {features.warehouses && showTrackingCard && <Card className="border-border/50 shadow-lg"><CardContent className="pt-6 space-y-4">
         <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Tracking</h3>
+        {trackingSelectOptions.length > 0 && (
+          <SearchableSelect
+            options={[{ value: "", label: "Choose available batch / lot / expiry" }, ...trackingSelectOptions]}
+            value=""
+            onChange={(value) => {
+              const option = trackingOptions[Number(value)];
+              if (!option) return;
+              setBatchNo(option.batchNo || "");
+              setLotNo(option.lotNo || "");
+              setExpiryDate(option.expiryDate ? String(option.expiryDate).split("T")[0] : "");
+              setRate(option.rate ? String(option.rate) : rate);
+            }}
+            placeholder="Choose from available source stock..."
+          />
+        )}
         <div className="grid gap-4 sm:grid-cols-3">
           {features.batch && <Input placeholder={selectedItem?.tracksBatch ? "Batch Number *" : "Batch Number"} value={batchNo} onChange={(e) => setBatchNo(e.target.value)} className="rounded-xl" />}
           {features.lot && <Input placeholder={selectedItem?.tracksLot ? "Lot Number *" : "Lot Number"} value={lotNo} onChange={(e) => setLotNo(e.target.value)} className="rounded-xl" />}

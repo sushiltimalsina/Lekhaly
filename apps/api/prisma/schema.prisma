@@ -533,6 +533,12 @@ model Item {
   tracksExpiry   Boolean  @default(false)
   minStockLevel  Decimal? @db.Decimal(14, 2)
   reorderQty     Decimal? @db.Decimal(14, 2)
+  defaultWarehouseId String?
+  defaultBinId       String?
+  defaultBatchNo     String?
+  defaultLotNo       String?
+  defaultExpiryDate  DateTime?
+  defaultExpiryDateBs String?
 
   components     ItemComponent[] @relation("KitComponents")
   usedInKits     ItemComponent[] @relation("ComponentOfKit")

@@ -38,6 +38,11 @@ export declare const StockValuationQuerySchema: z.ZodObject<{
     q: z.ZodOptional<z.ZodString>;
     includeZero: z.ZodOptional<z.ZodCoercedBoolean<unknown>>;
 }, z.core.$strip>;
+export declare const TrackedStockQuerySchema: z.ZodObject<{
+    itemId: z.ZodString;
+    warehouseId: z.ZodOptional<z.ZodString>;
+    binId: z.ZodOptional<z.ZodString>;
+}, z.core.$strip>;
 export declare const StockTransferSchema: z.ZodObject<{
     itemId: z.ZodString;
     fromWarehouseId: z.ZodString;

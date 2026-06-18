@@ -31,6 +31,12 @@ type ItemInput = {
   tracksBatch?: boolean;
   tracksLot?: boolean;
   tracksExpiry?: boolean;
+  defaultWarehouseId?: string;
+  defaultBinId?: string;
+  defaultBatchNo?: string;
+  defaultLotNo?: string;
+  defaultExpiryDate?: Date;
+  defaultExpiryDateBs?: string;
   components?: Array<{ componentId: string; qty: number }>;
   isActive?: boolean;
 };
@@ -64,6 +70,10 @@ export class ItemsService {
     const openingQty = new Prisma.Decimal(type === "goods" ? input.openingQty ?? 0 : 0);
     const openingRate = new Prisma.Decimal(input.openingPrice ?? input.purchasePrice ?? 0);
     const inventoryPolicy = await this.resolveInventoryPolicy(user.companyId, input, type);
+    const settings = await this.inventory.getOrCreateSettings(user.companyId);
+    const defaultWarehouseId = input.defaultWarehouseId || settings.defaultWarehouseId || null;
+    const defaultBinId = input.defaultBinId || null;
+    this.validateDefaultTracking(input, inventoryPolicy);
 
     return this.prisma.$transaction(async (tx) => {
       const item = await tx.item.create({
@@ -91,6 +101,12 @@ export class ItemsService {
           tracksBatch: inventoryPolicy.tracksBatch,
           tracksLot: inventoryPolicy.tracksLot,
           tracksExpiry: inventoryPolicy.tracksExpiry,
+          defaultWarehouseId,
+          defaultBinId,
+          defaultBatchNo: this.clean(input.defaultBatchNo),
+          defaultLotNo: this.clean(input.defaultLotNo),
+          defaultExpiryDate: input.defaultExpiryDate ?? null,
+          defaultExpiryDateBs: this.clean(input.defaultExpiryDateBs),
           itemTaxCodes: taxCodeIds.length
             ? { create: taxCodeIds.map((taxCodeId) => ({ taxCodeId })) }
             : undefined,
@@ -116,7 +132,13 @@ export class ItemsService {
             qtyIn: openingQty,
             qtyOut: new Prisma.Decimal(0),
             rate: openingRate,
-            amount: openingQty.mul(openingRate)
+            amount: openingQty.mul(openingRate),
+            warehouseId: defaultWarehouseId,
+            binId: defaultBinId,
+            batchNo: this.clean(input.defaultBatchNo),
+            lotNo: this.clean(input.defaultLotNo),
+            expiryDate: input.defaultExpiryDate ?? null,
+            expiryDateBs: this.clean(input.defaultExpiryDateBs)
           }
         });
         await this.inventory.receiveInventoryLayer(tx, {
@@ -127,7 +149,13 @@ export class ItemsService {
           date: ledger.date,
           sourceLedgerId: ledger.id,
           sourceVoucherId: null,
-          sourceType: "opening"
+          sourceType: "opening",
+          warehouseId: defaultWarehouseId,
+          binId: defaultBinId,
+          batchNo: this.clean(input.defaultBatchNo),
+          lotNo: this.clean(input.defaultLotNo),
+          expiryDate: input.defaultExpiryDate ?? null,
+          expiryDateBs: this.clean(input.defaultExpiryDateBs)
         });
       }
 
@@ -142,6 +170,7 @@ export class ItemsService {
     }
     await this.validateRelations(user.companyId, input, id);
     const inventoryPolicy = await this.resolveInventoryPolicy(user.companyId, input, input.type ?? (item as any).type, item);
+    this.validateDefaultTracking(input, inventoryPolicy);
 
     const taxCodeIds = input.taxCodeIds || input.taxCodeId !== undefined ? this.taxCodeIds(input) : null;
 
@@ -480,6 +509,15 @@ export class ItemsService {
     if (input.groupId && !(await this.prisma.itemGroup.findFirst({ where: { id: input.groupId, companyId } }))) {
       throw new BadRequestException("Invalid item group");
     }
+    if (input.defaultWarehouseId && !(await this.prisma.warehouse.findFirst({ where: { id: input.defaultWarehouseId, companyId, isActive: true } }))) {
+      throw new BadRequestException("Invalid default warehouse");
+    }
+    if (input.defaultBinId) {
+      const bin = await this.prisma.warehouseBin.findFirst({ where: { id: input.defaultBinId, companyId, isActive: true } });
+      if (!bin || (input.defaultWarehouseId && bin.warehouseId !== input.defaultWarehouseId)) {
+        throw new BadRequestException("Invalid default bin");
+      }
+    }
 
     const accountIds = [input.incomeAccountId, input.expenseAccountId].filter(Boolean) as string[];
     if (accountIds.length) {
@@ -536,8 +574,35 @@ export class ItemsService {
       tracksBatch: inventoryPolicy.tracksBatch,
       tracksLot: inventoryPolicy.tracksLot,
       tracksExpiry: inventoryPolicy.tracksExpiry,
+      defaultWarehouseId: input.defaultWarehouseId !== undefined ? input.defaultWarehouseId || null : undefined,
+      defaultBinId: input.defaultBinId !== undefined ? input.defaultBinId || null : undefined,
+      defaultBatchNo: input.defaultBatchNo !== undefined ? this.clean(input.defaultBatchNo) : undefined,
+      defaultLotNo: input.defaultLotNo !== undefined ? this.clean(input.defaultLotNo) : undefined,
+      defaultExpiryDate: input.defaultExpiryDate !== undefined ? input.defaultExpiryDate : undefined,
+      defaultExpiryDateBs: input.defaultExpiryDateBs !== undefined ? this.clean(input.defaultExpiryDateBs) : undefined,
       isActive: input.isActive
     };
+  }
+
+  private validateDefaultTracking(
+    input: ItemInput,
+    inventoryPolicy: { trackInventory: boolean; tracksBatch: boolean; tracksLot: boolean; tracksExpiry: boolean }
+  ) {
+    if (!inventoryPolicy.trackInventory) {
+      if (input.defaultWarehouseId || input.defaultBinId || input.defaultBatchNo || input.defaultLotNo || input.defaultExpiryDate || input.defaultExpiryDateBs) {
+        throw new BadRequestException("Default inventory tracking fields require item stock tracking");
+      }
+      return;
+    }
+    if (input.defaultBatchNo && !inventoryPolicy.tracksBatch) {
+      throw new BadRequestException("Enable batch tracking for this item before setting a default batch number");
+    }
+    if (input.defaultLotNo && !inventoryPolicy.tracksLot) {
+      throw new BadRequestException("Enable lot tracking for this item before setting a default lot number");
+    }
+    if ((input.defaultExpiryDate || input.defaultExpiryDateBs) && !inventoryPolicy.tracksExpiry) {
+      throw new BadRequestException("Enable expiry tracking for this item before setting a default expiry date");
+    }
   }
 
   private taxCodeIds(input: ItemInput) {

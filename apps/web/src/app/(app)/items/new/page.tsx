@@ -9,6 +9,7 @@ import { getInventorySettings, type InventorySettings } from "@/lib/api/inventor
 import { listTaxes } from "@/lib/api/taxes";
 import { listUnits, type UnitRecord } from "@/lib/api/units";
 import { listItemGroups, type ItemGroupRecord } from "@/lib/api/item-groups";
+import { listWarehouses, type Warehouse } from "@/lib/api/warehouses";
 import { cn } from "@/lib/utils";
 import { hasItemPolicyTracking, inventoryFeatures } from "@/lib/inventory-features";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -19,6 +20,8 @@ import {
 import Link from "next/link";
 import AddUnitDialog from "@/components/app/add-unit-dialog";
 import AddGroupDialog from "@/components/app/add-group-dialog";
+import SearchableSelect from "@/components/app/searchable-select";
+import DualDateInput from "@/components/app/dual-date-input";
 
 type ItemType = "goods" | "services";
 type TaxCode = { id: string; name: string; rate: number };
@@ -38,6 +41,7 @@ export default function NewItemPage() {
   const [units, setUnits] = React.useState<UnitRecord[]>([]);
   const [groups, setGroups] = React.useState<ItemGroupRecord[]>([]);
   const [allItems, setAllItems] = React.useState<SimpleItem[]>([]);
+  const [warehouses, setWarehouses] = React.useState<Warehouse[]>([]);
   const [inventorySettings, setInventorySettings] = React.useState<InventorySettings | null>(null);
   const [addUnitOpen, setAddUnitOpen] = React.useState(false);
   const [addGroupOpen, setAddGroupOpen] = React.useState(false);
@@ -69,6 +73,12 @@ export default function NewItemPage() {
     tracksBatch: false,
     tracksLot: false,
     tracksExpiry: false,
+    defaultWarehouseId: "",
+    defaultBinId: "",
+    defaultBatchNo: "",
+    defaultLotNo: "",
+    defaultExpiryDate: "",
+    defaultExpiryDateBs: "",
   });
 
   React.useEffect(() => {
@@ -109,6 +119,9 @@ export default function NewItemPage() {
     }).catch(() => setAllItems([]));
 
     getInventorySettings().then(setInventorySettings).catch(() => setInventorySettings(null));
+    listWarehouses({ isActive: true }).then((res: any) => {
+      setWarehouses(Array.isArray(res) ? res : res?.items ?? res?.data ?? []);
+    }).catch(() => setWarehouses([]));
   }, []);
 
   React.useEffect(() => {
@@ -137,6 +150,12 @@ export default function NewItemPage() {
         tracksBatch: Boolean(item.tracksBatch),
         tracksLot: Boolean(item.tracksLot),
         tracksExpiry: Boolean(item.tracksExpiry),
+        defaultWarehouseId: item.defaultWarehouseId ?? "",
+        defaultBinId: item.defaultBinId ?? "",
+        defaultBatchNo: item.defaultBatchNo ?? "",
+        defaultLotNo: item.defaultLotNo ?? "",
+        defaultExpiryDate: item.defaultExpiryDate ? String(item.defaultExpiryDate).split("T")[0] : "",
+        defaultExpiryDateBs: item.defaultExpiryDateBs ?? "",
       }));
       setTaxable(Array.isArray(item.taxCodeIds) && item.taxCodeIds.length > 0);
       if (Array.isArray(item.components)) {
@@ -180,6 +199,8 @@ export default function NewItemPage() {
   const effectiveTrackInventory = goodsInventoryEnabled && form.trackInventory;
   const showOpeningStock = effectiveTrackInventory;
   const showAdvancedPolicies = hasItemPolicyTracking(features);
+  const selectedDefaultWarehouse = warehouses.find((warehouse) => warehouse.id === form.defaultWarehouseId);
+  const defaultBins = selectedDefaultWarehouse?.bins ?? [];
 
   React.useEffect(() => {
     if (!inventorySettings) return;
@@ -196,6 +217,19 @@ export default function NewItemPage() {
       if (!next.trackInventory || !features.batch) next.tracksBatch = false;
       if (!next.trackInventory || !features.lot) next.tracksLot = false;
       if (!next.trackInventory || !features.expiry) next.tracksExpiry = false;
+      if (!features.warehouses) {
+        next.defaultWarehouseId = "";
+        next.defaultBinId = "";
+      } else if (!next.defaultWarehouseId && inventorySettings.defaultWarehouseId) {
+        next.defaultWarehouseId = inventorySettings.defaultWarehouseId;
+      }
+      if (!features.bins) next.defaultBinId = "";
+      if (!next.trackInventory || !features.batch || !next.tracksBatch) next.defaultBatchNo = "";
+      if (!next.trackInventory || !features.lot || !next.tracksLot) next.defaultLotNo = "";
+      if (!next.trackInventory || !features.expiry || !next.tracksExpiry) {
+        next.defaultExpiryDate = "";
+        next.defaultExpiryDateBs = "";
+      }
       if (prev.type === "services" || !features.kits) next.isKit = false;
       return JSON.stringify(next) === JSON.stringify(prev) ? prev : next;
     });
@@ -236,6 +270,12 @@ export default function NewItemPage() {
         tracksBatch: effectiveTrackInventory && features.batch ? form.tracksBatch : false,
         tracksLot: effectiveTrackInventory && features.lot ? form.tracksLot : false,
         tracksExpiry: effectiveTrackInventory && features.expiry ? form.tracksExpiry : false,
+        defaultWarehouseId: effectiveTrackInventory && features.warehouses ? form.defaultWarehouseId || undefined : undefined,
+        defaultBinId: effectiveTrackInventory && features.bins ? form.defaultBinId || undefined : undefined,
+        defaultBatchNo: effectiveTrackInventory && features.batch && form.tracksBatch ? form.defaultBatchNo.trim() || undefined : undefined,
+        defaultLotNo: effectiveTrackInventory && features.lot && form.tracksLot ? form.defaultLotNo.trim() || undefined : undefined,
+        defaultExpiryDate: effectiveTrackInventory && features.expiry && form.tracksExpiry ? form.defaultExpiryDate || undefined : undefined,
+        defaultExpiryDateBs: effectiveTrackInventory && features.expiry && form.tracksExpiry ? form.defaultExpiryDateBs || undefined : undefined,
         components: features.kits && form.isKit
           ? bomLines.map((l) => ({ componentId: l.componentId, qty: l.qty }))
           : undefined,
@@ -387,6 +427,56 @@ export default function NewItemPage() {
                 )}
               </div>
             </section>
+
+            {effectiveTrackInventory && (
+              <section className="rounded-2xl border bg-card p-6 shadow-sm space-y-5">
+                <SectionHeader icon={Package} title="Default Stock Identity" desc="Used on opening stock, adjustment, and transfer forms for this item." />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {features.warehouses && (
+                    <Field label="Default Warehouse">
+                      <SearchableSelect
+                        options={[{ id: "", name: "No default warehouse" }, ...warehouses]}
+                        valueId={form.defaultWarehouseId}
+                        onChange={(id) => setForm((prev) => ({ ...prev, defaultWarehouseId: id, defaultBinId: "" }))}
+                        placeholder="Search warehouse..."
+                      />
+                    </Field>
+                  )}
+                  {features.bins && (
+                    <Field label="Default Bin">
+                      <SearchableSelect
+                        options={[{ id: "", name: form.defaultWarehouseId ? "No default bin" : "Choose warehouse first" }, ...defaultBins]}
+                        valueId={form.defaultBinId}
+                        onChange={(id) => update("defaultBinId", id)}
+                        placeholder="Search bin..."
+                        disabled={!form.defaultWarehouseId}
+                      />
+                    </Field>
+                  )}
+                  {features.batch && form.tracksBatch && (
+                    <Field label="Batch No.">
+                      <Input value={form.defaultBatchNo} onChange={(e) => update("defaultBatchNo", e.target.value)} placeholder="e.g. BATCH-001" />
+                    </Field>
+                  )}
+                  {features.lot && form.tracksLot && (
+                    <Field label="Lot No.">
+                      <Input value={form.defaultLotNo} onChange={(e) => update("defaultLotNo", e.target.value)} placeholder="e.g. LOT-001" />
+                    </Field>
+                  )}
+                  {features.expiry && form.tracksExpiry && (
+                    <div className="sm:col-span-2">
+                      <Field label="Expiry Date">
+                        <DualDateInput
+                          value={{ ad: form.defaultExpiryDate, bs: form.defaultExpiryDateBs }}
+                          onChange={({ ad, bs }) => setForm((prev) => ({ ...prev, defaultExpiryDate: ad, defaultExpiryDateBs: bs }))}
+                          accentColor="bg-orange-600"
+                        />
+                      </Field>
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
 
             {/* BOM Builder */}
             {features.kits && form.isKit && (

@@ -5,6 +5,11 @@ export declare class InventoryController {
     constructor(inventory: InventoryService);
     settings(user: AuthUser): Promise<any>;
     updateSettings(user: AuthUser, body: any): Promise<{
+        id: string;
+        companyId: string;
+        createdAt: Date;
+        updatedAt: Date;
+        defaultWarehouseId: string | null;
         inventoryTrackingEnabled: boolean;
         warehousesEnabled: boolean;
         binsEnabled: boolean;
@@ -15,37 +20,32 @@ export declare class InventoryController {
         kitsEnabled: boolean;
         allowNegativeStock: boolean;
         requireWarehouseOnMovements: boolean;
-        defaultWarehouseId: string | null;
         costingMethod: string;
-        id: string;
-        companyId: string;
-        createdAt: Date;
-        updatedAt: Date;
     }>;
     serials(user: AuthUser, query: any): Promise<({
         item: {
-            name: string;
             id: string;
+            name: string;
             sku: string | null;
         };
         warehouse: {
-            name: string;
             id: string;
+            name: string;
         } | null;
         bin: {
-            name: string;
             id: string;
+            name: string;
         } | null;
     } & {
+        id: string;
+        companyId: string;
+        status: string;
+        createdAt: Date;
+        updatedAt: Date;
         itemId: string;
         warehouseId: string | null;
         binId: string | null;
-        status: string;
         serialNo: string;
-        id: string;
-        companyId: string;
-        createdAt: Date;
-        updatedAt: Date;
         purchaseInvoiceId: string | null;
         salesInvoiceId: string | null;
     })[]>;
@@ -67,6 +67,12 @@ export declare class InventoryController {
         tracksBatch: boolean;
         tracksLot: boolean;
         tracksExpiry: boolean;
+        defaultWarehouseId: any;
+        defaultBinId: any;
+        defaultBatchNo: any;
+        defaultLotNo: any;
+        defaultExpiryDate: any;
+        defaultExpiryDateBs: any;
         parentGroup: string;
         reorderLevel: number;
         safetyStock: number;
@@ -183,6 +189,37 @@ export declare class InventoryController {
             }[];
         }[];
     }>;
+    trackedStock(user: AuthUser, query: any): Promise<{
+        item: {
+            id: string;
+            name: string;
+            sku: string | null;
+            isSerialized: boolean;
+            tracksBatch: boolean;
+            tracksLot: boolean;
+            tracksExpiry: boolean;
+        };
+        options: {
+            warehouseId: any;
+            warehouseName: string | null;
+            binId: any;
+            binName: string | null;
+            batchNo: any;
+            lotNo: any;
+            expiryDate: any;
+            expiryDateBs: any;
+            qty: number;
+            value: number;
+            rate: number;
+            receivedDate: any;
+        }[];
+        serials: never[] | {
+            id: string;
+            warehouseId: string | null;
+            binId: string | null;
+            serialNo: string;
+        }[];
+    }>;
     transfer(user: AuthUser, body: any): Promise<{
         ok: boolean;
         voucherId: string;
@@ -213,10 +250,10 @@ export declare class InventoryController {
         }[];
         expiringSoon: {
             qty: number;
-            itemId: string;
             batchNo: string | null;
             lotNo: string | null;
             expiryDate: Date | null;
+            itemId: string;
             _sum: {
                 qtyIn: import("@prisma/client/runtime/client").Decimal | null;
                 qtyOut: import("@prisma/client/runtime/client").Decimal | null;

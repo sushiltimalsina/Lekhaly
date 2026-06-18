@@ -525,6 +525,12 @@ export declare class AuthController {
             tracksExpiry: boolean;
             minStockLevel: import("@prisma/client/runtime/client").Decimal | null;
             reorderQty: import("@prisma/client/runtime/client").Decimal | null;
+            defaultWarehouseId: string | null;
+            defaultBinId: string | null;
+            defaultBatchNo: string | null;
+            defaultLotNo: string | null;
+            defaultExpiryDate: Date | null;
+            defaultExpiryDateBs: string | null;
         } | {
             id: string;
             companyId: string;
@@ -553,6 +559,12 @@ export declare class AuthController {
             tracksExpiry: boolean;
             minStockLevel: import("@prisma/client/runtime/client").Decimal | null;
             reorderQty: import("@prisma/client/runtime/client").Decimal | null;
+            defaultWarehouseId: string | null;
+            defaultBinId: string | null;
+            defaultBatchNo: string | null;
+            defaultLotNo: string | null;
+            defaultExpiryDate: Date | null;
+            defaultExpiryDateBs: string | null;
         })[] | ({
             id: string;
             companyId: string;
@@ -1343,6 +1355,12 @@ export declare class AuthController {
             tracksExpiry: boolean;
             minStockLevel: import("@prisma/client/runtime/client").Decimal | null;
             reorderQty: import("@prisma/client/runtime/client").Decimal | null;
+            defaultWarehouseId: string | null;
+            defaultBinId: string | null;
+            defaultBatchNo: string | null;
+            defaultLotNo: string | null;
+            defaultExpiryDate: Date | null;
+            defaultExpiryDateBs: string | null;
         }[] | {
             id: string;
             companyId: string;
@@ -2141,6 +2159,12 @@ export declare class AuthController {
             tracksExpiry: boolean;
             minStockLevel: import("@prisma/client/runtime/client").Decimal | null;
             reorderQty: import("@prisma/client/runtime/client").Decimal | null;
+            defaultWarehouseId: string | null;
+            defaultBinId: string | null;
+            defaultBatchNo: string | null;
+            defaultLotNo: string | null;
+            defaultExpiryDate: Date | null;
+            defaultExpiryDateBs: string | null;
         } | {
             id: string;
             companyId: string;
@@ -2169,6 +2193,12 @@ export declare class AuthController {
             tracksExpiry: boolean;
             minStockLevel: import("@prisma/client/runtime/client").Decimal | null;
             reorderQty: import("@prisma/client/runtime/client").Decimal | null;
+            defaultWarehouseId: string | null;
+            defaultBinId: string | null;
+            defaultBatchNo: string | null;
+            defaultLotNo: string | null;
+            defaultExpiryDate: Date | null;
+            defaultExpiryDateBs: string | null;
         })[] | ({
             id: string;
             companyId: string;
@@ -2959,6 +2989,12 @@ export declare class AuthController {
             tracksExpiry: boolean;
             minStockLevel: import("@prisma/client/runtime/client").Decimal | null;
             reorderQty: import("@prisma/client/runtime/client").Decimal | null;
+            defaultWarehouseId: string | null;
+            defaultBinId: string | null;
+            defaultBatchNo: string | null;
+            defaultLotNo: string | null;
+            defaultExpiryDate: Date | null;
+            defaultExpiryDateBs: string | null;
         }[] | {
             id: string;
             companyId: string;
