@@ -160,7 +160,7 @@ const navData: NavItem[] = [
       { label: "Items", href: "/items", icon: List },
       { label: "Add Item", href: "/items/new", icon: Plus },
       { label: "Assemblies", href: "/inventory/assemblies", icon: Hammer },
-      { label: "Warehouses", href: "/inventory/warehouses", icon: Building2 },
+      { label: "Warehouse & Bins", href: "/inventory/warehouses", icon: Building2 },
       { label: "Adjust Stock", href: "/inventory/adjust", icon: Plus },
       { label: "Transfer Stock", href: "/inventory/transfer", icon: ArrowRightLeft },
       { label: "Physical Count", href: "/inventory/stock-counts", icon: ClipboardList },

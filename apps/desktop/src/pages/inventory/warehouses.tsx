@@ -251,10 +251,14 @@ export default function WarehousesPage() {
     <div className="space-y-6 pb-20 text-foreground animate-fade-in">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="space-y-1">
-          <button onClick={() => navigate("/inventory")} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-2">
-            <ChevronLeft className="h-3 w-3" /> Back to Inventory
+          <button
+            type="button"
+            onClick={() => navigate("/inventory")}
+            className="mb-2 inline-flex h-10 w-fit items-center justify-center gap-2 rounded-full border border-transparent bg-transparent px-4 text-sm font-bold text-slate-950 transition-colors hover:border-orange-600 hover:bg-orange-600 hover:text-white dark:text-white"
+          >
+            <ChevronLeft className="h-4 w-4" /> Back to Inventory
           </button>
-          <PageHeader title="Warehouses" description="Manage storage locations and bins for your inventory." icon={Warehouse} />
+          <PageHeader title="Warehouse & Bins" description="Manage storage locations and bins for your inventory." icon={Warehouse} />
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={refresh} disabled={loading} className="rounded-2xl h-12 px-5">
