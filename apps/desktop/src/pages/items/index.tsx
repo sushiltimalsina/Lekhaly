@@ -2,15 +2,16 @@
 
 import * as React from "react";
 import { createPortal } from "react-dom";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import PageHeader from "@/components/app/page-header";
 import FiltersBar from "@/components/app/filters-bar";
 import DataTable, { Column } from "@/components/app/data-table";
 import { MoneyText } from "@/components/app/money";
 import DualDateInput from "@/components/app/dual-date-input";
+import SearchableSelect from "@/components/app/searchable-select";
 import { Button } from "@lekhaly/ui";
 import { Input } from "@lekhaly/ui";
-import { ArrowUpDown, CalendarDays, Check, Columns, Download, Eye, Plus, RotateCcw, Search, Upload, X } from "lucide-react";
+import { ArrowRightLeft, ArrowUpDown, CalendarDays, Check, Columns, Download, FileDown, Plus, RotateCcw, Search, Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { listAccounts } from "@/lib/api/accounts";
 import { createItem, listItems } from "@/lib/api/items";
@@ -32,6 +33,7 @@ import {
 import AddItemDialog from "@/components/app/add-item-dialog";
 import AddGroupDialog from "@/components/app/add-group-dialog";
 import { inventoryFeatures } from "@/lib/inventory-features";
+import { listWarehouses, type Warehouse as WarehouseRecord } from "@/lib/api/warehouses";
 
 type ItemRow = StockReportRow;
 type DateValue = { ad: string; bs: string };
@@ -167,6 +169,7 @@ const IMPORT_FIELDS: Array<{ key: ImportFieldKey; label: string; required?: bool
 ];
 
 type InventoryAccount = { id: string; name: string };
+type WarehouseOption = WarehouseRecord;
 type ImportFieldKey =
   | "name"
   | "sku"
@@ -326,6 +329,7 @@ function getPresetDates(preset: DatePreset): { from: string; to: string } {
 }
 
 export default function ItemsPage() {
+  const navigate = useNavigate();
   const [q, setQ] = React.useState("");
   const [typeFilter, setTypeFilter] = React.useState<"all" | "goods" | "services">("all");
   const [groupFilter, setGroupFilter] = React.useState("all");
@@ -378,6 +382,7 @@ export default function ItemsPage() {
   const [alerts, setAlerts] = React.useState<InventoryAlerts | null>(null);
   const [alertFilter, setAlertFilter] = React.useState<AlertFilter>("all");
   const [accounts, setAccounts] = React.useState<InventoryAccount[]>([]);
+  const [warehouses, setWarehouses] = React.useState<WarehouseOption[]>([]);
   const [inventorySettings, setInventorySettings] = React.useState<InventorySettings | null>(null);
   const [adjustOpen, setAdjustOpen] = React.useState(false);
   const [adjustSubmitting, setAdjustSubmitting] = React.useState(false);
@@ -547,13 +552,20 @@ export default function ItemsPage() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await listAccounts({ isActive: true, take: 1000 });
+        const [res, warehouseRows] = await Promise.all([
+          listAccounts({ isActive: true, take: 1000 }),
+          listWarehouses({ isActive: true }).catch(() => [] as WarehouseOption[]),
+        ]);
         if (!cancelled) {
           const accountRows = Array.isArray(res) ? res : [];
           setAccounts(accountRows.filter((a) => a.isPostable !== false).map((a) => ({ id: a.id, name: a.name })));
+          setWarehouses(Array.isArray(warehouseRows) ? warehouseRows : []);
         }
       } catch {
-        if (!cancelled) setAccounts([]);
+        if (!cancelled) {
+          setAccounts([]);
+          setWarehouses([]);
+        }
       }
     })();
     return () => {
@@ -759,7 +771,7 @@ export default function ItemsPage() {
       cell: (r) => (
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
-            <Link to={`/items/view/${r.id}?from=items`} className="font-medium text-foreground truncate hover:text-primary hover:underline">{r.name}</Link>
+            <span className="font-medium text-foreground truncate">{r.name}</span>
             {features.kits && (r as any).isKit && (
               <span className="shrink-0 inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 ring-1 ring-amber-300/50">
                 KIT
@@ -781,7 +793,7 @@ export default function ItemsPage() {
               <>
                 <button
                   type="button"
-                  onClick={() => { setAssembleItem(r as any); setAssembleMode("assemble"); setAssembleQty(""); setAssembleMemo(""); setAssembleOpen(true); }}
+                  onClick={(event) => { event.stopPropagation(); setAssembleItem(r as any); setAssembleMode("assemble"); setAssembleQty(""); setAssembleMemo(""); setAssembleOpen(true); }}
                   className="inline-flex h-7 items-center gap-1 rounded-md border border-amber-300 dark:border-amber-700 px-2 text-[11px] text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/20"
                   title="Assemble kit"
                 >
@@ -789,22 +801,13 @@ export default function ItemsPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setAssembleItem(r as any); setAssembleMode("disassemble"); setAssembleQty(""); setAssembleMemo(""); setAssembleOpen(true); }}
+                  onClick={(event) => { event.stopPropagation(); setAssembleItem(r as any); setAssembleMode("disassemble"); setAssembleQty(""); setAssembleMemo(""); setAssembleOpen(true); }}
                   className="inline-flex h-7 items-center gap-1 rounded-md border border-slate-300 dark:border-slate-700 px-2 text-[11px] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
                   title="Disassemble kit"
                 >
                   ▼ Disassemble
                 </button>
               </>
-            )}
-            {features.inventory && (
-              <Link
-                to={`/items/view/${r.id}?tab=ledger&from=items`}
-                className="inline-flex h-7 items-center gap-1 rounded-md border border-slate-200 px-2 text-[11px] text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-              >
-                <Eye className="h-3.5 w-3.5" />
-                Ledger
-              </Link>
             )}
           </div>
         </div>
@@ -1055,6 +1058,27 @@ export default function ItemsPage() {
   const columns: Column<ItemRow>[] = computedVisibleKeys.map((key) => allColumns[key]).filter(Boolean);
 
   const goodsRows = rows.filter((r) => r.type === "goods");
+  const itemSelectOptions = goodsRows.map((r) => ({ value: r.id, label: `${r.name}${r.sku ? ` [${r.sku}]` : ""}${r.unit ? ` - ${r.unit}` : ""}` }));
+  const accountSelectOptions = accounts.map((a) => ({ value: a.id, label: a.name }));
+  const warehouseSelectOptions = warehouses.map((warehouse) => ({ value: warehouse.id, label: `${warehouse.name}${warehouse.code ? ` (${warehouse.code})` : ""}` }));
+  const sourceWarehouse = warehouses.find((warehouse) => warehouse.id === transferForm.fromWarehouseId) ?? null;
+  const destinationWarehouse = warehouses.find((warehouse) => warehouse.id === transferForm.toWarehouseId) ?? null;
+  const sourceBins = sourceWarehouse?.bins ?? [];
+  const destinationBins = destinationWarehouse?.bins ?? [];
+  const sourceBinSelectOptions = [{ value: "", label: "No bin / default" }, ...sourceBins.map((bin) => ({ value: bin.id, label: `${bin.name}${bin.code ? ` (${bin.code})` : ""}` }))];
+  const destinationBinSelectOptions = [{ value: "", label: "No bin / default" }, ...destinationBins.map((bin) => ({ value: bin.id, label: `${bin.name}${bin.code ? ` (${bin.code})` : ""}` }))];
+
+  React.useEffect(() => {
+    if (transferForm.fromBinId && !sourceBins.some((bin) => bin.id === transferForm.fromBinId)) {
+      setTransferForm((prev) => ({ ...prev, fromBinId: "" }));
+    }
+  }, [sourceBins, transferForm.fromBinId]);
+
+  React.useEffect(() => {
+    if (transferForm.toBinId && !destinationBins.some((bin) => bin.id === transferForm.toBinId)) {
+      setTransferForm((prev) => ({ ...prev, toBinId: "" }));
+    }
+  }, [destinationBins, transferForm.toBinId]);
 
   const applyAlertFilter = (next: AlertFilter) => {
     setAlertFilter((prev) => (prev === next ? "all" : next));
@@ -1637,7 +1661,7 @@ export default function ItemsPage() {
         title="Items Inventory"
         description="Manage your product catalog, prices, and stock levels."
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <input
               ref={importFileRef}
               type="file"
@@ -1648,18 +1672,18 @@ export default function ItemsPage() {
               }}
             />
             {features.inventory && (
-              <Button variant="outline" className="rounded-xl border-border/50" onClick={() => setAdjustOpen(true)}>
+              <Button variant="outline" className="h-10 rounded-xl border-border/50 bg-background/70 px-4 font-semibold" onClick={() => setAdjustOpen(true)}>
                 Adjust Stock
               </Button>
             )}
             {features.warehouses && (
-              <Button variant="outline" className="rounded-xl border-border/50" onClick={() => setTransferOpen(true)}>
+              <Button variant="outline" className="h-10 rounded-xl border-border/50 bg-background/70 px-4 font-semibold" onClick={() => setTransferOpen(true)}>
                 Transfer Stock
               </Button>
             )}
             <Button
               variant="outline"
-              className="rounded-xl border-border/50"
+              className="h-10 rounded-xl border-border/50 bg-background/70 px-4 font-semibold"
               onClick={() => {
                 setImportWizardOpen(true);
                 setImportStep(1);
@@ -1674,8 +1698,7 @@ export default function ItemsPage() {
 
             <div ref={exportMenuWrapRef} className="relative">
             <Button
-              variant="outline"
-              className="rounded-xl border-border/50"
+              className="h-10 rounded-xl border-none bg-emerald-600 px-4 text-white shadow-lg shadow-emerald-500/15 hover:bg-emerald-700"
               onClick={() => {
                 setDateMenuOpen(false);
                 setColumnsMenuOpen(false);
@@ -1683,7 +1706,7 @@ export default function ItemsPage() {
               }}
               title="Export"
             >
-              <Download className="mr-2 h-4 w-4" />
+              <FileDown className="mr-2 h-4 w-4" />
               Export
             </Button>
             {exportMenuOpen && createPortal(
@@ -1713,11 +1736,11 @@ export default function ItemsPage() {
               document.body
             )}
             </div>
-            <Button variant="outline" onClick={() => setAddGroupOpen(true)} className="rounded-xl border-border/50">
+            <Button variant="outline" onClick={() => setAddGroupOpen(true)} className="h-10 rounded-xl border-border/50 bg-background/70 px-4 font-semibold">
               <Plus className="mr-2 h-4 w-4" />
               New Group
             </Button>
-            <Button onClick={() => setAddItemOpen(true)} className="shadow-lg shadow-primary/20">
+            <Button onClick={() => setAddItemOpen(true)} className="h-10 rounded-xl shadow-lg shadow-primary/20">
               <Plus className="mr-2 h-4 w-4" />
               New Item
             </Button>
@@ -1977,6 +2000,7 @@ export default function ItemsPage() {
             rows={sorted}
             columns={columns}
             loading={loading}
+            onRowClick={(row) => navigate(`/items/view/${row.id}?tab=ledger&from=items`)}
             className={cn(
               "border-0 shadow-none",
               popupOpen && "opacity-0 pointer-events-none select-none"
@@ -2193,71 +2217,114 @@ export default function ItemsPage() {
         </div>
       ) : null}
       {features.inventory && adjustOpen ? (
-        <div className="fixed inset-0 z-[1600] bg-black/30 backdrop-blur-sm p-4" onClick={() => setAdjustOpen(false)}>
-          <div className="mx-auto mt-10 w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl dark:border-slate-800 dark:bg-slate-950" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-3 flex items-center justify-between">
-              <div className="text-sm font-bold">Stock Adjustment</div>
-              <Button size="sm" variant="outline" onClick={() => setAdjustOpen(false)}>Close</Button>
+        <div className="fixed inset-0 z-[1600] flex items-start justify-center overflow-y-auto bg-black/45 p-4 backdrop-blur-sm" onClick={() => setAdjustOpen(false)}>
+          <div className="mt-8 w-full max-w-3xl overflow-hidden rounded-3xl border border-border bg-card shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between gap-4 border-b border-border/70 p-5">
+              <div>
+                <div className="text-xl font-black tracking-tight">Adjust Stock</div>
+                <div className="mt-1 text-sm text-muted-foreground">Post increase or decrease movements with proper valuation and accounting.</div>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => setAdjustOpen(false)} className="rounded-xl">Close</Button>
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Input placeholder="Date (YYYY-MM-DD)" value={adjustForm.date} onChange={(e) => setAdjustForm((p) => ({ ...p, date: e.target.value }))} />
-              <select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={adjustForm.itemId} onChange={(e) => setAdjustForm((p) => ({ ...p, itemId: e.target.value }))}>
-                <option value="">Select item</option>
-                {goodsRows.map((r) => <option key={r.id} value={r.id}>{r.name}{r.sku ? ` (${r.sku})` : ""}</option>)}
-              </select>
-              <Input placeholder="Quantity (+in / -out)" value={adjustForm.qty} onChange={(e) => setAdjustForm((p) => ({ ...p, qty: e.target.value }))} />
-              <Input placeholder="Rate (optional)" value={adjustForm.rate} onChange={(e) => setAdjustForm((p) => ({ ...p, rate: e.target.value }))} />
-              <select className="h-10 rounded-md border border-input bg-background px-3 text-sm sm:col-span-2" value={adjustForm.accountId} onChange={(e) => setAdjustForm((p) => ({ ...p, accountId: e.target.value }))}>
-                <option value="">Select offset account</option>
-                {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-              </select>
-              {features.batch && <Input placeholder="Batch Number (optional)" value={adjustForm.batchNo} onChange={(e) => setAdjustForm((p) => ({ ...p, batchNo: e.target.value }))} />}
-              {features.lot && <Input placeholder="Lot Number (optional)" value={adjustForm.lotNo} onChange={(e) => setAdjustForm((p) => ({ ...p, lotNo: e.target.value }))} />}
-              {features.expiry && <Input placeholder="Expiry Date (YYYY-MM-DD, optional)" value={adjustForm.expiryDate} onChange={(e) => setAdjustForm((p) => ({ ...p, expiryDate: e.target.value }))} />}
-              <Input placeholder="Memo (optional)" value={adjustForm.memo} onChange={(e) => setAdjustForm((p) => ({ ...p, memo: e.target.value }))} />
-              {features.negativeStock && <label className="flex items-center gap-2 text-sm sm:col-span-2">
-                <input type="checkbox" checked={adjustForm.allowNegativeOverride} onChange={(e) => setAdjustForm((p) => ({ ...p, allowNegativeOverride: e.target.checked }))} />
-                Allow negative override
-              </label>}
-              {features.negativeStock && adjustForm.allowNegativeOverride ? (
-                <Input className="sm:col-span-2" placeholder="Override reason" value={adjustForm.overrideReason} onChange={(e) => setAdjustForm((p) => ({ ...p, overrideReason: e.target.value }))} />
-              ) : null}
+            <div className="grid gap-5 p-5">
+              <section className="grid gap-3 rounded-2xl border border-border/70 bg-background/60 p-4 sm:grid-cols-2">
+                <label className="space-y-1.5 text-sm font-semibold">
+                  <span>Adjustment Date *</span>
+                  <DualDateInput value={{ ad: adjustForm.date, bs: "" }} onChange={(next) => setAdjustForm((p) => ({ ...p, date: next.ad }))} required />
+                </label>
+                <label className="space-y-1.5 text-sm font-semibold">
+                  <span>Item *</span>
+                  <SearchableSelect options={itemSelectOptions} value={adjustForm.itemId} onChange={(id) => setAdjustForm((p) => ({ ...p, itemId: id }))} placeholder="Search items..." />
+                </label>
+                <label className="space-y-1.5 text-sm font-semibold">
+                  <span>Quantity *</span>
+                  <Input placeholder="Use positive for increase, negative for decrease" value={adjustForm.qty} onChange={(e) => setAdjustForm((p) => ({ ...p, qty: e.target.value }))} />
+                </label>
+                <label className="space-y-1.5 text-sm font-semibold">
+                  <span>Rate per Unit</span>
+                  <Input placeholder="Required for stock increase" value={adjustForm.rate} onChange={(e) => setAdjustForm((p) => ({ ...p, rate: e.target.value }))} />
+                </label>
+                <label className="space-y-1.5 text-sm font-semibold sm:col-span-2">
+                  <span>Adjustment Account</span>
+                  <SearchableSelect options={[{ value: "", label: "Auto select stock adjustment gain/loss account" }, ...accountSelectOptions]} value={adjustForm.accountId} onChange={(id) => setAdjustForm((p) => ({ ...p, accountId: id }))} placeholder="Search adjustment account..." />
+                </label>
+              </section>
+              <section className="grid gap-3 rounded-2xl border border-border/70 bg-background/60 p-4 sm:grid-cols-2">
+                {features.batch && <Input placeholder="Batch Number" value={adjustForm.batchNo} onChange={(e) => setAdjustForm((p) => ({ ...p, batchNo: e.target.value }))} />}
+                {features.lot && <Input placeholder="Lot Number" value={adjustForm.lotNo} onChange={(e) => setAdjustForm((p) => ({ ...p, lotNo: e.target.value }))} />}
+                {features.expiry && <Input type="date" placeholder="Expiry Date" value={adjustForm.expiryDate} onChange={(e) => setAdjustForm((p) => ({ ...p, expiryDate: e.target.value }))} />}
+                <Input placeholder="Memo" value={adjustForm.memo} onChange={(e) => setAdjustForm((p) => ({ ...p, memo: e.target.value }))} />
+                {features.negativeStock && <label className="flex items-center gap-2 text-sm font-semibold sm:col-span-2">
+                  <input type="checkbox" checked={adjustForm.allowNegativeOverride} onChange={(e) => setAdjustForm((p) => ({ ...p, allowNegativeOverride: e.target.checked }))} />
+                  Allow negative stock override
+                </label>}
+                {features.negativeStock && adjustForm.allowNegativeOverride ? (
+                  <Input className="sm:col-span-2" placeholder="Override reason" value={adjustForm.overrideReason} onChange={(e) => setAdjustForm((p) => ({ ...p, overrideReason: e.target.value }))} />
+                ) : null}
+              </section>
             </div>
-            <div className="mt-4 flex justify-end">
-              <Button onClick={submitAdjustment} disabled={adjustSubmitting}>{adjustSubmitting ? "Posting..." : "Post Adjustment"}</Button>
+            <div className="flex items-center justify-end gap-2 border-t border-border/70 bg-muted/20 p-5">
+              <Button variant="outline" onClick={() => setAdjustOpen(false)} className="rounded-xl">Cancel</Button>
+              <Button onClick={submitAdjustment} disabled={adjustSubmitting} className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700">{adjustSubmitting ? "Posting..." : "Post Adjustment"}</Button>
             </div>
           </div>
         </div>
       ) : null}
       {features.warehouses && transferOpen ? (
-        <div className="fixed inset-0 z-[1600] bg-black/30 backdrop-blur-sm p-4" onClick={() => setTransferOpen(false)}>
-          <div className="mx-auto mt-10 w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl dark:border-slate-800 dark:bg-slate-950" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-3 flex items-center justify-between">
-              <div className="text-sm font-bold">Stock Transfer</div>
-              <Button size="sm" variant="outline" onClick={() => setTransferOpen(false)}>Close</Button>
+        <div className="fixed inset-0 z-[1600] flex items-start justify-center overflow-y-auto bg-black/45 p-4 backdrop-blur-sm" onClick={() => setTransferOpen(false)}>
+          <div className="mt-8 w-full max-w-4xl overflow-hidden rounded-3xl border border-border bg-card shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between gap-4 border-b border-border/70 p-5">
+              <div>
+                <div className="text-xl font-black tracking-tight">Transfer Stock</div>
+                <div className="mt-1 text-sm text-muted-foreground">Move stock between warehouses and bins without manually entering IDs.</div>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => setTransferOpen(false)} className="rounded-xl">Close</Button>
             </div>
-            <div className="mb-2 rounded-lg border border-amber-300 bg-amber-50 p-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
-              Enter warehouse and bin IDs directly. Warehouse master UI endpoints are not yet exposed in desktop API.
+            <div className="grid gap-5 p-5">
+              <section className="grid gap-3 rounded-2xl border border-border/70 bg-background/60 p-4 sm:grid-cols-3">
+                <label className="space-y-1.5 text-sm font-semibold">
+                  <span>Transfer Date *</span>
+                  <DualDateInput value={{ ad: transferForm.date, bs: "" }} onChange={(next) => setTransferForm((p) => ({ ...p, date: next.ad }))} required />
+                </label>
+                <label className="space-y-1.5 text-sm font-semibold sm:col-span-2">
+                  <span>Item *</span>
+                  <SearchableSelect options={itemSelectOptions} value={transferForm.itemId} onChange={(id) => setTransferForm((p) => ({ ...p, itemId: id }))} placeholder="Search items..." />
+                </label>
+                <label className="space-y-1.5 text-sm font-semibold">
+                  <span>From Warehouse *</span>
+                  <SearchableSelect options={warehouseSelectOptions} value={transferForm.fromWarehouseId} onChange={(id) => setTransferForm((p) => ({ ...p, fromWarehouseId: id, fromBinId: "" }))} placeholder="Search source warehouse..." />
+                </label>
+                <label className="space-y-1.5 text-sm font-semibold">
+                  <span>To Warehouse *</span>
+                  <SearchableSelect options={warehouseSelectOptions} value={transferForm.toWarehouseId} onChange={(id) => setTransferForm((p) => ({ ...p, toWarehouseId: id, toBinId: "" }))} placeholder="Search destination warehouse..." />
+                </label>
+                <label className="space-y-1.5 text-sm font-semibold">
+                  <span>Quantity *</span>
+                  <Input placeholder="Quantity to transfer" value={transferForm.qty} onChange={(e) => setTransferForm((p) => ({ ...p, qty: e.target.value }))} />
+                </label>
+                {features.bins && <label className="space-y-1.5 text-sm font-semibold">
+                  <span>From Bin</span>
+                  <SearchableSelect options={sourceBinSelectOptions} value={transferForm.fromBinId} onChange={(id) => setTransferForm((p) => ({ ...p, fromBinId: id }))} placeholder="Search source bin..." disabled={!transferForm.fromWarehouseId} />
+                </label>}
+                {features.bins && <label className="space-y-1.5 text-sm font-semibold">
+                  <span>To Bin</span>
+                  <SearchableSelect options={destinationBinSelectOptions} value={transferForm.toBinId} onChange={(id) => setTransferForm((p) => ({ ...p, toBinId: id }))} placeholder="Search destination bin..." disabled={!transferForm.toWarehouseId} />
+                </label>}
+                <label className="space-y-1.5 text-sm font-semibold">
+                  <span>Rate</span>
+                  <Input placeholder="Optional transfer rate" value={transferForm.rate} onChange={(e) => setTransferForm((p) => ({ ...p, rate: e.target.value }))} />
+                </label>
+              </section>
+              <section className="grid gap-3 rounded-2xl border border-border/70 bg-background/60 p-4 sm:grid-cols-2">
+                {features.batch && <Input placeholder="Batch Number" value={transferForm.batchNo} onChange={(e) => setTransferForm((p) => ({ ...p, batchNo: e.target.value }))} />}
+                {features.lot && <Input placeholder="Lot Number" value={transferForm.lotNo} onChange={(e) => setTransferForm((p) => ({ ...p, lotNo: e.target.value }))} />}
+                {features.expiry && <Input type="date" placeholder="Expiry Date" value={transferForm.expiryDate} onChange={(e) => setTransferForm((p) => ({ ...p, expiryDate: e.target.value }))} />}
+                <Input placeholder="Memo" value={transferForm.memo} onChange={(e) => setTransferForm((p) => ({ ...p, memo: e.target.value }))} />
+              </section>
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Input placeholder="Date (YYYY-MM-DD)" value={transferForm.date} onChange={(e) => setTransferForm((p) => ({ ...p, date: e.target.value }))} />
-              <select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={transferForm.itemId} onChange={(e) => setTransferForm((p) => ({ ...p, itemId: e.target.value }))}>
-                <option value="">Select item</option>
-                {goodsRows.map((r) => <option key={r.id} value={r.id}>{r.name}{r.sku ? ` (${r.sku})` : ""}</option>)}
-              </select>
-              <Input placeholder="From warehouse ID" value={transferForm.fromWarehouseId} onChange={(e) => setTransferForm((p) => ({ ...p, fromWarehouseId: e.target.value }))} />
-              <Input placeholder="To warehouse ID" value={transferForm.toWarehouseId} onChange={(e) => setTransferForm((p) => ({ ...p, toWarehouseId: e.target.value }))} />
-              {features.bins && <Input placeholder="From bin ID (optional)" value={transferForm.fromBinId} onChange={(e) => setTransferForm((p) => ({ ...p, fromBinId: e.target.value }))} />}
-              {features.bins && <Input placeholder="To bin ID (optional)" value={transferForm.toBinId} onChange={(e) => setTransferForm((p) => ({ ...p, toBinId: e.target.value }))} />}
-              <Input placeholder="Quantity" value={transferForm.qty} onChange={(e) => setTransferForm((p) => ({ ...p, qty: e.target.value }))} />
-              <Input placeholder="Rate (optional)" value={transferForm.rate} onChange={(e) => setTransferForm((p) => ({ ...p, rate: e.target.value }))} />
-              {features.batch && <Input placeholder="Batch Number (optional)" value={transferForm.batchNo} onChange={(e) => setTransferForm((p) => ({ ...p, batchNo: e.target.value }))} />}
-              {features.lot && <Input placeholder="Lot Number (optional)" value={transferForm.lotNo} onChange={(e) => setTransferForm((p) => ({ ...p, lotNo: e.target.value }))} />}
-              {features.expiry && <Input placeholder="Expiry Date (YYYY-MM-DD, optional)" value={transferForm.expiryDate} onChange={(e) => setTransferForm((p) => ({ ...p, expiryDate: e.target.value }))} />}
-              <Input placeholder="Memo (optional)" value={transferForm.memo} onChange={(e) => setTransferForm((p) => ({ ...p, memo: e.target.value }))} />
-            </div>
-            <div className="mt-4 flex justify-end">
-              <Button onClick={submitTransfer} disabled={transferSubmitting}>{transferSubmitting ? "Posting..." : "Post Transfer"}</Button>
+            <div className="flex items-center justify-end gap-2 border-t border-border/70 bg-muted/20 p-5">
+              <Button variant="outline" onClick={() => setTransferOpen(false)} className="rounded-xl">Cancel</Button>
+              <Button onClick={submitTransfer} disabled={transferSubmitting} className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"><ArrowRightLeft className="mr-2 h-4 w-4" />{transferSubmitting ? "Posting..." : "Post Transfer"}</Button>
             </div>
           </div>
         </div>
