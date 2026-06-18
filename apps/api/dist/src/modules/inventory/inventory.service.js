@@ -1448,7 +1448,8 @@ let InventoryService = class InventoryService {
                     companyId: user.companyId,
                     itemId: { in: itemIds },
                     remainingQty: { gt: new client_1.Prisma.Decimal(0) },
-                    ...(filters.warehouseId ? { warehouseId: filters.warehouseId } : {})
+                    ...(filters.warehouseId ? { warehouseId: filters.warehouseId } : {}),
+                    ...(filters.binId ? { binId: filters.binId } : {})
                 },
                 orderBy: [{ receivedDate: "asc" }, { createdAt: "asc" }]
             }).catch((error) => {
@@ -1472,7 +1473,8 @@ let InventoryService = class InventoryService {
                 where: {
                     companyId: user.companyId,
                     itemId: { in: itemIds },
-                    ...(filters.warehouseId ? { warehouseId: filters.warehouseId } : {})
+                    ...(filters.warehouseId ? { warehouseId: filters.warehouseId } : {}),
+                    ...(filters.binId ? { binId: filters.binId } : {})
                 },
                 include: {
                     warehouse: { select: { id: true, name: true } },
@@ -1521,6 +1523,20 @@ let InventoryService = class InventoryService {
                 layersByItem.set(bucket.itemId, list);
             }
         }
+        const locationIds = {
+            warehouseIds: Array.from(new Set(Array.from(layersByItem.values()).flat().map((layer) => layer.warehouseId).filter(Boolean))),
+            binIds: Array.from(new Set(Array.from(layersByItem.values()).flat().map((layer) => layer.binId).filter(Boolean)))
+        };
+        const [warehouseRows, binRows] = await Promise.all([
+            locationIds.warehouseIds.length
+                ? this.prisma.warehouse.findMany({ where: { companyId: user.companyId, id: { in: locationIds.warehouseIds } }, select: { id: true, name: true } })
+                : Promise.resolve([]),
+            locationIds.binIds.length
+                ? this.prisma.warehouseBin.findMany({ where: { companyId: user.companyId, id: { in: locationIds.binIds } }, select: { id: true, name: true } })
+                : Promise.resolve([])
+        ]);
+        const warehouseNameById = new Map(warehouseRows.map((warehouse) => [warehouse.id, warehouse.name]));
+        const binNameById = new Map(binRows.map((bin) => [bin.id, bin.name]));
         const rows = items.map((item) => {
             const itemLayers = layersByItem.get(item.id) ?? [];
             const totalQty = itemLayers.reduce((sum, layer) => sum.add(layer.remainingQty), new client_1.Prisma.Decimal(0));
@@ -1552,9 +1568,9 @@ let InventoryService = class InventoryService {
                     return {
                         receivedDate: layer.receivedDate,
                         warehouseId: layer.warehouseId ?? null,
-                        warehouseName: layer.warehouse?.name ?? null,
+                        warehouseName: layer.warehouse?.name ?? (layer.warehouseId ? warehouseNameById.get(layer.warehouseId) ?? null : null),
                         binId: layer.binId ?? null,
-                        binName: layer.bin?.name ?? null,
+                        binName: layer.bin?.name ?? (layer.binId ? binNameById.get(layer.binId) ?? null : null),
                         batchNo: layer.batchNo ?? null,
                         lotNo: layer.lotNo ?? null,
                         expiryDate: layer.expiryDate ?? null,

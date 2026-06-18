@@ -5,10 +5,6 @@ export declare class InventoryController {
     constructor(inventory: InventoryService);
     settings(user: AuthUser): Promise<any>;
     updateSettings(user: AuthUser, body: any): Promise<{
-        id: string;
-        companyId: string;
-        createdAt: Date;
-        updatedAt: Date;
         inventoryTrackingEnabled: boolean;
         warehousesEnabled: boolean;
         binsEnabled: boolean;
@@ -21,31 +17,35 @@ export declare class InventoryController {
         requireWarehouseOnMovements: boolean;
         defaultWarehouseId: string | null;
         costingMethod: string;
+        id: string;
+        companyId: string;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     serials(user: AuthUser, query: any): Promise<({
         item: {
-            id: string;
             name: string;
+            id: string;
             sku: string | null;
         };
         warehouse: {
-            id: string;
             name: string;
+            id: string;
         } | null;
         bin: {
-            id: string;
             name: string;
+            id: string;
         } | null;
     } & {
-        id: string;
-        companyId: string;
-        status: string;
-        createdAt: Date;
-        updatedAt: Date;
         itemId: string;
         warehouseId: string | null;
         binId: string | null;
+        status: string;
         serialNo: string;
+        id: string;
+        companyId: string;
+        createdAt: Date;
+        updatedAt: Date;
         purchaseInvoiceId: string | null;
         salesInvoiceId: string | null;
     })[]>;
@@ -213,10 +213,10 @@ export declare class InventoryController {
         }[];
         expiringSoon: {
             qty: number;
+            itemId: string;
             batchNo: string | null;
             lotNo: string | null;
             expiryDate: Date | null;
-            itemId: string;
             _sum: {
                 qtyIn: import("@prisma/client/runtime/client").Decimal | null;
                 qtyOut: import("@prisma/client/runtime/client").Decimal | null;

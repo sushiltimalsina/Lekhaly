@@ -44,6 +44,7 @@ exports.StockAgingQuerySchema = zod_1.z.object({
 exports.StockValuationQuerySchema = zod_1.z.object({
     itemId: zod_1.z.string().uuid().optional(),
     warehouseId: zod_1.z.string().uuid().optional(),
+    binId: zod_1.z.string().uuid().optional(),
     groupId: zod_1.z.string().uuid().optional(),
     q: zod_1.z.string().trim().max(120).optional(),
     includeZero: zod_1.z.coerce.boolean().optional()

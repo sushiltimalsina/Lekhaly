@@ -137,8 +137,8 @@ function ItemDetailPageContent() {
   const id = params.id;
   const initialTab = searchParams.get("tab") === "ledger" ? "ledger" : "overview";
   const sourceFrom = searchParams.get("from");
-  const backHref = sourceFrom === "stock-ledger" ? "/reports/stock-ledger" : "/items";
-  const backLabel = sourceFrom === "stock-ledger" ? "Back to Stock Ledger" : "Back to all items";
+  const backHref = sourceFrom === "stock-ledger" ? "/reports/stock-ledger" : sourceFrom === "warehouses" ? "/inventory/warehouses" : "/items";
+  const backLabel = sourceFrom === "stock-ledger" ? "Back to Stock Ledger" : sourceFrom === "warehouses" ? "Back to Warehouses" : "Back to all items";
 
   const [item, setItem] = React.useState<ItemRecord | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -356,7 +356,7 @@ function ItemDetailPageContent() {
   return (
     <div className="space-y-6 pb-20">
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Link href={backHref} className="transition-colors hover:text-foreground">{sourceFrom === "stock-ledger" ? "Stock Ledger" : "Items"}</Link>
+        <Link href={backHref} className="transition-colors hover:text-foreground">{sourceFrom === "stock-ledger" ? "Stock Ledger" : sourceFrom === "warehouses" ? "Warehouses" : "Items"}</Link>
         <span>/</span>
         <span className="max-w-[300px] truncate font-medium text-foreground">{item.name}</span>
       </div>

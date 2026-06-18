@@ -121,8 +121,8 @@ export default function ItemDetailPage() {
   const [searchParams] = useSearchParams();
   const initialTab = searchParams.get("tab") === "ledger" ? "ledger" : "overview";
   const sourceFrom = searchParams.get("from");
-  const backHref = sourceFrom === "stock-ledger" ? "/reports/stock-ledger" : "/items";
-  const backLabel = sourceFrom === "stock-ledger" ? "Back to Stock Ledger" : "Back to all items";
+  const backHref = sourceFrom === "stock-ledger" ? "/reports/stock-ledger" : sourceFrom === "warehouses" ? "/inventory/warehouses" : "/items";
+  const backLabel = sourceFrom === "stock-ledger" ? "Back to Stock Ledger" : sourceFrom === "warehouses" ? "Back to Warehouses" : "Back to all items";
   const [item, setItem] = React.useState<ItemRecord | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [tab, setTab] = React.useState<Tab>(initialTab);
@@ -300,7 +300,7 @@ export default function ItemDetailPage() {
     <div className="space-y-6 pb-20">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Link to={backHref} className="hover:text-foreground transition-colors">{sourceFrom === "stock-ledger" ? "Stock Ledger" : "Items"}</Link>
+        <Link to={backHref} className="hover:text-foreground transition-colors">{sourceFrom === "stock-ledger" ? "Stock Ledger" : sourceFrom === "warehouses" ? "Warehouses" : "Items"}</Link>
         <span>/</span>
         <span className="text-foreground font-medium truncate max-w-[300px]">{item.name}</span>
       </div>

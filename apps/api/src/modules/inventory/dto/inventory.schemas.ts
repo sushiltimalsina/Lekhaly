@@ -45,6 +45,7 @@ export const StockAgingQuerySchema = z.object({
 export const StockValuationQuerySchema = z.object({
   itemId: z.string().uuid().optional(),
   warehouseId: z.string().uuid().optional(),
+  binId: z.string().uuid().optional(),
   groupId: z.string().uuid().optional(),
   q: z.string().trim().max(120).optional(),
   includeZero: z.coerce.boolean().optional()

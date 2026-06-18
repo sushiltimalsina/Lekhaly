@@ -1,6 +1,6 @@
 // apps/desktop/src/pages/inventory/warehouses.tsx
 import * as React from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import PageHeader from "@/components/app/page-header";
 import { Card, CardContent } from "@lekhaly/ui";
 import { Button } from "@lekhaly/ui";
@@ -31,9 +31,10 @@ import {
   type Warehouse as WarehouseType,
 } from "@/lib/api/warehouses";
 import { SortableList } from "@/components/app/sortable-list";
-import { getInventorySettings, type InventorySettings } from "@/lib/api/inventory";
+import { getInventorySettings, getStockValuationReport, type InventorySettings, type StockValuationRow } from "@/lib/api/inventory";
 import { inventoryFeatures } from "@/lib/inventory-features";
 import ConfirmDialog from "@/components/app/confirm-dialog";
+import { MoneyText } from "@/components/app/money";
 
 type DeleteTarget = {
   type: "warehouse" | "bin";
@@ -66,6 +67,9 @@ export default function WarehousesPage() {
   const [addingBin, setAddingBin] = React.useState(false);
   const [deleteTarget, setDeleteTarget] = React.useState<DeleteTarget>(null);
   const [deleting, setDeleting] = React.useState(false);
+  const [selectedLocation, setSelectedLocation] = React.useState<{ warehouseId: string; binId?: string | null; label: string } | null>(null);
+  const [locationStock, setLocationStock] = React.useState<StockValuationRow[]>([]);
+  const [locationStockLoading, setLocationStockLoading] = React.useState(false);
 
   const refresh = React.useCallback(async () => {
     setLoading(true);
@@ -86,6 +90,33 @@ export default function WarehousesPage() {
 
   React.useEffect(() => { refresh(); }, [refresh]);
   const features = inventoryFeatures(inventorySettings);
+
+  React.useEffect(() => {
+    if (!selectedLocation) {
+      setLocationStock([]);
+      return;
+    }
+    let cancelled = false;
+    setLocationStockLoading(true);
+    getStockValuationReport({
+      warehouseId: selectedLocation.warehouseId,
+      binId: selectedLocation.binId || undefined,
+      includeZero: false
+    })
+      .then((report) => {
+        if (!cancelled) setLocationStock((report.rows ?? []).filter((row) => row.totalQty > 0));
+      })
+      .catch((e: any) => {
+        if (!cancelled) {
+          setLocationStock([]);
+          setError(e?.message ?? "Failed to load location stock");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLocationStockLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [selectedLocation]);
 
   React.useEffect(() => {
     if (!success) return;
@@ -168,6 +199,52 @@ export default function WarehousesPage() {
       setError(e?.message ?? "Failed to reorder bins");
       refresh();
     }
+  };
+
+  const renderLocationStock = (warehouseId: string) => {
+    if (!selectedLocation || selectedLocation.warehouseId !== warehouseId) return null;
+    const totalQty = locationStock.reduce((sum, row) => sum + row.totalQty, 0);
+    const totalValue = locationStock.reduce((sum, row) => sum + row.totalValue, 0);
+    return (
+      <div className="mt-4 rounded-2xl border border-border/60 bg-background/70 p-4">
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Items in location</p>
+            <h4 className="text-base font-black text-foreground">{selectedLocation.label}</h4>
+          </div>
+          <div className="flex flex-wrap gap-2 text-xs">
+            <span className="rounded-lg border border-border bg-card px-2.5 py-1 font-semibold">Qty: {totalQty}</span>
+            <span className="rounded-lg border border-border bg-card px-2.5 py-1 font-semibold">Value: <MoneyText value={totalValue} /></span>
+          </div>
+        </div>
+        {locationStockLoading ? (
+          <div className="space-y-2">{[1, 2, 3].map((i) => <div key={i} className="h-12 rounded-xl bg-muted animate-pulse" />)}</div>
+        ) : locationStock.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-border py-8 text-center text-sm text-muted-foreground">No stock currently available in this location.</div>
+        ) : (
+          <div className="overflow-hidden rounded-xl border border-border">
+            <div className="grid grid-cols-[minmax(180px,1fr)_90px_100px_120px] bg-muted/50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+              <span>Item / SKU</span><span>Unit</span><span className="text-right">Qty</span><span className="text-right">Value</span>
+            </div>
+            {locationStock.map((row) => (
+              <Link
+                key={row.itemId}
+                to={`/items/view/${row.itemId}?tab=ledger&from=warehouses`}
+                className="grid grid-cols-[minmax(180px,1fr)_90px_100px_120px] items-center border-t border-border px-3 py-3 text-sm transition-colors hover:bg-muted/40"
+              >
+                <span className="min-w-0">
+                  <span className="block truncate font-bold text-foreground">{row.name}</span>
+                  <span className="block truncate text-[11px] uppercase text-muted-foreground">{row.sku || "-"}</span>
+                </span>
+                <span className="text-xs font-semibold uppercase text-muted-foreground">{row.unit || "-"}</span>
+                <span className="text-right font-bold tabular-nums">{row.totalQty}</span>
+                <MoneyText value={row.totalValue} className="text-right font-bold" />
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -262,7 +339,14 @@ export default function WarehousesPage() {
                           <Button size="sm" variant="ghost" onClick={() => setEditId(null)} className="h-9 rounded-lg text-xs">Cancel</Button>
                         </div>
                       ) : (
-                        <div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedLocation({ warehouseId: wh.id, label: wh.name });
+                            if (features.bins) setExpandedId(wh.id);
+                          }}
+                          className="block w-full rounded-xl text-left transition-colors hover:text-orange-500"
+                        >
                           <div className="flex items-center gap-2">
                             <span className="font-bold text-foreground">{wh.name}</span>
                             {wh.code && <span className="text-xs text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded">{wh.code}</span>}
@@ -272,7 +356,7 @@ export default function WarehousesPage() {
                             {features.bins && <span>{wh._count?.bins ?? wh.bins.length} bins</span>}
                             <span>{wh.totalStockQty ?? 0} units on hand</span>
                           </div>
-                        </div>
+                        </button>
                       )}
                     </div>
                     {editId !== wh.id && (
@@ -308,7 +392,13 @@ export default function WarehousesPage() {
                             <div className="flex w-full items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50 transition-colors group text-foreground">
                               <div className="flex items-center gap-3 text-left">
                                 <Package className="h-3.5 w-3.5 text-muted-foreground" />
-                                <span className="text-sm font-medium">{bin.name}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedLocation({ warehouseId: wh.id, binId: bin.id, label: `${wh.name} / ${bin.name}` })}
+                                  className="text-sm font-medium text-foreground hover:text-orange-500 hover:underline"
+                                >
+                                  {bin.name}
+                                </button>
                                 {bin.code && <span className="text-xs text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded">{bin.code}</span>}
                                 {!bin.isActive && <span className="text-[10px] uppercase font-bold text-red-500">Inactive</span>}
                               </div>
@@ -319,6 +409,7 @@ export default function WarehousesPage() {
                       )}
                     </div>
                   )}
+                  {renderLocationStock(wh.id)}
                 </CardContent>
               </Card>
             )}

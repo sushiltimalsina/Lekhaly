@@ -129,7 +129,7 @@ export type StockValuationReport = {
   rows: StockValuationRow[];
 };
 
-export async function getStockValuationReport(query?: { itemId?: string; warehouseId?: string; groupId?: string; q?: string; includeZero?: boolean }) {
+export async function getStockValuationReport(query?: { itemId?: string; warehouseId?: string; binId?: string; groupId?: string; q?: string; includeZero?: boolean }) {
   return apiRequest<StockValuationReport>({
     path: "/inventory/valuation",
     query,

@@ -33,6 +33,7 @@ export declare const StockAgingQuerySchema: z.ZodObject<{
 export declare const StockValuationQuerySchema: z.ZodObject<{
     itemId: z.ZodOptional<z.ZodString>;
     warehouseId: z.ZodOptional<z.ZodString>;
+    binId: z.ZodOptional<z.ZodString>;
     groupId: z.ZodOptional<z.ZodString>;
     q: z.ZodOptional<z.ZodString>;
     includeZero: z.ZodOptional<z.ZodCoercedBoolean<unknown>>;
