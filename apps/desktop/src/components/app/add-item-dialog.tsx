@@ -8,6 +8,7 @@ import { listUnits, type UnitRecord } from "@/lib/api/units";
 import { listItemGroups, type ItemGroupRecord } from "@/lib/api/item-groups";
 import { listWarehouses, type Warehouse, type WarehouseBin } from "@/lib/api/warehouses";
 import { listTaxes } from "@/lib/api/taxes";
+import { listAccounts, type AccountRecord } from "@/lib/api/accounts";
 import { X, Save, PackagePlus, Info, Banknote, History, FileText, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { inventoryFeatures } from "@/lib/inventory-features";
@@ -33,6 +34,7 @@ export default function AddItemDialog({ open, onClose, onSuccess }: AddItemDialo
     const [groups, setGroups] = React.useState<ItemGroupRecord[]>([]);
     const [warehouses, setWarehouses] = React.useState<Warehouse[]>([]);
     const [taxes, setTaxes] = React.useState<TaxCode[]>([]);
+    const [accounts, setAccounts] = React.useState<AccountRecord[]>([]);
     const [taxable, setTaxable] = React.useState(false);
     const [inventorySettings, setInventorySettings] = React.useState<InventorySettings | null>(null);
 
@@ -82,12 +84,13 @@ export default function AddItemDialog({ open, onClose, onSuccess }: AddItemDialo
         };
 
         Promise.all([
-            listUnits({ take: 100 }),
-            listItemGroups({ take: 100 }),
+            listUnits({ take: 1000 }),
+            listItemGroups({ take: 1000 }),
             listTaxes({ take: 100 }),
+            listAccounts({ isActive: true, take: 1000 }),
             getInventorySettings(),
             listWarehouses({ isActive: true })
-        ]).then(([u, g, t, inv, wh]: any) => {
+        ]).then(([u, g, t, accountData, inv, wh]: any) => {
             setUnits(normalizeList<UnitRecord>(u));
             setGroups(normalizeList<ItemGroupRecord>(g));
             setTaxes(normalizeList<any>(t).map((item: any) => ({
@@ -95,6 +98,7 @@ export default function AddItemDialog({ open, onClose, onSuccess }: AddItemDialo
                 name: item.name,
                 rate: item.rate
             })));
+            setAccounts(normalizeList<AccountRecord>(accountData).filter((account: any) => account?.id && account.isPostable !== false));
             setInventorySettings(inv);
             setWarehouses(normalizeList<Warehouse>(wh));
         }).catch(() => { });
@@ -115,6 +119,9 @@ export default function AddItemDialog({ open, onClose, onSuccess }: AddItemDialo
     const showOpeningStock = form.type === "goods" && features.inventory && form.trackInventory;
     const selectedDefaultWarehouse = warehouses.find((warehouse) => warehouse.id === form.defaultWarehouseId);
     const defaultBins = selectedDefaultWarehouse?.bins ?? [];
+    const incomeAccountOptions = [{ id: "", name: "Auto / no sales income account", code: "", type: "income" }, ...accounts.filter((account) => account.type === "income")];
+    const expenseAccountOptions = [{ id: "", name: "Auto / no purchase or COGS account", code: "", type: "expense" }, ...accounts.filter((account) => account.type === "expense" || account.type === "asset")];
+    const accountLabel = (account: any) => [account.code, account.name, account.type ? `(${account.type})` : ""].filter(Boolean).join(" ");
     const addWarehouseRecord = (warehouse: Warehouse) => {
         setWarehouses((prev) => [...prev.filter((row) => row.id !== warehouse.id), { ...warehouse, bins: warehouse.bins ?? [] }]);
         setForm((prev) => ({ ...prev, defaultWarehouseId: warehouse.id, defaultBinId: "" }));
@@ -305,16 +312,13 @@ export default function AddItemDialog({ open, onClose, onSuccess }: AddItemDialo
                                             <Plus className="h-2.5 w-2.5" /> ADD
                                         </button>
                                     </div>
-                                    <select
-                                        value={form.unit}
-                                        onChange={e => update("unit", e.target.value)}
-                                        className="flex h-12 w-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none"
-                                    >
-                                        <option value="">Select unit</option>
-                                        {units.map(u => (
-                                            <option key={u.id} value={u.name}>{u.name}</option>
-                                        ))}
-                                    </select>
+                                    <SearchableSelect
+                                        options={[{ id: "", name: "No unit" }, ...units]}
+                                        valueId={units.find((unit) => unit.name === form.unit)?.id ?? ""}
+                                        fallbackLabel={form.unit}
+                                        onChange={(_, unit: any) => update("unit", unit?.name ?? "")}
+                                        placeholder="Search unit..."
+                                    />
                                 </label>
                                 <label className="space-y-1.5">
                                     <div className="flex items-center justify-between ml-1">
@@ -327,16 +331,12 @@ export default function AddItemDialog({ open, onClose, onSuccess }: AddItemDialo
                                             <Plus className="h-2.5 w-2.5" /> ADD
                                         </button>
                                     </div>
-                                    <select
-                                        value={form.groupId}
-                                        onChange={e => update("groupId", e.target.value)}
-                                        className="flex h-12 w-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none"
-                                    >
-                                        <option value="">Select group</option>
-                                        {groups.map(g => (
-                                            <option key={g.id} value={g.id}>{g.name}</option>
-                                        ))}
-                                    </select>
+                                    <SearchableSelect
+                                        options={[{ id: "", name: "No group" }, ...groups]}
+                                        valueId={form.groupId}
+                                        onChange={(id) => update("groupId", id)}
+                                        placeholder="Search item group..."
+                                    />
                                 </label>
                             </div>
                         </div>
@@ -522,22 +522,26 @@ export default function AddItemDialog({ open, onClose, onSuccess }: AddItemDialo
                         </div>
                         <div className="grid grid-cols-2 gap-5">
                             <label className="space-y-1.5">
-                                <span className="text-xs font-bold text-slate-600 dark:text-slate-400 ml-1">INCOME ACCOUNT</span>
-                                <Input
-                                    value={form.incomeAccountId}
-                                    onChange={e => update("incomeAccountId", e.target.value)}
-                                    placeholder="Ledger ID or Name"
-                                    className="h-12 rounded-2xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                                <span className="text-xs font-bold text-slate-600 dark:text-slate-400 ml-1">SALES INCOME ACCOUNT</span>
+                                <SearchableSelect
+                                    options={incomeAccountOptions}
+                                    valueId={form.incomeAccountId}
+                                    onChange={(id) => update("incomeAccountId", id)}
+                                    getLabel={accountLabel}
+                                    getDetail={(account: any) => account.type ? account.type : ""}
+                                    placeholder="Search income account..."
                                 />
                             </label>
                             <label className="space-y-1.5">
-                                <span className="text-xs font-bold text-slate-600 dark:text-slate-400 ml-1">EXPENSE ACCOUNT</span>
-                                <Input
-                                    value={form.expenseAccountId}
-                                    onChange={e => update("expenseAccountId", e.target.value)}
-                                    placeholder="Ledger ID or Name"
+                                <span className="text-xs font-bold text-slate-600 dark:text-slate-400 ml-1">PURCHASE / COGS ACCOUNT</span>
+                                <SearchableSelect
+                                    options={expenseAccountOptions}
+                                    valueId={form.expenseAccountId}
+                                    onChange={(id) => update("expenseAccountId", id)}
+                                    getLabel={accountLabel}
+                                    getDetail={(account: any) => account.type ? account.type : ""}
+                                    placeholder="Search purchase or COGS account..."
                                     disabled={form.type === "services"}
-                                    className="h-12 rounded-2xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 disabled:opacity-50"
                                 />
                             </label>
                         </div>

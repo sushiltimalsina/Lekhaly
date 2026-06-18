@@ -7,6 +7,7 @@ import { Button } from "@lekhaly/ui";
 import { createItem, getItem, listItems, updateItem } from "@/lib/api/items";
 import { getInventorySettings, type InventorySettings } from "@/lib/api/inventory";
 import { listTaxes } from "@/lib/api/taxes";
+import { listAccounts, type AccountRecord } from "@/lib/api/accounts";
 import { listUnits, type UnitRecord } from "@/lib/api/units";
 import { listItemGroups, type ItemGroupRecord } from "@/lib/api/item-groups";
 import { listWarehouses, type Warehouse, type WarehouseBin } from "@/lib/api/warehouses";
@@ -39,6 +40,7 @@ export default function NewItemPage() {
   const [success, setSuccess] = React.useState<string | null>(null);
   const [taxable, setTaxable] = React.useState(false);
   const [taxes, setTaxes] = React.useState<TaxCode[]>([]);
+  const [accounts, setAccounts] = React.useState<AccountRecord[]>([]);
   const [units, setUnits] = React.useState<UnitRecord[]>([]);
   const [groups, setGroups] = React.useState<ItemGroupRecord[]>([]);
   const [allItems, setAllItems] = React.useState<SimpleItem[]>([]);
@@ -94,7 +96,12 @@ export default function NewItemPage() {
       );
     }).catch(() => setTaxes([]));
 
-    listUnits({ take: 200 }).then((res: any) => {
+    listAccounts({ isActive: true, take: 1000 }).then((res: any) => {
+      const data = Array.isArray(res) ? res : res?.accounts ?? res?.items ?? res?.data ?? [];
+      setAccounts(Array.isArray(data) ? data.filter((a: any) => a?.id && a.isPostable !== false) : []);
+    }).catch(() => setAccounts([]));
+
+    listUnits({ take: 1000 }).then((res: any) => {
       const data = Array.isArray(res) ? res : res?.items ?? res?.data ?? [];
       setUnits(
         Array.isArray(data)
@@ -103,7 +110,7 @@ export default function NewItemPage() {
       );
     }).catch(() => setUnits([]));
 
-    listItemGroups({ take: 200 }).then((res: any) => {
+    listItemGroups({ take: 1000 }).then((res: any) => {
       const data = Array.isArray(res) ? res : res?.items ?? res?.data ?? [];
       setGroups(
         Array.isArray(data)
@@ -204,6 +211,9 @@ export default function NewItemPage() {
   const showAdvancedPolicies = hasItemPolicyTracking(features);
   const selectedDefaultWarehouse = warehouses.find((warehouse) => warehouse.id === form.defaultWarehouseId);
   const defaultBins = selectedDefaultWarehouse?.bins ?? [];
+  const incomeAccountOptions = [{ id: "", name: "Auto / no sales income account", code: "", type: "income" }, ...accounts.filter((account) => account.type === "income")];
+  const expenseAccountOptions = [{ id: "", name: "Auto / no purchase or COGS account", code: "", type: "expense" }, ...accounts.filter((account) => account.type === "expense" || account.type === "asset")];
+  const accountLabel = (account: any) => [account.code, account.name, account.type ? `(${account.type})` : ""].filter(Boolean).join(" ");
   const addWarehouseRecord = (warehouse: Warehouse) => {
     setWarehouses((prev) => [...prev.filter((row) => row.id !== warehouse.id), { ...warehouse, bins: warehouse.bins ?? [] }]);
     setForm((prev) => ({ ...prev, defaultWarehouseId: warehouse.id, defaultBinId: "" }));
@@ -336,16 +346,21 @@ export default function NewItemPage() {
                   <Input value={form.hsCode} onChange={(e) => update("hsCode", e.target.value)} placeholder="e.g. 4820.10" />
                 </Field>
                 <Field label="Group" action={<AddBtn onClick={() => setAddGroupOpen(true)} />}>
-                  <select value={form.groupId} onChange={(e) => update("groupId", e.target.value)} className="w-full rounded-xl border bg-background px-3 py-2 text-sm">
-                    <option value="">Select group</option>
-                    {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
-                  </select>
+                  <SearchableSelect
+                    options={[{ id: "", name: "No group" }, ...groups]}
+                    valueId={form.groupId}
+                    onChange={(id) => update("groupId", id)}
+                    placeholder="Search item group..."
+                  />
                 </Field>
                 <Field label="Unit" action={<AddBtn onClick={() => setAddUnitOpen(true)} />}>
-                  <select value={form.unit} onChange={(e) => update("unit", e.target.value)} className="w-full rounded-xl border bg-background px-3 py-2 text-sm">
-                    <option value="">Select unit</option>
-                    {units.map((u) => <option key={u.id} value={u.name}>{u.name}</option>)}
-                  </select>
+                  <SearchableSelect
+                    options={[{ id: "", name: "No unit" }, ...units]}
+                    valueId={units.find((unit) => unit.name === form.unit)?.id ?? ""}
+                    fallbackLabel={form.unit}
+                    onChange={(_, unit: any) => update("unit", unit?.name ?? "")}
+                    placeholder="Search unit..."
+                  />
                 </Field>
                 <Field label="Item Type">
                   <div className="flex gap-2">
@@ -572,13 +587,28 @@ export default function NewItemPage() {
 
         {/* ACCOUNTING */}
         <section className="rounded-2xl border bg-card p-6 shadow-sm space-y-5">
-            <SectionHeader icon={BookOpen} title="Accounting & Tax" desc="Link this item to Chart of Accounts and configure tax." />
+            <SectionHeader icon={BookOpen} title="Accounting & Tax" desc="Choose how this item posts to sales, purchase, inventory, and tax ledgers." />
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Income Account ID">
-                <Input value={form.incomeAccountId} onChange={(e) => update("incomeAccountId", e.target.value)} placeholder="Account UUID (optional)" />
+              <Field label="Sales Income Account" hint="Used when this item is sold. Leave auto if you use default sales income posting.">
+                <SearchableSelect
+                  options={incomeAccountOptions}
+                  valueId={form.incomeAccountId}
+                  onChange={(id) => update("incomeAccountId", id)}
+                  getLabel={accountLabel}
+                  getDetail={(account: any) => account.type ? account.type : ""}
+                  placeholder="Search income account..."
+                />
               </Field>
-              <Field label="Expense / COGS Account ID">
-                <Input value={form.expenseAccountId} onChange={(e) => update("expenseAccountId", e.target.value)} placeholder="Account UUID (optional)" disabled={form.type === "services"} />
+              <Field label="Purchase / COGS Account" hint="Used for purchase cost, COGS, or inventory asset fallback.">
+                <SearchableSelect
+                  options={expenseAccountOptions}
+                  valueId={form.expenseAccountId}
+                  onChange={(id) => update("expenseAccountId", id)}
+                  getLabel={accountLabel}
+                  getDetail={(account: any) => account.type ? account.type : ""}
+                  placeholder="Search purchase or COGS account..."
+                  disabled={form.type === "services"}
+                />
               </Field>
             </div>
             <div className="space-y-3">
