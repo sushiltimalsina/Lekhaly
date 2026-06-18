@@ -31,7 +31,7 @@ export default function CreateStockCountPage() {
   React.useEffect(() => {
     (async () => {
       try {
-        const [iData, whData, settingsData] = await Promise.all([listItems({ isActive: true, take: 5000 }), listWarehouses({ isActive: true }), getInventorySettings()]);
+        const [iData, whData, settingsData] = await Promise.all([listItems({ isActive: true, take: 1000 }), listWarehouses({ isActive: true }), getInventorySettings()]);
         setInventorySettings(settingsData);
         setItems(Array.isArray(iData) ? iData.filter((i: any) => i.type !== "services" && i.trackInventory !== false) : []);
         setWarehouses(Array.isArray(whData) ? whData : []);

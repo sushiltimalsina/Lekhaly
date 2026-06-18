@@ -120,6 +120,9 @@ export default function ItemDetailPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const initialTab = searchParams.get("tab") === "ledger" ? "ledger" : "overview";
+  const sourceFrom = searchParams.get("from");
+  const backHref = sourceFrom === "stock-ledger" ? "/reports/stock-ledger" : "/items";
+  const backLabel = sourceFrom === "stock-ledger" ? "Back to Stock Ledger" : "Back to all items";
   const [item, setItem] = React.useState<ItemRecord | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [tab, setTab] = React.useState<Tab>(initialTab);
@@ -170,13 +173,41 @@ export default function ItemDetailPage() {
   }, [searchParams]);
   React.useEffect(() => { if (tab === "ledger" || tab === "overview") loadLedger(); }, [id, tracked, tab]);
 
+  function renderSourceCell(r: StockLedgerEntry) {
+    const sourceNumber = r.invoiceNumber || r.voucherNumber || r.voucherType || "Voucher";
+    if (!r.voucherId) {
+      return <span className="text-xs text-muted-foreground">Opening / manual</span>;
+    }
+
+    return (
+      <div className="flex flex-col items-start gap-1.5">
+        {r.partyId && r.partyName ? (
+          <Link
+            to={`/reports/ledger?partyId=${encodeURIComponent(r.partyId)}`}
+            onClick={(event) => event.stopPropagation()}
+            className="max-w-[210px] truncate text-sm font-bold text-foreground hover:text-orange-500 hover:underline"
+            title={`Open ledger for ${r.partyName}`}
+          >
+            {r.partyName}
+          </Link>
+        ) : (
+          <span className="text-sm font-semibold text-muted-foreground">No party</span>
+        )}
+        <Link
+          to={`/vouchers/view/${r.voucherId}`}
+          onClick={(event) => event.stopPropagation()}
+          className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+          title="Open source voucher"
+        >
+          {sourceNumber}<ExternalLink className="h-3 w-3" />
+        </Link>
+      </div>
+    );
+  }
+
   const ledgerColumns: Column<StockLedgerEntry>[] = [
     { key: "date", header: "Date", width: 120, cell: (r) => <span className="text-xs font-medium">{new Date(r.date).toLocaleDateString()}</span> },
-    { key: "source", header: "Source", width: 180, cell: (r) => r.voucherId ? (
-      <Link to={`/vouchers/view/${r.voucherId}`} className="inline-flex items-center gap-1 font-semibold text-primary hover:underline text-xs">
-        {r.voucherNumber || r.voucherType || "Voucher"}<ExternalLink className="h-3 w-3" />
-      </Link>
-    ) : <span className="text-muted-foreground text-xs">Opening / manual</span> },
+    { key: "source", header: "Source", width: 240, cell: renderSourceCell },
     ...(features.warehouses ? [{ key: "location", header: "Location", width: 160, cell: (r: StockLedgerEntry) => <span className="text-xs">{[r.warehouseName, r.binName].filter(Boolean).join(" / ") || "-"}</span> } as Column<StockLedgerEntry>] : []),
     { key: "in", header: <span className="block text-right text-emerald-600">In</span>, align: "right" as const, width: 90, cell: (r) => <span className="tabular-nums text-emerald-600 font-medium">{r.qtyIn || "-"}</span> },
     { key: "out", header: <span className="block text-right text-red-600">Out</span>, align: "right" as const, width: 90, cell: (r) => <span className="tabular-nums text-red-600 font-medium">{r.qtyOut || "-"}</span> },
@@ -202,7 +233,7 @@ export default function ItemDetailPage() {
     const movementHeader = ["Date", "Source", "Location", "In", "Out", "Rate", "Balance", "Value"];
     const movementRows = (ledger?.entries ?? []).map((entry) => [
       new Date(entry.date).toLocaleDateString(),
-      entry.voucherNumber || entry.voucherType || "Opening / manual",
+      [entry.partyName, entry.invoiceNumber || entry.voucherNumber || entry.voucherType || "Opening / manual"].filter(Boolean).join(" - "),
       [entry.warehouseName, entry.binName].filter(Boolean).join(" / "),
       entry.qtyIn || "",
       entry.qtyOut || "",
@@ -269,7 +300,7 @@ export default function ItemDetailPage() {
     <div className="space-y-6 pb-20">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Link to="/items" className="hover:text-foreground transition-colors">Items</Link>
+        <Link to={backHref} className="hover:text-foreground transition-colors">{sourceFrom === "stock-ledger" ? "Stock Ledger" : "Items"}</Link>
         <span>/</span>
         <span className="text-foreground font-medium truncate max-w-[300px]">{item.name}</span>
       </div>
@@ -277,11 +308,11 @@ export default function ItemDetailPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <button
           type="button"
-          onClick={() => navigate("/items")}
+          onClick={() => navigate(backHref)}
           className="inline-flex h-10 w-fit items-center justify-center gap-2 rounded-full border border-transparent bg-transparent px-4 text-sm font-bold text-slate-950 transition-colors hover:border-orange-600 hover:bg-orange-600 hover:text-white dark:text-white"
         >
           <ArrowLeft className="h-4 w-4" />
-          <span>Back to all items</span>
+          <span>{backLabel}</span>
         </button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -299,9 +330,9 @@ export default function ItemDetailPage() {
 
       {/* Hero Card */}
       <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-muted/20 p-6 sm:p-8">
-        <div className="absolute top-0 right-0 h-40 w-40 bg-gradient-to-bl from-primary/5 to-transparent rounded-bl-full" />
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-          <div className="flex items-start gap-5">
+        <div className="pointer-events-none absolute top-0 right-0 h-40 w-40 bg-gradient-to-bl from-primary/5 to-transparent rounded-bl-full" />
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div className="flex items-start gap-5 min-w-0">
             <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/10 to-violet-500/10 border border-primary/10 shadow-lg shadow-primary/5">
               <Package className="h-7 w-7 text-primary" />
             </div>
@@ -319,13 +350,18 @@ export default function ItemDetailPage() {
               {item.hsCode && <div className="mt-2 text-xs text-muted-foreground">HS Code: <span className="font-mono font-medium">{item.hsCode}</span></div>}
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="relative z-20 flex items-center gap-2 shrink-0">
             <Button variant="outline" size="sm" className="rounded-xl h-10 gap-2" onClick={() => { loadItem(); loadLedger(); }}>
               <RefreshCw className="h-4 w-4" /> Refresh
             </Button>
-            <Button size="sm" className="rounded-xl h-10 gap-2 bg-primary shadow-lg shadow-primary/20" onClick={() => navigate(`/items/new?edit=${id}`)}>
-              <Edit className="h-4 w-4" /> Edit
-            </Button>
+            {id ? (
+              <Link
+                to={`/items/edit/${encodeURIComponent(id)}`}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary px-3 text-sm font-medium text-primary-foreground shadow-lg shadow-primary/20 transition-all duration-200 hover:bg-primary/90 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <Edit className="h-4 w-4" /> Edit
+              </Link>
+            ) : null}
           </div>
         </div>
       </div>

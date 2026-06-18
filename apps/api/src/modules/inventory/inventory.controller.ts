@@ -56,7 +56,6 @@ export class InventoryController {
 
   @Post("adjustment")
   @RequirePerm("masters.write")
-  @RequireStep("sensitive")
   adjust(
     @CurrentUser() user: AuthUser,
     @Body(new ZodValidationPipe(StockAdjustmentSchema)) body: any

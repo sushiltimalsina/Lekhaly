@@ -11,7 +11,7 @@ import { listUnits, type UnitRecord } from "@/lib/api/units";
 import { listItemGroups, type ItemGroupRecord } from "@/lib/api/item-groups";
 import { cn } from "@/lib/utils";
 import { hasItemPolicyTracking, inventoryFeatures } from "@/lib/inventory-features";
-import { useNavigate, Link, useSearchParams } from "react-router-dom";
+import { useNavigate, Link, useParams, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft, PackagePlus, Save, Plus, X, Layers,
   ShieldCheck, AlertTriangle, Package, BookOpen, DollarSign
@@ -26,8 +26,9 @@ type BomLine = { componentId: string; componentName: string; qty: number };
 
 export default function NewItemPage() {
   const navigate = useNavigate();
+  const params = useParams<{ editId?: string }>();
   const [searchParams] = useSearchParams();
-  const editId = searchParams.get("edit");
+  const editId = params.editId ?? searchParams.get("edit");
   const isEditMode = Boolean(editId);
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);

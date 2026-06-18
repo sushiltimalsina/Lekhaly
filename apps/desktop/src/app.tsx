@@ -241,6 +241,7 @@ export default function App() {
                 {/* Items */}
                 <Route path="/items" element={<ItemsListPage />} />
                 <Route path="/items/new" element={<NewItemPage />} />
+                <Route path="/items/edit/:editId" element={<NewItemPage />} />
                 <Route path="/items/view/:id" element={<ItemDetailPage />} />
 
                 {/* Inventory */}

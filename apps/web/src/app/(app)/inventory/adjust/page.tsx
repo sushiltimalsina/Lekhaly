@@ -37,10 +37,11 @@ type ItemOption = {
   tracksLot?: boolean;
   tracksExpiry?: boolean;
 };
-type AccountOption = { id: string; name: string; code?: string };
+type AccountOption = { id: string; name: string; code?: string; type?: string };
 
 export default function StockAdjustPage() {
   const router = useRouter();
+  const dateInputRef = React.useRef<HTMLInputElement>(null);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<string | null>(null);
@@ -76,17 +77,19 @@ export default function StockAdjustPage() {
     (async () => {
       try {
         const [itemData, accountData, settingsData, warehouseData] = await Promise.all([
-          listItems({ isActive: true, take: 5000 }),
-          listAccounts({ isActive: true, take: 2000 }),
+          listItems({ isActive: true, take: 1000 }),
+          listAccounts({ isActive: true, take: 1000 }),
           getInventorySettings(),
           listWarehouses({ isActive: true }),
         ]);
+        const itemList = Array.isArray(itemData) ? itemData : (itemData as any)?.items ?? [];
+        const accountList = Array.isArray(accountData) ? accountData : (accountData as any)?.accounts ?? (accountData as any)?.items ?? [];
         setInventorySettings(settingsData);
         const warehouseList = Array.isArray(warehouseData) ? warehouseData : [];
         setWarehouses(warehouseList);
         if (settingsData.defaultWarehouseId) setWarehouseId(settingsData.defaultWarehouseId);
         setItems(
-          (Array.isArray(itemData) ? itemData : [])
+          itemList
             .filter((i: any) => i.type !== "services" && i.trackInventory !== false)
             .map((i: any) => ({
               id: i.id,
@@ -100,15 +103,23 @@ export default function StockAdjustPage() {
             }))
         );
         setAccounts(
-          (Array.isArray(accountData) ? accountData : [])
+          accountList
             .filter((a: any) => a.isPostable !== false)
-            .map((a: any) => ({ id: a.id, name: a.name, code: a.code }))
+            .map((a: any) => ({ id: a.id, name: a.name, code: a.code, type: a.type }))
         );
-      } catch {}
+      } catch (error: any) {
+        setError(error?.message ?? "Failed to load items and accounts.");
+      }
     })();
   }, []);
 
+  React.useEffect(() => {
+    const timer = window.setTimeout(() => dateInputRef.current?.focus({ preventScroll: true }), 250);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   const selectedItem = items.find((i) => i.id === itemId);
+  const selectedAccount = accounts.find((account) => account.id === accountId);
   const selectedWarehouse = warehouses.find((warehouse) => warehouse.id === warehouseId);
   const availableBins = selectedWarehouse?.bins ?? [];
   const features = inventoryFeatures(inventorySettings);
@@ -122,7 +133,7 @@ export default function StockAdjustPage() {
 
     if (!itemId) return setError("Select an item");
     if (!qty || Number(qty) === 0) return setError("Enter a quantity");
-    if (!accountId) return setError("Select an adjustment account");
+    if (direction === "increase" && (!rate || Number(rate) <= 0)) return setError("Enter a positive rate for stock increases");
     if (!date.ad) return setError("Select a date");
     if (features.requireWarehouse && !warehouseId) return setError("Select a warehouse");
     if (features.batch && selectedItem?.tracksBatch && !batchNo.trim()) return setError("Batch number is required for this item");
@@ -144,7 +155,7 @@ export default function StockAdjustPage() {
         itemId,
         qty: finalQty,
         rate: rate ? Number(rate) : undefined,
-        accountId,
+        accountId: accountId || undefined,
         warehouseId: features.warehouses ? warehouseId || undefined : undefined,
         binId: features.bins ? binId || undefined : undefined,
         date: date.ad,
@@ -190,9 +201,9 @@ export default function StockAdjustPage() {
           breadcrumb={
             <button
               onClick={() => router.push("/inventory")}
-              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              className="inline-flex items-center gap-2 rounded-full border border-transparent bg-transparent px-4 py-2 text-sm font-semibold text-foreground transition-all hover:border-orange-600 hover:bg-orange-600 hover:text-white"
             >
-              <ChevronLeft className="h-3 w-3" /> Back to Inventory
+              <ChevronLeft className="h-4 w-4" /> Back to Inventory
             </button>
           }
         />
@@ -214,6 +225,15 @@ export default function StockAdjustPage() {
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Main form */}
         <div className="lg:col-span-2 space-y-6">
+          <Card className="border-border/50 shadow-lg">
+            <CardContent className="pt-6 space-y-4">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                Adjustment Date
+              </h3>
+              <DualDateInput ref={dateInputRef} value={date} onChange={setDate} required withBackdrop />
+            </CardContent>
+          </Card>
+
           {/* Item Selection */}
           <Card className="border-border/50 shadow-lg">
             <CardContent className="pt-6 space-y-4">
@@ -297,32 +317,25 @@ export default function StockAdjustPage() {
                 </div>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                    Rate per unit
+                    {direction === "increase" ? "Rate per unit *" : "Rate per unit"}
                   </label>
                   <Input
                     type="number"
-                    placeholder="0.00"
+                    placeholder={direction === "increase" ? "0.00" : "Costed from inventory layers"}
                     value={rate}
                     onChange={(e) => setRate(e.target.value)}
                     className="rounded-xl h-12 text-lg tabular-nums"
                     min="0"
                     step="any"
+                    disabled={direction === "decrease"}
                   />
                 </div>
-              </div>
-
-              {/* Date */}
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                  Adjustment Date *
-                </label>
-                <DualDateInput value={date} onChange={setDate} />
               </div>
 
               {/* Account */}
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                  Adjustment Account *
+                  Adjustment Account
                 </label>
                 <SearchableSelect
                   options={accounts.map((a) => ({
@@ -331,11 +344,13 @@ export default function StockAdjustPage() {
                   }))}
                   value={accountId}
                   onChange={setAccountId}
-                  placeholder="Select account..."
+                  placeholder={direction === "increase" ? "Select stock gain / adjustment offset..." : "Select shrinkage / stock loss expense..."}
                 />
                 <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
-                  <Info className="h-3 w-3" /> The offset account for the journal entry (e.g.
-                  Stock Adjustment, Inventory Shrinkage).
+                  <Info className="h-3 w-3" />
+                  {direction === "increase"
+                    ? "Optional. If blank, the system uses or creates Stock Adjustment Gain."
+                    : "Optional. If blank, the system uses or creates Inventory Shrinkage / Stock Adjustment Loss."}
                 </p>
               </div>
 
@@ -488,6 +503,21 @@ export default function StockAdjustPage() {
                   <MoneyText value={amount} className="text-lg font-black" />
                 </div>
 
+                <div className="rounded-2xl border border-border/60 bg-muted/30 p-3 text-xs">
+                  <div className="mb-2 font-bold uppercase tracking-widest text-muted-foreground">Accounting Entry</div>
+                  {direction === "increase" ? (
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between gap-3"><span>Dr Inventory Asset</span><MoneyText value={amount} /></div>
+                      <div className="flex justify-between gap-3"><span>Cr {selectedAccount?.name || "Stock Adjustment Gain"}</span><MoneyText value={amount} /></div>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between gap-3"><span>Dr {selectedAccount?.name || "Inventory Shrinkage / Stock Adjustment Loss"}</span><span>System cost</span></div>
+                      <div className="flex justify-between gap-3"><span>Cr Inventory Asset</span><span>System cost</span></div>
+                    </div>
+                  )}
+                </div>
+
                 {selectedItem && (
                   <>
                     <div className="h-px bg-border" />
@@ -526,7 +556,7 @@ export default function StockAdjustPage() {
                 </p>
                 <Button
                   onClick={handleSubmit}
-                  disabled={submitting || !itemId || !qty || !accountId}
+                  disabled={submitting || !itemId || !qty}
                   className={cn(
                     "w-full rounded-2xl h-12 font-bold shadow-lg text-white border-none",
                     direction === "increase"

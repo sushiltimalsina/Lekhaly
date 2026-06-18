@@ -318,7 +318,7 @@ export class StockCountsService {
           // Accounting:
           // If in (variance > 0): Dr Inventory, Cr Adjustment
           // If out (variance < 0): Dr Adjustment, Cr Inventory
-          const invAccountId = item?.expenseAccountId || adjustmentAccountId; // In a real app we'd have an inventory asset account on Item
+          const invAccountId = await this.inventoryService.resolveInventoryAssetAccountId(companyId, item, tx);
 
           await tx.voucherLine.createMany({
             data: [

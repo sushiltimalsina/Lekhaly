@@ -6,7 +6,7 @@ export const StockAdjustmentSchema = z.object({
   dateBs: z.string().trim().max(20).optional(),
   qty: z.number(),
   rate: z.number().nonnegative().optional(),
-  accountId: z.string().uuid(),
+  accountId: z.string().uuid().optional(),
   warehouseId: z.string().uuid().optional(),
   binId: z.string().uuid().optional(),
   memo: z.string().trim().max(255).optional(),

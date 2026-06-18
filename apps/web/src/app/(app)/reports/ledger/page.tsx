@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useSearchParams } from "next/navigation";
 import PageHeader from "@/components/app/page-header";
 import AdvancedFilterBar from "@/components/app/advanced-filter-bar";
 import DataTable, { Column } from "@/components/app/data-table";
@@ -29,13 +30,14 @@ type Row = {
 
 export default function LedgerPage() {
   const { dateFormat } = useDateFormat();
+  const searchParams = useSearchParams();
 
   // Initialize with This Year
   const initialRange = getDateRange("this_year");
   const [from, setFrom] = React.useState<Date | null>(initialRange.from);
   const [to, setTo] = React.useState<Date | null>(initialRange.to);
-  const [accountId, setAccountId] = React.useState("");
-  const [partyId, setPartyId] = React.useState("");
+  const [accountId, setAccountId] = React.useState(() => searchParams.get("accountId") ?? "");
+  const [partyId, setPartyId] = React.useState(() => searchParams.get("partyId") ?? "");
 
   const [loading, setLoading] = React.useState(false);
   const [rows, setRows] = React.useState<Row[]>([]);
@@ -48,6 +50,14 @@ export default function LedgerPage() {
   const [parties, setParties] = React.useState<any[]>([]);
 
   const hasSelection = !!accountId || !!partyId;
+  const queryAccountId = searchParams.get("accountId") ?? "";
+  const queryPartyId = searchParams.get("partyId") ?? "";
+
+  React.useEffect(() => {
+    if (queryAccountId !== accountId) setAccountId(queryAccountId);
+    if (queryPartyId !== partyId) setPartyId(queryPartyId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryAccountId, queryPartyId]);
 
   React.useEffect(() => {
     async function init() {

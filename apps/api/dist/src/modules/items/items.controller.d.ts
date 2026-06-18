@@ -489,6 +489,11 @@ export declare class ItemsController {
             voucherNumber: string | null;
             voucherType: import("@prisma/client").$Enums.VoucherType | null;
             voucherDate: Date | null;
+            invoiceId: string | null;
+            invoiceNumber: string | null;
+            invoiceType: string | null;
+            partyId: string | null;
+            partyName: string | null;
             sourceDocumentType: string | null;
             sourceDocumentId: string | null;
         }[];

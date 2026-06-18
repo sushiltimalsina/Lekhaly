@@ -20,6 +20,7 @@ type DateValue = { ad: string; bs: string };
 
 export default function StockAdjustPage() {
   const navigate = useNavigate();
+  const dateInputRef = React.useRef<HTMLInputElement>(null);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<string | null>(null);
@@ -46,18 +47,28 @@ export default function StockAdjustPage() {
   React.useEffect(() => {
     (async () => {
       try {
-        const [iData, aData, settingsData, whData] = await Promise.all([listItems({ isActive: true, take: 5000 }), listAccounts({ isActive: true, take: 2000 }), getInventorySettings(), listWarehouses({ isActive: true })]);
+        const [iData, aData, settingsData, whData] = await Promise.all([listItems({ isActive: true, take: 1000 }), listAccounts({ isActive: true, take: 1000 }), getInventorySettings(), listWarehouses({ isActive: true })]);
         setInventorySettings(settingsData);
         const whList = Array.isArray(whData) ? whData : [];
         setWarehouses(whList);
         if (settingsData.defaultWarehouseId) setWarehouseId(settingsData.defaultWarehouseId);
-        setItems((Array.isArray(iData) ? iData : []).filter((i: any) => i.type !== "services" && i.trackInventory !== false).map((i: any) => ({ id: i.id, name: i.name, sku: i.sku, stock: i.stock ?? 0, isSerialized: i.isSerialized, tracksBatch: i.tracksBatch, tracksLot: i.tracksLot, tracksExpiry: i.tracksExpiry })));
-        setAccounts((Array.isArray(aData) ? aData : []).filter((a: any) => a.isPostable !== false).map((a: any) => ({ id: a.id, name: a.name, code: a.code })));
-      } catch {}
+        const itemList = Array.isArray(iData) ? iData : (iData as any)?.items ?? [];
+        const accountList = Array.isArray(aData) ? aData : (aData as any)?.accounts ?? (aData as any)?.items ?? [];
+        setItems(itemList.filter((i: any) => i.type !== "services" && i.trackInventory !== false).map((i: any) => ({ id: i.id, name: i.name, sku: i.sku, stock: i.stock ?? 0, isSerialized: i.isSerialized, tracksBatch: i.tracksBatch, tracksLot: i.tracksLot, tracksExpiry: i.tracksExpiry })));
+        setAccounts(accountList.filter((a: any) => a.isPostable !== false).map((a: any) => ({ id: a.id, name: a.name, code: a.code, type: a.type })));
+      } catch (error: any) {
+        setError(error?.message ?? "Failed to load items and accounts.");
+      }
     })();
   }, []);
 
+  React.useEffect(() => {
+    const timer = window.setTimeout(() => dateInputRef.current?.focus({ preventScroll: true }), 250);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   const selectedItem = items.find((i) => i.id === itemId);
+  const selectedAccount = accounts.find((account) => account.id === accountId);
   const selectedWarehouse = warehouses.find((warehouse) => warehouse.id === warehouseId);
   const availableBins = selectedWarehouse?.bins ?? [];
   const features = inventoryFeatures(inventorySettings);
@@ -69,7 +80,7 @@ export default function StockAdjustPage() {
     setError(null); setSuccess(null);
     if (!itemId) return setError("Select an item");
     if (!qty || Number(qty) === 0) return setError("Enter a quantity");
-    if (!accountId) return setError("Select an adjustment account");
+    if (direction === "increase" && (!rate || Number(rate) <= 0)) return setError("Enter a positive rate for stock increases");
     if (!date.ad) return setError("Select a date");
     if (features.requireWarehouse && !warehouseId) return setError("Select a warehouse");
     if (features.batch && selectedItem?.tracksBatch && !batchNo.trim()) return setError("Batch number is required for this item");
@@ -80,7 +91,7 @@ export default function StockAdjustPage() {
     setSubmitting(true);
     try {
       const serialNumbers = serialText.split(/[\n,]+/).map((serial) => serial.trim()).filter(Boolean);
-      await adjustInventoryStock({ itemId, qty: finalQty, rate: rate ? Number(rate) : undefined, accountId, warehouseId: features.warehouses ? warehouseId || undefined : undefined, binId: features.bins ? binId || undefined : undefined, date: date.ad, dateBs: date.bs || undefined, memo: memo.trim() || undefined, batchNo: features.batch ? batchNo.trim() || undefined : undefined, lotNo: features.lot ? lotNo.trim() || undefined : undefined, expiryDate: features.expiry ? expiryDate || undefined : undefined, serialNumbers: features.serial && serialNumbers.length ? serialNumbers : undefined, allowNegativeOverride: features.negativeStock && allowNegative ? true : undefined, overrideReason: features.negativeStock && allowNegative ? overrideReason.trim() : undefined });
+      await adjustInventoryStock({ itemId, qty: finalQty, rate: rate ? Number(rate) : undefined, accountId: accountId || undefined, warehouseId: features.warehouses ? warehouseId || undefined : undefined, binId: features.bins ? binId || undefined : undefined, date: date.ad, dateBs: date.bs || undefined, memo: memo.trim() || undefined, batchNo: features.batch ? batchNo.trim() || undefined : undefined, lotNo: features.lot ? lotNo.trim() || undefined : undefined, expiryDate: features.expiry ? expiryDate || undefined : undefined, serialNumbers: features.serial && serialNumbers.length ? serialNumbers : undefined, allowNegativeOverride: features.negativeStock && allowNegative ? true : undefined, overrideReason: features.negativeStock && allowNegative ? overrideReason.trim() : undefined });
       setSuccess("Stock adjustment posted!");
       setTimeout(() => { setItemId(""); setQty(""); setRate(""); setMemo(""); setBatchNo(""); setLotNo(""); setExpiryDate(""); setSerialText(""); setAllowNegative(false); setOverrideReason(""); setSuccess(null); }, 2000);
     } catch (e: any) { setError(e?.message ?? "Failed"); } finally { setSubmitting(false); }
@@ -89,7 +100,12 @@ export default function StockAdjustPage() {
   return (
     <div className="space-y-6 pb-20 text-foreground max-w-4xl mx-auto animate-fade-in">
       <div>
-        <button onClick={() => navigate("/inventory")} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-2"><ChevronLeft className="h-3 w-3" /> Back to Inventory</button>
+        <button
+          onClick={() => navigate("/inventory")}
+          className="mb-2 inline-flex items-center gap-2 rounded-full border border-transparent bg-transparent px-4 py-2 text-sm font-semibold text-foreground transition-all hover:border-orange-600 hover:bg-orange-600 hover:text-white"
+        >
+          <ChevronLeft className="h-4 w-4" /> Back to Inventory
+        </button>
         <PageHeader title="Stock Adjustment" description="Increase or decrease stock quantities with journal entry generation." icon={Package} />
       </div>
       {error && <div className="rounded-xl border border-red-200 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 dark:text-red-300 flex items-center gap-2"><AlertTriangle className="h-4 w-4 shrink-0" /> {error}</div>}
@@ -97,6 +113,11 @@ export default function StockAdjustPage() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
+          <Card className="border-border/50 shadow-lg"><CardContent className="pt-6 space-y-4">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Adjustment Date</h3>
+            <DualDateInput ref={dateInputRef} value={date} onChange={setDate} required />
+          </CardContent></Card>
+
           <Card className="border-border/50 shadow-lg"><CardContent className="pt-6 space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Item</h3>
             <SearchableSelect options={items.map((i) => ({ value: i.id, label: `${i.name}${i.sku ? ` [${i.sku}]` : ""}` }))} value={itemId} onChange={setItemId} placeholder="Search items..." />
@@ -111,10 +132,18 @@ export default function StockAdjustPage() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div><label className="text-xs font-medium text-muted-foreground mb-1.5 block">Quantity *</label><Input type="number" placeholder="0" value={qty} onChange={(e) => setQty(e.target.value)} className="rounded-xl h-12 text-lg font-bold tabular-nums" /></div>
-              <div><label className="text-xs font-medium text-muted-foreground mb-1.5 block">Rate per unit</label><Input type="number" placeholder="0.00" value={rate} onChange={(e) => setRate(e.target.value)} className="rounded-xl h-12 tabular-nums" /></div>
+              <div><label className="text-xs font-medium text-muted-foreground mb-1.5 block">{direction === "increase" ? "Rate per unit *" : "Rate per unit"}</label><Input type="number" placeholder={direction === "increase" ? "0.00" : "Costed from inventory layers"} value={rate} onChange={(e) => setRate(e.target.value)} className="rounded-xl h-12 tabular-nums" disabled={direction === "decrease"} /></div>
             </div>
-            <div><label className="text-xs font-medium text-muted-foreground mb-1.5 block">Adjustment Date *</label><DualDateInput value={date} onChange={setDate} /></div>
-            <div><label className="text-xs font-medium text-muted-foreground mb-1.5 block">Adjustment Account *</label><SearchableSelect options={accounts.map((a) => ({ value: a.id, label: `${a.code ? `${a.code} — ` : ""}${a.name}` }))} value={accountId} onChange={setAccountId} placeholder="Select account..." /></div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Adjustment Account</label>
+              <SearchableSelect options={accounts.map((a) => ({ value: a.id, label: `${a.code ? `${a.code} - ` : ""}${a.name}` }))} value={accountId} onChange={setAccountId} placeholder={direction === "increase" ? "Select stock gain / adjustment offset..." : "Select shrinkage / stock loss expense..."} />
+              <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
+                <Info className="h-3 w-3" />
+                {direction === "increase"
+                  ? "Optional. If blank, the system uses or creates Stock Adjustment Gain."
+                  : "Optional. If blank, the system uses or creates Inventory Shrinkage / Stock Adjustment Loss."}
+              </p>
+            </div>
             <div><label className="text-xs font-medium text-muted-foreground mb-1.5 block">Memo</label><Input placeholder="Reason for adjustment" value={memo} onChange={(e) => setMemo(e.target.value)} className="rounded-xl" /></div>
           </CardContent></Card>
 
@@ -152,9 +181,23 @@ export default function StockAdjustPage() {
             <div className="flex justify-between text-sm"><span className="text-muted-foreground">Qty</span><span className="font-bold tabular-nums">{qty || "0"}</span></div>
             <div className="h-px bg-border" />
             <div className="flex justify-between text-sm"><span className="font-bold">Total</span><MoneyText value={amount} className="text-lg font-black" /></div>
+            <div className="rounded-2xl border border-border/60 bg-muted/30 p-3 text-xs">
+              <div className="mb-2 font-bold uppercase tracking-widest text-muted-foreground">Accounting Entry</div>
+              {direction === "increase" ? (
+                <div className="space-y-1.5">
+                  <div className="flex justify-between gap-3"><span>Dr Inventory Asset</span><MoneyText value={amount} /></div>
+                  <div className="flex justify-between gap-3"><span>Cr {selectedAccount?.name || "Stock Adjustment Gain"}</span><MoneyText value={amount} /></div>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <div className="flex justify-between gap-3"><span>Dr {selectedAccount?.name || "Inventory Shrinkage / Stock Adjustment Loss"}</span><span>System cost</span></div>
+                  <div className="flex justify-between gap-3"><span>Cr Inventory Asset</span><span>System cost</span></div>
+                </div>
+              )}
+            </div>
             {selectedItem && <><div className="h-px bg-border" /><div className="flex justify-between text-sm"><span className="text-muted-foreground">Projected</span><span className={cn("font-black tabular-nums", projectedStock < 0 ? "text-red-600" : "text-emerald-600")}>{projectedStock}</span></div></>}
           </div>
-          <Button onClick={handleSubmit} disabled={submitting || !itemId || !qty || !accountId} className={cn("w-full rounded-2xl h-12 font-bold shadow-lg text-white border-none", direction === "increase" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-red-600 hover:bg-red-700")}>
+          <Button onClick={handleSubmit} disabled={submitting || !itemId || !qty} className={cn("w-full rounded-2xl h-12 font-bold shadow-lg text-white border-none", direction === "increase" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-red-600 hover:bg-red-700")}>
             <Save className="mr-2 h-4 w-4" />{submitting ? "Posting…" : "Post Adjustment"}
           </Button>
         </CardContent></Card></div>

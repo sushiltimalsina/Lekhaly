@@ -33,6 +33,13 @@ import {
 import { SortableList } from "@/components/app/sortable-list";
 import { getInventorySettings, type InventorySettings } from "@/lib/api/inventory";
 import { inventoryFeatures } from "@/lib/inventory-features";
+import ConfirmDialog from "@/components/app/confirm-dialog";
+
+type DeleteTarget = {
+  type: "warehouse" | "bin";
+  id: string;
+  name: string;
+} | null;
 
 export default function WarehousesPage() {
   const navigate = useNavigate();
@@ -57,6 +64,8 @@ export default function WarehousesPage() {
   const [binName, setBinName] = React.useState("");
   const [binCode, setBinCode] = React.useState("");
   const [addingBin, setAddingBin] = React.useState(false);
+  const [deleteTarget, setDeleteTarget] = React.useState<DeleteTarget>(null);
+  const [deleting, setDeleting] = React.useState(false);
 
   const refresh = React.useCallback(async () => {
     setLoading(true);
@@ -105,10 +114,25 @@ export default function WarehousesPage() {
     } catch (e: any) { setError(e?.message ?? "Failed to update warehouse"); }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Delete warehouse "${name}"?`)) return;
-    try { await deleteWarehouse(id); setSuccess("Warehouse removed"); await refresh(); }
-    catch (e: any) { setError(e?.message ?? "Failed to delete warehouse"); }
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      if (deleteTarget.type === "warehouse") {
+        await deleteWarehouse(deleteTarget.id);
+        setSuccess("Warehouse removed");
+      } else {
+        await deleteBin(deleteTarget.id);
+        setSuccess("Bin removed");
+      }
+      setDeleteTarget(null);
+      await refresh();
+    } catch (e: any) {
+      setError(e?.message ?? `Failed to delete ${deleteTarget.type}`);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleAddBin = async (warehouseId: string) => {
@@ -120,12 +144,6 @@ export default function WarehousesPage() {
       await refresh();
     } catch (e: any) { setError(e?.message ?? "Failed to add bin"); }
     finally { setAddingBin(false); }
-  };
-
-  const handleDeleteBin = async (binId: string, name: string) => {
-    if (!confirm(`Delete bin "${name}"?`)) return;
-    try { await deleteBin(binId); setSuccess("Bin removed"); await refresh(); }
-    catch (e: any) { setError(e?.message ?? "Failed to delete bin"); }
   };
 
   const handleReorderWarehouses = async (newItems: WarehouseType[]) => {
@@ -260,7 +278,7 @@ export default function WarehousesPage() {
                     {editId !== wh.id && (
                       <div className="flex items-center gap-1 shrink-0">
                         <button onClick={() => { setEditId(wh.id); setEditName(wh.name); setEditCode(wh.code ?? ""); }} className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground" title="Edit"><Pencil className="h-4 w-4" /></button>
-                        <button onClick={() => handleDelete(wh.id, wh.name)} className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-muted-foreground hover:text-red-600" title="Delete"><Trash2 className="h-4 w-4" /></button>
+                        <button onClick={() => setDeleteTarget({ type: "warehouse", id: wh.id, name: wh.name })} className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-muted-foreground hover:text-red-600" title="Delete"><Trash2 className="h-4 w-4" /></button>
                       </div>
                     )}
                   </div>
@@ -294,7 +312,7 @@ export default function WarehousesPage() {
                                 {bin.code && <span className="text-xs text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded">{bin.code}</span>}
                                 {!bin.isActive && <span className="text-[10px] uppercase font-bold text-red-500">Inactive</span>}
                               </div>
-                              <button onClick={() => handleDeleteBin(bin.id, bin.name)} className="h-7 w-7 flex items-center justify-center rounded-md opacity-0 group-hover:opacity-100 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all text-muted-foreground hover:text-red-600" title="Remove bin"><Trash2 className="h-3.5 w-3.5" /></button>
+                              <button onClick={() => setDeleteTarget({ type: "bin", id: bin.id, name: bin.name })} className="h-7 w-7 flex items-center justify-center rounded-md opacity-0 group-hover:opacity-100 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all text-muted-foreground hover:text-red-600" title="Remove bin"><Trash2 className="h-3.5 w-3.5" /></button>
                             </div>
                           )}
                         />
@@ -309,6 +327,21 @@ export default function WarehousesPage() {
       </div>
       </>
       )}
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title={deleteTarget?.type === "warehouse" ? "Delete warehouse?" : "Delete bin?"}
+        description={
+          deleteTarget?.type === "warehouse"
+            ? `Delete warehouse "${deleteTarget.name}"? Stock entries linked to this warehouse will be preserved.`
+            : `Delete bin "${deleteTarget?.name}"? Stock entries linked to this bin will be preserved.`
+        }
+        confirmText={deleteTarget?.type === "warehouse" ? "Delete Warehouse" : "Delete Bin"}
+        cancelText="Keep"
+        variant="danger"
+        loading={deleting}
+        onConfirm={confirmDelete}
+        onCancel={() => deleting ? undefined : setDeleteTarget(null)}
+      />
     </div>
   );
 }

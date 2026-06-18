@@ -48,7 +48,7 @@ export default function CreateStockCountPage() {
     (async () => {
       try {
         const [iData, whData, settingsData] = await Promise.all([
-          listItems({ isActive: true, take: 5000 }),
+          listItems({ isActive: true, take: 1000 }),
           listWarehouses({ isActive: true }),
           getInventorySettings(),
         ]);

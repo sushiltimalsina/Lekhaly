@@ -8,7 +8,7 @@ exports.StockAdjustmentSchema = zod_1.z.object({
     dateBs: zod_1.z.string().trim().max(20).optional(),
     qty: zod_1.z.number(),
     rate: zod_1.z.number().nonnegative().optional(),
-    accountId: zod_1.z.string().uuid(),
+    accountId: zod_1.z.string().uuid().optional(),
     warehouseId: zod_1.z.string().uuid().optional(),
     binId: zod_1.z.string().uuid().optional(),
     memo: zod_1.z.string().trim().max(255).optional(),

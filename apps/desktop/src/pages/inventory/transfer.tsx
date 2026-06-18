@@ -42,7 +42,7 @@ export default function StockTransferPage() {
   React.useEffect(() => {
     (async () => {
       try {
-        const [iData, whData, settingsData] = await Promise.all([listItems({ isActive: true, take: 5000 }), listWarehouses({ isActive: true }), getInventorySettings()]);
+        const [iData, whData, settingsData] = await Promise.all([listItems({ isActive: true, take: 1000 }), listWarehouses({ isActive: true }), getInventorySettings()]);
         setInventorySettings(settingsData);
         setItems((Array.isArray(iData) ? iData : []).filter((i: any) => i.type !== "services" && i.trackInventory !== false).map((i: any) => ({ id: i.id, name: i.name, sku: i.sku, stock: i.stock ?? 0, isSerialized: i.isSerialized, tracksBatch: i.tracksBatch, tracksLot: i.tracksLot, tracksExpiry: i.tracksExpiry })));
         setWarehouses(Array.isArray(whData) ? whData : []);

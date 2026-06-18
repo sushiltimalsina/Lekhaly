@@ -75,7 +75,7 @@ export default function StockTransferPage() {
     (async () => {
       try {
         const [itemData, whData, settingsData] = await Promise.all([
-          listItems({ isActive: true, take: 5000 }),
+          listItems({ isActive: true, take: 1000 }),
           listWarehouses({ isActive: true }),
           getInventorySettings(),
         ]);

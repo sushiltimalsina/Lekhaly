@@ -136,6 +136,9 @@ function ItemDetailPageContent() {
   const searchParams = useSearchParams();
   const id = params.id;
   const initialTab = searchParams.get("tab") === "ledger" ? "ledger" : "overview";
+  const sourceFrom = searchParams.get("from");
+  const backHref = sourceFrom === "stock-ledger" ? "/reports/stock-ledger" : "/items";
+  const backLabel = sourceFrom === "stock-ledger" ? "Back to Stock Ledger" : "Back to all items";
 
   const [item, setItem] = React.useState<ItemRecord | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -201,21 +204,46 @@ function ItemDetailPageContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, tracked, tab]);
 
+  function renderSourceCell(r: StockLedgerEntry) {
+    const sourceNumber = r.invoiceNumber || r.voucherNumber || r.voucherType || "Voucher";
+    if (!r.voucherId) {
+      return <span className="text-xs text-muted-foreground">Opening / manual</span>;
+    }
+
+    return (
+      <div className="flex flex-col items-start gap-1.5">
+        {r.partyId && r.partyName ? (
+          <Link
+            href={`/reports/ledger?partyId=${encodeURIComponent(r.partyId)}`}
+            onClick={(event) => event.stopPropagation()}
+            className="max-w-[210px] truncate text-sm font-bold text-foreground hover:text-orange-500 hover:underline"
+            title={`Open ledger for ${r.partyName}`}
+          >
+            {r.partyName}
+          </Link>
+        ) : (
+          <span className="text-sm font-semibold text-muted-foreground">No party</span>
+        )}
+        <Link
+          href={`/vouchers/${r.voucherId}`}
+          onClick={(event) => event.stopPropagation()}
+          className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+          title="Open source voucher"
+        >
+          {sourceNumber}
+          <ExternalLink className="h-3 w-3" />
+        </Link>
+      </div>
+    );
+  }
+
   const ledgerColumns: Column<StockLedgerEntry>[] = [
     { key: "date", header: "Date", width: 120, cell: (r) => <span className="text-xs font-medium">{new Date(r.date).toLocaleDateString()}</span> },
     {
       key: "source",
       header: "Source",
-      width: 180,
-      cell: (r) =>
-        r.voucherId ? (
-          <Link href={`/vouchers/${r.voucherId}`} className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
-            {r.voucherNumber || r.voucherType || "Voucher"}
-            <ExternalLink className="h-3 w-3" />
-          </Link>
-        ) : (
-          <span className="text-xs text-muted-foreground">Opening / manual</span>
-        ),
+      width: 240,
+      cell: renderSourceCell,
     },
     ...(features.warehouses
       ? [
@@ -251,7 +279,7 @@ function ItemDetailPageContent() {
     const movementHeader = ["Date", "Source", "Location", "In", "Out", "Rate", "Balance", "Value"];
     const movementRows = (ledger?.entries ?? []).map((entry) => [
       new Date(entry.date).toLocaleDateString(),
-      entry.voucherNumber || entry.voucherType || "Opening / manual",
+      [entry.partyName, entry.invoiceNumber || entry.voucherNumber || entry.voucherType || "Opening / manual"].filter(Boolean).join(" - "),
       [entry.warehouseName, entry.binName].filter(Boolean).join(" / "),
       entry.qtyIn || "",
       entry.qtyOut || "",
@@ -318,13 +346,17 @@ function ItemDetailPageContent() {
 
   const setTabAndUrl = (nextTab: Tab) => {
     setTab(nextTab);
-    router.replace(nextTab === "ledger" ? `/items/${id}?tab=ledger` : `/items/${id}`);
+    const params = new URLSearchParams();
+    if (nextTab === "ledger") params.set("tab", "ledger");
+    if (sourceFrom) params.set("from", sourceFrom);
+    const query = params.toString();
+    router.replace(query ? `/items/${id}?${query}` : `/items/${id}`);
   };
 
   return (
     <div className="space-y-6 pb-20">
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Link href="/items" className="transition-colors hover:text-foreground">Items</Link>
+        <Link href={backHref} className="transition-colors hover:text-foreground">{sourceFrom === "stock-ledger" ? "Stock Ledger" : "Items"}</Link>
         <span>/</span>
         <span className="max-w-[300px] truncate font-medium text-foreground">{item.name}</span>
       </div>
@@ -332,11 +364,11 @@ function ItemDetailPageContent() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <button
           type="button"
-          onClick={() => router.push("/items")}
+          onClick={() => router.push(backHref)}
           className="inline-flex h-10 w-fit items-center justify-center gap-2 rounded-full border border-transparent bg-transparent px-4 text-sm font-bold text-slate-950 transition-colors hover:border-orange-600 hover:bg-orange-600 hover:text-white dark:text-white"
         >
           <ArrowLeft className="h-4 w-4" />
-          <span>Back to all items</span>
+          <span>{backLabel}</span>
         </button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -353,9 +385,9 @@ function ItemDetailPageContent() {
       </div>
 
       <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-muted/20 p-6 sm:p-8">
-        <div className="absolute right-0 top-0 h-40 w-40 rounded-bl-full bg-gradient-to-bl from-primary/5 to-transparent" />
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex items-start gap-5">
+        <div className="pointer-events-none absolute right-0 top-0 h-40 w-40 rounded-bl-full bg-gradient-to-bl from-primary/5 to-transparent" />
+        <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex min-w-0 items-start gap-5">
             <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-primary/10 bg-gradient-to-br from-primary/10 to-violet-500/10 shadow-lg shadow-primary/5">
               <Package className="h-7 w-7 text-primary" />
             </div>
@@ -373,13 +405,18 @@ function ItemDetailPageContent() {
               {item.hsCode ? <div className="mt-2 text-xs text-muted-foreground">HS Code: <span className="font-mono font-medium">{item.hsCode}</span></div> : null}
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="relative z-20 flex shrink-0 items-center gap-2">
             <Button variant="outline" size="sm" className="h-10 gap-2 rounded-xl" onClick={() => { loadItem(); loadLedger(); }}>
               <RefreshCw className="h-4 w-4" /> Refresh
             </Button>
-            <Button size="sm" className="h-10 gap-2 rounded-xl bg-primary shadow-lg shadow-primary/20" onClick={() => router.push(`/items/new?edit=${id}`)}>
-              <Edit className="h-4 w-4" /> Edit
-            </Button>
+            {id ? (
+              <Link
+                href={`/items/new?edit=${encodeURIComponent(id)}`}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary px-3 text-sm font-medium text-primary-foreground shadow-lg shadow-primary/20 transition-all duration-200 hover:bg-primary/90 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <Edit className="h-4 w-4" /> Edit
+              </Link>
+            ) : null}
           </div>
         </div>
       </div>

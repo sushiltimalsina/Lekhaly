@@ -227,7 +227,7 @@ export default function SearchableSelect<T extends any>(props: SearchableSelectP
                                             e.preventDefault();
                                             const item = filtered[activeIndex];
                                             if (item) {
-                                                onChange((item as any).id, item);
+                                                onChange((item as any).id ?? (item as any).value, item);
                                                 setOpen(false);
                                                 setQuery("");
                                                 setTimeout(() => {

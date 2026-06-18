@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
-import { Prisma, VoucherStatus, VoucherType } from "@prisma/client";
+import { CoaType, Prisma, VoucherStatus, VoucherType } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import type { AuthUser } from "../../common/auth/auth.types";
 import { resolveAdDate } from "../../common/date/nepali-date";
@@ -17,6 +17,177 @@ export class InventoryService {
 
   async getSettings(user: AuthUser) {
     return this.getOrCreateSettings(user.companyId);
+  }
+
+  async resolveInventoryAssetAccountId(companyId: string, item: any, tx?: Prisma.TransactionClient) {
+    const db = (tx ?? this.prisma) as any;
+    const configuredAccountIds = [item?.expenseAccountId, item?.incomeAccountId].filter(Boolean);
+
+    for (const accountId of configuredAccountIds) {
+      const account = await db.chartOfAccount.findFirst({
+        where: {
+          id: accountId,
+          companyId,
+          type: "asset",
+          isActive: true,
+          isPostable: true
+        },
+        select: { id: true }
+      });
+      if (account?.id) return account.id;
+    }
+
+    const fallback = await db.chartOfAccount.findFirst({
+      where: {
+        companyId,
+        type: "asset",
+        isActive: true,
+        isPostable: true,
+        OR: [
+          { code: "1130" },
+          { code: "1200" },
+          { name: { contains: "Inventory", mode: "insensitive" } }
+        ]
+      },
+      orderBy: [{ code: "asc" }, { name: "asc" }],
+      select: { id: true }
+    });
+    if (fallback?.id) return fallback.id;
+
+    return this.createInventoryAssetAccount(companyId, tx);
+  }
+
+  private async createInventoryAssetAccount(companyId: string, tx?: Prisma.TransactionClient) {
+    const db = (tx ?? this.prisma) as any;
+    const currentAssets = await db.chartOfAccount.findFirst({
+      where: {
+        companyId,
+        type: CoaType.asset,
+        isGroup: true,
+        OR: [{ code: "1100" }, { name: { contains: "Current Assets", mode: "insensitive" } }]
+      },
+      orderBy: [{ code: "asc" }],
+      select: { id: true, level: true }
+    });
+
+    const existing1130 = await db.chartOfAccount.findFirst({
+      where: { companyId, code: "1130" },
+      select: { id: true, isGroup: true, type: true }
+    });
+    if (existing1130 && !existing1130.isGroup && existing1130.type === CoaType.asset) {
+      const account = await db.chartOfAccount.update({
+        where: { id: existing1130.id },
+        data: {
+          name: "Inventory",
+          isActive: true,
+          isPostable: true,
+          parentId: currentAssets?.id ?? null,
+          level: currentAssets ? (currentAssets.level ?? 1) + 1 : 0
+        },
+        select: { id: true }
+      });
+      return account.id;
+    }
+
+    const code = await this.nextAvailableAccountCode(companyId, "1130", tx);
+    const account = await db.chartOfAccount.create({
+      data: {
+        companyId,
+        code,
+        name: "Inventory",
+        type: CoaType.asset,
+        parentId: currentAssets?.id ?? null,
+        isGroup: false,
+        isPostable: true,
+        isActive: true,
+        level: currentAssets ? (currentAssets.level ?? 1) + 1 : 0
+      },
+      select: { id: true }
+    });
+    return account.id;
+  }
+
+  private async nextAvailableAccountCode(companyId: string, preferredCode: string, tx?: Prisma.TransactionClient) {
+    const db = (tx ?? this.prisma) as any;
+    for (let offset = 0; offset < 70; offset += 1) {
+      const code = String(Number(preferredCode) + offset);
+      const exists = await db.chartOfAccount.findFirst({
+        where: { companyId, code },
+        select: { id: true }
+      });
+      if (!exists) return code;
+    }
+    throw new BadRequestException("Could not create Inventory Asset account because no available inventory account code was found.");
+  }
+
+  private async resolveStockAdjustmentAccountId(
+    companyId: string,
+    direction: "increase" | "decrease",
+    inventoryAccountId: string,
+    selectedAccountId?: string,
+    tx?: Prisma.TransactionClient
+  ) {
+    const db = (tx ?? this.prisma) as any;
+    if (selectedAccountId) {
+      const selected = await db.chartOfAccount.findFirst({
+        where: { id: selectedAccountId, companyId },
+        select: { id: true, isActive: true, isPostable: true }
+      });
+      if (!selected) throw new BadRequestException("Adjustment account not found");
+      if (!selected.isActive || !selected.isPostable) {
+        throw new BadRequestException("Adjustment account must be an active postable account");
+      }
+      if (selected.id !== inventoryAccountId) return selected.id;
+    }
+
+    const type = direction === "increase" ? CoaType.income : CoaType.expense;
+    const name = direction === "increase" ? "Stock Adjustment Gain" : "Inventory Shrinkage / Stock Adjustment Loss";
+    const preferredCode = direction === "increase" ? "4210" : "5210";
+    const groupName = direction === "increase" ? "Other Income" : "Administrative Expenses";
+
+    const existing = await db.chartOfAccount.findFirst({
+      where: {
+        companyId,
+        type,
+        isActive: true,
+        isPostable: true,
+        OR: [
+          { code: preferredCode },
+          { name: { contains: direction === "increase" ? "Stock Adjustment Gain" : "Inventory Shrinkage", mode: "insensitive" } },
+          { name: { contains: direction === "increase" ? "Adjustment Gain" : "Stock Adjustment Loss", mode: "insensitive" } }
+        ]
+      },
+      orderBy: [{ code: "asc" }, { name: "asc" }],
+      select: { id: true }
+    });
+    if (existing?.id && existing.id !== inventoryAccountId) return existing.id;
+
+    const parent = await db.chartOfAccount.findFirst({
+      where: {
+        companyId,
+        type,
+        isGroup: true,
+        OR: [{ name: { contains: groupName, mode: "insensitive" } }, { code: direction === "increase" ? "4000" : "5000" }]
+      },
+      orderBy: [{ code: "asc" }],
+      select: { id: true, level: true }
+    });
+    const code = await this.nextAvailableAccountCode(companyId, preferredCode, tx);
+    const created = await db.chartOfAccount.create({
+      data: {
+        companyId,
+        code,
+        name,
+        type,
+        parentId: parent?.id ?? null,
+        isGroup: false,
+        isPostable: true,
+        isActive: true,
+        level: parent ? (parent.level ?? 0) + 1 : 0
+      },
+      select: { id: true }
+    });
+    return created.id;
   }
 
   private async ensureDefaultWarehouse(companyId: string, preferredId?: string | null) {
@@ -617,7 +788,16 @@ export class InventoryService {
           id: true,
           voucherNumber: true,
           voucherType: true,
-          voucherDate: true
+          voucherDate: true,
+          party: { select: { id: true, name: true } },
+          invoice: {
+            select: {
+              id: true,
+              invoiceNo: true,
+              type: true,
+              party: { select: { id: true, name: true } }
+            }
+          }
         }
       },
       warehouse: { select: { id: true, name: true, code: true } },
@@ -687,6 +867,11 @@ export class InventoryService {
         voucherNumber: e.voucher?.voucherNumber ?? null,
         voucherType: e.voucher?.voucherType ?? null,
         voucherDate: e.voucher?.voucherDate ?? null,
+        invoiceId: e.voucher?.invoice?.id ?? null,
+        invoiceNumber: e.voucher?.invoice?.invoiceNo ?? null,
+        invoiceType: e.voucher?.invoice?.type ?? null,
+        partyId: e.voucher?.invoice?.party?.id ?? e.voucher?.party?.id ?? null,
+        partyName: e.voucher?.invoice?.party?.name ?? e.voucher?.party?.name ?? null,
         sourceDocumentType: e.sourceDocumentType ?? null,
         sourceDocumentId: e.sourceDocumentId ?? null
       });
@@ -726,7 +911,7 @@ export class InventoryService {
       dateBs?: string;
       qty: number;
       rate?: number;
-      accountId: string;
+      accountId?: string;
       warehouseId?: string;
       binId?: string;
       memo?: string;
@@ -747,17 +932,20 @@ export class InventoryService {
       throw new BadRequestException("Service items do not track stock");
     }
 
-    const account = await this.prisma.chartOfAccount.findFirst({
-      where: { id: input.accountId, companyId: user.companyId }
-    });
-    if (!account) throw new BadRequestException("Account not found");
-
-    const inventoryAccountId = item.expenseAccountId || item.incomeAccountId;
-    if (!inventoryAccountId) throw new BadRequestException("Item missing inventory account");
+    const inventoryAccountId = await this.resolveInventoryAssetAccountId(user.companyId, item);
 
     const qty = new Prisma.Decimal(input.qty);
     if (qty.equals(0)) throw new BadRequestException("Quantity cannot be zero");
+    const adjustmentAccountId = await this.resolveStockAdjustmentAccountId(
+      user.companyId,
+      qty.gt(0) ? "increase" : "decrease",
+      inventoryAccountId,
+      input.accountId
+    );
     const enteredRate = new Prisma.Decimal(input.rate ?? 0);
+    if (qty.gt(0) && enteredRate.lte(0)) {
+      throw new BadRequestException("Rate is required for stock increases so inventory value and accounting remain correct");
+    }
     const enteredAmount = qty.abs().mul(enteredRate);
     const resolved = resolveAdDate(input.date, input.dateBs);
     const movement = await this.applyMovementPolicy(user.companyId, item, {
@@ -840,7 +1028,7 @@ export class InventoryService {
                   {
                     companyId: user.companyId,
                     lineNo: 2,
-                    accountId: account.id,
+                    accountId: adjustmentAccountId,
                     debit: new Prisma.Decimal(0),
                     credit: amount,
                     description: "Stock increase offset"
@@ -850,18 +1038,18 @@ export class InventoryService {
                   {
                     companyId: user.companyId,
                     lineNo: 1,
-                    accountId: account.id,
-                    debit: new Prisma.Decimal(0),
-                    credit: amount,
-                    description: "Stock decrease"
+                    accountId: adjustmentAccountId,
+                    debit: amount,
+                    credit: new Prisma.Decimal(0),
+                    description: "Stock decrease / shrinkage loss"
                   },
                   {
                     companyId: user.companyId,
                     lineNo: 2,
                     accountId: inventoryAccountId,
-                    debit: amount,
-                    credit: new Prisma.Decimal(0),
-                    description: "Stock decrease offset"
+                    debit: new Prisma.Decimal(0),
+                    credit: amount,
+                    description: "Inventory asset reduction"
                   }
                 ]
           }

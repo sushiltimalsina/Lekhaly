@@ -160,6 +160,11 @@ export type StockLedgerEntry = {
   voucherNumber?: string | null;
   voucherType?: string | null;
   voucherDate?: string | null;
+  invoiceId?: string | null;
+  invoiceNumber?: string | null;
+  invoiceType?: string | null;
+  partyId?: string | null;
+  partyName?: string | null;
   sourceDocumentType?: string | null;
   sourceDocumentId?: string | null;
 };
@@ -206,7 +211,7 @@ export type StockAdjustmentInput = {
   dateBs?: string;
   qty: number;
   rate?: number;
-  accountId: string;
+  accountId?: string;
   warehouseId?: string;
   binId?: string;
   memo?: string;

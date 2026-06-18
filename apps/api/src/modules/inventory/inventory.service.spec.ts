@@ -13,7 +13,9 @@ describe("InventoryService", () => {
         findFirst: jest.fn()
       },
       chartOfAccount: {
-        findFirst: jest.fn()
+        findFirst: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn()
       },
       stockLedger: {
         findMany: jest.fn(),
@@ -78,7 +80,11 @@ describe("InventoryService", () => {
       id: "item-1",
       expenseAccountId: "inv-acc"
     });
-    prisma.chartOfAccount.findFirst.mockResolvedValue({ id: "offset-acc" });
+    prisma.chartOfAccount.findFirst.mockImplementation(({ where }: any) => {
+      if (where.id === "offset-acc") return Promise.resolve({ id: "offset-acc", isActive: true, isPostable: true });
+      if (where.id === "inv-acc") return Promise.resolve({ id: "inv-acc" });
+      return Promise.resolve(null);
+    });
     prisma.voucher.create.mockResolvedValue({ id: "v-1" });
     prisma.stockLedger.create.mockResolvedValue({ id: "s-1" });
 
@@ -93,5 +99,39 @@ describe("InventoryService", () => {
     expect(result.ok).toBe(true);
     expect(prisma.voucher.create).toHaveBeenCalled();
     expect(prisma.stockLedger.create).toHaveBeenCalled();
+  });
+
+  it("creates inventory asset account when setup is missing", async () => {
+    prisma.item.findFirst.mockResolvedValue({
+      id: "item-1",
+      expenseAccountId: null,
+      incomeAccountId: null
+    });
+    prisma.chartOfAccount.findFirst.mockImplementation(({ where }: any) => {
+      if (where.id === "offset-acc") return Promise.resolve({ id: "offset-acc", isActive: true, isPostable: true });
+      if (where.OR?.some((entry: any) => entry.code === "1100")) return Promise.resolve({ id: "current-assets", level: 1 });
+      return Promise.resolve(null);
+    });
+    prisma.chartOfAccount.create.mockResolvedValue({ id: "inventory-asset" });
+    prisma.voucher.create.mockResolvedValue({ id: "v-1" });
+    prisma.stockLedger.create.mockResolvedValue({ id: "s-1" });
+
+    const result = await service.adjustStock(user, {
+      itemId: "item-1",
+      date: new Date(),
+      qty: 5,
+      rate: 10,
+      accountId: "offset-acc"
+    });
+
+    expect(result.ok).toBe(true);
+    expect(prisma.chartOfAccount.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        code: "1130",
+        name: "Inventory",
+        type: "asset",
+        isPostable: true
+      })
+    }));
   });
 });

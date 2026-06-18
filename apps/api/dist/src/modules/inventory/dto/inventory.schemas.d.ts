@@ -5,7 +5,7 @@ export declare const StockAdjustmentSchema: z.ZodObject<{
     dateBs: z.ZodOptional<z.ZodString>;
     qty: z.ZodNumber;
     rate: z.ZodOptional<z.ZodNumber>;
-    accountId: z.ZodString;
+    accountId: z.ZodOptional<z.ZodString>;
     warehouseId: z.ZodOptional<z.ZodString>;
     binId: z.ZodOptional<z.ZodString>;
     memo: z.ZodOptional<z.ZodString>;

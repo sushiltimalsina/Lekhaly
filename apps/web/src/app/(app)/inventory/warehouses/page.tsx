@@ -32,6 +32,13 @@ import {
   type Warehouse as WarehouseType,
   type WarehouseBin,
 } from "@/lib/api/warehouses";
+import ConfirmDialog from "@/components/app/confirm-dialog";
+
+type DeleteTarget = {
+  type: "warehouse" | "bin";
+  id: string;
+  name: string;
+} | null;
 
 export default function WarehousesPage() {
   const [warehouses, setWarehouses] = React.useState<WarehouseType[]>([]);
@@ -59,6 +66,8 @@ export default function WarehousesPage() {
   const [binName, setBinName] = React.useState("");
   const [binCode, setBinCode] = React.useState("");
   const [addingBin, setAddingBin] = React.useState(false);
+  const [deleteTarget, setDeleteTarget] = React.useState<DeleteTarget>(null);
+  const [deleting, setDeleting] = React.useState(false);
 
   const refresh = React.useCallback(async () => {
     setLoading(true);
@@ -126,15 +135,24 @@ export default function WarehousesPage() {
     }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Delete warehouse "${name}"? Stock entries linked to this warehouse will be preserved.`)) return;
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
     setError(null);
     try {
-      await deleteWarehouse(id);
-      setSuccess("Warehouse removed");
+      if (deleteTarget.type === "warehouse") {
+        await deleteWarehouse(deleteTarget.id);
+        setSuccess("Warehouse removed");
+      } else {
+        await deleteBin(deleteTarget.id);
+        setSuccess("Bin removed");
+      }
+      setDeleteTarget(null);
       await refresh();
     } catch (e: any) {
-      setError(e?.message ?? "Failed to delete warehouse");
+      setError(e?.message ?? `Failed to delete ${deleteTarget.type}`);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -156,17 +174,6 @@ export default function WarehousesPage() {
       setError(e?.message ?? "Failed to add bin");
     } finally {
       setAddingBin(false);
-    }
-  };
-
-  const handleDeleteBin = async (binId: string, name: string) => {
-    if (!confirm(`Delete bin "${name}"?`)) return;
-    try {
-      await deleteBin(binId);
-      setSuccess("Bin removed");
-      await refresh();
-    } catch (e: any) {
-      setError(e?.message ?? "Failed to delete bin");
     }
   };
 
@@ -377,7 +384,7 @@ export default function WarehousesPage() {
                         <Pencil className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={() => handleDelete(wh.id, wh.name)}
+                        onClick={() => setDeleteTarget({ type: "warehouse", id: wh.id, name: wh.name })}
                         className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-muted-foreground hover:text-red-600"
                         title="Delete"
                       >
@@ -469,7 +476,7 @@ export default function WarehousesPage() {
                               )}
                             </div>
                             <button
-                              onClick={() => handleDeleteBin(bin.id, bin.name)}
+                              onClick={() => setDeleteTarget({ type: "bin", id: bin.id, name: bin.name })}
                               className="h-7 w-7 flex items-center justify-center rounded-md opacity-0 group-hover:opacity-100 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all text-muted-foreground hover:text-red-600"
                               title="Remove bin"
                             >
@@ -488,6 +495,21 @@ export default function WarehousesPage() {
       </div>
       </>
       )}
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title={deleteTarget?.type === "warehouse" ? "Delete warehouse?" : "Delete bin?"}
+        description={
+          deleteTarget?.type === "warehouse"
+            ? `Delete warehouse "${deleteTarget.name}"? Stock entries linked to this warehouse will be preserved.`
+            : `Delete bin "${deleteTarget?.name}"? Stock entries linked to this bin will be preserved.`
+        }
+        confirmText={deleteTarget?.type === "warehouse" ? "Delete Warehouse" : "Delete Bin"}
+        cancelText="Keep"
+        variant="danger"
+        loading={deleting}
+        onConfirm={confirmDelete}
+        onCancel={() => deleting ? undefined : setDeleteTarget(null)}
+      />
     </div>
   );
 }

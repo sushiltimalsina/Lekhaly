@@ -6,6 +6,10 @@ export declare class InventoryService {
     constructor(prisma: PrismaService);
     getOrCreateSettings(companyId: string, tx?: Prisma.TransactionClient): Promise<any>;
     getSettings(user: AuthUser): Promise<any>;
+    resolveInventoryAssetAccountId(companyId: string, item: any, tx?: Prisma.TransactionClient): Promise<any>;
+    private createInventoryAssetAccount;
+    private nextAvailableAccountCode;
+    private resolveStockAdjustmentAccountId;
     private ensureDefaultWarehouse;
     private ensureDefaultBin;
     updateSettings(user: AuthUser, input: {
@@ -146,6 +150,11 @@ export declare class InventoryService {
             voucherNumber: string | null;
             voucherType: import("@prisma/client").$Enums.VoucherType | null;
             voucherDate: Date | null;
+            invoiceId: string | null;
+            invoiceNumber: string | null;
+            invoiceType: string | null;
+            partyId: string | null;
+            partyName: string | null;
             sourceDocumentType: string | null;
             sourceDocumentId: string | null;
         }[];
@@ -156,7 +165,7 @@ export declare class InventoryService {
         dateBs?: string;
         qty: number;
         rate?: number;
-        accountId: string;
+        accountId?: string;
         warehouseId?: string;
         binId?: string;
         memo?: string;

@@ -759,7 +759,7 @@ export default function ItemsPage() {
       cell: (r) => (
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
-            <Link to={`/items/view/${r.id}`} className="font-medium text-foreground truncate hover:text-primary hover:underline">{r.name}</Link>
+            <Link to={`/items/view/${r.id}?from=items`} className="font-medium text-foreground truncate hover:text-primary hover:underline">{r.name}</Link>
             {features.kits && (r as any).isKit && (
               <span className="shrink-0 inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 ring-1 ring-amber-300/50">
                 KIT
@@ -799,7 +799,7 @@ export default function ItemsPage() {
             )}
             {features.inventory && (
               <Link
-                to={`/items/view/${r.id}?tab=ledger`}
+                to={`/items/view/${r.id}?tab=ledger&from=items`}
                 className="inline-flex h-7 items-center gap-1 rounded-md border border-slate-200 px-2 text-[11px] text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
               >
                 <Eye className="h-3.5 w-3.5" />
@@ -1067,8 +1067,8 @@ export default function ItemsPage() {
       setActionError("Enable Inventory Tracking in Configuration to adjust stock.");
       return;
     }
-    if (!adjustForm.itemId || !adjustForm.accountId || !adjustForm.date) {
-      setActionError("Item, account and date are required.");
+    if (!adjustForm.itemId || !adjustForm.date) {
+      setActionError("Item and date are required.");
       return;
     }
     const qty = Number(adjustForm.qty);
@@ -1076,11 +1076,16 @@ export default function ItemsPage() {
       setActionError("Quantity must be non-zero.");
       return;
     }
+    const rate = adjustForm.rate ? Number(adjustForm.rate) : 0;
+    if (qty > 0 && (!Number.isFinite(rate) || rate <= 0)) {
+      setActionError("Rate is required for stock increases.");
+      return;
+    }
     setAdjustSubmitting(true);
     try {
       await adjustInventoryStock({
         itemId: adjustForm.itemId,
-        accountId: adjustForm.accountId,
+        accountId: adjustForm.accountId || undefined,
         date: adjustForm.date,
         qty,
         rate: adjustForm.rate ? Number(adjustForm.rate) : undefined,
