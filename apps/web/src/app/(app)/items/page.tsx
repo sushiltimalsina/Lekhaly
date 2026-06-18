@@ -415,6 +415,9 @@ export default function ItemsPage() {
   const [adjustForm, setAdjustForm] = React.useState({
     itemId: "",
     date: toIsoDate(new Date()),
+    dateBs: "",
+    warehouseId: "",
+    binId: "",
     qty: "",
     rate: "",
     accountId: "",
@@ -422,6 +425,8 @@ export default function ItemsPage() {
     batchNo: "",
     lotNo: "",
     expiryDate: "",
+    expiryDateBs: "",
+    serialText: "",
     allowNegativeOverride: false,
     overrideReason: "",
   });
@@ -434,10 +439,13 @@ export default function ItemsPage() {
     qty: "",
     rate: "",
     date: toIsoDate(new Date()),
+    dateBs: "",
     memo: "",
     batchNo: "",
     lotNo: "",
     expiryDate: "",
+    expiryDateBs: "",
+    serialText: "",
   });
   const dateMenuWrapRef = React.useRef<HTMLDivElement | null>(null);
   const columnsMenuWrapRef = React.useRef<HTMLDivElement | null>(null);
@@ -1062,12 +1070,23 @@ export default function ItemsPage() {
   const itemSelectOptions = goodsRows.map((r) => ({ value: r.id, label: `${r.name}${r.sku ? ` [${r.sku}]` : ""}${r.unit ? ` - ${r.unit}` : ""}` }));
   const accountSelectOptions = accounts.map((a) => ({ value: a.id, label: a.name }));
   const warehouseSelectOptions = warehouses.map((warehouse) => ({ value: warehouse.id, label: `${warehouse.name}${warehouse.code ? ` (${warehouse.code})` : ""}` }));
+  const selectedAdjustmentItem = goodsRows.find((r) => r.id === adjustForm.itemId) ?? null;
+  const selectedTransferItem = goodsRows.find((r) => r.id === transferForm.itemId) ?? null;
+  const adjustWarehouse = warehouses.find((warehouse) => warehouse.id === adjustForm.warehouseId) ?? null;
+  const adjustBins = adjustWarehouse?.bins ?? [];
+  const adjustBinSelectOptions = [{ value: "", label: "No bin / default" }, ...adjustBins.map((bin) => ({ value: bin.id, label: `${bin.name}${bin.code ? ` (${bin.code})` : ""}` }))];
   const sourceWarehouse = warehouses.find((warehouse) => warehouse.id === transferForm.fromWarehouseId) ?? null;
   const destinationWarehouse = warehouses.find((warehouse) => warehouse.id === transferForm.toWarehouseId) ?? null;
   const sourceBins = sourceWarehouse?.bins ?? [];
   const destinationBins = destinationWarehouse?.bins ?? [];
   const sourceBinSelectOptions = [{ value: "", label: "No bin / default" }, ...sourceBins.map((bin) => ({ value: bin.id, label: `${bin.name}${bin.code ? ` (${bin.code})` : ""}` }))];
   const destinationBinSelectOptions = [{ value: "", label: "No bin / default" }, ...destinationBins.map((bin) => ({ value: bin.id, label: `${bin.name}${bin.code ? ` (${bin.code})` : ""}` }))];
+
+  React.useEffect(() => {
+    if (adjustForm.binId && !adjustBins.some((bin) => bin.id === adjustForm.binId)) {
+      setAdjustForm((prev) => ({ ...prev, binId: "" }));
+    }
+  }, [adjustBins, adjustForm.binId]);
 
   React.useEffect(() => {
     if (transferForm.fromBinId && !sourceBins.some((bin) => bin.id === transferForm.fromBinId)) {
@@ -1106,18 +1125,28 @@ export default function ItemsPage() {
       setActionError("Rate is required for stock increases.");
       return;
     }
+    const serialNumbers = adjustForm.serialText.split(/[\n,]+/).map((serial) => serial.trim()).filter(Boolean);
+    if (features.serial && selectedAdjustmentItem?.isSerialized && serialNumbers.length !== Math.abs(qty)) {
+      setActionError(`Enter ${Math.abs(qty)} serial number(s) for this serialized item.`);
+      return;
+    }
     setAdjustSubmitting(true);
     try {
       await adjustInventoryStock({
         itemId: adjustForm.itemId,
         accountId: adjustForm.accountId || undefined,
         date: adjustForm.date,
+        dateBs: adjustForm.dateBs || undefined,
+        warehouseId: features.warehouses ? adjustForm.warehouseId || undefined : undefined,
+        binId: features.bins ? adjustForm.binId || undefined : undefined,
         qty,
         rate: adjustForm.rate ? Number(adjustForm.rate) : undefined,
         memo: adjustForm.memo || undefined,
         batchNo: features.batch ? adjustForm.batchNo || undefined : undefined,
         lotNo: features.lot ? adjustForm.lotNo || undefined : undefined,
         expiryDate: features.expiry ? adjustForm.expiryDate || undefined : undefined,
+        expiryDateBs: features.expiry ? adjustForm.expiryDateBs || undefined : undefined,
+        serialNumbers: features.serial && serialNumbers.length ? serialNumbers : undefined,
         allowNegativeOverride: features.negativeStock && adjustForm.allowNegativeOverride ? true : undefined,
         overrideReason: features.negativeStock && adjustForm.allowNegativeOverride ? adjustForm.overrideReason || undefined : undefined,
       });
@@ -1147,6 +1176,11 @@ export default function ItemsPage() {
       setActionError("Transfer quantity must be greater than zero.");
       return;
     }
+    const serialNumbers = transferForm.serialText.split(/[\n,]+/).map((serial) => serial.trim()).filter(Boolean);
+    if (features.serial && selectedTransferItem?.isSerialized && serialNumbers.length !== qty) {
+      setActionError(`Enter ${qty} serial number(s) for this serialized item.`);
+      return;
+    }
     setTransferSubmitting(true);
     try {
       await transferInventoryStock({
@@ -1158,10 +1192,13 @@ export default function ItemsPage() {
         qty,
         rate: transferForm.rate ? Number(transferForm.rate) : undefined,
         date: transferForm.date,
+        dateBs: transferForm.dateBs || undefined,
         memo: transferForm.memo || undefined,
         batchNo: features.batch ? transferForm.batchNo || undefined : undefined,
         lotNo: features.lot ? transferForm.lotNo || undefined : undefined,
         expiryDate: features.expiry ? transferForm.expiryDate || undefined : undefined,
+        expiryDateBs: features.expiry ? transferForm.expiryDateBs || undefined : undefined,
+        serialNumbers: features.serial && serialNumbers.length ? serialNumbers : undefined,
       });
       setActionSuccess("Stock transfer posted.");
       setTransferOpen(false);
@@ -2231,12 +2268,20 @@ export default function ItemsPage() {
               <section className="grid gap-3 rounded-2xl border border-border/70 bg-background/60 p-4 sm:grid-cols-2">
                 <label className="space-y-1.5 text-sm font-semibold">
                   <span>Adjustment Date *</span>
-                  <DualDateInput value={{ ad: adjustForm.date, bs: "" }} onChange={(next) => setAdjustForm((p) => ({ ...p, date: next.ad }))} required />
+                  <DualDateInput value={{ ad: adjustForm.date, bs: adjustForm.dateBs }} onChange={(next) => setAdjustForm((p) => ({ ...p, date: next.ad, dateBs: next.bs }))} required />
                 </label>
                 <label className="space-y-1.5 text-sm font-semibold">
                   <span>Item *</span>
                   <SearchableSelect options={itemSelectOptions} value={adjustForm.itemId} onChange={(id) => setAdjustForm((p) => ({ ...p, itemId: id }))} placeholder="Search items..." />
                 </label>
+                {features.warehouses && <label className="space-y-1.5 text-sm font-semibold">
+                  <span>Warehouse</span>
+                  <SearchableSelect options={warehouseSelectOptions} value={adjustForm.warehouseId} onChange={(id) => setAdjustForm((p) => ({ ...p, warehouseId: id, binId: "" }))} placeholder="Search warehouse..." />
+                </label>}
+                {features.bins && <label className="space-y-1.5 text-sm font-semibold">
+                  <span>Bin</span>
+                  <SearchableSelect options={adjustBinSelectOptions} value={adjustForm.binId} onChange={(id) => setAdjustForm((p) => ({ ...p, binId: id }))} placeholder={adjustForm.warehouseId ? "Search bin..." : "Choose warehouse first"} disabled={!adjustForm.warehouseId} />
+                </label>}
                 <label className="space-y-1.5 text-sm font-semibold">
                   <span>Quantity *</span>
                   <Input placeholder="Use positive for increase, negative for decrease" value={adjustForm.qty} onChange={(e) => setAdjustForm((p) => ({ ...p, qty: e.target.value }))} />
@@ -2253,8 +2298,16 @@ export default function ItemsPage() {
               <section className="grid gap-3 rounded-2xl border border-border/70 bg-background/60 p-4 sm:grid-cols-2">
                 {features.batch && <Input placeholder="Batch Number" value={adjustForm.batchNo} onChange={(e) => setAdjustForm((p) => ({ ...p, batchNo: e.target.value }))} />}
                 {features.lot && <Input placeholder="Lot Number" value={adjustForm.lotNo} onChange={(e) => setAdjustForm((p) => ({ ...p, lotNo: e.target.value }))} />}
-                {features.expiry && <Input type="date" placeholder="Expiry Date" value={adjustForm.expiryDate} onChange={(e) => setAdjustForm((p) => ({ ...p, expiryDate: e.target.value }))} />}
+                {features.expiry && <DualDateInput label="Expiry Date" value={{ ad: adjustForm.expiryDate, bs: adjustForm.expiryDateBs }} onChange={(next) => setAdjustForm((p) => ({ ...p, expiryDate: next.ad, expiryDateBs: next.bs }))} required={Boolean(selectedAdjustmentItem?.tracksExpiry)} />}
                 <Input placeholder="Memo" value={adjustForm.memo} onChange={(e) => setAdjustForm((p) => ({ ...p, memo: e.target.value }))} />
+                {features.serial && selectedAdjustmentItem?.isSerialized ? (
+                  <textarea
+                    className="min-h-24 rounded-xl border border-input bg-background px-3 py-2 text-sm sm:col-span-2"
+                    placeholder="Serial numbers, one per line or comma separated"
+                    value={adjustForm.serialText}
+                    onChange={(e) => setAdjustForm((p) => ({ ...p, serialText: e.target.value }))}
+                  />
+                ) : null}
                 {features.negativeStock && <label className="flex items-center gap-2 text-sm font-semibold sm:col-span-2">
                   <input type="checkbox" checked={adjustForm.allowNegativeOverride} onChange={(e) => setAdjustForm((p) => ({ ...p, allowNegativeOverride: e.target.checked }))} />
                   Allow negative stock override
@@ -2285,7 +2338,7 @@ export default function ItemsPage() {
               <section className="grid gap-3 rounded-2xl border border-border/70 bg-background/60 p-4 sm:grid-cols-3">
                 <label className="space-y-1.5 text-sm font-semibold">
                   <span>Transfer Date *</span>
-                  <DualDateInput value={{ ad: transferForm.date, bs: "" }} onChange={(next) => setTransferForm((p) => ({ ...p, date: next.ad }))} required />
+                  <DualDateInput value={{ ad: transferForm.date, bs: transferForm.dateBs }} onChange={(next) => setTransferForm((p) => ({ ...p, date: next.ad, dateBs: next.bs }))} required />
                 </label>
                 <label className="space-y-1.5 text-sm font-semibold sm:col-span-2">
                   <span>Item *</span>
@@ -2319,8 +2372,16 @@ export default function ItemsPage() {
               <section className="grid gap-3 rounded-2xl border border-border/70 bg-background/60 p-4 sm:grid-cols-2">
                 {features.batch && <Input placeholder="Batch Number" value={transferForm.batchNo} onChange={(e) => setTransferForm((p) => ({ ...p, batchNo: e.target.value }))} />}
                 {features.lot && <Input placeholder="Lot Number" value={transferForm.lotNo} onChange={(e) => setTransferForm((p) => ({ ...p, lotNo: e.target.value }))} />}
-                {features.expiry && <Input type="date" placeholder="Expiry Date" value={transferForm.expiryDate} onChange={(e) => setTransferForm((p) => ({ ...p, expiryDate: e.target.value }))} />}
+                {features.expiry && <DualDateInput label="Expiry Date" value={{ ad: transferForm.expiryDate, bs: transferForm.expiryDateBs }} onChange={(next) => setTransferForm((p) => ({ ...p, expiryDate: next.ad, expiryDateBs: next.bs }))} required={Boolean(selectedTransferItem?.tracksExpiry)} />}
                 <Input placeholder="Memo" value={transferForm.memo} onChange={(e) => setTransferForm((p) => ({ ...p, memo: e.target.value }))} />
+                {features.serial && selectedTransferItem?.isSerialized ? (
+                  <textarea
+                    className="min-h-24 rounded-xl border border-input bg-background px-3 py-2 text-sm sm:col-span-2"
+                    placeholder="Serial numbers being moved, one per line or comma separated"
+                    value={transferForm.serialText}
+                    onChange={(e) => setTransferForm((p) => ({ ...p, serialText: e.target.value }))}
+                  />
+                ) : null}
               </section>
             </div>
             <div className="flex items-center justify-end gap-2 border-t border-border/70 bg-muted/20 p-5">

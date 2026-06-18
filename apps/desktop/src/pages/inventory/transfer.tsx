@@ -83,8 +83,13 @@ export default function StockTransferPage() {
   return (
     <div className="space-y-6 pb-20 text-foreground max-w-4xl mx-auto animate-fade-in">
       <div>
-        <button onClick={() => navigate("/inventory")} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-2"><ChevronLeft className="h-3 w-3" /> Back to Inventory</button>
-        <PageHeader title="Stock Transfer" description="Move inventory between warehouses and storage locations." icon={ArrowRightLeft} />
+        <button
+          onClick={() => navigate("/inventory")}
+          className="mb-2 inline-flex items-center gap-2 rounded-full border border-transparent bg-transparent px-4 py-2 text-sm font-semibold text-foreground transition-all hover:border-orange-600 hover:bg-orange-600 hover:text-white"
+        >
+          <ChevronLeft className="h-4 w-4" /> Back to Inventory
+        </button>
+        <PageHeader title="Stock Transfer" description="Move inventory between warehouses, bins, and storage locations." icon={ArrowRightLeft} />
       </div>
       {error && <div className="rounded-xl border border-red-200 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 dark:text-red-300 flex items-center gap-2"><AlertTriangle className="h-4 w-4 shrink-0" /> {error}</div>}
       {success && <div className="rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-900/20 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300 flex items-center gap-2"><CheckCircle2 className="h-4 w-4 shrink-0" /> {success}</div>}
@@ -92,33 +97,35 @@ export default function StockTransferPage() {
 
       {/* Item */}
       {features.warehouses && <Card className="border-border/50 shadow-lg"><CardContent className="pt-6 space-y-4">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2"><Package className="h-3.5 w-3.5" /> Item</h3>
-        <SearchableSelect options={items.map((i) => ({ value: i.id, label: `${i.name}${i.sku ? ` [${i.sku}]` : ""}` }))} value={itemId} onChange={setItemId} placeholder="Search items..." />
+        <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2"><Package className="h-3.5 w-3.5" /> Item and Date</h3>
+        <div className="grid gap-4 md:grid-cols-[1fr_260px]">
+          <SearchableSelect options={items.map((i) => ({ value: i.id, label: `${i.name}${i.sku ? ` [${i.sku}]` : ""}` }))} value={itemId} onChange={setItemId} placeholder="Search items..." />
+          <DualDateInput label="Transfer Date" value={date} onChange={setDate} required />
+        </div>
         {selectedItem && <div className="flex items-center gap-4 text-sm"><span className="text-muted-foreground">Total stock:</span><span className="font-bold tabular-nums">{selectedItem.stock ?? 0} units</span></div>}
       </CardContent></Card>}
 
       {/* From → To */}
       {features.warehouses && <div className="grid gap-4 lg:grid-cols-[1fr_auto_1fr]">
         <Card className="border-border/50 shadow-lg"><CardContent className="pt-6 space-y-4">
-          <h3 className="text-xs font-bold uppercase tracking-widest text-red-600 dark:text-red-400 flex items-center gap-2"><Warehouse className="h-3.5 w-3.5" /> Source (From)</h3>
+          <h3 className="text-xs font-bold uppercase tracking-widest text-red-600 dark:text-red-400 flex items-center gap-2"><Warehouse className="h-3.5 w-3.5" /> Source Warehouse and Bin</h3>
           <SearchableSelect options={warehouses.map((w) => ({ value: w.id, label: `${w.name}${w.code ? ` (${w.code})` : ""}` }))} value={fromWarehouseId} onChange={(v) => { setFromWarehouseId(v); setFromBinId(""); }} placeholder="Select source warehouse" />
-          {fromBins.length > 0 && <SearchableSelect options={[{ value: "", label: "No specific bin" }, ...fromBins.map((b) => ({ value: b.id, label: `${b.name}${b.code ? ` (${b.code})` : ""}` }))]} value={fromBinId} onChange={setFromBinId} placeholder="Select bin (optional)" />}
+          {features.bins && <SearchableSelect options={[{ value: "", label: "No specific bin" }, ...fromBins.map((b) => ({ value: b.id, label: `${b.name}${b.code ? ` (${b.code})` : ""}` }))]} value={fromBinId} onChange={setFromBinId} placeholder={fromWarehouseId ? "Select source bin (optional)" : "Choose warehouse first"} disabled={!fromWarehouseId} />}
         </CardContent></Card>
         <div className="flex items-center justify-center"><div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-500/10 text-blue-600"><ArrowRight className="h-6 w-6" /></div></div>
         <Card className="border-border/50 shadow-lg"><CardContent className="pt-6 space-y-4">
-          <h3 className="text-xs font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 flex items-center gap-2"><Warehouse className="h-3.5 w-3.5" /> Destination (To)</h3>
+          <h3 className="text-xs font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 flex items-center gap-2"><Warehouse className="h-3.5 w-3.5" /> Destination Warehouse and Bin</h3>
           <SearchableSelect options={warehouses.map((w) => ({ value: w.id, label: `${w.name}${w.code ? ` (${w.code})` : ""}` }))} value={toWarehouseId} onChange={(v) => { setToWarehouseId(v); setToBinId(""); }} placeholder="Select destination warehouse" />
-          {toBins.length > 0 && <SearchableSelect options={[{ value: "", label: "No specific bin" }, ...toBins.map((b) => ({ value: b.id, label: `${b.name}${b.code ? ` (${b.code})` : ""}` }))]} value={toBinId} onChange={setToBinId} placeholder="Select bin (optional)" />}
+          {features.bins && <SearchableSelect options={[{ value: "", label: "No specific bin" }, ...toBins.map((b) => ({ value: b.id, label: `${b.name}${b.code ? ` (${b.code})` : ""}` }))]} value={toBinId} onChange={setToBinId} placeholder={toWarehouseId ? "Select destination bin (optional)" : "Choose warehouse first"} disabled={!toWarehouseId} />}
         </CardContent></Card>
       </div>}
 
       {/* Qty & Details */}
       {features.warehouses && <Card className="border-border/50 shadow-lg"><CardContent className="pt-6 space-y-4">
         <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Transfer Details</h3>
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2">
           <div><label className="text-xs font-medium text-muted-foreground mb-1.5 block">Quantity *</label><Input type="number" placeholder="0" value={qty} onChange={(e) => setQty(e.target.value)} className="rounded-xl h-12 text-lg font-bold tabular-nums" /></div>
           <div><label className="text-xs font-medium text-muted-foreground mb-1.5 block">Rate per unit</label><Input type="number" placeholder="0.00" value={rate} onChange={(e) => setRate(e.target.value)} className="rounded-xl h-12 tabular-nums" /></div>
-          <div><label className="text-xs font-medium text-muted-foreground mb-1.5 block">Transfer Date *</label><DualDateInput value={date} onChange={setDate} /></div>
         </div>
         <div><label className="text-xs font-medium text-muted-foreground mb-1.5 block">Memo</label><Input placeholder="Reason for transfer" value={memo} onChange={(e) => setMemo(e.target.value)} className="rounded-xl" /></div>
       </CardContent></Card>}
@@ -129,7 +136,7 @@ export default function StockTransferPage() {
         <div className="grid gap-4 sm:grid-cols-3">
           {features.batch && <Input placeholder={selectedItem?.tracksBatch ? "Batch Number *" : "Batch Number"} value={batchNo} onChange={(e) => setBatchNo(e.target.value)} className="rounded-xl" />}
           {features.lot && <Input placeholder={selectedItem?.tracksLot ? "Lot Number *" : "Lot Number"} value={lotNo} onChange={(e) => setLotNo(e.target.value)} className="rounded-xl" />}
-          {features.expiry && <Input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} className="rounded-xl" />}
+          {features.expiry && <DualDateInput label={selectedItem?.tracksExpiry ? "Expiry Date" : "Expiry Date"} value={{ ad: expiryDate, bs: "" }} onChange={(next) => setExpiryDate(next.ad)} required={Boolean(selectedItem?.tracksExpiry)} />}
         </div>
         {selectedItem?.isSerialized && features.serial && <div><label className="text-xs font-medium text-muted-foreground mb-1.5 block">Serial Numbers *</label><textarea value={serialText} onChange={(e) => setSerialText(e.target.value)} placeholder="One serial per line, or comma separated" className="min-h-24 w-full rounded-xl border bg-background px-3 py-2 text-sm" /></div>}
       </CardContent></Card>}

@@ -174,14 +174,14 @@ export default function StockTransferPage() {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <PageHeader
           title="Stock Transfer"
-          description="Move inventory between warehouses and storage locations."
+          description="Move inventory between warehouses, bins, and storage locations."
           icon={ArrowRightLeft}
           breadcrumb={
             <button
               onClick={() => router.push("/inventory")}
-              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              className="inline-flex items-center gap-2 rounded-full border border-transparent bg-transparent px-4 py-2 text-sm font-semibold text-foreground transition-all hover:border-orange-600 hover:bg-orange-600 hover:text-white"
             >
-              <ChevronLeft className="h-3 w-3" /> Back to Inventory
+              <ChevronLeft className="h-4 w-4" /> Back to Inventory
             </button>
           }
         />
@@ -211,17 +211,20 @@ export default function StockTransferPage() {
       {features.warehouses && <Card className="border-border/50 shadow-lg">
         <CardContent className="pt-6 space-y-4">
           <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-            <Package className="h-3.5 w-3.5" /> Item
+            <Package className="h-3.5 w-3.5" /> Item and Date
           </h3>
-          <SearchableSelect
-            options={items.map((i) => ({
-              value: i.id,
-              label: `${i.name}${i.sku ? ` [${i.sku}]` : ""}`,
-            }))}
-            value={itemId}
-            onChange={setItemId}
-            placeholder="Search items..."
-          />
+          <div className="grid gap-4 md:grid-cols-[1fr_260px]">
+            <SearchableSelect
+              options={items.map((i) => ({
+                value: i.id,
+                label: `${i.name}${i.sku ? ` [${i.sku}]` : ""}`,
+              }))}
+              value={itemId}
+              onChange={setItemId}
+              placeholder="Search items..."
+            />
+            <DualDateInput label="Transfer Date" value={date} onChange={setDate} required />
+          </div>
           {selectedItem && (
             <div className="flex items-center gap-4 text-sm">
               <span className="text-muted-foreground">Total stock:</span>
@@ -239,7 +242,7 @@ export default function StockTransferPage() {
         <Card className="border-border/50 shadow-lg">
           <CardContent className="pt-6 space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-widest text-red-600 dark:text-red-400 flex items-center gap-2">
-              <Warehouse className="h-3.5 w-3.5" /> Source (From)
+              <Warehouse className="h-3.5 w-3.5" /> Source Warehouse and Bin
             </h3>
             <SearchableSelect
               options={warehouses.map((w) => ({
@@ -253,7 +256,7 @@ export default function StockTransferPage() {
               }}
               placeholder="Select source warehouse"
             />
-            {fromBins.length > 0 && (
+            {features.bins && (
               <SearchableSelect
                 options={[
                   { value: "", label: "No specific bin" },
@@ -264,7 +267,8 @@ export default function StockTransferPage() {
                 ]}
                 value={fromBinId}
                 onChange={setFromBinId}
-                placeholder="Select bin (optional)"
+                placeholder={fromWarehouseId ? "Select source bin (optional)" : "Choose warehouse first"}
+                disabled={!fromWarehouseId}
               />
             )}
           </CardContent>
@@ -281,7 +285,7 @@ export default function StockTransferPage() {
         <Card className="border-border/50 shadow-lg">
           <CardContent className="pt-6 space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
-              <Warehouse className="h-3.5 w-3.5" /> Destination (To)
+              <Warehouse className="h-3.5 w-3.5" /> Destination Warehouse and Bin
             </h3>
             <SearchableSelect
               options={warehouses.map((w) => ({
@@ -295,7 +299,7 @@ export default function StockTransferPage() {
               }}
               placeholder="Select destination warehouse"
             />
-            {toBins.length > 0 && (
+            {features.bins && (
               <SearchableSelect
                 options={[
                   { value: "", label: "No specific bin" },
@@ -306,7 +310,8 @@ export default function StockTransferPage() {
                 ]}
                 value={toBinId}
                 onChange={setToBinId}
-                placeholder="Select bin (optional)"
+                placeholder={toWarehouseId ? "Select destination bin (optional)" : "Choose warehouse first"}
+                disabled={!toWarehouseId}
               />
             )}
           </CardContent>
@@ -320,7 +325,7 @@ export default function StockTransferPage() {
             Transfer Details
           </h3>
 
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
                 Quantity *
@@ -349,12 +354,6 @@ export default function StockTransferPage() {
                 step="any"
               />
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                Transfer Date *
-              </label>
-              <DualDateInput value={date} onChange={setDate} />
-            </div>
           </div>
 
           <div>
@@ -380,7 +379,14 @@ export default function StockTransferPage() {
           <div className="grid gap-4 sm:grid-cols-3">
             {features.batch && <Input placeholder={selectedItem?.tracksBatch ? "Batch Number *" : "Batch Number"} value={batchNo} onChange={(e) => setBatchNo(e.target.value)} className="rounded-xl" />}
             {features.lot && <Input placeholder={selectedItem?.tracksLot ? "Lot Number *" : "Lot Number"} value={lotNo} onChange={(e) => setLotNo(e.target.value)} className="rounded-xl" />}
-            {features.expiry && <Input type="date" aria-label="Expiry Date" title="Expiry Date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} className="rounded-xl" />}
+            {features.expiry && (
+              <DualDateInput
+                label="Expiry Date"
+                value={{ ad: expiryDate, bs: "" }}
+                onChange={(next) => setExpiryDate(next.ad)}
+                required={Boolean(selectedItem?.tracksExpiry)}
+              />
+            )}
           </div>
           {selectedItem?.isSerialized && features.serial && (
             <div>
