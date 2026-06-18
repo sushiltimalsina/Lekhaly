@@ -6,7 +6,7 @@ import { createItem, type ItemType } from "@/lib/api/items";
 import { getInventorySettings, type InventorySettings } from "@/lib/api/inventory";
 import { listUnits, type UnitRecord } from "@/lib/api/units";
 import { listItemGroups, type ItemGroupRecord } from "@/lib/api/item-groups";
-import { listWarehouses, type Warehouse } from "@/lib/api/warehouses";
+import { listWarehouses, type Warehouse, type WarehouseBin } from "@/lib/api/warehouses";
 import { listTaxes } from "@/lib/api/taxes";
 import { X, Save, PackagePlus, Info, Banknote, History, FileText, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,7 @@ import AddUnitDialog from "./add-unit-dialog";
 import AddGroupDialog from "./add-group-dialog";
 import SearchableSelect from "./searchable-select";
 import DualDateInput from "./dual-date-input";
+import AddWarehouseDialog from "./add-warehouse-dialog";
 
 type AddItemDialogProps = {
     open: boolean;
@@ -37,6 +38,8 @@ export default function AddItemDialog({ open, onClose, onSuccess }: AddItemDialo
 
     const [addUnitOpen, setAddUnitOpen] = React.useState(false);
     const [addGroupOpen, setAddGroupOpen] = React.useState(false);
+    const [addWarehouseOpen, setAddWarehouseOpen] = React.useState(false);
+    const [addBinOpen, setAddBinOpen] = React.useState(false);
 
     const [form, setForm] = React.useState({
         name: "",
@@ -112,6 +115,14 @@ export default function AddItemDialog({ open, onClose, onSuccess }: AddItemDialo
     const showOpeningStock = form.type === "goods" && features.inventory && form.trackInventory;
     const selectedDefaultWarehouse = warehouses.find((warehouse) => warehouse.id === form.defaultWarehouseId);
     const defaultBins = selectedDefaultWarehouse?.bins ?? [];
+    const addWarehouseRecord = (warehouse: Warehouse) => {
+        setWarehouses((prev) => [...prev.filter((row) => row.id !== warehouse.id), { ...warehouse, bins: warehouse.bins ?? [] }]);
+        setForm((prev) => ({ ...prev, defaultWarehouseId: warehouse.id, defaultBinId: "" }));
+    };
+    const addBinRecord = (bin: WarehouseBin) => {
+        setWarehouses((prev) => prev.map((warehouse) => warehouse.id === bin.warehouseId ? { ...warehouse, bins: [...(warehouse.bins ?? []).filter((row) => row.id !== bin.id), bin] } : warehouse));
+        update("defaultBinId", bin.id);
+    };
 
     React.useEffect(() => {
         if (!open || !inventorySettings) return;
@@ -464,13 +475,19 @@ export default function AddItemDialog({ open, onClose, onSuccess }: AddItemDialo
                                 <div className="grid grid-cols-2 gap-4">
                                     {features.warehouses && (
                                         <label className="space-y-1.5">
-                                            <span className="ml-1 text-xs font-bold text-slate-600 dark:text-slate-400">WAREHOUSE</span>
+                                            <span className="ml-1 flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-400">
+                                                WAREHOUSE
+                                                <button type="button" onClick={() => setAddWarehouseOpen(true)} className="inline-flex items-center gap-1 rounded-lg bg-orange-600 px-2 py-1 text-[10px] font-bold text-white hover:bg-orange-700"><Plus className="h-3 w-3" /> ADD</button>
+                                            </span>
                                             <SearchableSelect options={[{ id: "", name: "No default warehouse" }, ...warehouses]} valueId={form.defaultWarehouseId} onChange={(id) => setForm((prev) => ({ ...prev, defaultWarehouseId: id, defaultBinId: "" }))} placeholder="Search warehouse..." />
                                         </label>
                                     )}
                                     {features.bins && (
                                         <label className="space-y-1.5">
-                                            <span className="ml-1 text-xs font-bold text-slate-600 dark:text-slate-400">BIN</span>
+                                            <span className="ml-1 flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-400">
+                                                BIN
+                                                <button type="button" disabled={!form.defaultWarehouseId} onClick={() => setAddBinOpen(true)} className="inline-flex items-center gap-1 rounded-lg bg-orange-600 px-2 py-1 text-[10px] font-bold text-white hover:bg-orange-700 disabled:opacity-50"><Plus className="h-3 w-3" /> ADD</button>
+                                            </span>
                                             <SearchableSelect options={[{ id: "", name: form.defaultWarehouseId ? "No default bin" : "Choose warehouse first" }, ...defaultBins]} valueId={form.defaultBinId} onChange={(id) => update("defaultBinId", id)} placeholder="Search bin..." disabled={!form.defaultWarehouseId} />
                                         </label>
                                     )}
@@ -574,6 +591,8 @@ export default function AddItemDialog({ open, onClose, onSuccess }: AddItemDialo
                     update("groupId", newGroup.id);
                 }}
             />
+            <AddWarehouseDialog open={addWarehouseOpen} onClose={() => setAddWarehouseOpen(false)} onSuccess={(warehouse) => addWarehouseRecord(warehouse as Warehouse)} />
+            <AddWarehouseDialog open={addBinOpen} onClose={() => setAddBinOpen(false)} warehouseId={form.defaultWarehouseId || undefined} warehouseName={selectedDefaultWarehouse?.name} onSuccess={(bin) => addBinRecord(bin as WarehouseBin)} />
         </div>,
         document.body
     );

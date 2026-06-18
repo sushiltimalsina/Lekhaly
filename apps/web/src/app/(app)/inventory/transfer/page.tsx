@@ -19,6 +19,7 @@ import {
   ArrowRight,
   Warehouse,
   Package,
+  Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { hasLineTracking, inventoryFeatures } from "@/lib/inventory-features";
@@ -27,7 +28,9 @@ import { listItems } from "@/lib/api/items";
 import {
   listWarehouses,
   type Warehouse as WarehouseType,
+  type WarehouseBin,
 } from "@/lib/api/warehouses";
+import AddWarehouseDialog from "@/components/app/add-warehouse-dialog";
 
 type DateValue = { ad: string; bs: string };
 type ItemOption = {
@@ -56,6 +59,8 @@ export default function StockTransferPage() {
   // Master data
   const [items, setItems] = React.useState<ItemOption[]>([]);
   const [warehouses, setWarehouses] = React.useState<WarehouseType[]>([]);
+  const [addWarehouseTarget, setAddWarehouseTarget] = React.useState<"from" | "to" | null>(null);
+  const [addBinTarget, setAddBinTarget] = React.useState<"from" | "to" | null>(null);
   const [inventorySettings, setInventorySettings] = React.useState<InventorySettings | null>(null);
 
   // Form state
@@ -118,6 +123,21 @@ export default function StockTransferPage() {
   const features = inventoryFeatures(inventorySettings);
   const fromBins = features.bins ? fromWarehouse?.bins?.filter((b) => b.isActive) ?? [] : [];
   const toBins = features.bins ? toWarehouse?.bins?.filter((b) => b.isActive) ?? [] : [];
+  const addWarehouseRecord = (warehouse: WarehouseType) => {
+    setWarehouses((prev) => [...prev.filter((row) => row.id !== warehouse.id), { ...warehouse, bins: warehouse.bins ?? [] }]);
+    if (addWarehouseTarget === "to") {
+      setToWarehouseId(warehouse.id);
+      setToBinId("");
+    } else {
+      setFromWarehouseId(warehouse.id);
+      setFromBinId("");
+    }
+  };
+  const addBinRecord = (bin: WarehouseBin) => {
+    setWarehouses((prev) => prev.map((warehouse) => warehouse.id === bin.warehouseId ? { ...warehouse, bins: [...(warehouse.bins ?? []).filter((row) => row.id !== bin.id), bin] } : warehouse));
+    if (addBinTarget === "to") setToBinId(bin.id);
+    else setFromBinId(bin.id);
+  };
   const showTrackingCard = hasLineTracking(features) && (features.batch || features.lot || features.expiry || (features.serial && selectedItem?.isSerialized));
   const amount = Number(qty) && Number(rate) ? Math.abs(Number(qty)) * Number(rate) : 0;
   const trackingSelectOptions = trackingOptions.map((option, index) => ({
@@ -283,9 +303,12 @@ export default function StockTransferPage() {
         {/* FROM */}
         <Card className="border-border/50 shadow-lg">
           <CardContent className="pt-6 space-y-4">
-            <h3 className="text-xs font-bold uppercase tracking-widest text-red-600 dark:text-red-400 flex items-center gap-2">
-              <Warehouse className="h-3.5 w-3.5" /> Source Warehouse and Bin
-            </h3>
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-red-600 dark:text-red-400">
+                <Warehouse className="h-3.5 w-3.5" /> Source Warehouse and Bin
+              </h3>
+              <button type="button" onClick={() => setAddWarehouseTarget("from")} className="inline-flex items-center gap-1 rounded-lg bg-orange-600 px-2 py-1 text-[10px] font-bold text-white hover:bg-orange-700"><Plus className="h-3 w-3" /> Warehouse</button>
+            </div>
             <SearchableSelect
               options={warehouses.map((w) => ({
                 value: w.id,
@@ -299,19 +322,24 @@ export default function StockTransferPage() {
               placeholder="Select source warehouse"
             />
             {features.bins && (
-              <SearchableSelect
-                options={[
-                  { value: "", label: "No specific bin" },
-                  ...fromBins.map((b) => ({
-                    value: b.id,
-                    label: `${b.name}${b.code ? ` (${b.code})` : ""}`,
-                  })),
-                ]}
-                value={fromBinId}
-                onChange={setFromBinId}
-                placeholder={fromWarehouseId ? "Select source bin (optional)" : "Choose warehouse first"}
-                disabled={!fromWarehouseId}
-              />
+              <div className="space-y-1.5">
+                <div className="flex justify-end">
+                  <button type="button" disabled={!fromWarehouseId} onClick={() => setAddBinTarget("from")} className="inline-flex items-center gap-1 rounded-lg bg-orange-600 px-2 py-1 text-[10px] font-bold text-white hover:bg-orange-700 disabled:opacity-50"><Plus className="h-3 w-3" /> Bin</button>
+                </div>
+                <SearchableSelect
+                  options={[
+                    { value: "", label: "No specific bin" },
+                    ...fromBins.map((b) => ({
+                      value: b.id,
+                      label: `${b.name}${b.code ? ` (${b.code})` : ""}`,
+                    })),
+                  ]}
+                  value={fromBinId}
+                  onChange={setFromBinId}
+                  placeholder={fromWarehouseId ? "Select source bin (optional)" : "Choose warehouse first"}
+                  disabled={!fromWarehouseId}
+                />
+              </div>
             )}
           </CardContent>
         </Card>
@@ -326,9 +354,12 @@ export default function StockTransferPage() {
         {/* TO */}
         <Card className="border-border/50 shadow-lg">
           <CardContent className="pt-6 space-y-4">
-            <h3 className="text-xs font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
-              <Warehouse className="h-3.5 w-3.5" /> Destination Warehouse and Bin
-            </h3>
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
+                <Warehouse className="h-3.5 w-3.5" /> Destination Warehouse and Bin
+              </h3>
+              <button type="button" onClick={() => setAddWarehouseTarget("to")} className="inline-flex items-center gap-1 rounded-lg bg-orange-600 px-2 py-1 text-[10px] font-bold text-white hover:bg-orange-700"><Plus className="h-3 w-3" /> Warehouse</button>
+            </div>
             <SearchableSelect
               options={warehouses.map((w) => ({
                 value: w.id,
@@ -342,19 +373,24 @@ export default function StockTransferPage() {
               placeholder="Select destination warehouse"
             />
             {features.bins && (
-              <SearchableSelect
-                options={[
-                  { value: "", label: "No specific bin" },
-                  ...toBins.map((b) => ({
-                    value: b.id,
-                    label: `${b.name}${b.code ? ` (${b.code})` : ""}`,
-                  })),
-                ]}
-                value={toBinId}
-                onChange={setToBinId}
-                placeholder={toWarehouseId ? "Select destination bin (optional)" : "Choose warehouse first"}
-                disabled={!toWarehouseId}
-              />
+              <div className="space-y-1.5">
+                <div className="flex justify-end">
+                  <button type="button" disabled={!toWarehouseId} onClick={() => setAddBinTarget("to")} className="inline-flex items-center gap-1 rounded-lg bg-orange-600 px-2 py-1 text-[10px] font-bold text-white hover:bg-orange-700 disabled:opacity-50"><Plus className="h-3 w-3" /> Bin</button>
+                </div>
+                <SearchableSelect
+                  options={[
+                    { value: "", label: "No specific bin" },
+                    ...toBins.map((b) => ({
+                      value: b.id,
+                      label: `${b.name}${b.code ? ` (${b.code})` : ""}`,
+                    })),
+                  ]}
+                  value={toBinId}
+                  onChange={setToBinId}
+                  placeholder={toWarehouseId ? "Select destination bin (optional)" : "Choose warehouse first"}
+                  disabled={!toWarehouseId}
+                />
+              </div>
             )}
           </CardContent>
         </Card>
@@ -519,6 +555,14 @@ export default function StockTransferPage() {
           </Button>
         </CardContent>
       </Card>}
+      <AddWarehouseDialog open={Boolean(addWarehouseTarget)} onClose={() => setAddWarehouseTarget(null)} onSuccess={(warehouse) => addWarehouseRecord(warehouse as WarehouseType)} />
+      <AddWarehouseDialog
+        open={Boolean(addBinTarget)}
+        onClose={() => setAddBinTarget(null)}
+        warehouseId={addBinTarget === "to" ? toWarehouseId || undefined : fromWarehouseId || undefined}
+        warehouseName={addBinTarget === "to" ? toWarehouse?.name : fromWarehouse?.name}
+        onSuccess={(bin) => addBinRecord(bin as WarehouseBin)}
+      />
     </div>
   );
 }

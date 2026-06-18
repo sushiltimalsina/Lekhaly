@@ -18,13 +18,15 @@ import {
   CheckCircle2,
   ChevronLeft,
   Info,
+  Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { hasLineTracking, inventoryFeatures } from "@/lib/inventory-features";
 import { adjustInventoryStock, getInventorySettings, type InventorySettings } from "@/lib/api/inventory";
 import { listItems } from "@/lib/api/items";
 import { listAccounts } from "@/lib/api/accounts";
-import { listWarehouses, type Warehouse } from "@/lib/api/warehouses";
+import { listWarehouses, type Warehouse, type WarehouseBin } from "@/lib/api/warehouses";
+import AddWarehouseDialog from "@/components/app/add-warehouse-dialog";
 
 type DateValue = { ad: string; bs: string };
 type ItemOption = {
@@ -56,6 +58,8 @@ export default function StockAdjustPage() {
   const [items, setItems] = React.useState<ItemOption[]>([]);
   const [accounts, setAccounts] = React.useState<AccountOption[]>([]);
   const [warehouses, setWarehouses] = React.useState<Warehouse[]>([]);
+  const [addWarehouseOpen, setAddWarehouseOpen] = React.useState(false);
+  const [addBinOpen, setAddBinOpen] = React.useState(false);
   const [inventorySettings, setInventorySettings] = React.useState<InventorySettings | null>(null);
 
   // Form state
@@ -134,6 +138,15 @@ export default function StockAdjustPage() {
   const selectedAccount = accounts.find((account) => account.id === accountId);
   const selectedWarehouse = warehouses.find((warehouse) => warehouse.id === warehouseId);
   const availableBins = selectedWarehouse?.bins ?? [];
+  const addWarehouseRecord = (warehouse: Warehouse) => {
+    setWarehouses((prev) => [...prev.filter((row) => row.id !== warehouse.id), { ...warehouse, bins: warehouse.bins ?? [] }]);
+    setWarehouseId(warehouse.id);
+    setBinId("");
+  };
+  const addBinRecord = (bin: WarehouseBin) => {
+    setWarehouses((prev) => prev.map((warehouse) => warehouse.id === bin.warehouseId ? { ...warehouse, bins: [...(warehouse.bins ?? []).filter((row) => row.id !== bin.id), bin] } : warehouse));
+    setBinId(bin.id);
+  };
   const features = inventoryFeatures(inventorySettings);
   const showTrackingCard = hasLineTracking(features) && (features.warehouses || features.batch || features.lot || features.expiry || (features.serial && selectedItem?.isSerialized));
   const amount =
@@ -400,7 +413,10 @@ export default function StockAdjustPage() {
               {features.warehouses && (
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Warehouse</label>
+                    <label className="mb-1.5 flex items-center justify-between text-xs font-medium text-muted-foreground">
+                      <span>Warehouse</span>
+                      <button type="button" onClick={() => setAddWarehouseOpen(true)} className="inline-flex items-center gap-1 rounded-lg bg-orange-600 px-2 py-1 text-[10px] font-bold text-white hover:bg-orange-700"><Plus className="h-3 w-3" /> Add</button>
+                    </label>
                     <SearchableSelect
                       options={warehouses.map((warehouse) => ({ value: warehouse.id, label: warehouse.name }))}
                       value={warehouseId}
@@ -410,7 +426,10 @@ export default function StockAdjustPage() {
                   </div>
                   {features.bins && (
                     <div>
-                      <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Bin</label>
+                      <label className="mb-1.5 flex items-center justify-between text-xs font-medium text-muted-foreground">
+                        <span>Bin</span>
+                        <button type="button" disabled={!warehouseId} onClick={() => setAddBinOpen(true)} className="inline-flex items-center gap-1 rounded-lg bg-orange-600 px-2 py-1 text-[10px] font-bold text-white hover:bg-orange-700 disabled:opacity-50"><Plus className="h-3 w-3" /> Add</button>
+                      </label>
                       <SearchableSelect
                         options={availableBins.map((bin) => ({ value: bin.id, label: bin.name }))}
                         value={binId}
@@ -597,6 +616,8 @@ export default function StockAdjustPage() {
           </Card>
         </div>
       </div>
+      <AddWarehouseDialog open={addWarehouseOpen} onClose={() => setAddWarehouseOpen(false)} onSuccess={(warehouse) => addWarehouseRecord(warehouse as Warehouse)} />
+      <AddWarehouseDialog open={addBinOpen} onClose={() => setAddBinOpen(false)} warehouseId={warehouseId || undefined} warehouseName={selectedWarehouse?.name} onSuccess={(bin) => addBinRecord(bin as WarehouseBin)} />
     </div>
   );
 }

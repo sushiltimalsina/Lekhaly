@@ -8,13 +8,14 @@ import { MoneyText } from "@/components/app/money";
 import { Card, CardContent } from "@lekhaly/ui";
 import { Button } from "@lekhaly/ui";
 import { Input } from "@lekhaly/ui";
-import { Package, ArrowUp, ArrowDown, Save, AlertTriangle, CheckCircle2, ChevronLeft, Info } from "lucide-react";
+import { Package, ArrowUp, ArrowDown, Save, AlertTriangle, CheckCircle2, ChevronLeft, Info, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { hasLineTracking, inventoryFeatures } from "@/lib/inventory-features";
 import { adjustInventoryStock, getInventorySettings, type InventorySettings } from "@/lib/api/inventory";
 import { listItems } from "@/lib/api/items";
 import { listAccounts } from "@/lib/api/accounts";
-import { listWarehouses, type Warehouse } from "@/lib/api/warehouses";
+import { listWarehouses, type Warehouse, type WarehouseBin } from "@/lib/api/warehouses";
+import AddWarehouseDialog from "@/components/app/add-warehouse-dialog";
 
 type DateValue = { ad: string; bs: string };
 
@@ -27,6 +28,8 @@ export default function StockAdjustPage() {
   const [items, setItems] = React.useState<any[]>([]);
   const [accounts, setAccounts] = React.useState<any[]>([]);
   const [warehouses, setWarehouses] = React.useState<Warehouse[]>([]);
+  const [addWarehouseOpen, setAddWarehouseOpen] = React.useState(false);
+  const [addBinOpen, setAddBinOpen] = React.useState(false);
   const [inventorySettings, setInventorySettings] = React.useState<InventorySettings | null>(null);
   const [itemId, setItemId] = React.useState("");
   const [direction, setDirection] = React.useState<"increase" | "decrease">("increase");
@@ -71,6 +74,15 @@ export default function StockAdjustPage() {
   const selectedAccount = accounts.find((account) => account.id === accountId);
   const selectedWarehouse = warehouses.find((warehouse) => warehouse.id === warehouseId);
   const availableBins = selectedWarehouse?.bins ?? [];
+  const addWarehouseRecord = (warehouse: Warehouse) => {
+    setWarehouses((prev) => [...prev.filter((row) => row.id !== warehouse.id), { ...warehouse, bins: warehouse.bins ?? [] }]);
+    setWarehouseId(warehouse.id);
+    setBinId("");
+  };
+  const addBinRecord = (bin: WarehouseBin) => {
+    setWarehouses((prev) => prev.map((warehouse) => warehouse.id === bin.warehouseId ? { ...warehouse, bins: [...(warehouse.bins ?? []).filter((row) => row.id !== bin.id), bin] } : warehouse));
+    setBinId(bin.id);
+  };
   const features = inventoryFeatures(inventorySettings);
   const showTrackingCard = hasLineTracking(features) && (features.warehouses || features.batch || features.lot || features.expiry || (features.serial && selectedItem?.isSerialized));
   const amount = Number(qty) && Number(rate) ? Math.abs(Number(qty)) * Number(rate) : 0;
@@ -161,8 +173,8 @@ export default function StockAdjustPage() {
             <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Tracking</h3>
             {features.warehouses && (
               <div className="grid gap-4 sm:grid-cols-2">
-                <div><label className="text-xs font-medium text-muted-foreground mb-1.5 block">Warehouse</label><SearchableSelect options={warehouses.map((w) => ({ value: w.id, label: w.name }))} value={warehouseId} onChange={(v) => { setWarehouseId(v); setBinId(""); }} placeholder="Select warehouse..." /></div>
-                {features.bins && <div><label className="text-xs font-medium text-muted-foreground mb-1.5 block">Bin</label><SearchableSelect options={availableBins.map((b) => ({ value: b.id, label: b.name }))} value={binId} onChange={setBinId} placeholder="Select bin..." /></div>}
+                <div><label className="mb-1.5 flex items-center justify-between text-xs font-medium text-muted-foreground"><span>Warehouse</span><button type="button" onClick={() => setAddWarehouseOpen(true)} className="inline-flex items-center gap-1 rounded-lg bg-orange-600 px-2 py-1 text-[10px] font-bold text-white hover:bg-orange-700"><Plus className="h-3 w-3" /> Add</button></label><SearchableSelect options={warehouses.map((w) => ({ value: w.id, label: w.name }))} value={warehouseId} onChange={(v) => { setWarehouseId(v); setBinId(""); }} placeholder="Select warehouse..." /></div>
+                {features.bins && <div><label className="mb-1.5 flex items-center justify-between text-xs font-medium text-muted-foreground"><span>Bin</span><button type="button" disabled={!warehouseId} onClick={() => setAddBinOpen(true)} className="inline-flex items-center gap-1 rounded-lg bg-orange-600 px-2 py-1 text-[10px] font-bold text-white hover:bg-orange-700 disabled:opacity-50"><Plus className="h-3 w-3" /> Add</button></label><SearchableSelect options={availableBins.map((b) => ({ value: b.id, label: b.name }))} value={binId} onChange={setBinId} placeholder="Select bin..." /></div>}
               </div>
             )}
             <div className="grid gap-4 sm:grid-cols-3">
@@ -211,6 +223,8 @@ export default function StockAdjustPage() {
           </Button>
         </CardContent></Card></div>
       </div>
+      <AddWarehouseDialog open={addWarehouseOpen} onClose={() => setAddWarehouseOpen(false)} onSuccess={(warehouse) => addWarehouseRecord(warehouse as Warehouse)} />
+      <AddWarehouseDialog open={addBinOpen} onClose={() => setAddBinOpen(false)} warehouseId={warehouseId || undefined} warehouseName={selectedWarehouse?.name} onSuccess={(bin) => addBinRecord(bin as WarehouseBin)} />
     </div>
   );
 }

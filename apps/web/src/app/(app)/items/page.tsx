@@ -36,7 +36,8 @@ import {
 import AddItemDialog from "@/components/app/add-item-dialog";
 import AddGroupDialog from "@/components/app/add-group-dialog";
 import { inventoryFeatures } from "@/lib/inventory-features";
-import { listWarehouses, type Warehouse as WarehouseRecord } from "@/lib/api/warehouses";
+import { listWarehouses, type Warehouse as WarehouseRecord, type WarehouseBin } from "@/lib/api/warehouses";
+import AddWarehouseDialog from "@/components/app/add-warehouse-dialog";
 
 type ItemRow = StockReportRow;
 type DateValue = { ad: string; bs: string };
@@ -450,6 +451,8 @@ export default function ItemsPage() {
     serialText: "",
   });
   const [transferTrackingOptions, setTransferTrackingOptions] = React.useState<TrackedStockOption[]>([]);
+  const [addWarehouseTarget, setAddWarehouseTarget] = React.useState<"adjust" | "from" | "to" | null>(null);
+  const [addBinTarget, setAddBinTarget] = React.useState<"adjust" | "from" | "to" | null>(null);
   const dateMenuWrapRef = React.useRef<HTMLDivElement | null>(null);
   const columnsMenuWrapRef = React.useRef<HTMLDivElement | null>(null);
   const exportMenuWrapRef = React.useRef<HTMLDivElement | null>(null);
@@ -1084,6 +1087,20 @@ export default function ItemsPage() {
   const destinationBins = destinationWarehouse?.bins ?? [];
   const sourceBinSelectOptions = [{ value: "", label: "No bin / default" }, ...sourceBins.map((bin) => ({ value: bin.id, label: `${bin.name}${bin.code ? ` (${bin.code})` : ""}` }))];
   const destinationBinSelectOptions = [{ value: "", label: "No bin / default" }, ...destinationBins.map((bin) => ({ value: bin.id, label: `${bin.name}${bin.code ? ` (${bin.code})` : ""}` }))];
+  const activeBinWarehouseId = addBinTarget === "to" ? transferForm.toWarehouseId : addBinTarget === "from" ? transferForm.fromWarehouseId : adjustForm.warehouseId;
+  const activeBinWarehouse = warehouses.find((warehouse) => warehouse.id === activeBinWarehouseId) ?? null;
+  const addWarehouseRecord = (warehouse: WarehouseRecord) => {
+    setWarehouses((prev) => [...prev.filter((row) => row.id !== warehouse.id), { ...warehouse, bins: warehouse.bins ?? [] }]);
+    if (addWarehouseTarget === "to") setTransferForm((prev) => ({ ...prev, toWarehouseId: warehouse.id, toBinId: "" }));
+    else if (addWarehouseTarget === "from") setTransferForm((prev) => ({ ...prev, fromWarehouseId: warehouse.id, fromBinId: "" }));
+    else setAdjustForm((prev) => ({ ...prev, warehouseId: warehouse.id, binId: "" }));
+  };
+  const addBinRecord = (bin: WarehouseBin) => {
+    setWarehouses((prev) => prev.map((warehouse) => warehouse.id === bin.warehouseId ? { ...warehouse, bins: [...(warehouse.bins ?? []).filter((row) => row.id !== bin.id), bin] } : warehouse));
+    if (addBinTarget === "to") setTransferForm((prev) => ({ ...prev, toBinId: bin.id }));
+    else if (addBinTarget === "from") setTransferForm((prev) => ({ ...prev, fromBinId: bin.id }));
+    else setAdjustForm((prev) => ({ ...prev, binId: bin.id }));
+  };
   const transferTrackingSelectOptions = transferTrackingOptions.map((option, index) => ({
     value: String(index),
     label: [
@@ -2327,11 +2344,11 @@ export default function ItemsPage() {
                   <SearchableSelect options={itemSelectOptions} value={adjustForm.itemId} onChange={(id) => setAdjustForm((p) => ({ ...p, itemId: id }))} placeholder="Search items..." />
                 </label>
                 {features.warehouses && <label className="space-y-1.5 text-sm font-semibold">
-                  <span>Warehouse</span>
+                  <span className="flex items-center justify-between">Warehouse <button type="button" onClick={() => setAddWarehouseTarget("adjust")} className="inline-flex items-center gap-1 rounded-lg bg-orange-600 px-2 py-1 text-[10px] font-bold text-white hover:bg-orange-700"><Plus className="h-3 w-3" /> Add</button></span>
                   <SearchableSelect options={warehouseSelectOptions} value={adjustForm.warehouseId} onChange={(id) => setAdjustForm((p) => ({ ...p, warehouseId: id, binId: "" }))} placeholder="Search warehouse..." />
                 </label>}
                 {features.bins && <label className="space-y-1.5 text-sm font-semibold">
-                  <span>Bin</span>
+                  <span className="flex items-center justify-between">Bin <button type="button" disabled={!adjustForm.warehouseId} onClick={() => setAddBinTarget("adjust")} className="inline-flex items-center gap-1 rounded-lg bg-orange-600 px-2 py-1 text-[10px] font-bold text-white hover:bg-orange-700 disabled:opacity-50"><Plus className="h-3 w-3" /> Add</button></span>
                   <SearchableSelect options={adjustBinSelectOptions} value={adjustForm.binId} onChange={(id) => setAdjustForm((p) => ({ ...p, binId: id }))} placeholder={adjustForm.warehouseId ? "Search bin..." : "Choose warehouse first"} disabled={!adjustForm.warehouseId} />
                 </label>}
                 <label className="space-y-1.5 text-sm font-semibold">
@@ -2397,11 +2414,11 @@ export default function ItemsPage() {
                   <SearchableSelect options={itemSelectOptions} value={transferForm.itemId} onChange={(id) => setTransferForm((p) => ({ ...p, itemId: id }))} placeholder="Search items..." />
                 </label>
                 <label className="space-y-1.5 text-sm font-semibold">
-                  <span>From Warehouse *</span>
+                  <span className="flex items-center justify-between">From Warehouse * <button type="button" onClick={() => setAddWarehouseTarget("from")} className="inline-flex items-center gap-1 rounded-lg bg-orange-600 px-2 py-1 text-[10px] font-bold text-white hover:bg-orange-700"><Plus className="h-3 w-3" /> Add</button></span>
                   <SearchableSelect options={warehouseSelectOptions} value={transferForm.fromWarehouseId} onChange={(id) => setTransferForm((p) => ({ ...p, fromWarehouseId: id, fromBinId: "" }))} placeholder="Search source warehouse..." />
                 </label>
                 <label className="space-y-1.5 text-sm font-semibold">
-                  <span>To Warehouse *</span>
+                  <span className="flex items-center justify-between">To Warehouse * <button type="button" onClick={() => setAddWarehouseTarget("to")} className="inline-flex items-center gap-1 rounded-lg bg-orange-600 px-2 py-1 text-[10px] font-bold text-white hover:bg-orange-700"><Plus className="h-3 w-3" /> Add</button></span>
                   <SearchableSelect options={warehouseSelectOptions} value={transferForm.toWarehouseId} onChange={(id) => setTransferForm((p) => ({ ...p, toWarehouseId: id, toBinId: "" }))} placeholder="Search destination warehouse..." />
                 </label>
                 <label className="space-y-1.5 text-sm font-semibold">
@@ -2409,11 +2426,11 @@ export default function ItemsPage() {
                   <Input placeholder="Quantity to transfer" value={transferForm.qty} onChange={(e) => setTransferForm((p) => ({ ...p, qty: e.target.value }))} />
                 </label>
                 {features.bins && <label className="space-y-1.5 text-sm font-semibold">
-                  <span>From Bin</span>
+                  <span className="flex items-center justify-between">From Bin <button type="button" disabled={!transferForm.fromWarehouseId} onClick={() => setAddBinTarget("from")} className="inline-flex items-center gap-1 rounded-lg bg-orange-600 px-2 py-1 text-[10px] font-bold text-white hover:bg-orange-700 disabled:opacity-50"><Plus className="h-3 w-3" /> Add</button></span>
                   <SearchableSelect options={sourceBinSelectOptions} value={transferForm.fromBinId} onChange={(id) => setTransferForm((p) => ({ ...p, fromBinId: id }))} placeholder="Search source bin..." disabled={!transferForm.fromWarehouseId} />
                 </label>}
                 {features.bins && <label className="space-y-1.5 text-sm font-semibold">
-                  <span>To Bin</span>
+                  <span className="flex items-center justify-between">To Bin <button type="button" disabled={!transferForm.toWarehouseId} onClick={() => setAddBinTarget("to")} className="inline-flex items-center gap-1 rounded-lg bg-orange-600 px-2 py-1 text-[10px] font-bold text-white hover:bg-orange-700 disabled:opacity-50"><Plus className="h-3 w-3" /> Add</button></span>
                   <SearchableSelect options={destinationBinSelectOptions} value={transferForm.toBinId} onChange={(id) => setTransferForm((p) => ({ ...p, toBinId: id }))} placeholder="Search destination bin..." disabled={!transferForm.toWarehouseId} />
                 </label>}
                 <label className="space-y-1.5 text-sm font-semibold">
@@ -2464,6 +2481,8 @@ export default function ItemsPage() {
           </div>
         </div>
       ) : null}
+      <AddWarehouseDialog open={Boolean(addWarehouseTarget)} onClose={() => setAddWarehouseTarget(null)} onSuccess={(warehouse) => addWarehouseRecord(warehouse as WarehouseRecord)} />
+      <AddWarehouseDialog open={Boolean(addBinTarget)} onClose={() => setAddBinTarget(null)} warehouseId={activeBinWarehouseId || undefined} warehouseName={activeBinWarehouse?.name} onSuccess={(bin) => addBinRecord(bin as WarehouseBin)} />
       {ledgerOpen ? (
         <div className="fixed inset-0 z-[1600] bg-black/30 backdrop-blur-sm p-4" onClick={() => setLedgerOpen(false)}>
           <div

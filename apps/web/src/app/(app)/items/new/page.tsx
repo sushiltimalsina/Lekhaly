@@ -9,7 +9,7 @@ import { getInventorySettings, type InventorySettings } from "@/lib/api/inventor
 import { listTaxes } from "@/lib/api/taxes";
 import { listUnits, type UnitRecord } from "@/lib/api/units";
 import { listItemGroups, type ItemGroupRecord } from "@/lib/api/item-groups";
-import { listWarehouses, type Warehouse } from "@/lib/api/warehouses";
+import { listWarehouses, type Warehouse, type WarehouseBin } from "@/lib/api/warehouses";
 import { cn } from "@/lib/utils";
 import { hasItemPolicyTracking, inventoryFeatures } from "@/lib/inventory-features";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -22,6 +22,7 @@ import AddUnitDialog from "@/components/app/add-unit-dialog";
 import AddGroupDialog from "@/components/app/add-group-dialog";
 import SearchableSelect from "@/components/app/searchable-select";
 import DualDateInput from "@/components/app/dual-date-input";
+import AddWarehouseDialog from "@/components/app/add-warehouse-dialog";
 
 type ItemType = "goods" | "services";
 type TaxCode = { id: string; name: string; rate: number };
@@ -45,6 +46,8 @@ export default function NewItemPage() {
   const [inventorySettings, setInventorySettings] = React.useState<InventorySettings | null>(null);
   const [addUnitOpen, setAddUnitOpen] = React.useState(false);
   const [addGroupOpen, setAddGroupOpen] = React.useState(false);
+  const [addWarehouseOpen, setAddWarehouseOpen] = React.useState(false);
+  const [addBinOpen, setAddBinOpen] = React.useState(false);
 
   // BOM builder state
   const [bomLines, setBomLines] = React.useState<BomLine[]>([]);
@@ -201,6 +204,14 @@ export default function NewItemPage() {
   const showAdvancedPolicies = hasItemPolicyTracking(features);
   const selectedDefaultWarehouse = warehouses.find((warehouse) => warehouse.id === form.defaultWarehouseId);
   const defaultBins = selectedDefaultWarehouse?.bins ?? [];
+  const addWarehouseRecord = (warehouse: Warehouse) => {
+    setWarehouses((prev) => [...prev.filter((row) => row.id !== warehouse.id), { ...warehouse, bins: warehouse.bins ?? [] }]);
+    setForm((prev) => ({ ...prev, defaultWarehouseId: warehouse.id, defaultBinId: "" }));
+  };
+  const addBinRecord = (bin: WarehouseBin) => {
+    setWarehouses((prev) => prev.map((warehouse) => warehouse.id === bin.warehouseId ? { ...warehouse, bins: [...(warehouse.bins ?? []).filter((row) => row.id !== bin.id), bin] } : warehouse));
+    setForm((prev) => ({ ...prev, defaultBinId: bin.id }));
+  };
 
   React.useEffect(() => {
     if (!inventorySettings) return;
@@ -433,7 +444,7 @@ export default function NewItemPage() {
                 <SectionHeader icon={Package} title="Default Stock Identity" desc="Used on opening stock, adjustment, and transfer forms for this item." />
                 <div className="grid gap-4 sm:grid-cols-2">
                   {features.warehouses && (
-                    <Field label="Default Warehouse">
+                    <Field label="Default Warehouse" action={<AddBtn onClick={() => setAddWarehouseOpen(true)} />}>
                       <SearchableSelect
                         options={[{ id: "", name: "No default warehouse" }, ...warehouses]}
                         valueId={form.defaultWarehouseId}
@@ -443,7 +454,7 @@ export default function NewItemPage() {
                     </Field>
                   )}
                   {features.bins && (
-                    <Field label="Default Bin">
+                    <Field label="Default Bin" action={<AddBtn onClick={() => form.defaultWarehouseId && setAddBinOpen(true)} />}>
                       <SearchableSelect
                         options={[{ id: "", name: form.defaultWarehouseId ? "No default bin" : "Choose warehouse first" }, ...defaultBins]}
                         valueId={form.defaultBinId}
@@ -626,6 +637,8 @@ export default function NewItemPage() {
 
       <AddUnitDialog open={addUnitOpen} onClose={() => setAddUnitOpen(false)} onSuccess={(unit) => { setUnits((p) => [...p, unit]); update("unit", unit.name); }} />
       <AddGroupDialog open={addGroupOpen} onClose={() => setAddGroupOpen(false)} onSuccess={(group) => { setGroups((p) => [...p, group]); update("groupId", group.id); }} />
+      <AddWarehouseDialog open={addWarehouseOpen} onClose={() => setAddWarehouseOpen(false)} onSuccess={(warehouse) => addWarehouseRecord(warehouse as Warehouse)} />
+      <AddWarehouseDialog open={addBinOpen} onClose={() => setAddBinOpen(false)} warehouseId={form.defaultWarehouseId || undefined} warehouseName={selectedDefaultWarehouse?.name} onSuccess={(bin) => addBinRecord(bin as WarehouseBin)} />
     </div>
   );
 }
