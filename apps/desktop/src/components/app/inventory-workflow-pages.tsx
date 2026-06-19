@@ -12,6 +12,7 @@ import {
   RotateCcw,
   ShieldCheck,
   ShoppingCart,
+  Trash2,
   XCircle
 } from "lucide-react";
 import { Button, Card, CardContent } from "@lekhaly/ui";
@@ -623,7 +624,7 @@ export function GoodsReceiptWorkflowPage() {
           )}
           {lines.length > 0 && (
             <div className="overflow-x-auto rounded-xl border border-border">
-              <table className="w-full min-w-[1100px] text-sm">
+              <table className={cn("w-full text-sm", features.batch || features.lot || features.expiry ? "min-w-[1100px]" : "min-w-[860px]")}>
                 <thead className="bg-muted/40 text-left text-xs uppercase tracking-widest text-muted-foreground">
                   <tr>
                     <th className="px-3 py-3">Item</th>
@@ -633,9 +634,10 @@ export function GoodsReceiptWorkflowPage() {
                     <th className="px-3 py-3">Receive Qty</th>
                     <th className="px-3 py-3">Rate</th>
                     <th className="px-3 py-3 text-right">Receive Value</th>
-                    <th className="px-3 py-3">Batch No</th>
-                    <th className="px-3 py-3">Lot No</th>
-                    <th className="px-3 py-3">Expiry</th>
+                    {features.batch && <th className="px-3 py-3">Batch No</th>}
+                    {features.lot && <th className="px-3 py-3">Lot No</th>}
+                    {features.expiry && <th className="px-3 py-3">Expiry</th>}
+                    <th className="w-12 px-3 py-3 text-right" aria-label="Actions" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -650,16 +652,23 @@ export function GoodsReceiptWorkflowPage() {
                         <td className="px-3 py-3"><input type="number" min="0" max={pending} step="0.01" className={cn(inputClass, "w-28")} value={line.receiveQty} onChange={(e) => updateLine(line.lineId, { receiveQty: e.target.value })} /></td>
                         <td className="px-3 py-3"><input type="number" min="0" step="0.01" className={cn(inputClass, "w-28")} value={line.rate} onChange={(e) => updateLine(line.lineId, { rate: e.target.value })} /></td>
                         <td className="px-3 py-3 text-right"><MoneyText value={Number(line.receiveQty || 0) * Number(line.rate || 0)} className="font-bold" /></td>
-                        <td className="px-3 py-3"><input className={cn(inputClass, "w-36")} value={line.batchNo} onChange={(e) => updateLine(line.lineId, { batchNo: e.target.value })} /></td>
-                        <td className="px-3 py-3"><input className={cn(inputClass, "w-36")} value={line.lotNo} onChange={(e) => updateLine(line.lineId, { lotNo: e.target.value })} /></td>
-                        <td className="px-3 py-3">
-                          <div className="w-48">
-                            <DualDateInput
-                              value={{ ad: line.expiryDate, bs: line.expiryDateBs }}
-                              onChange={(next) => updateLine(line.lineId, { expiryDate: next.ad, expiryDateBs: next.bs })}
-                              accentColor="bg-orange-600"
-                            />
-                          </div>
+                        {features.batch && <td className="px-3 py-3"><input className={cn(inputClass, "w-36")} value={line.batchNo} onChange={(e) => updateLine(line.lineId, { batchNo: e.target.value })} /></td>}
+                        {features.lot && <td className="px-3 py-3"><input className={cn(inputClass, "w-36")} value={line.lotNo} onChange={(e) => updateLine(line.lineId, { lotNo: e.target.value })} /></td>}
+                        {features.expiry && (
+                          <td className="px-3 py-3">
+                            <div className="w-48">
+                              <DualDateInput
+                                value={{ ad: line.expiryDate, bs: line.expiryDateBs }}
+                                onChange={(next) => updateLine(line.lineId, { expiryDate: next.ad, expiryDateBs: next.bs })}
+                                accentColor="bg-orange-600"
+                              />
+                            </div>
+                          </td>
+                        )}
+                        <td className="px-3 py-3 text-right">
+                          <button type="button" onClick={() => setLines((prev) => prev.filter((row) => row.lineId !== line.lineId))} className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-red-500 hover:bg-red-500/10" title="Remove row">
+                            <Trash2 className="h-4 w-4" />
+                          </button>
                         </td>
                       </tr>
                     );
@@ -797,7 +806,6 @@ export function DispatchWorkflowPage() {
         listWarehouses({ isActive: true }).then(normalizeWarehouses),
         listStockDispatches({ q: dispatchSearch || undefined, take: 100 })
       ]);
-      console.log("Dispatch workflow loaded:", { orderRows, itemRows, warehouseRows, dispatchRows });
       setOrders(orderRows || []);
       setItems(itemRows || []);
       setWarehouses(warehouseRows || []);
@@ -808,7 +816,6 @@ export function DispatchWorkflowPage() {
         warehouseId: current.warehouseId || warehouseRows?.[0]?.id || ""
       }));
     } catch (error: any) {
-      console.error("Dispatch workflow load error:", error);
       setStatus({ type: "error", message: error?.message ?? "Failed to load data" });
       setOrders([]);
       setItems([]);
@@ -930,6 +937,7 @@ export function DispatchWorkflowPage() {
         lines: dispatchLines.map((line) => ({
           itemId: line.itemId,
           qty: line.qty,
+          rate: line.rate || undefined,
           warehouseId: line.warehouseId || undefined,
           binId: line.binId || undefined,
           batchNo: line.batchNo.trim() || undefined,
@@ -983,12 +991,7 @@ export function DispatchWorkflowPage() {
             New Dispatch
           </Button>
         </div>
-      ) : (
-        <Button variant="outline" type="button" onClick={refresh} disabled={loading}>
-          <RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} />
-          Refresh List
-        </Button>
-      )}
+      ) : null}
     >
       <StatusMessage status={status} />
       {view === "create" ? (
@@ -1010,7 +1013,7 @@ export function DispatchWorkflowPage() {
                     value={form.sourceId}
                     onChange={(_, order) => applyOrderSelection(order?.id ?? "")}
                     getLabel={(order) => `${order.orderNo || order.id} - ${order.party?.name || order.partyName || "No customer"}`}
-                    getDetail={(order) => order.status ? `${order.status} · ${Number(order.total ?? 0).toLocaleString("en-IN")}` : ""}
+                    getDetail={(order) => order.status ? `${order.status} / Rs. ${Number(order.total ?? 0).toLocaleString("en-IN")}` : ""}
                     placeholder="Search open sales orders..."
                     emptyText="No open sales orders found"
                     buttonClassName="h-11 rounded-xl bg-background"
@@ -1042,17 +1045,30 @@ export function DispatchWorkflowPage() {
                       <thead className="text-left text-xs uppercase tracking-widest text-muted-foreground">
                         <tr>
                           <th className="py-2">Item</th>
-                          <th className="py-2 text-right">Qty (Locked)</th>
+                          <th className="py-2 text-right">Dispatch Qty</th>
                           <th className="py-2 text-right">Rate</th>
                           <th className="py-2 text-right">Amount</th>
-                          <th className="py-2 w-10"></th>
+                          <th className="w-10 py-2" aria-label="Actions" />
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
                         {dispatchLines.map((line, idx) => (
                           <tr key={line.id}>
                             <td className="py-2 font-medium">{line.itemName}</td>
-                            <td className="py-2 text-right">{line.qty}</td>
+                            <td className="py-2 text-right">
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                className="ml-auto h-8 w-28 rounded border border-border bg-background px-2 py-1 text-right text-sm"
+                                value={line.qty}
+                                onChange={(e) => {
+                                  const newLines = [...dispatchLines];
+                                  newLines[idx].qty = Number(e.target.value) || 0;
+                                  setDispatchLines(newLines);
+                                }}
+                              />
+                            </td>
                             <td className="py-2">
                               <input
                                 type="number"
@@ -1072,9 +1088,10 @@ export function DispatchWorkflowPage() {
                               <button
                                 type="button"
                                 onClick={() => setDispatchLines(dispatchLines.filter((_, i) => i !== idx))}
-                                className="text-red-600 hover:text-red-700"
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-red-500 hover:bg-red-500/10"
+                                title="Remove row"
                               >
-                                ×
+                                <Trash2 className="h-4 w-4" />
                               </button>
                             </td>
                           </tr>
