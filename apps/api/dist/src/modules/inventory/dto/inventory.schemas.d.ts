@@ -55,6 +55,20 @@ export declare const GoodsReceiptQuerySchema: z.ZodObject<{
     take: z.ZodOptional<z.ZodCoercedNumber<unknown>>;
     skip: z.ZodOptional<z.ZodCoercedNumber<unknown>>;
 }, z.core.$strip>;
+export declare const StockDispatchQuerySchema: z.ZodObject<{
+    salesOrderId: z.ZodOptional<z.ZodString>;
+    customerId: z.ZodOptional<z.ZodString>;
+    status: z.ZodOptional<z.ZodEnum<{
+        draft: "draft";
+        posted: "posted";
+        reversed: "reversed";
+    }>>;
+    from: z.ZodOptional<z.ZodCoercedDate<unknown>>;
+    to: z.ZodOptional<z.ZodCoercedDate<unknown>>;
+    q: z.ZodOptional<z.ZodString>;
+    take: z.ZodOptional<z.ZodCoercedNumber<unknown>>;
+    skip: z.ZodOptional<z.ZodCoercedNumber<unknown>>;
+}, z.core.$strip>;
 export declare const StockDispatchSchema: z.ZodObject<{
     dispatchNo: z.ZodOptional<z.ZodString>;
     salesOrderId: z.ZodOptional<z.ZodString>;

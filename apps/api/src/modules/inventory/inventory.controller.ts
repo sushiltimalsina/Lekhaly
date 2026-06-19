@@ -21,6 +21,7 @@ import {
   StockAgingQuerySchema,
   StockAdjustmentSchema,
   StockDispatchSchema,
+  StockDispatchQuerySchema,
   StockQuerySchema,
   TrackedStockQuerySchema,
   StockValuationQuerySchema,
@@ -91,6 +92,15 @@ export class InventoryController {
     @Query(new ZodValidationPipe(GoodsReceiptQuerySchema)) query: any
   ) {
     return this.inventory.listGoodsReceipts(user, query);
+  }
+
+  @Get("dispatches")
+  @RequirePerm("masters.read")
+  dispatches(
+    @CurrentUser() user: AuthUser,
+    @Query(new ZodValidationPipe(StockDispatchQuerySchema)) query: any
+  ) {
+    return this.inventory.listStockDispatches(user, query);
   }
 
   @Post("dispatches")

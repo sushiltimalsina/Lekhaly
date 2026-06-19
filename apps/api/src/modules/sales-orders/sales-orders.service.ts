@@ -151,12 +151,12 @@ export class SalesOrdersService {
             return { ...s, amount: amt };
         });
 
-        const company = await this.prisma.company.findUnique({ 
+        const company = await this.prisma.company.findUnique({
             where: { id: user.companyId },
             include: { fiscalSessions: { where: { id: (await this.prisma.company.findFirst({ where: { id: user.companyId } }))?.activeFiscalSessionId || undefined } } }
         });
         if (!company) throw new BadRequestException("Company not found");
-        
+
         const activeSession = company.fiscalSessions[0];
         if (!activeSession) throw new BadRequestException("No active fiscal session found");
 
@@ -237,7 +237,7 @@ export class SalesOrdersService {
             where,
             include: {
                 party: { select: { id: true, name: true } },
-                items: { include: { item: { select: { name: true } } } }
+                items: { include: { item: { select: { id: true, name: true } } } }
             },
             orderBy: { date: "desc" },
             skip: filters.skip || 0,

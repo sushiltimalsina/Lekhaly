@@ -2525,6 +2525,118 @@ export class InventoryService {
     };
   }
 
+  async listStockDispatches(
+    user: AuthUser,
+    filters: {
+      salesOrderId?: string;
+      customerId?: string;
+      status?: string;
+      from?: Date;
+      to?: Date;
+      q?: string;
+      take?: number;
+      skip?: number;
+    }
+  ) {
+    const db = this.prisma as any;
+    if (!db.stockDispatch) throw new BadRequestException("Run the inventory workflow migration before listing stock dispatches");
+
+    const where: any = { companyId: user.companyId };
+    if (filters.salesOrderId) where.salesOrderId = filters.salesOrderId;
+    if (filters.customerId) where.customerId = filters.customerId;
+    if (filters.status) where.status = filters.status;
+    if (filters.from || filters.to) {
+      where.date = {};
+      if (filters.from) where.date.gte = filters.from;
+      if (filters.to) where.date.lte = filters.to;
+    }
+
+    const take = filters.take ?? 50;
+    const skip = filters.skip ?? 0;
+    const [total, rows] = await this.prisma.$transaction([
+      db.stockDispatch.count({ where }),
+      db.stockDispatch.findMany({
+        where,
+        include: { lines: true },
+        orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+        skip,
+        take
+      })
+    ]);
+
+    const salesOrderIds = rows.map((row: any) => row.salesOrderId).filter(Boolean);
+    const customerIds = rows.map((row: any) => row.customerId).filter(Boolean);
+    const itemIds = rows.flatMap((row: any) => row.lines.map((line: any) => line.itemId)).filter(Boolean);
+
+    const [salesOrders, customers, items] = await Promise.all([
+      salesOrderIds.length
+        ? this.prisma.salesOrder.findMany({
+            where: { companyId: user.companyId, id: { in: Array.from(new Set(salesOrderIds)) } },
+            select: { id: true, orderNo: true, partyId: true, party: { select: { id: true, name: true } } }
+          })
+        : Promise.resolve([]),
+      customerIds.length
+        ? this.prisma.party.findMany({
+            where: { companyId: user.companyId, id: { in: Array.from(new Set(customerIds)) } },
+            select: { id: true, name: true }
+          })
+        : Promise.resolve([]),
+      itemIds.length
+        ? this.prisma.item.findMany({
+            where: { companyId: user.companyId, id: { in: Array.from(new Set(itemIds)) } },
+            select: { id: true, name: true, sku: true, unit: true }
+          })
+        : Promise.resolve([])
+    ]);
+
+    const soById = new Map(salesOrders.map((so: any) => [so.id, so]));
+    const customerById = new Map(customers.map((customer: any) => [customer.id, customer]));
+    const itemById = new Map(items.map((item: any) => [item.id, item]));
+    const q = filters.q?.toLowerCase();
+
+    const data = rows
+      .map((row: any) => {
+        const so = row.salesOrderId ? soById.get(row.salesOrderId) : null;
+        const customer = row.customerId ? customerById.get(row.customerId) : so?.party ?? null;
+        const lines = row.lines.map((line: any) => ({
+          ...line,
+          item: itemById.get(line.itemId) ?? null
+        }));
+        const qty = lines.reduce((sum: number, line: any) => sum + Number(line.qty ?? 0), 0);
+        const amount = lines.reduce((sum: number, line: any) => sum + Number(line.amount ?? 0), 0);
+        return {
+          ...row,
+          salesOrderNo: so?.orderNo ?? null,
+          customerName: customer?.name ?? null,
+          lineCount: lines.length,
+          totalQty: qty,
+          totalAmount: amount,
+          lines
+        };
+      })
+      .filter((row: any) => {
+        if (!q) return true;
+        const haystack = [
+          row.dispatchNo,
+          row.salesOrderNo,
+          row.customerName,
+          row.memo,
+          ...row.lines.map((line: any) => line.item?.name),
+          ...row.lines.map((line: any) => line.item?.sku)
+        ].filter(Boolean).join(" ").toLowerCase();
+        return haystack.includes(q);
+      });
+
+    return {
+      data,
+      meta: {
+        total: q ? data.length : total,
+        page: Math.floor(skip / take) + 1,
+        lastPage: Math.max(1, Math.ceil((q ? data.length : total) / take))
+      }
+    };
+  }
+
   async postStockDispatch(
     user: AuthUser,
     input: {

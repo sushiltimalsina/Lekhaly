@@ -18,6 +18,7 @@ import { Button, Card, CardContent } from "@lekhaly/ui";
 import PageHeader from "@/components/app/page-header";
 import { MoneyText } from "@/components/app/money";
 import DualDateInput from "@/components/app/dual-date-input";
+import SearchableSelect from "@/components/app/searchable-select";
 import { cn } from "@/lib/utils";
 import { listItems, type ItemRecord } from "@/lib/api/items";
 import { listWarehouses, type Warehouse } from "@/lib/api/warehouses";
@@ -400,12 +401,23 @@ export function GoodsReceiptWorkflowPage() {
   const [loading, setLoading] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const receiptDateRef = React.useRef<HTMLInputElement | null>(null);
-  const purchaseOrderRef = React.useRef<HTMLSelectElement | null>(null);
+  const purchaseOrderRef = React.useRef<HTMLButtonElement | null>(null);
 
   const selectedOrder = orders.find((order) => order.id === selectedOrderId);
   const selectedWarehouse = warehouses.find((warehouse) => warehouse.id === warehouseId);
   const bins = selectedWarehouse?.bins ?? [];
   const features = inventoryFeatures(settings);
+  const selectedOrderTotals = React.useMemo(() => {
+    const orderLines = selectedOrder?.items ?? [];
+    const orderedQty = orderLines.reduce((sum: number, line: any) => sum + Number(line.qty ?? 0), 0);
+    const receivedQty = orderLines.reduce((sum: number, line: any) => sum + Number(line.receivedQty ?? 0), 0);
+    const pendingQty = Math.max(orderedQty - receivedQty, 0);
+    const pendingValue = orderLines.reduce((sum: number, line: any) => {
+      const pending = Math.max(Number(line.qty ?? 0) - Number(line.receivedQty ?? 0), 0);
+      return sum + pending * Number(line.rate ?? 0);
+    }, 0);
+    return { lineCount: orderLines.length, orderedQty, receivedQty, pendingQty, pendingValue };
+  }, [selectedOrder]);
 
   const refresh = React.useCallback(async () => {
     setLoading(true);
@@ -566,14 +578,17 @@ export function GoodsReceiptWorkflowPage() {
           <StatusMessage status={status} />
           <div className="grid gap-4 md:grid-cols-4">
             <Field label="Purchase Order">
-              <select ref={purchaseOrderRef} className={inputClass} value={selectedOrderId} onChange={(e) => applyPurchaseOrder(orders.find((order) => order.id === e.target.value))}>
-                <option value="">Select open purchase order</option>
-                {orders.map((order) => (
-                  <option key={order.id} value={order.id}>
-                    {order.orderNo || order.id} - {order.party?.name || order.partyName || "No supplier"}
-                  </option>
-                ))}
-              </select>
+              <SearchableSelect
+                buttonRef={purchaseOrderRef}
+                options={orders}
+                value={selectedOrderId}
+                onChange={(_, order) => applyPurchaseOrder(order)}
+                getLabel={(order) => `${order.orderNo || order.id} - ${order.party?.name || order.partyName || "No supplier"}`}
+                getDetail={(order) => `Rs. ${Number(order.total ?? 0).toLocaleString("en-IN")}`}
+                placeholder="Search PO number or supplier..."
+                emptyText="No open purchase orders found"
+                buttonClassName="h-11 rounded-xl bg-background"
+              />
             </Field>
             <Field label="Warehouse">
               <select className={inputClass} value={warehouseId} onChange={(e) => { setWarehouseId(e.target.value); setBinId(""); }}>
@@ -592,12 +607,18 @@ export function GoodsReceiptWorkflowPage() {
             </Field>
           </div>
           {selectedOrder ? (
-            <div className="rounded-xl border border-border bg-muted/30 p-4">
+            <div className="space-y-3 rounded-xl border border-border bg-muted/30 p-4">
               <div className="grid gap-3 md:grid-cols-4">
                 <div><div className={labelClass}>PO Number</div><div className="font-bold">{selectedOrder.orderNo || "-"}</div></div>
                 <div><div className={labelClass}>Supplier</div><div className="font-bold">{selectedOrder.party?.name || selectedOrder.partyName || "-"}</div></div>
                 <div><div className={labelClass}>Status</div><div className="font-bold capitalize">{selectedOrder.status || "-"}</div></div>
                 <div><div className={labelClass}>PO Total</div><MoneyText value={Number(selectedOrder.total ?? 0)} className="font-bold" /></div>
+              </div>
+              <div className="grid gap-3 border-t border-border/70 pt-3 md:grid-cols-4">
+                <div><div className={labelClass}>Lines</div><div className="font-bold tabular-nums">{selectedOrderTotals.lineCount}</div></div>
+                <div><div className={labelClass}>Pending Qty</div><div className="font-bold tabular-nums">{selectedOrderTotals.pendingQty}</div></div>
+                <div><div className={labelClass}>Received Qty</div><div className="font-bold tabular-nums">{selectedOrderTotals.receivedQty}</div></div>
+                <div><div className={labelClass}>Pending Value</div><MoneyText value={selectedOrderTotals.pendingValue} className="font-bold text-emerald-600 dark:text-emerald-300" /></div>
               </div>
             </div>
           ) : loading ? (
@@ -616,6 +637,7 @@ export function GoodsReceiptWorkflowPage() {
                     <th className="px-3 py-3 text-right">Pending</th>
                     <th className="px-3 py-3">Receive Qty</th>
                     <th className="px-3 py-3">Rate</th>
+                    <th className="px-3 py-3 text-right">Receive Value</th>
                     <th className="px-3 py-3">Batch No</th>
                     <th className="px-3 py-3">Lot No</th>
                     <th className="px-3 py-3">Expiry</th>
@@ -632,6 +654,7 @@ export function GoodsReceiptWorkflowPage() {
                         <td className="px-3 py-3 text-right font-bold">{pending}</td>
                         <td className="px-3 py-3"><input type="number" min="0" max={pending} step="0.01" className={cn(inputClass, "w-28")} value={line.receiveQty} onChange={(e) => updateLine(line.lineId, { receiveQty: e.target.value })} /></td>
                         <td className="px-3 py-3"><input type="number" min="0" step="0.01" className={cn(inputClass, "w-28")} value={line.rate} onChange={(e) => updateLine(line.lineId, { rate: e.target.value })} /></td>
+                        <td className="px-3 py-3 text-right"><MoneyText value={Number(line.receiveQty || 0) * Number(line.rate || 0)} className="font-bold" /></td>
                         <td className="px-3 py-3"><input className={cn(inputClass, "w-36")} value={line.batchNo} onChange={(e) => updateLine(line.lineId, { batchNo: e.target.value })} /></td>
                         <td className="px-3 py-3"><input className={cn(inputClass, "w-36")} value={line.lotNo} onChange={(e) => updateLine(line.lineId, { lotNo: e.target.value })} /></td>
                         <td className="px-3 py-3">

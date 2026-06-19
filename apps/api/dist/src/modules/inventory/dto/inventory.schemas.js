@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SerialMovementQuerySchema = exports.SerialQuerySchema = exports.InventorySettingsSchema = exports.InventoryAlertsQuerySchema = exports.StockTransferSchema = exports.TrackedStockQuerySchema = exports.StockValuationQuerySchema = exports.StockAgingQuerySchema = exports.BatchLotMasterQuerySchema = exports.InventoryPeriodCloseQuerySchema = exports.InventoryPeriodCloseSchema = exports.MovementApprovalActionSchema = exports.MovementApprovalQuerySchema = exports.MovementApprovalRequestSchema = exports.ReservationQuerySchema = exports.SalesOrderReservationSchema = exports.StockDispatchSchema = exports.GoodsReceiptQuerySchema = exports.GoodsReceiptSchema = exports.StockQuerySchema = exports.StockAdjustmentSchema = void 0;
+exports.SerialMovementQuerySchema = exports.SerialQuerySchema = exports.InventorySettingsSchema = exports.InventoryAlertsQuerySchema = exports.StockTransferSchema = exports.TrackedStockQuerySchema = exports.StockValuationQuerySchema = exports.StockAgingQuerySchema = exports.BatchLotMasterQuerySchema = exports.InventoryPeriodCloseQuerySchema = exports.InventoryPeriodCloseSchema = exports.MovementApprovalActionSchema = exports.MovementApprovalQuerySchema = exports.MovementApprovalRequestSchema = exports.ReservationQuerySchema = exports.SalesOrderReservationSchema = exports.StockDispatchSchema = exports.StockDispatchQuerySchema = exports.GoodsReceiptQuerySchema = exports.GoodsReceiptSchema = exports.StockQuerySchema = exports.StockAdjustmentSchema = void 0;
 const zod_1 = require("zod");
 exports.StockAdjustmentSchema = zod_1.z.object({
     itemId: zod_1.z.string().uuid(),
@@ -63,6 +63,16 @@ exports.GoodsReceiptSchema = zod_1.z.object({
 exports.GoodsReceiptQuerySchema = zod_1.z.object({
     purchaseOrderId: zod_1.z.string().uuid().optional(),
     supplierId: zod_1.z.string().uuid().optional(),
+    status: zod_1.z.enum(["draft", "posted", "reversed"]).optional(),
+    from: zod_1.z.coerce.date().optional(),
+    to: zod_1.z.coerce.date().optional(),
+    q: zod_1.z.string().trim().max(120).optional(),
+    take: zod_1.z.coerce.number().int().min(1).max(500).optional(),
+    skip: zod_1.z.coerce.number().int().min(0).optional()
+});
+exports.StockDispatchQuerySchema = zod_1.z.object({
+    salesOrderId: zod_1.z.string().uuid().optional(),
+    customerId: zod_1.z.string().uuid().optional(),
     status: zod_1.z.enum(["draft", "posted", "reversed"]).optional(),
     from: zod_1.z.coerce.date().optional(),
     to: zod_1.z.coerce.date().optional(),

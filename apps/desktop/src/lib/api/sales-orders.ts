@@ -32,11 +32,30 @@ export type SalesOrderInput = {
     }>;
 };
 
+export type SalesOrderLine = {
+    id: string;
+    itemId?: string;
+    item?: { id: string; name?: string; unit?: string } | null;
+    description?: string;
+    qty: number;
+    rate: number;
+    amount: number;
+    fulfilledQty?: number;
+    taxCodeId?: string;
+    taxAmount?: number;
+};
+
+export type SalesOrderParty = {
+    id: string;
+    name?: string;
+};
+
 export type SalesOrderRecord = {
     id: string;
     orderNo: string;
     partyId: string;
     partyName?: string;
+    party?: SalesOrderParty | null;
     orderDate: string;
     orderDateBs: string;
     expectedDelivery?: string;
@@ -48,6 +67,7 @@ export type SalesOrderRecord = {
     memo?: string;
     createdAt: string;
     updatedAt: string;
+    items?: SalesOrderLine[];
 };
 
 export async function createSalesOrder(input: SalesOrderInput) {

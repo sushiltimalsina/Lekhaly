@@ -45,6 +45,9 @@ let InventoryController = class InventoryController {
     goodsReceipts(user, query) {
         return this.inventory.listGoodsReceipts(user, query);
     }
+    dispatches(user, query) {
+        return this.inventory.listStockDispatches(user, query);
+    }
     dispatch(user, body) {
         return this.inventory.postStockDispatch(user, body);
     }
@@ -166,6 +169,15 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", void 0)
 ], InventoryController.prototype, "goodsReceipts", null);
+__decorate([
+    (0, common_1.Get)("dispatches"),
+    (0, auth_decorator_1.RequirePerm)("masters.read"),
+    __param(0, (0, auth_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Query)(new zod_pipe_1.ZodValidationPipe(inventory_schemas_1.StockDispatchQuerySchema))),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], InventoryController.prototype, "dispatches", null);
 __decorate([
     (0, common_1.Post)("dispatches"),
     (0, auth_decorator_1.RequirePerm)("masters.write"),

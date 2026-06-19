@@ -453,6 +453,23 @@ export declare class InventoryService {
             lastPage: number;
         };
     }>;
+    listStockDispatches(user: AuthUser, filters: {
+        salesOrderId?: string;
+        customerId?: string;
+        status?: string;
+        from?: Date;
+        to?: Date;
+        q?: string;
+        take?: number;
+        skip?: number;
+    }): Promise<{
+        data: any;
+        meta: {
+            total: any;
+            page: number;
+            lastPage: number;
+        };
+    }>;
     postStockDispatch(user: AuthUser, input: {
         dispatchNo?: string;
         salesOrderId?: string;

@@ -73,6 +73,17 @@ export const GoodsReceiptQuerySchema = z.object({
   skip: z.coerce.number().int().min(0).optional()
 });
 
+export const StockDispatchQuerySchema = z.object({
+  salesOrderId: z.string().uuid().optional(),
+  customerId: z.string().uuid().optional(),
+  status: z.enum(["draft", "posted", "reversed"]).optional(),
+  from: z.coerce.date().optional(),
+  to: z.coerce.date().optional(),
+  q: z.string().trim().max(120).optional(),
+  take: z.coerce.number().int().min(1).max(500).optional(),
+  skip: z.coerce.number().int().min(0).optional()
+});
+
 export const StockDispatchSchema = z.object({
   dispatchNo: z.string().trim().max(64).optional(),
   salesOrderId: z.string().uuid().optional(),

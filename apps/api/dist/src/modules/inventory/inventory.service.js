@@ -2283,6 +2283,105 @@ let InventoryService = class InventoryService {
             }
         };
     }
+    async listStockDispatches(user, filters) {
+        const db = this.prisma;
+        if (!db.stockDispatch)
+            throw new common_1.BadRequestException("Run the inventory workflow migration before listing stock dispatches");
+        const where = { companyId: user.companyId };
+        if (filters.salesOrderId)
+            where.salesOrderId = filters.salesOrderId;
+        if (filters.customerId)
+            where.customerId = filters.customerId;
+        if (filters.status)
+            where.status = filters.status;
+        if (filters.from || filters.to) {
+            where.date = {};
+            if (filters.from)
+                where.date.gte = filters.from;
+            if (filters.to)
+                where.date.lte = filters.to;
+        }
+        const take = filters.take ?? 50;
+        const skip = filters.skip ?? 0;
+        const [total, rows] = await this.prisma.$transaction([
+            db.stockDispatch.count({ where }),
+            db.stockDispatch.findMany({
+                where,
+                include: { lines: true },
+                orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+                skip,
+                take
+            })
+        ]);
+        const salesOrderIds = rows.map((row) => row.salesOrderId).filter(Boolean);
+        const customerIds = rows.map((row) => row.customerId).filter(Boolean);
+        const itemIds = rows.flatMap((row) => row.lines.map((line) => line.itemId)).filter(Boolean);
+        const [salesOrders, customers, items] = await Promise.all([
+            salesOrderIds.length
+                ? this.prisma.salesOrder.findMany({
+                    where: { companyId: user.companyId, id: { in: Array.from(new Set(salesOrderIds)) } },
+                    select: { id: true, orderNo: true, partyId: true, party: { select: { id: true, name: true } } }
+                })
+                : Promise.resolve([]),
+            customerIds.length
+                ? this.prisma.party.findMany({
+                    where: { companyId: user.companyId, id: { in: Array.from(new Set(customerIds)) } },
+                    select: { id: true, name: true }
+                })
+                : Promise.resolve([]),
+            itemIds.length
+                ? this.prisma.item.findMany({
+                    where: { companyId: user.companyId, id: { in: Array.from(new Set(itemIds)) } },
+                    select: { id: true, name: true, sku: true, unit: true }
+                })
+                : Promise.resolve([])
+        ]);
+        const soById = new Map(salesOrders.map((so) => [so.id, so]));
+        const customerById = new Map(customers.map((customer) => [customer.id, customer]));
+        const itemById = new Map(items.map((item) => [item.id, item]));
+        const q = filters.q?.toLowerCase();
+        const data = rows
+            .map((row) => {
+            const so = row.salesOrderId ? soById.get(row.salesOrderId) : null;
+            const customer = row.customerId ? customerById.get(row.customerId) : so?.party ?? null;
+            const lines = row.lines.map((line) => ({
+                ...line,
+                item: itemById.get(line.itemId) ?? null
+            }));
+            const qty = lines.reduce((sum, line) => sum + Number(line.qty ?? 0), 0);
+            const amount = lines.reduce((sum, line) => sum + Number(line.amount ?? 0), 0);
+            return {
+                ...row,
+                salesOrderNo: so?.orderNo ?? null,
+                customerName: customer?.name ?? null,
+                lineCount: lines.length,
+                totalQty: qty,
+                totalAmount: amount,
+                lines
+            };
+        })
+            .filter((row) => {
+            if (!q)
+                return true;
+            const haystack = [
+                row.dispatchNo,
+                row.salesOrderNo,
+                row.customerName,
+                row.memo,
+                ...row.lines.map((line) => line.item?.name),
+                ...row.lines.map((line) => line.item?.sku)
+            ].filter(Boolean).join(" ").toLowerCase();
+            return haystack.includes(q);
+        });
+        return {
+            data,
+            meta: {
+                total: q ? data.length : total,
+                page: Math.floor(skip / take) + 1,
+                lastPage: Math.max(1, Math.ceil((q ? data.length : total) / take))
+            }
+        };
+    }
     async postStockDispatch(user, input) {
         const db = this.prisma;
         if (!db.stockDispatch)

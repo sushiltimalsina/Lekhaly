@@ -18,10 +18,11 @@ import { Button, Card, CardContent } from "@lekhaly/ui";
 import PageHeader from "@/components/app/page-header";
 import { MoneyText } from "@/components/app/money";
 import DualDateInput from "@/components/app/dual-date-input";
+import SearchableSelect from "@/components/app/searchable-select";
 import { cn } from "@/lib/utils";
 import { listItems, type ItemRecord } from "@/lib/api/items";
 import { listWarehouses, type Warehouse } from "@/lib/api/warehouses";
-import { listSalesOrders } from "@/lib/api/sales-orders";
+import { getSalesOrder, listSalesOrders } from "@/lib/api/sales-orders";
 import { listPurchaseOrders } from "@/lib/api/purchase-orders";
 import {
   approveInventoryMovement,
@@ -33,6 +34,7 @@ import {
   listGoodsReceipts,
   listInventoryMovementApprovals,
   listInventoryPeriodCloses,
+  listStockDispatches,
   listStockReservations,
   postGoodsReceipt,
   postStockDispatch,
@@ -47,6 +49,7 @@ import {
   type InventoryPeriodClose,
   type InventoryMovementLineInput,
   type StockDispatchInput,
+  type StockDispatchRecord,
   type StockReservationRecord
 } from "@/lib/api/inventory";
 import { inventoryFeatures } from "@/lib/inventory-features";
@@ -86,6 +89,13 @@ function toDateInputValue(date?: string | null) {
   const parsed = new Date(date);
   if (Number.isNaN(parsed.getTime())) return "";
   return parsed.toISOString().slice(0, 10);
+}
+
+function generateDispatchNumber() {
+  const now = new Date();
+  const dateCode = now.toISOString().slice(0, 10).replace(/-/g, "");
+  const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+  return `DS-${dateCode}-${randomSuffix}`;
 }
 
 function StatusMessage({ status }: { status: Status }) {
@@ -342,23 +352,9 @@ function LineForm({
               </select>
             </Field>
           </div>
-          <div className="grid gap-4 md:grid-cols-4">
-            <Field label="Batch No">
-              <input className={inputClass} value={form.batchNo} onChange={(e) => setForm({ ...form, batchNo: e.target.value })} />
-            </Field>
-            <Field label="Lot No">
-              <input className={inputClass} value={form.lotNo} onChange={(e) => setForm({ ...form, lotNo: e.target.value })} />
-            </Field>
-            <Field label="Expiry Date">
-              <input type="date" className={inputClass} value={form.expiryDate} onChange={(e) => setForm({ ...form, expiryDate: e.target.value })} />
-            </Field>
-            <Field label="Memo">
-              <input className={inputClass} value={form.memo} onChange={(e) => setForm({ ...form, memo: e.target.value })} placeholder="Reason or note" />
-            </Field>
-          </div>
           <div className="flex justify-end">
             <Button disabled={saving} className="bg-emerald-600 text-white hover:bg-emerald-700">
-              {saving ? "Posting..." : mode === "receipt" ? "Post Goods Receipt" : "Post Dispatch"}
+              {saving ? "Posting..." : "Post Dispatch"}
             </Button>
           </div>
         </form>
@@ -400,12 +396,23 @@ export function GoodsReceiptWorkflowPage() {
   const [loading, setLoading] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const receiptDateRef = React.useRef<HTMLInputElement | null>(null);
-  const purchaseOrderRef = React.useRef<HTMLSelectElement | null>(null);
+  const purchaseOrderRef = React.useRef<HTMLButtonElement | null>(null);
 
   const selectedOrder = orders.find((order) => order.id === selectedOrderId);
   const selectedWarehouse = warehouses.find((warehouse) => warehouse.id === warehouseId);
   const bins = selectedWarehouse?.bins ?? [];
   const features = inventoryFeatures(settings);
+  const selectedOrderTotals = React.useMemo(() => {
+    const orderLines = selectedOrder?.items ?? [];
+    const orderedQty = orderLines.reduce((sum: number, line: any) => sum + Number(line.qty ?? 0), 0);
+    const receivedQty = orderLines.reduce((sum: number, line: any) => sum + Number(line.receivedQty ?? 0), 0);
+    const pendingQty = Math.max(orderedQty - receivedQty, 0);
+    const pendingValue = orderLines.reduce((sum: number, line: any) => {
+      const pending = Math.max(Number(line.qty ?? 0) - Number(line.receivedQty ?? 0), 0);
+      return sum + pending * Number(line.rate ?? 0);
+    }, 0);
+    return { lineCount: orderLines.length, orderedQty, receivedQty, pendingQty, pendingValue };
+  }, [selectedOrder]);
 
   const refresh = React.useCallback(async () => {
     setLoading(true);
@@ -566,14 +573,17 @@ export function GoodsReceiptWorkflowPage() {
           <StatusMessage status={status} />
           <div className="grid gap-4 md:grid-cols-4">
             <Field label="Purchase Order">
-              <select ref={purchaseOrderRef} className={inputClass} value={selectedOrderId} onChange={(e) => applyPurchaseOrder(orders.find((order) => order.id === e.target.value))}>
-                <option value="">Select open purchase order</option>
-                {orders.map((order) => (
-                  <option key={order.id} value={order.id}>
-                    {order.orderNo || order.id} - {order.party?.name || order.partyName || "No supplier"}
-                  </option>
-                ))}
-              </select>
+              <SearchableSelect
+                buttonRef={purchaseOrderRef}
+                options={orders}
+                value={selectedOrderId}
+                onChange={(_, order) => applyPurchaseOrder(order)}
+                getLabel={(order) => `${order.orderNo || order.id} - ${order.party?.name || order.partyName || "No supplier"}`}
+                getDetail={(order) => `Rs. ${Number(order.total ?? 0).toLocaleString("en-IN")}`}
+                placeholder="Search PO number or supplier..."
+                emptyText="No open purchase orders found"
+                buttonClassName="h-11 rounded-xl bg-background"
+              />
             </Field>
             <Field label="Warehouse">
               <select className={inputClass} value={warehouseId} onChange={(e) => { setWarehouseId(e.target.value); setBinId(""); }}>
@@ -592,12 +602,18 @@ export function GoodsReceiptWorkflowPage() {
             </Field>
           </div>
           {selectedOrder ? (
-            <div className="rounded-xl border border-border bg-muted/30 p-4">
+            <div className="space-y-3 rounded-xl border border-border bg-muted/30 p-4">
               <div className="grid gap-3 md:grid-cols-4">
                 <div><div className={labelClass}>PO Number</div><div className="font-bold">{selectedOrder.orderNo || "-"}</div></div>
                 <div><div className={labelClass}>Supplier</div><div className="font-bold">{selectedOrder.party?.name || selectedOrder.partyName || "-"}</div></div>
                 <div><div className={labelClass}>Status</div><div className="font-bold capitalize">{selectedOrder.status || "-"}</div></div>
                 <div><div className={labelClass}>PO Total</div><MoneyText value={Number(selectedOrder.total ?? 0)} className="font-bold" /></div>
+              </div>
+              <div className="grid gap-3 border-t border-border/70 pt-3 md:grid-cols-4">
+                <div><div className={labelClass}>Lines</div><div className="font-bold tabular-nums">{selectedOrderTotals.lineCount}</div></div>
+                <div><div className={labelClass}>Pending Qty</div><div className="font-bold tabular-nums">{selectedOrderTotals.pendingQty}</div></div>
+                <div><div className={labelClass}>Received Qty</div><div className="font-bold tabular-nums">{selectedOrderTotals.receivedQty}</div></div>
+                <div><div className={labelClass}>Pending Value</div><MoneyText value={selectedOrderTotals.pendingValue} className="font-bold text-emerald-600 dark:text-emerald-300" /></div>
               </div>
             </div>
           ) : loading ? (
@@ -616,6 +632,7 @@ export function GoodsReceiptWorkflowPage() {
                     <th className="px-3 py-3 text-right">Pending</th>
                     <th className="px-3 py-3">Receive Qty</th>
                     <th className="px-3 py-3">Rate</th>
+                    <th className="px-3 py-3 text-right">Receive Value</th>
                     <th className="px-3 py-3">Batch No</th>
                     <th className="px-3 py-3">Lot No</th>
                     <th className="px-3 py-3">Expiry</th>
@@ -632,6 +649,7 @@ export function GoodsReceiptWorkflowPage() {
                         <td className="px-3 py-3 text-right font-bold">{pending}</td>
                         <td className="px-3 py-3"><input type="number" min="0" max={pending} step="0.01" className={cn(inputClass, "w-28")} value={line.receiveQty} onChange={(e) => updateLine(line.lineId, { receiveQty: e.target.value })} /></td>
                         <td className="px-3 py-3"><input type="number" min="0" step="0.01" className={cn(inputClass, "w-28")} value={line.rate} onChange={(e) => updateLine(line.lineId, { rate: e.target.value })} /></td>
+                        <td className="px-3 py-3 text-right"><MoneyText value={Number(line.receiveQty || 0) * Number(line.rate || 0)} className="font-bold" /></td>
                         <td className="px-3 py-3"><input className={cn(inputClass, "w-36")} value={line.batchNo} onChange={(e) => updateLine(line.lineId, { batchNo: e.target.value })} /></td>
                         <td className="px-3 py-3"><input className={cn(inputClass, "w-36")} value={line.lotNo} onChange={(e) => updateLine(line.lineId, { lotNo: e.target.value })} /></td>
                         <td className="px-3 py-3">
@@ -731,9 +749,432 @@ export function GoodsReceiptWorkflowPage() {
 }
 
 export function DispatchWorkflowPage() {
+  const [view, setView] = React.useState<"register" | "create">("register");
+  const [dispatches, setDispatches] = React.useState<StockDispatchRecord[]>([]);
+  const [orders, setOrders] = React.useState<any[]>([]);
+  const [selectedOrderDetails, setSelectedOrderDetails] = React.useState<any>(null);
+  const [items, setItems] = React.useState<ItemRecord[]>([]);
+  const [warehouses, setWarehouses] = React.useState<Warehouse[]>([]);
+  const [selectedOrderId, setSelectedOrderId] = React.useState("");
+  const [dispatchSearch, setDispatchSearch] = React.useState("");
+  const [dispatchLines, setDispatchLines] = React.useState<Array<{
+    id: string;
+    itemId: string;
+    itemName: string;
+    qty: number;
+    rate: number;
+    warehouseId: string;
+    binId: string;
+    batchNo: string;
+    lotNo: string;
+    expiryDate: string;
+  }>>([]);
+  const [form, setForm] = React.useState({
+    dispatchNo: "",
+    sourceId: "",
+    date: { ad: new Date().toISOString().slice(0, 10), bs: "" },
+    memo: "",
+    warehouseId: "",
+    binId: ""
+  });
+  const [status, setStatus] = React.useState<Status>(null);
+  const [loading, setLoading] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+  const dateRef = React.useRef<HTMLInputElement | null>(null);
+
+  const selectedOrder = selectedOrderDetails ?? orders.find((order) => order.id === form.sourceId);
+  const selectedWarehouse = warehouses.find((warehouse) => warehouse.id === form.warehouseId);
+  const bins = selectedWarehouse?.bins ?? [];
+  const orderLines = selectedOrder?.items ?? [];
+
+  const refresh = React.useCallback(async () => {
+    setLoading(true);
+    setStatus(null);
+    try {
+      const [orderRows, itemRows, warehouseRows, dispatchRows] = await Promise.all([
+        listSalesOrders({ status: "open", take: 100 }).then(normalizeOrders),
+        listItems({ isActive: true, take: 1000 }).then(normalizeItems),
+        listWarehouses({ isActive: true }).then(normalizeWarehouses),
+        listStockDispatches({ q: dispatchSearch || undefined, take: 100 })
+      ]);
+      console.log("Dispatch workflow loaded:", { orderRows, itemRows, warehouseRows, dispatchRows });
+      setOrders(orderRows || []);
+      setItems(itemRows || []);
+      setWarehouses(warehouseRows || []);
+      setDispatches((dispatchRows?.data) || []);
+      setForm((current) => ({
+        ...current,
+        sourceId: current.sourceId || orderRows?.[0]?.id || "",
+        warehouseId: current.warehouseId || warehouseRows?.[0]?.id || ""
+      }));
+    } catch (error: any) {
+      console.error("Dispatch workflow load error:", error);
+      setStatus({ type: "error", message: error?.message ?? "Failed to load data" });
+      setOrders([]);
+      setItems([]);
+      setWarehouses([]);
+      setDispatches([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [dispatchSearch]);
+
+  React.useEffect(() => { refresh(); }, [refresh]);
+
+  React.useEffect(() => {
+    if (view === "create" && (!orders || orders.length === 0)) {
+      refresh();
+    }
+  }, [view, refresh, orders.length]);
+
+  React.useEffect(() => {
+    if (!form.sourceId) {
+      setSelectedOrderDetails(null);
+      setDispatchLines([]);
+      return;
+    }
+
+    const orderFromList = orders.find((order) => order.id === form.sourceId);
+    if (!orderFromList) {
+      setSelectedOrderDetails(null);
+      setDispatchLines([]);
+      return;
+    }
+
+    if (orderFromList.items && orderFromList.items.length > 0 && orderFromList.party) {
+      setSelectedOrderDetails(orderFromList);
+      // Auto-populate dispatch lines from order items
+      const newLines = orderFromList.items.map((line: any, idx: number) => ({
+        id: `${form.sourceId}-${idx}`,
+        itemId: line.itemId || "",
+        itemName: line.item?.name || line.description || line.itemId || "",
+        qty: Number(line.qty ?? 0) - Number(line.fulfilledQty ?? 0), // Pending qty
+        rate: Number(line.rate ?? 0),
+        warehouseId: form.warehouseId || "",
+        binId: form.binId || "",
+        batchNo: "",
+        lotNo: "",
+        expiryDate: ""
+      }));
+      setDispatchLines(newLines);
+      return;
+    }
+
+    let cancelled = false;
+    const loadOrderDetails = async () => {
+      try {
+        const fullOrder = await getSalesOrder(form.sourceId);
+        if (cancelled) return;
+        setSelectedOrderDetails(fullOrder);
+        // Auto-populate dispatch lines from order items
+        const newLines = fullOrder.items.map((line: any, idx: number) => ({
+          id: `${form.sourceId}-${idx}`,
+          itemId: line.itemId || "",
+          itemName: line.item?.name || line.description || line.itemId || "",
+          qty: Number(line.qty ?? 0) - Number(line.fulfilledQty ?? 0), // Pending qty
+          rate: Number(line.rate ?? 0),
+          warehouseId: form.warehouseId || "",
+          binId: form.binId || "",
+          batchNo: "",
+          lotNo: "",
+          expiryDate: ""
+        }));
+        setDispatchLines(newLines);
+      } catch {
+        if (!cancelled) setSelectedOrderDetails(orderFromList);
+      }
+    };
+
+    loadOrderDetails();
+    return () => {
+      cancelled = true;
+    };
+  }, [form.sourceId, form.warehouseId, form.binId, orders]);
+
+  React.useEffect(() => {
+    if (view !== "create") return;
+    const timer = window.setTimeout(() => {
+      dateRef.current?.focus();
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [view]);
+
+  const applyOrderSelection = (orderId: string) => {
+    setForm((prev) => ({
+      ...prev,
+      sourceId: orderId
+    }));
+  };
+
+  const submitDispatch = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setStatus(null);
+    if (dispatchLines.length === 0) {
+      setStatus({ type: "error", message: "Add items to dispatch first." });
+      return;
+    }
+    if (!dispatchLines.every((line) => line.itemId && line.qty > 0)) {
+      setStatus({ type: "error", message: "All items must have valid quantities." });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await postStockDispatch({
+        dispatchNo: form.dispatchNo || undefined,
+        salesOrderId: form.sourceId || undefined,
+        customerId: selectedOrder?.partyId || selectedOrder?.party?.id || undefined,
+        date: form.date.ad,
+        dateBs: form.date.bs || undefined,
+        memo: form.memo.trim() || undefined,
+        lines: dispatchLines.map((line) => ({
+          itemId: line.itemId,
+          qty: line.qty,
+          warehouseId: line.warehouseId || undefined,
+          binId: line.binId || undefined,
+          batchNo: line.batchNo.trim() || undefined,
+          lotNo: line.lotNo.trim() || undefined,
+          expiryDate: line.expiryDate || undefined
+        }))
+      });
+      setStatus({ type: "success", message: "Dispatch posted successfully." });
+      setForm((prev) => ({
+        ...prev,
+        dispatchNo: generateDispatchNumber(),
+        memo: "",
+        warehouseId: "",
+        binId: ""
+      }));
+      setDispatchLines([]);
+      await refresh();
+      setView("register");
+    } catch (error: any) {
+      setStatus({ type: "error", message: error?.message ?? "Unable to post dispatch." });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const openCreate = () => {
+    setStatus(null);
+    setForm((prev) => ({
+      ...prev,
+      dispatchNo: prev.dispatchNo || generateDispatchNumber(),
+      date: { ad: new Date().toISOString().slice(0, 10), bs: "" }
+    }));
+    setView("create");
+  };
+
   return (
-    <WorkflowShell title="Delivery / Dispatch" description="Issue stock for delivery while preserving valuation and tracked stock details." icon={ArrowUpFromLine}>
-      <LineForm mode="dispatch" onSubmit={postStockDispatch} />
+    <WorkflowShell
+      title={view === "create" ? "Create Dispatch" : "Dispatch Register"}
+      description={view === "create" ? "Create a delivery dispatch and issue stock for customer delivery." : "Review posted delivery dispatches and create new dispatches."}
+      icon={ArrowUpFromLine}
+      backLabel={view === "create" ? "Back to Register" : "Back to Inventory"}
+      onBack={view === "create" ? () => setView("register") : undefined}
+      actions={view === "register" ? (
+        <div className="flex gap-2">
+          <Button variant="outline" type="button" onClick={refresh} disabled={loading}>
+            <RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} />
+            Refresh
+          </Button>
+          <Button type="button" onClick={openCreate} className="bg-emerald-600 text-white hover:bg-emerald-700">
+            <Plus className="mr-2 h-4 w-4" />
+            New Dispatch
+          </Button>
+        </div>
+      ) : (
+        <Button variant="outline" type="button" onClick={refresh} disabled={loading}>
+          <RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} />
+          Refresh List
+        </Button>
+      )}
+    >
+      <StatusMessage status={status} />
+      {view === "create" ? (
+        <Card>
+          <CardContent className="space-y-5 pt-6">
+            <form onSubmit={submitDispatch} className="space-y-5">
+              <div className="grid gap-4 md:grid-cols-4">
+                <Field label="Dispatch No">
+                  <input
+                    className={inputClass}
+                    value={form.dispatchNo}
+                    readOnly
+                    placeholder="System generated"
+                  />
+                </Field>
+                <Field label="Sales Order">
+                  <SearchableSelect
+                    options={orders}
+                    value={form.sourceId}
+                    onChange={(_, order) => applyOrderSelection(order?.id ?? "")}
+                    getLabel={(order) => `${order.orderNo || order.id} - ${order.party?.name || order.partyName || "No customer"}`}
+                    getDetail={(order) => order.status ? `${order.status} · ${Number(order.total ?? 0).toLocaleString("en-IN")}` : ""}
+                    placeholder="Search open sales orders..."
+                    emptyText="No open sales orders found"
+                    buttonClassName="h-11 rounded-xl bg-background"
+                  />
+                </Field>
+                <Field label="Customer">
+                  <input
+                    className={inputClass}
+                    value={selectedOrder?.party?.name || selectedOrder?.partyName || ""
+                      }
+                    readOnly
+                    placeholder="Customer auto-filled when Sales Order selected"
+                  />
+                </Field>
+                <Field label="Dispatch Date">
+                  <DualDateInput ref={dateRef} value={form.date} onChange={(date) => setForm({ ...form, date })} accentColor="bg-orange-600" />
+                </Field>
+              </div>
+              <div className="rounded-xl border border-border bg-muted/30 p-4">
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <div className="text-xs uppercase tracking-widest text-muted-foreground">Dispatch Items</div>
+                    <div className="font-bold">{dispatchLines.length} item{dispatchLines.length === 1 ? "" : "s"}</div>
+                  </div>
+                </div>
+                {dispatchLines.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="text-left text-xs uppercase tracking-widest text-muted-foreground">
+                        <tr>
+                          <th className="py-2">Item</th>
+                          <th className="py-2 text-right">Qty (Locked)</th>
+                          <th className="py-2 text-right">Rate</th>
+                          <th className="py-2 text-right">Amount</th>
+                          <th className="py-2 w-10"></th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {dispatchLines.map((line, idx) => (
+                          <tr key={line.id}>
+                            <td className="py-2 font-medium">{line.itemName}</td>
+                            <td className="py-2 text-right">{line.qty}</td>
+                            <td className="py-2">
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                className="h-8 w-full rounded border border-border bg-background px-2 py-1 text-right text-sm"
+                                value={line.rate}
+                                onChange={(e) => {
+                                  const newLines = [...dispatchLines];
+                                  newLines[idx].rate = Number(e.target.value) || 0;
+                                  setDispatchLines(newLines);
+                                }}
+                              />
+                            </td>
+                            <td className="py-2 text-right font-medium">{(line.qty * line.rate).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <td className="py-2 text-center">
+                              <button
+                                type="button"
+                                onClick={() => setDispatchLines(dispatchLines.filter((_, i) => i !== idx))}
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                ×
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="py-6 text-center text-sm text-muted-foreground">
+                    Select a sales order to auto-populate dispatch items
+                  </div>
+                )}
+              </div>
+              <div className="grid gap-4 md:grid-cols-3">
+                <Field label="Warehouse">
+                  <select className={inputClass} value={form.warehouseId} onChange={(e) => setForm({ ...form, warehouseId: e.target.value, binId: "" })}>
+                    <option value="">No warehouse</option>
+                    {warehouses.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>)}
+                  </select>
+                </Field>
+                <Field label="Bin">
+                  <select className={inputClass} value={form.binId} onChange={(e) => setForm({ ...form, binId: e.target.value })}>
+                    <option value="">No bin</option>
+                    {bins.map((bin: any) => <option key={bin.id} value={bin.id}>{bin.name}</option>)}
+                  </select>
+                </Field>
+                <Field label="Memo">
+                  <input className={inputClass} value={form.memo} onChange={(e) => setForm({ ...form, memo: e.target.value })} placeholder="Optional notes" />
+                </Field>
+              </div>
+              <div className="flex justify-end">
+                <Button disabled={saving} className="bg-emerald-600 text-white hover:bg-emerald-700">
+                  {saving ? "Posting..." : "Post Dispatch"}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="space-y-4 pt-6">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h2 className="text-lg font-black">Dispatch Register</h2>
+                <p className="text-sm text-muted-foreground">Review all posted delivery dispatches and create new dispatch entries.</p>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <input
+                  className={cn(inputClass, "w-full sm:w-72")}
+                  value={dispatchSearch}
+                  onChange={(e) => setDispatchSearch(e.target.value)}
+                  placeholder="Search dispatch number, order, customer, item..."
+                />
+                <Button variant="outline" type="button" onClick={refresh} disabled={loading}>
+                  <RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} />
+                  Refresh
+                </Button>
+              </div>
+            </div>
+            {dispatches.length ? (
+              <div className="overflow-x-auto rounded-xl border border-border">
+                <table className="w-full min-w-[900px] text-sm">
+                  <thead className="bg-muted/40 text-left text-xs uppercase tracking-widest text-muted-foreground">
+                    <tr>
+                      <th className="px-3 py-3">Date</th>
+                      <th className="px-3 py-3">Dispatch No</th>
+                      <th className="px-3 py-3">Sales Order</th>
+                      <th className="px-3 py-3">Customer</th>
+                      <th className="px-3 py-3 text-right">Items</th>
+                      <th className="px-3 py-3 text-right">Qty</th>
+                      <th className="px-3 py-3 text-right">Amount</th>
+                      <th className="px-3 py-3">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {dispatches.map((dispatch) => (
+                      <tr key={dispatch.id} className="align-top">
+                        <td className="px-3 py-3 font-medium">{toDateInputValue(dispatch.date) || "-"}</td>
+                        <td className="px-3 py-3 font-bold">{dispatch.dispatchNo || `DS-${dispatch.id.slice(0, 8).toUpperCase()}`}</td>
+                        <td className="px-3 py-3 font-medium">{dispatch.salesOrderNo || "-"}</td>
+                        <td className="px-3 py-3">{dispatch.customerName || "-"}</td>
+                        <td className="px-3 py-3 text-right">{dispatch.lineCount}</td>
+                        <td className="px-3 py-3 text-right font-bold">{Number(dispatch.totalQty || 0)}</td>
+                        <td className="px-3 py-3 text-right"><MoneyText value={Number(dispatch.totalAmount || 0)} className="font-bold" /></td>
+                        <td className="px-3 py-3">
+                          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs font-bold capitalize text-emerald-600 dark:text-emerald-300">
+                            {dispatch.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <EmptyState text={loading ? "Loading dispatches..." : "No dispatches posted yet."} />
+            )}
+          </CardContent>
+        </Card>
+      )}
     </WorkflowShell>
   );
 }
