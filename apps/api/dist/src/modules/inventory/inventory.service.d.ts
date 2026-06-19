@@ -434,6 +434,23 @@ export declare class InventoryService {
         receiptId: any;
         lines: any[];
     }>;
+    listGoodsReceipts(user: AuthUser, filters: {
+        purchaseOrderId?: string;
+        supplierId?: string;
+        status?: string;
+        from?: Date;
+        to?: Date;
+        q?: string;
+        take?: number;
+        skip?: number;
+    }): Promise<{
+        data: any;
+        meta: {
+            total: any;
+            page: number;
+            lastPage: number;
+        };
+    }>;
     postStockDispatch(user: AuthUser, input: {
         dispatchNo?: string;
         salesOrderId?: string;

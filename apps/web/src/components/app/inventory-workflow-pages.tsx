@@ -28,6 +28,7 @@ import {
   createInventoryMovementApproval,
   getReorderSuggestions,
   listBatchLotMaster,
+  listGoodsReceipts,
   listInventoryMovementApprovals,
   listInventoryPeriodCloses,
   listStockReservations,
@@ -38,6 +39,7 @@ import {
   reserveSalesOrderStock,
   reverseInventoryMovement,
   type GoodsReceiptInput,
+  type GoodsReceiptRecord,
   type InventoryMovementApproval,
   type InventoryPeriodClose,
   type InventoryMovementLineInput,
@@ -60,6 +62,18 @@ function normalizeWarehouses(res: any): Warehouse[] {
 }
 
 function normalizeOrders(res: any): any[] {
+  return Array.isArray(res) ? res : res?.data ?? res?.items ?? [];
+}
+
+function pendingPurchaseOrders(rows: any[]) {
+  return rows.filter((order) => {
+    if (order.status === "cancelled" || order.status === "received") return false;
+    const lines = order.items ?? [];
+    return lines.some((line: any) => line.itemId && Number(line.qty ?? 0) > Number(line.receivedQty ?? 0));
+  });
+}
+
+function normalizeGoodsReceipts(res: any): GoodsReceiptRecord[] {
   return Array.isArray(res) ? res : res?.data ?? res?.items ?? [];
 }
 
@@ -350,9 +364,295 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 export function GoodsReceiptWorkflowPage() {
+  const [orders, setOrders] = React.useState<any[]>([]);
+  const [receipts, setReceipts] = React.useState<GoodsReceiptRecord[]>([]);
+  const [warehouses, setWarehouses] = React.useState<Warehouse[]>([]);
+  const [selectedOrderId, setSelectedOrderId] = React.useState("");
+  const [receiptSearch, setReceiptSearch] = React.useState("");
+  const [date, setDate] = React.useState({ ad: new Date().toISOString().slice(0, 10), bs: "" });
+  const [memo, setMemo] = React.useState("");
+  const [warehouseId, setWarehouseId] = React.useState("");
+  const [binId, setBinId] = React.useState("");
+  const [lines, setLines] = React.useState<Array<{
+    lineId: string;
+    itemId: string;
+    name: string;
+    orderedQty: number;
+    receivedQty: number;
+    receiveQty: string;
+    rate: string;
+    batchNo: string;
+    lotNo: string;
+    expiryDate: string;
+  }>>([]);
+  const [status, setStatus] = React.useState<Status>(null);
+  const [loading, setLoading] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+  const receiptDateRef = React.useRef<HTMLInputElement | null>(null);
+  const purchaseOrderRef = React.useRef<HTMLSelectElement | null>(null);
+
+  const selectedOrder = orders.find((order) => order.id === selectedOrderId);
+  const selectedWarehouse = warehouses.find((warehouse) => warehouse.id === warehouseId);
+  const bins = selectedWarehouse?.bins ?? [];
+
+  const refresh = React.useCallback(async () => {
+    setLoading(true);
+    try {
+      const [orderRows, warehouseRows, receiptRows] = await Promise.all([
+        listPurchaseOrders({ take: 200 }).then((res) => pendingPurchaseOrders(normalizeOrders(res))),
+        listWarehouses({ isActive: true }).then(normalizeWarehouses),
+        listGoodsReceipts({ take: 50, q: receiptSearch || undefined }).then(normalizeGoodsReceipts)
+      ]);
+      setOrders(orderRows);
+      setWarehouses(warehouseRows);
+      setReceipts(receiptRows);
+      setWarehouseId((current) => current || warehouseRows[0]?.id || "");
+      const firstOrder = orderRows[0];
+      if (!selectedOrderId && firstOrder) applyPurchaseOrder(firstOrder, warehouseRows[0]?.id || "");
+    } finally {
+      setLoading(false);
+    }
+  }, [receiptSearch, selectedOrderId]);
+
+  React.useEffect(() => { refresh(); }, [refresh]);
+
+  React.useEffect(() => {
+    const timer = window.setTimeout(() => {
+      receiptDateRef.current?.focus();
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  const applyPurchaseOrder = (order: any, nextWarehouseId = warehouseId) => {
+    setSelectedOrderId(order?.id || "");
+    setLines((order?.items ?? [])
+      .filter((line: any) => line.itemId)
+      .map((line: any) => {
+        const orderedQty = Number(line.qty ?? 0);
+        const receivedQty = Number(line.receivedQty ?? 0);
+        const pendingQty = Math.max(orderedQty - receivedQty, 0);
+        return {
+          lineId: line.id,
+          itemId: line.itemId,
+          name: line.item?.name || line.description || line.itemId,
+          orderedQty,
+          receivedQty,
+          receiveQty: pendingQty ? String(pendingQty) : "0",
+          rate: line.rate ? String(line.rate) : "",
+          batchNo: "",
+          lotNo: "",
+          expiryDate: ""
+        };
+      }));
+    setWarehouseId(nextWarehouseId || warehouseId);
+    setBinId("");
+  };
+
+  const updateLine = (lineId: string, patch: Partial<(typeof lines)[number]>) => {
+    setLines((prev) => prev.map((line) => line.lineId === lineId ? { ...line, ...patch } : line));
+  };
+
+  const submit = async () => {
+    setStatus(null);
+    if (!selectedOrder) return setStatus({ type: "error", message: "Select a purchase order first." });
+    const receiptLines = lines
+      .map((line) => ({
+        ...line,
+        qtyNumber: Number(line.receiveQty || 0),
+        rateNumber: Number(line.rate || 0)
+      }))
+      .filter((line) => line.qtyNumber > 0);
+    if (!receiptLines.length) return setStatus({ type: "error", message: "Enter received quantity for at least one item." });
+    const overReceived = receiptLines.find((line) => line.qtyNumber > Math.max(line.orderedQty - line.receivedQty, 0));
+    if (overReceived) return setStatus({ type: "error", message: `Received quantity exceeds pending quantity for ${overReceived.name}.` });
+    const missingRate = receiptLines.find((line) => line.rateNumber <= 0);
+    if (missingRate) return setStatus({ type: "error", message: `Rate is required for ${missingRate.name}.` });
+
+    setSaving(true);
+    try {
+      await postGoodsReceipt({
+        purchaseOrderId: selectedOrder.id,
+        supplierId: selectedOrder.partyId || selectedOrder.party?.id,
+        date: date.ad,
+        dateBs: date.bs || undefined,
+        memo: memo.trim() || undefined,
+        lines: receiptLines.map((line) => ({
+          itemId: line.itemId,
+          qty: line.qtyNumber,
+          rate: line.rateNumber,
+          warehouseId: warehouseId || undefined,
+          binId: binId || undefined,
+          batchNo: line.batchNo.trim() || undefined,
+          lotNo: line.lotNo.trim() || undefined,
+          expiryDate: line.expiryDate || undefined
+        }))
+      });
+      setStatus({ type: "success", message: "Goods receipt posted and purchase order received quantity updated." });
+      setMemo("");
+      await refresh();
+    } catch (error: any) {
+      setStatus({ type: "error", message: error?.message ?? "Unable to post goods receipt." });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <WorkflowShell title="Goods Receipt" description="Receive purchased goods into stock with warehouse, bin, batch, lot, and expiry tracking." icon={ArrowDownToLine}>
-      <LineForm mode="receipt" onSubmit={postGoodsReceipt} />
+      <Card>
+        <CardContent className="space-y-5 pt-6">
+          <StatusMessage status={status} />
+          <div className="grid gap-4 md:grid-cols-4">
+            <Field label="Purchase Order">
+              <select ref={purchaseOrderRef} className={inputClass} value={selectedOrderId} onChange={(e) => applyPurchaseOrder(orders.find((order) => order.id === e.target.value))}>
+                <option value="">Select open purchase order</option>
+                {orders.map((order) => (
+                  <option key={order.id} value={order.id}>
+                    {order.orderNo || order.id} - {order.party?.name || order.partyName || "No supplier"}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Warehouse">
+              <select className={inputClass} value={warehouseId} onChange={(e) => { setWarehouseId(e.target.value); setBinId(""); }}>
+                <option value="">No warehouse</option>
+                {warehouses.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>)}
+              </select>
+            </Field>
+            <Field label="Bin">
+              <select className={inputClass} value={binId} onChange={(e) => setBinId(e.target.value)}>
+                <option value="">No bin</option>
+                {bins.map((bin: any) => <option key={bin.id} value={bin.id}>{bin.name}</option>)}
+              </select>
+            </Field>
+            <Field label="Receipt Date">
+              <DualDateInput ref={receiptDateRef} value={date} onChange={setDate} accentColor="bg-orange-600" onEnterNext={() => purchaseOrderRef.current?.focus()} />
+            </Field>
+          </div>
+          {selectedOrder ? (
+            <div className="rounded-xl border border-border bg-muted/30 p-4">
+              <div className="grid gap-3 md:grid-cols-4">
+                <div><div className={labelClass}>PO Number</div><div className="font-bold">{selectedOrder.orderNo || "-"}</div></div>
+                <div><div className={labelClass}>Supplier</div><div className="font-bold">{selectedOrder.party?.name || selectedOrder.partyName || "-"}</div></div>
+                <div><div className={labelClass}>Status</div><div className="font-bold capitalize">{selectedOrder.status || "-"}</div></div>
+                <div><div className={labelClass}>PO Total</div><MoneyText value={Number(selectedOrder.total ?? 0)} className="font-bold" /></div>
+              </div>
+            </div>
+          ) : loading ? (
+            <EmptyState text="Loading purchase orders..." />
+          ) : (
+            <EmptyState text="No open purchase order found. Create a purchase order before posting GRN." />
+          )}
+          {lines.length > 0 && (
+            <div className="overflow-x-auto rounded-xl border border-border">
+              <table className="w-full min-w-[1100px] text-sm">
+                <thead className="bg-muted/40 text-left text-xs uppercase tracking-widest text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-3">Item</th>
+                    <th className="px-3 py-3 text-right">Ordered</th>
+                    <th className="px-3 py-3 text-right">Received</th>
+                    <th className="px-3 py-3 text-right">Pending</th>
+                    <th className="px-3 py-3">Receive Qty</th>
+                    <th className="px-3 py-3">Rate</th>
+                    <th className="px-3 py-3">Batch No</th>
+                    <th className="px-3 py-3">Lot No</th>
+                    <th className="px-3 py-3">Expiry</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {lines.map((line) => {
+                    const pending = Math.max(line.orderedQty - line.receivedQty, 0);
+                    return (
+                      <tr key={line.lineId}>
+                        <td className="px-3 py-3 font-bold">{line.name}</td>
+                        <td className="px-3 py-3 text-right">{line.orderedQty}</td>
+                        <td className="px-3 py-3 text-right">{line.receivedQty}</td>
+                        <td className="px-3 py-3 text-right font-bold">{pending}</td>
+                        <td className="px-3 py-3"><input type="number" min="0" max={pending} step="0.01" className={cn(inputClass, "w-28")} value={line.receiveQty} onChange={(e) => updateLine(line.lineId, { receiveQty: e.target.value })} /></td>
+                        <td className="px-3 py-3"><input type="number" min="0" step="0.01" className={cn(inputClass, "w-28")} value={line.rate} onChange={(e) => updateLine(line.lineId, { rate: e.target.value })} /></td>
+                        <td className="px-3 py-3"><input className={cn(inputClass, "w-36")} value={line.batchNo} onChange={(e) => updateLine(line.lineId, { batchNo: e.target.value })} /></td>
+                        <td className="px-3 py-3"><input className={cn(inputClass, "w-36")} value={line.lotNo} onChange={(e) => updateLine(line.lineId, { lotNo: e.target.value })} /></td>
+                        <td className="px-3 py-3"><input type="date" className={cn(inputClass, "w-40")} value={line.expiryDate} onChange={(e) => updateLine(line.lineId, { expiryDate: e.target.value })} /></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <Field label="Memo">
+            <input className={inputClass} value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="Delivery note, vehicle no, receiving remarks" />
+          </Field>
+          <div className="flex justify-end">
+            <Button onClick={submit} disabled={saving || !selectedOrder} className="bg-emerald-600 text-white hover:bg-emerald-700">
+              {saving ? "Posting..." : "Post Goods Receipt"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardContent className="space-y-4 pt-6">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-lg font-black">Goods Receipt Register</h2>
+              <p className="text-sm text-muted-foreground">Posted receipts issued from purchase orders and direct receiving.</p>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input
+                className={cn(inputClass, "w-full sm:w-72")}
+                value={receiptSearch}
+                onChange={(e) => setReceiptSearch(e.target.value)}
+                placeholder="Search GRN, PO, supplier, item..."
+              />
+              <Button variant="outline" type="button" onClick={refresh} disabled={loading}>
+                <RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} />
+                Refresh
+              </Button>
+            </div>
+          </div>
+          {receipts.length ? (
+            <div className="overflow-x-auto rounded-xl border border-border">
+              <table className="w-full min-w-[900px] text-sm">
+                <thead className="bg-muted/40 text-left text-xs uppercase tracking-widest text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-3">Date</th>
+                    <th className="px-3 py-3">Receipt</th>
+                    <th className="px-3 py-3">Purchase Order</th>
+                    <th className="px-3 py-3">Supplier</th>
+                    <th className="px-3 py-3 text-right">Items</th>
+                    <th className="px-3 py-3 text-right">Qty</th>
+                    <th className="px-3 py-3 text-right">Amount</th>
+                    <th className="px-3 py-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {receipts.map((receipt) => (
+                    <tr key={receipt.id} className="align-top">
+                      <td className="px-3 py-3 font-medium">{toDateInputValue(receipt.date) || "-"}</td>
+                      <td className="px-3 py-3">
+                        <div className="font-bold">{receipt.receiptNo || `GRN-${receipt.id.slice(0, 8).toUpperCase()}`}</div>
+                        {receipt.memo && <div className="mt-1 max-w-[220px] truncate text-xs text-muted-foreground">{receipt.memo}</div>}
+                      </td>
+                      <td className="px-3 py-3 font-medium">{receipt.purchaseOrderNo || "-"}</td>
+                      <td className="px-3 py-3">{receipt.supplierName || "-"}</td>
+                      <td className="px-3 py-3 text-right">{receipt.lineCount}</td>
+                      <td className="px-3 py-3 text-right font-bold">{Number(receipt.totalQty || 0)}</td>
+                      <td className="px-3 py-3 text-right"><MoneyText value={Number(receipt.totalAmount || 0)} className="font-bold" /></td>
+                      <td className="px-3 py-3">
+                        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs font-bold capitalize text-emerald-600 dark:text-emerald-300">
+                          {receipt.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <EmptyState text={loading ? "Loading goods receipts..." : "No goods receipts posted yet."} />
+          )}
+        </CardContent>
+      </Card>
     </WorkflowShell>
   );
 }

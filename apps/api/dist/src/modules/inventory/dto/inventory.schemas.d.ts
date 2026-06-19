@@ -41,6 +41,20 @@ export declare const GoodsReceiptSchema: z.ZodObject<{
         serialNumbers: z.ZodOptional<z.ZodArray<z.ZodString>>;
     }, z.core.$strip>>;
 }, z.core.$strip>;
+export declare const GoodsReceiptQuerySchema: z.ZodObject<{
+    purchaseOrderId: z.ZodOptional<z.ZodString>;
+    supplierId: z.ZodOptional<z.ZodString>;
+    status: z.ZodOptional<z.ZodEnum<{
+        draft: "draft";
+        posted: "posted";
+        reversed: "reversed";
+    }>>;
+    from: z.ZodOptional<z.ZodCoercedDate<unknown>>;
+    to: z.ZodOptional<z.ZodCoercedDate<unknown>>;
+    q: z.ZodOptional<z.ZodString>;
+    take: z.ZodOptional<z.ZodCoercedNumber<unknown>>;
+    skip: z.ZodOptional<z.ZodCoercedNumber<unknown>>;
+}, z.core.$strip>;
 export declare const StockDispatchSchema: z.ZodObject<{
     dispatchNo: z.ZodOptional<z.ZodString>;
     salesOrderId: z.ZodOptional<z.ZodString>;
@@ -87,10 +101,10 @@ export declare const MovementApprovalRequestSchema: z.ZodObject<{
 }, z.core.$strip>;
 export declare const MovementApprovalQuerySchema: z.ZodObject<{
     status: z.ZodOptional<z.ZodEnum<{
+        reversed: "reversed";
         pending: "pending";
         approved: "approved";
         rejected: "rejected";
-        reversed: "reversed";
     }>>;
     movementType: z.ZodOptional<z.ZodEnum<{
         adjustment: "adjustment";

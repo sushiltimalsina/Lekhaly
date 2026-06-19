@@ -6,6 +6,7 @@ import type { AuthUser } from "../../common/auth/auth.types";
 import {
   InventoryAlertsQuerySchema,
   BatchLotMasterQuerySchema,
+  GoodsReceiptQuerySchema,
   GoodsReceiptSchema,
   InventoryPeriodCloseQuerySchema,
   InventoryPeriodCloseSchema,
@@ -81,6 +82,15 @@ export class InventoryController {
     @Body(new ZodValidationPipe(GoodsReceiptSchema)) body: any
   ) {
     return this.inventory.postGoodsReceipt(user, body);
+  }
+
+  @Get("goods-receipts")
+  @RequirePerm("masters.read")
+  goodsReceipts(
+    @CurrentUser() user: AuthUser,
+    @Query(new ZodValidationPipe(GoodsReceiptQuerySchema)) query: any
+  ) {
+    return this.inventory.listGoodsReceipts(user, query);
   }
 
   @Post("dispatches")

@@ -32,7 +32,7 @@ export const CreatePurchaseOrderSchema = z.object({
 });
 
 export const PurchaseOrderListQuerySchema = z.object({
-    status: z.enum(["draft", "open", "fulfilled", "cancelled"]).optional(),
+    status: z.enum(["draft", "open", "received", "cancelled"]).optional(),
     from: z.coerce.date().optional(),
     to: z.coerce.date().optional(),
     q: z.string().trim().max(200).optional(),

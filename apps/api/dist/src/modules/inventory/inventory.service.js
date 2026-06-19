@@ -2037,6 +2037,25 @@ let InventoryService = class InventoryService {
         if (!db.goodsReceipt)
             throw new common_1.BadRequestException("Run the inventory workflow migration before posting goods receipts");
         const resolved = (0, nepali_date_1.resolveAdDate)(input.date, input.dateBs);
+        const purchaseOrder = input.purchaseOrderId
+            ? await this.prisma.purchaseOrder.findFirst({
+                where: { id: input.purchaseOrderId, companyId: user.companyId },
+                include: { items: true }
+            })
+            : null;
+        if (input.purchaseOrderId && !purchaseOrder)
+            throw new common_1.BadRequestException("Purchase order not found");
+        if (purchaseOrder && purchaseOrder.status === "cancelled") {
+            throw new common_1.BadRequestException("Cancelled purchase orders cannot receive goods");
+        }
+        const poLinesByItem = new Map();
+        for (const poLine of purchaseOrder?.items ?? []) {
+            if (!poLine.itemId)
+                continue;
+            const lines = poLinesByItem.get(poLine.itemId) ?? [];
+            lines.push(poLine);
+            poLinesByItem.set(poLine.itemId, lines);
+        }
         return this.prisma.$transaction(async (tx) => {
             const receipt = await tx.goodsReceipt.create({
                 data: {
@@ -2053,11 +2072,18 @@ let InventoryService = class InventoryService {
                 }
             });
             const postedLines = [];
+            const receivedByPoLine = new Map();
             for (const line of input.lines) {
                 const item = await tx.item.findFirst({ where: { id: line.itemId, companyId: user.companyId } });
                 if (!item)
                     throw new common_1.BadRequestException("Item not found");
                 const qty = new client_1.Prisma.Decimal(line.qty);
+                if (qty.lte(0))
+                    throw new common_1.BadRequestException(`Receiving quantity must be greater than zero for "${item.name}"`);
+                const poLine = poLinesByItem.get(item.id)?.find((candidate) => candidate.qty.sub(candidate.receivedQty).gte(qty));
+                if (purchaseOrder && !poLine) {
+                    throw new common_1.BadRequestException(`Receiving quantity exceeds pending purchase order quantity for "${item.name}"`);
+                }
                 const rate = new client_1.Prisma.Decimal(line.rate ?? item.purchasePrice ?? 0);
                 if (rate.lte(0))
                     throw new common_1.BadRequestException(`Rate is required for goods receipt item "${item.name}"`);
@@ -2127,11 +2153,127 @@ let InventoryService = class InventoryService {
                         stockLedgerId: ledger.id
                     }
                 });
+                if (poLine) {
+                    receivedByPoLine.set(poLine.id, (receivedByPoLine.get(poLine.id) ?? new client_1.Prisma.Decimal(0)).add(qty));
+                }
                 await this.refreshTrackedStockMaster(tx, user.companyId, item.id);
                 postedLines.push(savedLine);
             }
+            for (const [poLineId, qty] of receivedByPoLine) {
+                await tx.purchaseOrderItem.update({
+                    where: { id: poLineId },
+                    data: { receivedQty: { increment: qty } }
+                });
+            }
+            if (purchaseOrder) {
+                const freshLines = await tx.purchaseOrderItem.findMany({ where: { orderId: purchaseOrder.id } });
+                const fullyReceived = freshLines.every((line) => line.receivedQty.gte(line.qty));
+                await tx.purchaseOrder.update({
+                    where: { id: purchaseOrder.id },
+                    data: { status: fullyReceived ? "received" : "open" }
+                });
+            }
             return { ok: true, receiptId: receipt.id, lines: postedLines };
         });
+    }
+    async listGoodsReceipts(user, filters) {
+        const db = this.prisma;
+        if (!db.goodsReceipt)
+            throw new common_1.BadRequestException("Run the inventory workflow migration before listing goods receipts");
+        const where = { companyId: user.companyId };
+        if (filters.purchaseOrderId)
+            where.purchaseOrderId = filters.purchaseOrderId;
+        if (filters.supplierId)
+            where.supplierId = filters.supplierId;
+        if (filters.status)
+            where.status = filters.status;
+        if (filters.from || filters.to) {
+            where.date = {};
+            if (filters.from)
+                where.date.gte = filters.from;
+            if (filters.to)
+                where.date.lte = filters.to;
+        }
+        const take = filters.take ?? 50;
+        const skip = filters.skip ?? 0;
+        const [total, rows] = await this.prisma.$transaction([
+            db.goodsReceipt.count({ where }),
+            db.goodsReceipt.findMany({
+                where,
+                include: { lines: true },
+                orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+                skip,
+                take
+            })
+        ]);
+        const purchaseOrderIds = rows.map((row) => row.purchaseOrderId).filter(Boolean);
+        const supplierIds = rows.map((row) => row.supplierId).filter(Boolean);
+        const itemIds = rows.flatMap((row) => row.lines.map((line) => line.itemId)).filter(Boolean);
+        const [purchaseOrders, suppliers, items] = await Promise.all([
+            purchaseOrderIds.length
+                ? this.prisma.purchaseOrder.findMany({
+                    where: { companyId: user.companyId, id: { in: Array.from(new Set(purchaseOrderIds)) } },
+                    select: { id: true, orderNo: true, partyId: true, party: { select: { id: true, name: true } } }
+                })
+                : Promise.resolve([]),
+            supplierIds.length
+                ? this.prisma.party.findMany({
+                    where: { companyId: user.companyId, id: { in: Array.from(new Set(supplierIds)) } },
+                    select: { id: true, name: true }
+                })
+                : Promise.resolve([]),
+            itemIds.length
+                ? this.prisma.item.findMany({
+                    where: { companyId: user.companyId, id: { in: Array.from(new Set(itemIds)) } },
+                    select: { id: true, name: true, sku: true, unit: true }
+                })
+                : Promise.resolve([])
+        ]);
+        const poById = new Map(purchaseOrders.map((order) => [order.id, order]));
+        const supplierById = new Map(suppliers.map((supplier) => [supplier.id, supplier]));
+        const itemById = new Map(items.map((item) => [item.id, item]));
+        const q = filters.q?.toLowerCase();
+        const data = rows
+            .map((row) => {
+            const po = row.purchaseOrderId ? poById.get(row.purchaseOrderId) : null;
+            const supplier = row.supplierId ? supplierById.get(row.supplierId) : po?.party ?? null;
+            const lines = row.lines.map((line) => ({
+                ...line,
+                item: itemById.get(line.itemId) ?? null
+            }));
+            const qty = lines.reduce((sum, line) => sum + Number(line.qty ?? 0), 0);
+            const amount = lines.reduce((sum, line) => sum + Number(line.amount ?? 0), 0);
+            return {
+                ...row,
+                purchaseOrderNo: po?.orderNo ?? null,
+                supplierName: supplier?.name ?? null,
+                lineCount: lines.length,
+                totalQty: qty,
+                totalAmount: amount,
+                lines
+            };
+        })
+            .filter((row) => {
+            if (!q)
+                return true;
+            const haystack = [
+                row.receiptNo,
+                row.purchaseOrderNo,
+                row.supplierName,
+                row.memo,
+                ...row.lines.map((line) => line.item?.name),
+                ...row.lines.map((line) => line.item?.sku)
+            ].filter(Boolean).join(" ").toLowerCase();
+            return haystack.includes(q);
+        });
+        return {
+            data,
+            meta: {
+                total: q ? data.length : total,
+                page: Math.floor(skip / take) + 1,
+                lastPage: Math.max(1, Math.ceil((q ? data.length : total) / take))
+            }
+        };
     }
     async postStockDispatch(user, input) {
         const db = this.prisma;

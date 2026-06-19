@@ -1,7 +1,7 @@
 // apps/web/src/lib/api/purchase-orders.ts
 import { apiRequest } from "./client";
 
-export type PurchaseOrderStatus = "draft" | "open" | "fulfilled" | "cancelled";
+export type PurchaseOrderStatus = "draft" | "open" | "received" | "cancelled";
 
 export type PurchaseOrderItemInput = {
     itemId: string;

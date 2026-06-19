@@ -59,6 +59,14 @@ export declare class InventoryController {
         receiptId: any;
         lines: any[];
     }>;
+    goodsReceipts(user: AuthUser, query: any): Promise<{
+        data: any;
+        meta: {
+            total: any;
+            page: number;
+            lastPage: number;
+        };
+    }>;
     dispatch(user: AuthUser, body: any): Promise<{
         ok: boolean;
         dispatchId: any;

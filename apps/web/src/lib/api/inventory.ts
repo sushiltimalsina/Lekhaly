@@ -281,6 +281,33 @@ export type GoodsReceiptInput = {
   lines: InventoryMovementLineInput[];
 };
 
+export type GoodsReceiptRecord = {
+  id: string;
+  receiptNo?: string | null;
+  purchaseOrderId?: string | null;
+  purchaseOrderNo?: string | null;
+  supplierId?: string | null;
+  supplierName?: string | null;
+  date: string;
+  dateBs?: string | null;
+  status: string;
+  memo?: string | null;
+  lineCount: number;
+  totalQty: number;
+  totalAmount: number;
+  lines: Array<{
+    id: string;
+    itemId: string;
+    qty: number;
+    rate: number;
+    amount: number;
+    batchNo?: string | null;
+    lotNo?: string | null;
+    expiryDate?: string | null;
+    item?: { id: string; name: string; sku?: string | null; unit?: string | null } | null;
+  }>;
+};
+
 export type StockDispatchInput = {
   dispatchNo?: string;
   salesOrderId?: string;
@@ -335,6 +362,22 @@ export async function postGoodsReceipt(input: GoodsReceiptInput) {
     path: "/inventory/goods-receipts",
     method: "POST",
     body: input,
+  });
+}
+
+export async function listGoodsReceipts(query?: {
+  purchaseOrderId?: string;
+  supplierId?: string;
+  status?: string;
+  from?: string;
+  to?: string;
+  q?: string;
+  take?: number;
+  skip?: number;
+}) {
+  return apiRequest<{ data: GoodsReceiptRecord[]; meta: { total: number; page: number; lastPage: number } }>({
+    path: "/inventory/goods-receipts",
+    query,
   });
 }
 

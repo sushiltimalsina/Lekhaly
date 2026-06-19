@@ -73,8 +73,8 @@ export default function PurchaseOrdersListPage() {
     /* Summary Metrics */
     const metrics = React.useMemo(() => {
         const totalAmount = data.reduce((acc, q) => acc + Number(q.total || 0), 0);
-        const fulfilledCount = data.filter(q => q.status === "fulfilled").length;
-        return { totalAmount, fulfilledCount };
+        const receivedCount = data.filter(q => q.status === "received").length;
+        return { totalAmount, receivedCount };
     }, [data]);
 
     async function load() {
@@ -124,7 +124,7 @@ export default function PurchaseOrdersListPage() {
             options: [
                 { value: "draft", label: "Draft" },
                 { value: "open", label: "Open" },
-                { value: "fulfilled", label: "Fulfilled" },
+                { value: "received", label: "Received" },
                 { value: "cancelled", label: "Cancelled" },
             ]
         }
@@ -140,7 +140,7 @@ export default function PurchaseOrdersListPage() {
     };
 
     const getFulfillmentBadge = (order: PurchaseOrderRecord) => {
-        if (order.status === "fulfilled") {
+        if (order.status === "received") {
             return <div className="flex flex-col items-center">
                 <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 font-bold uppercase tracking-tighter">Received</span>
             </div>;
@@ -204,8 +204,8 @@ export default function PurchaseOrdersListPage() {
                 </div>
                 <div className="bg-white dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center justify-between">
                     <div className="flex flex-col">
-                        <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">Fulfillment Done</span>
-                        <span className="text-xl font-black text-slate-900 dark:text-white mt-1">{metrics.fulfilledCount}</span>
+                        <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">Received POs</span>
+                        <span className="text-xl font-black text-slate-900 dark:text-white mt-1">{metrics.receivedCount}</span>
                     </div>
                     <div className="h-10 w-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600">
                         <CheckSquare className="h-5 w-5" />

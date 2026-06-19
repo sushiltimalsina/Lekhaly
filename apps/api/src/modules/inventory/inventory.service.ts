@@ -2267,6 +2267,23 @@ export class InventoryService {
     const db = this.prisma as any;
     if (!db.goodsReceipt) throw new BadRequestException("Run the inventory workflow migration before posting goods receipts");
     const resolved = resolveAdDate(input.date, input.dateBs);
+    const purchaseOrder = input.purchaseOrderId
+      ? await this.prisma.purchaseOrder.findFirst({
+          where: { id: input.purchaseOrderId, companyId: user.companyId },
+          include: { items: true }
+        })
+      : null;
+    if (input.purchaseOrderId && !purchaseOrder) throw new BadRequestException("Purchase order not found");
+    if (purchaseOrder && purchaseOrder.status === "cancelled") {
+      throw new BadRequestException("Cancelled purchase orders cannot receive goods");
+    }
+    const poLinesByItem = new Map<string, any[]>();
+    for (const poLine of purchaseOrder?.items ?? []) {
+      if (!poLine.itemId) continue;
+      const lines = poLinesByItem.get(poLine.itemId) ?? [];
+      lines.push(poLine);
+      poLinesByItem.set(poLine.itemId, lines);
+    }
 
     return this.prisma.$transaction(async (tx) => {
       const receipt = await (tx as any).goodsReceipt.create({
@@ -2285,10 +2302,16 @@ export class InventoryService {
       });
 
       const postedLines: any[] = [];
+      const receivedByPoLine = new Map<string, Prisma.Decimal>();
       for (const line of input.lines) {
         const item = await tx.item.findFirst({ where: { id: line.itemId, companyId: user.companyId } });
         if (!item) throw new BadRequestException("Item not found");
         const qty = new Prisma.Decimal(line.qty);
+        if (qty.lte(0)) throw new BadRequestException(`Receiving quantity must be greater than zero for "${item.name}"`);
+        const poLine = poLinesByItem.get(item.id)?.find((candidate) => candidate.qty.sub(candidate.receivedQty).gte(qty));
+        if (purchaseOrder && !poLine) {
+          throw new BadRequestException(`Receiving quantity exceeds pending purchase order quantity for "${item.name}"`);
+        }
         const rate = new Prisma.Decimal(line.rate ?? (item as any).purchasePrice ?? 0);
         if (rate.lte(0)) throw new BadRequestException(`Rate is required for goods receipt item "${item.name}"`);
         const movement = await this.applyMovementPolicy(user.companyId, item, line, tx);
@@ -2357,11 +2380,140 @@ export class InventoryService {
             stockLedgerId: ledger.id
           }
         });
+        if (poLine) {
+          receivedByPoLine.set(poLine.id, (receivedByPoLine.get(poLine.id) ?? new Prisma.Decimal(0)).add(qty));
+        }
         await this.refreshTrackedStockMaster(tx, user.companyId, item.id);
         postedLines.push(savedLine);
       }
+      for (const [poLineId, qty] of receivedByPoLine) {
+        await tx.purchaseOrderItem.update({
+          where: { id: poLineId },
+          data: { receivedQty: { increment: qty } }
+        });
+      }
+      if (purchaseOrder) {
+        const freshLines = await tx.purchaseOrderItem.findMany({ where: { orderId: purchaseOrder.id } });
+        const fullyReceived = freshLines.every((line) => line.receivedQty.gte(line.qty));
+        await tx.purchaseOrder.update({
+          where: { id: purchaseOrder.id },
+          data: { status: fullyReceived ? "received" : "open" }
+        });
+      }
       return { ok: true, receiptId: receipt.id, lines: postedLines };
     });
+  }
+
+  async listGoodsReceipts(
+    user: AuthUser,
+    filters: {
+      purchaseOrderId?: string;
+      supplierId?: string;
+      status?: string;
+      from?: Date;
+      to?: Date;
+      q?: string;
+      take?: number;
+      skip?: number;
+    }
+  ) {
+    const db = this.prisma as any;
+    if (!db.goodsReceipt) throw new BadRequestException("Run the inventory workflow migration before listing goods receipts");
+
+    const where: any = { companyId: user.companyId };
+    if (filters.purchaseOrderId) where.purchaseOrderId = filters.purchaseOrderId;
+    if (filters.supplierId) where.supplierId = filters.supplierId;
+    if (filters.status) where.status = filters.status;
+    if (filters.from || filters.to) {
+      where.date = {};
+      if (filters.from) where.date.gte = filters.from;
+      if (filters.to) where.date.lte = filters.to;
+    }
+
+    const take = filters.take ?? 50;
+    const skip = filters.skip ?? 0;
+    const [total, rows] = await this.prisma.$transaction([
+      db.goodsReceipt.count({ where }),
+      db.goodsReceipt.findMany({
+        where,
+        include: { lines: true },
+        orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+        skip,
+        take
+      })
+    ]);
+
+    const purchaseOrderIds = rows.map((row: any) => row.purchaseOrderId).filter(Boolean);
+    const supplierIds = rows.map((row: any) => row.supplierId).filter(Boolean);
+    const itemIds = rows.flatMap((row: any) => row.lines.map((line: any) => line.itemId)).filter(Boolean);
+
+    const [purchaseOrders, suppliers, items] = await Promise.all([
+      purchaseOrderIds.length
+        ? this.prisma.purchaseOrder.findMany({
+            where: { companyId: user.companyId, id: { in: Array.from(new Set(purchaseOrderIds)) } },
+            select: { id: true, orderNo: true, partyId: true, party: { select: { id: true, name: true } } }
+          })
+        : Promise.resolve([]),
+      supplierIds.length
+        ? this.prisma.party.findMany({
+            where: { companyId: user.companyId, id: { in: Array.from(new Set(supplierIds)) } },
+            select: { id: true, name: true }
+          })
+        : Promise.resolve([]),
+      itemIds.length
+        ? this.prisma.item.findMany({
+            where: { companyId: user.companyId, id: { in: Array.from(new Set(itemIds)) } },
+            select: { id: true, name: true, sku: true, unit: true }
+          })
+        : Promise.resolve([])
+    ]);
+
+    const poById = new Map(purchaseOrders.map((order: any) => [order.id, order]));
+    const supplierById = new Map(suppliers.map((supplier: any) => [supplier.id, supplier]));
+    const itemById = new Map(items.map((item: any) => [item.id, item]));
+    const q = filters.q?.toLowerCase();
+
+    const data = rows
+      .map((row: any) => {
+        const po = row.purchaseOrderId ? poById.get(row.purchaseOrderId) : null;
+        const supplier = row.supplierId ? supplierById.get(row.supplierId) : po?.party ?? null;
+        const lines = row.lines.map((line: any) => ({
+          ...line,
+          item: itemById.get(line.itemId) ?? null
+        }));
+        const qty = lines.reduce((sum: number, line: any) => sum + Number(line.qty ?? 0), 0);
+        const amount = lines.reduce((sum: number, line: any) => sum + Number(line.amount ?? 0), 0);
+        return {
+          ...row,
+          purchaseOrderNo: po?.orderNo ?? null,
+          supplierName: supplier?.name ?? null,
+          lineCount: lines.length,
+          totalQty: qty,
+          totalAmount: amount,
+          lines
+        };
+      })
+      .filter((row: any) => {
+        if (!q) return true;
+        const haystack = [
+          row.receiptNo,
+          row.purchaseOrderNo,
+          row.supplierName,
+          row.memo,
+          ...row.lines.map((line: any) => line.item?.name),
+          ...row.lines.map((line: any) => line.item?.sku)
+        ].filter(Boolean).join(" ").toLowerCase();
+        return haystack.includes(q);
+      });
+
+    return {
+      data,
+      meta: {
+        total: q ? data.length : total,
+        page: Math.floor(skip / take) + 1,
+        lastPage: Math.max(1, Math.ceil((q ? data.length : total) / take))
+      }
+    };
   }
 
   async postStockDispatch(
