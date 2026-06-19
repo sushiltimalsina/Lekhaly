@@ -562,6 +562,10 @@ model InventorySettings {
   kitsEnabled                 Boolean  @default(false)
   goodsReceiptWorkflowEnabled Boolean  @default(true)
   dispatchWorkflowEnabled     Boolean  @default(true)
+  adjustmentApprovalRequired  Boolean  @default(true)
+  transferApprovalRequired    Boolean  @default(false)
+  negativeStockApprovalRequired Boolean @default(true)
+  reversalApprovalRequired    Boolean  @default(true)
   allowNegativeStock          Boolean  @default(false)
   requireWarehouseOnMovements Boolean  @default(false)
   defaultWarehouseId          String?

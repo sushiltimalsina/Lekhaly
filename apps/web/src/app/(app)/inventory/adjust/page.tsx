@@ -185,7 +185,7 @@ export default function StockAdjustPage() {
         .split(/[\n,]+/)
         .map((serial) => serial.trim())
         .filter(Boolean);
-      await adjustInventoryStock({
+      const result = await adjustInventoryStock({
         itemId,
         qty: finalQty,
         rate: rate ? Number(rate) : undefined,
@@ -202,7 +202,7 @@ export default function StockAdjustPage() {
         allowNegativeOverride: features.negativeStock && allowNegative || undefined,
         overrideReason: allowNegative ? overrideReason.trim() : undefined,
       });
-      setSuccess("Stock adjustment posted successfully!");
+      setSuccess(result.approvalRequired ? `Stock adjustment sent for approval (${result.approvalId}).` : "Stock adjustment posted successfully!");
       // Reset form after a short delay
       setTimeout(() => {
         setItemId("");

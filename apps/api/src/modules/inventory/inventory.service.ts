@@ -257,6 +257,10 @@ export class InventoryService {
     kitsEnabled?: boolean;
     goodsReceiptWorkflowEnabled?: boolean;
     dispatchWorkflowEnabled?: boolean;
+    adjustmentApprovalRequired?: boolean;
+    transferApprovalRequired?: boolean;
+    negativeStockApprovalRequired?: boolean;
+    reversalApprovalRequired?: boolean;
     allowNegativeStock?: boolean;
     requireWarehouseOnMovements?: boolean;
     defaultWarehouseId?: string | null;
@@ -278,6 +282,10 @@ export class InventoryService {
       next.kitsEnabled = false;
       next.goodsReceiptWorkflowEnabled = false;
       next.dispatchWorkflowEnabled = false;
+      next.adjustmentApprovalRequired = false;
+      next.transferApprovalRequired = false;
+      next.negativeStockApprovalRequired = false;
+      next.reversalApprovalRequired = false;
       next.allowNegativeStock = false;
       next.requireWarehouseOnMovements = false;
       next.defaultWarehouseId = null;
@@ -305,6 +313,10 @@ export class InventoryService {
       next.kitsEnabled = false;
       next.goodsReceiptWorkflowEnabled = false;
       next.dispatchWorkflowEnabled = false;
+      next.adjustmentApprovalRequired = false;
+      next.transferApprovalRequired = false;
+      next.negativeStockApprovalRequired = false;
+      next.reversalApprovalRequired = false;
       next.allowNegativeStock = false;
       next.requireWarehouseOnMovements = false;
       next.defaultWarehouseId = null;
@@ -336,6 +348,10 @@ export class InventoryService {
         kitsEnabled: next.kitsEnabled,
         goodsReceiptWorkflowEnabled: next.goodsReceiptWorkflowEnabled,
         dispatchWorkflowEnabled: next.dispatchWorkflowEnabled,
+        adjustmentApprovalRequired: next.adjustmentApprovalRequired,
+        transferApprovalRequired: next.transferApprovalRequired,
+        negativeStockApprovalRequired: next.negativeStockApprovalRequired,
+        reversalApprovalRequired: next.reversalApprovalRequired,
         allowNegativeStock: next.allowNegativeStock,
         requireWarehouseOnMovements: next.requireWarehouseOnMovements,
         defaultWarehouseId: next.defaultWarehouseId,
@@ -352,6 +368,10 @@ export class InventoryService {
         kitsEnabled: next.kitsEnabled,
         goodsReceiptWorkflowEnabled: next.goodsReceiptWorkflowEnabled,
         dispatchWorkflowEnabled: next.dispatchWorkflowEnabled,
+        adjustmentApprovalRequired: next.adjustmentApprovalRequired,
+        transferApprovalRequired: next.transferApprovalRequired,
+        negativeStockApprovalRequired: next.negativeStockApprovalRequired,
+        reversalApprovalRequired: next.reversalApprovalRequired,
         allowNegativeStock: next.allowNegativeStock,
         requireWarehouseOnMovements: next.requireWarehouseOnMovements,
         defaultWarehouseId: next.defaultWarehouseId,
@@ -914,6 +934,42 @@ export class InventoryService {
   }
 
   async adjustStock(
+    user: AuthUser,
+    input: {
+      itemId: string;
+      date?: Date;
+      dateBs?: string;
+      qty: number;
+      rate?: number;
+      accountId?: string;
+      warehouseId?: string;
+      binId?: string;
+      memo?: string;
+      batchNo?: string;
+      lotNo?: string;
+      expiryDate?: Date;
+      expiryDateBs?: string;
+      serialNumbers?: string[];
+      allowNegativeOverride?: boolean;
+      overrideReason?: string;
+    }
+  ) {
+    const settings = await this.getOrCreateSettings(user.companyId);
+    const needsApproval =
+      Boolean(settings.adjustmentApprovalRequired) ||
+      Boolean(input.allowNegativeOverride && settings.negativeStockApprovalRequired);
+    if (needsApproval) {
+      const approval = await this.createMovementApproval(user, {
+        movementType: "adjustment",
+        payload: input,
+        reason: input.overrideReason || input.memo || "Stock adjustment approval required"
+      });
+      return { ok: true, approvalRequired: true, approvalId: approval.id, status: approval.status };
+    }
+    return this.postApprovedStockAdjustment(user, input);
+  }
+
+  private async postApprovedStockAdjustment(
     user: AuthUser,
     input: {
       itemId: string;
@@ -1855,6 +1911,38 @@ export class InventoryService {
   }
 
   async transferStock(
+    user: AuthUser,
+    input: {
+      itemId: string;
+      fromWarehouseId: string;
+      fromBinId?: string;
+      toWarehouseId: string;
+      toBinId?: string;
+      qty: number;
+      rate?: number;
+      batchNo?: string;
+      lotNo?: string;
+      expiryDate?: Date;
+      expiryDateBs?: string;
+      serialNumbers?: string[];
+      date?: Date;
+      dateBs?: string;
+      memo?: string;
+    }
+  ) {
+    const settings = await this.getOrCreateSettings(user.companyId);
+    if (settings.transferApprovalRequired) {
+      const approval = await this.createMovementApproval(user, {
+        movementType: "transfer",
+        payload: input,
+        reason: input.memo || "Stock transfer approval required"
+      });
+      return { ok: true, approvalRequired: true, approvalId: approval.id, status: approval.status };
+    }
+    return this.postApprovedStockTransfer(user, input);
+  }
+
+  private async postApprovedStockTransfer(
     user: AuthUser,
     input: {
       itemId: string;
@@ -3025,9 +3113,12 @@ export class InventoryService {
     const approval = await db.inventoryMovementApproval.findFirst({ where: { id, companyId: user.companyId } });
     if (!approval) throw new BadRequestException("Approval request not found");
     if (approval.status !== "pending") throw new BadRequestException("Only pending movement requests can be approved");
-    const result = approval.movementType === "adjustment"
-      ? await this.adjustStock(user, approval.payloadJson)
-      : await this.transferStock(user, approval.payloadJson);
+    const approvalPayload = approval.payloadJson as any;
+    const result = approvalPayload?.reversalOfApprovalId
+      ? await this.executeApprovedMovementReversal(user, approvalPayload.reversalOfApprovalId, input.reason || approval.reason || "Approved reversal")
+      : approval.movementType === "adjustment"
+        ? await this.postApprovedStockAdjustment(user, approval.payloadJson)
+        : await this.postApprovedStockTransfer(user, approval.payloadJson);
     return db.inventoryMovementApproval.update({
       where: { id },
       data: {
@@ -3058,20 +3149,45 @@ export class InventoryService {
     const approval = await db.inventoryMovementApproval.findFirst({ where: { id, companyId: user.companyId } });
     if (!approval) throw new BadRequestException("Approval request not found");
     if (approval.status !== "approved") throw new BadRequestException("Only approved movement requests can be reversed");
+    const settings = await this.getOrCreateSettings(user.companyId);
+    if (settings.reversalApprovalRequired && input.reason !== "APPROVED_REVERSAL") {
+      const reversal = await this.createMovementApproval(user, {
+        movementType: approval.movementType,
+        payload: { reversalOfApprovalId: approval.id, reversalReason: input.reason },
+        reason: input.reason || `Reversal approval required for ${approval.id}`
+      });
+      return db.inventoryMovementApproval.update({
+        where: { id },
+        data: { reason: input.reason ?? approval.reason }
+      }).then(() => reversal);
+    }
+    return this.markMovementApprovalReversed(user, approval, input.reason);
+  }
+
+  private async executeApprovedMovementReversal(user: AuthUser, originalApprovalId: string, reason?: string) {
+    const db = this.prisma as any;
+    const original = await db.inventoryMovementApproval.findFirst({ where: { id: originalApprovalId, companyId: user.companyId } });
+    if (!original) throw new BadRequestException("Original approved movement not found");
+    if (original.status !== "approved") throw new BadRequestException("Only approved movement requests can be reversed");
+    return this.markMovementApprovalReversed(user, original, reason);
+  }
+
+  private async markMovementApprovalReversed(user: AuthUser, approval: any, reason?: string) {
+    const db = this.prisma as any;
     const payload = approval.payloadJson as any;
     const result = approval.movementType === "adjustment"
-      ? await this.adjustStock(user, { ...payload, qty: -Number(payload.qty), memo: input.reason || `Reversal of approved adjustment ${approval.id}` })
-      : await this.transferStock(user, {
+      ? await this.postApprovedStockAdjustment(user, { ...payload, qty: -Number(payload.qty), memo: reason || `Reversal of approved adjustment ${approval.id}` })
+      : await this.postApprovedStockTransfer(user, {
           ...payload,
           fromWarehouseId: payload.toWarehouseId,
           fromBinId: payload.toBinId,
           toWarehouseId: payload.fromWarehouseId,
           toBinId: payload.fromBinId,
-          memo: input.reason || `Reversal of approved transfer ${approval.id}`
+          memo: reason || `Reversal of approved transfer ${approval.id}`
         });
     return db.inventoryMovementApproval.update({
-      where: { id },
-      data: { status: "reversed", reversedByUserId: user.sub, reversedAt: new Date(), reversalVoucherId: result.voucherId ?? null }
+      where: { id: approval.id },
+      data: { status: "reversed", reversedByUserId: user.sub, reversedAt: new Date(), reversalVoucherId: result.voucherId ?? null, reason: reason ?? approval.reason }
     });
   }
 

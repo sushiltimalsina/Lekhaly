@@ -23,6 +23,10 @@ export declare class InventoryService {
         kitsEnabled?: boolean;
         goodsReceiptWorkflowEnabled?: boolean;
         dispatchWorkflowEnabled?: boolean;
+        adjustmentApprovalRequired?: boolean;
+        transferApprovalRequired?: boolean;
+        negativeStockApprovalRequired?: boolean;
+        reversalApprovalRequired?: boolean;
         allowNegativeStock?: boolean;
         requireWarehouseOnMovements?: boolean;
         defaultWarehouseId?: string | null;
@@ -30,6 +34,9 @@ export declare class InventoryService {
     }): Promise<{
         id: string;
         companyId: string;
+        createdAt: Date;
+        updatedAt: Date;
+        defaultWarehouseId: string | null;
         inventoryTrackingEnabled: boolean;
         warehousesEnabled: boolean;
         binsEnabled: boolean;
@@ -40,12 +47,13 @@ export declare class InventoryService {
         kitsEnabled: boolean;
         goodsReceiptWorkflowEnabled: boolean;
         dispatchWorkflowEnabled: boolean;
+        adjustmentApprovalRequired: boolean;
+        transferApprovalRequired: boolean;
+        negativeStockApprovalRequired: boolean;
+        reversalApprovalRequired: boolean;
         allowNegativeStock: boolean;
         requireWarehouseOnMovements: boolean;
-        defaultWarehouseId: string | null;
         costingMethod: string;
-        createdAt: Date;
-        updatedAt: Date;
     }>;
     private assertSettingsCanChange;
     private normalizeSerialNumbers;
@@ -183,7 +191,13 @@ export declare class InventoryService {
     }): Promise<{
         ok: boolean;
         voucherId: string;
+    } | {
+        ok: boolean;
+        approvalRequired: boolean;
+        approvalId: any;
+        status: any;
     }>;
+    private postApprovedStockAdjustment;
     getStockReport(user: AuthUser, filters: {
         from?: Date;
         to?: Date;
@@ -360,7 +374,13 @@ export declare class InventoryService {
     }): Promise<{
         ok: boolean;
         voucherId: string;
+    } | {
+        ok: boolean;
+        approvalRequired: boolean;
+        approvalId: any;
+        status: any;
     }>;
+    private postApprovedStockTransfer;
     getInventoryAlerts(user: AuthUser, query: {
         expiringWithinDays?: number;
         noMovementDays?: number;
@@ -391,10 +411,10 @@ export declare class InventoryService {
         }[];
         expiringSoon: {
             qty: number;
-            itemId: string;
             batchNo: string | null;
             lotNo: string | null;
             expiryDate: Date | null;
+            itemId: string;
             _sum: {
                 qtyIn: Prisma.Decimal | null;
                 qtyOut: Prisma.Decimal | null;
@@ -532,6 +552,8 @@ export declare class InventoryService {
     reverseMovementApproval(user: AuthUser, id: string, input: {
         reason?: string;
     }): Promise<any>;
+    private executeApprovedMovementReversal;
+    private markMovementApprovalReversed;
     listPeriodCloses(user: AuthUser, query: {
         status?: string;
         take?: number;
@@ -549,27 +571,27 @@ export declare class InventoryService {
         take?: number;
     }): Promise<({
         item: {
-            name: string;
             id: string;
+            name: string;
             sku: string | null;
         };
         warehouse: {
-            name: string;
             id: string;
+            name: string;
         } | null;
         bin: {
-            name: string;
             id: string;
+            name: string;
         } | null;
     } & {
         id: string;
         companyId: string;
+        status: string;
         createdAt: Date;
         updatedAt: Date;
         itemId: string;
         warehouseId: string | null;
         binId: string | null;
-        status: string;
         serialNo: string;
         purchaseInvoiceId: string | null;
         salesInvoiceId: string | null;
@@ -580,8 +602,8 @@ export declare class InventoryService {
         binId?: string;
     }): Promise<{
         item: {
-            name: string;
             id: string;
+            name: string;
             sku: string | null;
             isSerialized: boolean;
             tracksBatch: boolean;

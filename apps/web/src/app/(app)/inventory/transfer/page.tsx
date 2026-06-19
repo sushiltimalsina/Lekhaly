@@ -191,7 +191,7 @@ export default function StockTransferPage() {
     setSubmitting(true);
     try {
       const serialNumbers = serialText.split(/[\n,]+/).map((serial) => serial.trim()).filter(Boolean);
-      await transferInventoryStock({
+      const result = await transferInventoryStock({
         itemId,
         fromWarehouseId,
         fromBinId: features.bins ? fromBinId || undefined : undefined,
@@ -207,7 +207,7 @@ export default function StockTransferPage() {
         expiryDate: features.expiry ? expiryDate || undefined : undefined,
         serialNumbers: features.serial && serialNumbers.length ? serialNumbers : undefined,
       });
-      setSuccess("Stock transfer completed successfully!");
+      setSuccess(result.approvalRequired ? `Stock transfer sent for approval (${result.approvalId}).` : "Stock transfer completed successfully!");
       setTimeout(() => {
         setItemId("");
         setFromWarehouseId("");

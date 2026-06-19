@@ -546,6 +546,10 @@ export type InventorySettings = {
   kitsEnabled: boolean;
   goodsReceiptWorkflowEnabled: boolean;
   dispatchWorkflowEnabled: boolean;
+  adjustmentApprovalRequired: boolean;
+  transferApprovalRequired: boolean;
+  negativeStockApprovalRequired: boolean;
+  reversalApprovalRequired: boolean;
   allowNegativeStock: boolean;
   requireWarehouseOnMovements: boolean;
   defaultWarehouseId?: string | null;
@@ -567,7 +571,7 @@ export type SerialNumberRecord = {
 };
 
 export async function adjustInventoryStock(input: StockAdjustmentInput) {
-  return apiRequest<{ ok: boolean; voucherId: string }>({
+  return apiRequest<{ ok: boolean; voucherId?: string; approvalRequired?: boolean; approvalId?: string; status?: string }>({
     path: "/inventory/adjustment",
     method: "POST",
     body: input,
@@ -575,7 +579,7 @@ export async function adjustInventoryStock(input: StockAdjustmentInput) {
 }
 
 export async function transferInventoryStock(input: StockTransferInput) {
-  return apiRequest<{ ok: boolean; voucherId: string }>({
+  return apiRequest<{ ok: boolean; voucherId?: string; approvalRequired?: boolean; approvalId?: string; status?: string }>({
     path: "/inventory/transfer",
     method: "POST",
     body: input,

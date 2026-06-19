@@ -106,8 +106,8 @@ export default function StockTransferPage() {
     setSubmitting(true);
     try {
       const serialNumbers = serialText.split(/[\n,]+/).map((serial) => serial.trim()).filter(Boolean);
-      await transferInventoryStock({ itemId, fromWarehouseId, fromBinId: features.bins ? fromBinId || undefined : undefined, toWarehouseId, toBinId: features.bins ? toBinId || undefined : undefined, qty: Number(qty), rate: rate ? Number(rate) : undefined, date: date.ad, dateBs: date.bs || undefined, memo: memo.trim() || undefined, batchNo: features.batch ? batchNo.trim() || undefined : undefined, lotNo: features.lot ? lotNo.trim() || undefined : undefined, expiryDate: features.expiry ? expiryDate || undefined : undefined, serialNumbers: features.serial && serialNumbers.length ? serialNumbers : undefined });
-      setSuccess("Stock transfer completed!");
+      const result = await transferInventoryStock({ itemId, fromWarehouseId, fromBinId: features.bins ? fromBinId || undefined : undefined, toWarehouseId, toBinId: features.bins ? toBinId || undefined : undefined, qty: Number(qty), rate: rate ? Number(rate) : undefined, date: date.ad, dateBs: date.bs || undefined, memo: memo.trim() || undefined, batchNo: features.batch ? batchNo.trim() || undefined : undefined, lotNo: features.lot ? lotNo.trim() || undefined : undefined, expiryDate: features.expiry ? expiryDate || undefined : undefined, serialNumbers: features.serial && serialNumbers.length ? serialNumbers : undefined });
+      setSuccess(result.approvalRequired ? `Stock transfer sent for approval (${result.approvalId}).` : "Stock transfer completed!");
       setTimeout(() => { setItemId(""); setFromWarehouseId(""); setFromBinId(""); setToWarehouseId(""); setToBinId(""); setQty(""); setRate(""); setMemo(""); setBatchNo(""); setLotNo(""); setExpiryDate(""); setSerialText(""); setSuccess(null); }, 2000);
     } catch (e: any) { setError(e?.message ?? "Failed to transfer stock"); } finally { setSubmitting(false); }
   };

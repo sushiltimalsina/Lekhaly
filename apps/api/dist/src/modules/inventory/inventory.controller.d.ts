@@ -7,6 +7,9 @@ export declare class InventoryController {
     updateSettings(user: AuthUser, body: any): Promise<{
         id: string;
         companyId: string;
+        createdAt: Date;
+        updatedAt: Date;
+        defaultWarehouseId: string | null;
         inventoryTrackingEnabled: boolean;
         warehousesEnabled: boolean;
         binsEnabled: boolean;
@@ -17,36 +20,37 @@ export declare class InventoryController {
         kitsEnabled: boolean;
         goodsReceiptWorkflowEnabled: boolean;
         dispatchWorkflowEnabled: boolean;
+        adjustmentApprovalRequired: boolean;
+        transferApprovalRequired: boolean;
+        negativeStockApprovalRequired: boolean;
+        reversalApprovalRequired: boolean;
         allowNegativeStock: boolean;
         requireWarehouseOnMovements: boolean;
-        defaultWarehouseId: string | null;
         costingMethod: string;
-        createdAt: Date;
-        updatedAt: Date;
     }>;
     serials(user: AuthUser, query: any): Promise<({
         item: {
-            name: string;
             id: string;
+            name: string;
             sku: string | null;
         };
         warehouse: {
-            name: string;
             id: string;
+            name: string;
         } | null;
         bin: {
-            name: string;
             id: string;
+            name: string;
         } | null;
     } & {
         id: string;
         companyId: string;
+        status: string;
         createdAt: Date;
         updatedAt: Date;
         itemId: string;
         warehouseId: string | null;
         binId: string | null;
-        status: string;
         serialNo: string;
         purchaseInvoiceId: string | null;
         salesInvoiceId: string | null;
@@ -55,6 +59,11 @@ export declare class InventoryController {
     adjust(user: AuthUser, body: any): Promise<{
         ok: boolean;
         voucherId: string;
+    } | {
+        ok: boolean;
+        approvalRequired: boolean;
+        approvalId: any;
+        status: any;
     }>;
     goodsReceipt(user: AuthUser, body: any): Promise<{
         ok: boolean;
@@ -235,8 +244,8 @@ export declare class InventoryController {
     reorderSuggestions(user: AuthUser): Promise<any[]>;
     trackedStock(user: AuthUser, query: any): Promise<{
         item: {
-            name: string;
             id: string;
+            name: string;
             sku: string | null;
             isSerialized: boolean;
             tracksBatch: boolean;
@@ -267,6 +276,11 @@ export declare class InventoryController {
     transfer(user: AuthUser, body: any): Promise<{
         ok: boolean;
         voucherId: string;
+    } | {
+        ok: boolean;
+        approvalRequired: boolean;
+        approvalId: any;
+        status: any;
     }>;
     movementApprovals(user: AuthUser, query: any): Promise<any>;
     createMovementApproval(user: AuthUser, body: any): Promise<any>;
@@ -301,10 +315,10 @@ export declare class InventoryController {
         }[];
         expiringSoon: {
             qty: number;
-            itemId: string;
             batchNo: string | null;
             lotNo: string | null;
             expiryDate: Date | null;
+            itemId: string;
             _sum: {
                 qtyIn: import("@prisma/client/runtime/client").Decimal | null;
                 qtyOut: import("@prisma/client/runtime/client").Decimal | null;

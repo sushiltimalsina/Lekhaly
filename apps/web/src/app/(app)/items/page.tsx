@@ -1199,7 +1199,7 @@ export default function ItemsPage() {
     }
     setAdjustSubmitting(true);
     try {
-      await adjustInventoryStock({
+      const result = await adjustInventoryStock({
         itemId: adjustForm.itemId,
         accountId: adjustForm.accountId || undefined,
         date: adjustForm.date,
@@ -1217,7 +1217,7 @@ export default function ItemsPage() {
         allowNegativeOverride: features.negativeStock && adjustForm.allowNegativeOverride ? true : undefined,
         overrideReason: features.negativeStock && adjustForm.allowNegativeOverride ? adjustForm.overrideReason || undefined : undefined,
       });
-      setActionSuccess("Stock adjustment posted.");
+      setActionSuccess(result.approvalRequired ? `Stock adjustment sent for approval (${result.approvalId}).` : "Stock adjustment posted.");
       setAdjustOpen(false);
       await refresh();
     } catch (e: any) {
@@ -1250,7 +1250,7 @@ export default function ItemsPage() {
     }
     setTransferSubmitting(true);
     try {
-      await transferInventoryStock({
+      const result = await transferInventoryStock({
         itemId: transferForm.itemId,
         fromWarehouseId: transferForm.fromWarehouseId,
         fromBinId: features.bins ? transferForm.fromBinId || undefined : undefined,
@@ -1267,7 +1267,7 @@ export default function ItemsPage() {
         expiryDateBs: features.expiry ? transferForm.expiryDateBs || undefined : undefined,
         serialNumbers: features.serial && serialNumbers.length ? serialNumbers : undefined,
       });
-      setActionSuccess("Stock transfer posted.");
+      setActionSuccess(result.approvalRequired ? `Stock transfer sent for approval (${result.approvalId}).` : "Stock transfer posted.");
       setTransferOpen(false);
       await refresh();
     } catch (e: any) {

@@ -98,10 +98,10 @@ export declare const ReservationQuerySchema: z.ZodObject<{
     salesOrderId: z.ZodOptional<z.ZodString>;
     status: z.ZodOptional<z.ZodEnum<{
         active: "active";
-        fulfilled: "fulfilled";
-        cancelled: "cancelled";
         partial: "partial";
+        fulfilled: "fulfilled";
         released: "released";
+        cancelled: "cancelled";
     }>>;
     take: z.ZodOptional<z.ZodCoercedNumber<unknown>>;
 }, z.core.$strip>;
@@ -115,8 +115,8 @@ export declare const MovementApprovalRequestSchema: z.ZodObject<{
 }, z.core.$strip>;
 export declare const MovementApprovalQuerySchema: z.ZodObject<{
     status: z.ZodOptional<z.ZodEnum<{
-        pending: "pending";
         reversed: "reversed";
+        pending: "pending";
         approved: "approved";
         rejected: "rejected";
     }>>;
@@ -205,6 +205,10 @@ export declare const InventorySettingsSchema: z.ZodObject<{
     kitsEnabled: z.ZodOptional<z.ZodBoolean>;
     goodsReceiptWorkflowEnabled: z.ZodOptional<z.ZodBoolean>;
     dispatchWorkflowEnabled: z.ZodOptional<z.ZodBoolean>;
+    adjustmentApprovalRequired: z.ZodOptional<z.ZodBoolean>;
+    transferApprovalRequired: z.ZodOptional<z.ZodBoolean>;
+    negativeStockApprovalRequired: z.ZodOptional<z.ZodBoolean>;
+    reversalApprovalRequired: z.ZodOptional<z.ZodBoolean>;
     allowNegativeStock: z.ZodOptional<z.ZodBoolean>;
     requireWarehouseOnMovements: z.ZodOptional<z.ZodBoolean>;
     defaultWarehouseId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
