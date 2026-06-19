@@ -483,6 +483,7 @@ export type InventorySettings = {
   expiryTrackingEnabled: boolean;
   serialTrackingEnabled: boolean;
   kitsEnabled: boolean;
+  goodsReceiptWorkflowEnabled: boolean;
   allowNegativeStock: boolean;
   requireWarehouseOnMovements: boolean;
   defaultWarehouseId?: string | null;

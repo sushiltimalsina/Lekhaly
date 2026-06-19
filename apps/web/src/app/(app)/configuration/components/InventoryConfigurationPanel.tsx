@@ -97,6 +97,7 @@ export function InventoryConfigurationPanel({
                 <ToggleRow label="Expiry Tracking" description="Store expiry dates and expiry alerts" checked={settings.expiryTrackingEnabled} disabled={!settings.inventoryTrackingEnabled} onChange={(v) => onSave({ expiryTrackingEnabled: v })} />
                 <ToggleRow label="Serial Numbers" description="Track unique serial numbers per unit" checked={settings.serialTrackingEnabled} disabled={!settings.inventoryTrackingEnabled} onChange={(v) => onSave({ serialTrackingEnabled: v })} />
                 <ToggleRow label="Kits & Assemblies" description="Enable BOM and kit assembly flows" checked={settings.kitsEnabled} disabled={!settings.inventoryTrackingEnabled} onChange={(v) => onSave({ kitsEnabled: v })} />
+                <ToggleRow label="Goods Receipt Workflow" description="Receive purchase orders through a GRN register before purchase invoicing" checked={settings.goodsReceiptWorkflowEnabled} disabled={!settings.inventoryTrackingEnabled} onChange={(v) => onSave({ goodsReceiptWorkflowEnabled: v })} />
                 <ToggleRow label="Require Warehouse" description="Require warehouse on stock movements" checked={settings.requireWarehouseOnMovements} disabled={!settings.inventoryTrackingEnabled || !settings.warehousesEnabled} onChange={(v) => onSave({ requireWarehouseOnMovements: v })} />
               </div>
 

@@ -9,6 +9,7 @@ export type InventoryFeatureSet = {
   expiry: boolean;
   serial: boolean;
   kits: boolean;
+  goodsReceipt: boolean;
   requireWarehouse: boolean;
   negativeStock: boolean;
 };
@@ -25,6 +26,7 @@ export function inventoryFeatures(settings: InventorySettings | null | undefined
     expiry: inventory && Boolean(settings?.expiryTrackingEnabled),
     serial: inventory && Boolean(settings?.serialTrackingEnabled),
     kits: inventory && Boolean(settings?.kitsEnabled),
+    goodsReceipt: inventory && Boolean(settings?.goodsReceiptWorkflowEnabled),
     requireWarehouse: warehouses && Boolean(settings?.requireWarehouseOnMovements),
     negativeStock: inventory && Boolean(settings?.allowNegativeStock),
   };
@@ -37,4 +39,3 @@ export function hasLineTracking(features: InventoryFeatureSet) {
 export function hasItemPolicyTracking(features: InventoryFeatureSet) {
   return features.serial || features.batch || features.lot || features.expiry || features.kits;
 }
-

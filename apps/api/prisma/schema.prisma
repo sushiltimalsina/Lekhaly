@@ -560,6 +560,7 @@ model InventorySettings {
   expiryTrackingEnabled       Boolean  @default(false)
   serialTrackingEnabled       Boolean  @default(false)
   kitsEnabled                 Boolean  @default(false)
+  goodsReceiptWorkflowEnabled Boolean  @default(true)
   allowNegativeStock          Boolean  @default(false)
   requireWarehouseOnMovements Boolean  @default(false)
   defaultWarehouseId          String?

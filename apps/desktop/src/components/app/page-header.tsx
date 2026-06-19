@@ -16,6 +16,7 @@ type PageHeaderProps = {
   showBack?: boolean;
   backHref?: string;
   backLabel?: string;
+  onBack?: () => void;
 };
 
 const detailRoots = new Set([
@@ -57,13 +58,17 @@ function shouldAutoShowBack(pathname: string, breadcrumb?: React.ReactNode) {
   return segments.length >= 2 && detailRoots.has(segments[0]) && segments[1] === "view";
 }
 
-export default function PageHeader({ title, description, actions, breadcrumb, className, icon: Icon, iconContainerClassName, showBack, backHref, backLabel = "Back" }: PageHeaderProps) {
+export default function PageHeader({ title, description, actions, breadcrumb, className, icon: Icon, iconContainerClassName, showBack, backHref, backLabel = "Back", onBack }: PageHeaderProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const shouldShowBack = showBack ?? shouldAutoShowBack(location.pathname, breadcrumb);
 
   const goBack = () => {
     const navigateBack = () => {
+      if (onBack) {
+        onBack();
+        return;
+      }
       if (typeof window !== "undefined" && window.history.length > 1) {
         navigate(-1);
         return;

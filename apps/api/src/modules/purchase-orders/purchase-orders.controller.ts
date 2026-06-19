@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Put, Query } from "@nestjs/common";
 import { Audit } from "../../common/audit/audit.decorator";
 import { CurrentUser, RequirePerm } from "../../common/auth/auth.decorator";
 import { ZodValidationPipe } from "../../common/zod/zod.pipe";
@@ -21,8 +21,18 @@ export class PurchaseOrdersController {
         return this.purchaseOrders.create(user, body);
     }
 
+    @Put(":id")
+    @RequirePerm("voucher.draft.create")
+    update(
+        @CurrentUser() user: AuthUser,
+        @Param("id") id: string,
+        @Body(new ZodValidationPipe(CreatePurchaseOrderSchema)) body: any
+    ) {
+        return this.purchaseOrders.update(user, id, body);
+    }
+
     @Get()
-    @RequirePerm("voucher.view")
+    @RequirePerm("voucher.preview")
     list(
         @CurrentUser() user: AuthUser,
         @Query(new ZodValidationPipe(PurchaseOrderListQuerySchema)) query: any
@@ -31,7 +41,7 @@ export class PurchaseOrdersController {
     }
 
     @Get(":id")
-    @RequirePerm("voucher.view")
+    @RequirePerm("voucher.preview")
     getById(@CurrentUser() user: AuthUser, @Param("id") id: string) {
         return this.purchaseOrders.getById(user, id);
     }

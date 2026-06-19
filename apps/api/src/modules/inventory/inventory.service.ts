@@ -255,6 +255,7 @@ export class InventoryService {
     expiryTrackingEnabled?: boolean;
     serialTrackingEnabled?: boolean;
     kitsEnabled?: boolean;
+    goodsReceiptWorkflowEnabled?: boolean;
     allowNegativeStock?: boolean;
     requireWarehouseOnMovements?: boolean;
     defaultWarehouseId?: string | null;
@@ -274,6 +275,7 @@ export class InventoryService {
       next.expiryTrackingEnabled = false;
       next.serialTrackingEnabled = false;
       next.kitsEnabled = false;
+      next.goodsReceiptWorkflowEnabled = false;
       next.allowNegativeStock = false;
       next.requireWarehouseOnMovements = false;
       next.defaultWarehouseId = null;
@@ -299,6 +301,7 @@ export class InventoryService {
       next.expiryTrackingEnabled = false;
       next.serialTrackingEnabled = false;
       next.kitsEnabled = false;
+      next.goodsReceiptWorkflowEnabled = false;
       next.allowNegativeStock = false;
       next.requireWarehouseOnMovements = false;
       next.defaultWarehouseId = null;
@@ -328,6 +331,7 @@ export class InventoryService {
         expiryTrackingEnabled: next.expiryTrackingEnabled,
         serialTrackingEnabled: next.serialTrackingEnabled,
         kitsEnabled: next.kitsEnabled,
+        goodsReceiptWorkflowEnabled: next.goodsReceiptWorkflowEnabled,
         allowNegativeStock: next.allowNegativeStock,
         requireWarehouseOnMovements: next.requireWarehouseOnMovements,
         defaultWarehouseId: next.defaultWarehouseId,
@@ -342,6 +346,7 @@ export class InventoryService {
         expiryTrackingEnabled: next.expiryTrackingEnabled,
         serialTrackingEnabled: next.serialTrackingEnabled,
         kitsEnabled: next.kitsEnabled,
+        goodsReceiptWorkflowEnabled: next.goodsReceiptWorkflowEnabled,
         allowNegativeStock: next.allowNegativeStock,
         requireWarehouseOnMovements: next.requireWarehouseOnMovements,
         defaultWarehouseId: next.defaultWarehouseId,
@@ -2266,6 +2271,10 @@ export class InventoryService {
   ) {
     const db = this.prisma as any;
     if (!db.goodsReceipt) throw new BadRequestException("Run the inventory workflow migration before posting goods receipts");
+    const settings = await this.getOrCreateSettings(user.companyId);
+    if (!settings.inventoryTrackingEnabled || !settings.goodsReceiptWorkflowEnabled) {
+      throw new BadRequestException("Enable Goods Receipt Workflow in inventory configuration before posting goods receipts");
+    }
     const resolved = resolveAdDate(input.date, input.dateBs);
     const purchaseOrder = input.purchaseOrderId
       ? await this.prisma.purchaseOrder.findFirst({

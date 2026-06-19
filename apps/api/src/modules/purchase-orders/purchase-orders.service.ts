@@ -146,6 +146,96 @@ export class PurchaseOrdersService {
         });
     }
 
+    async update(user: AuthUser, id: string, input: any) {
+        await this.validateItems(user.companyId, input.items);
+
+        const existing = await this.prisma.purchaseOrder.findFirst({
+            where: { id, companyId: user.companyId },
+            include: { items: true }
+        });
+        if (!existing) throw new NotFoundException("Purchase order not found");
+        if (existing.status === PurchaseOrderStatus.cancelled) {
+            throw new BadRequestException("Cancelled purchase orders cannot be edited");
+        }
+        if (existing.status === PurchaseOrderStatus.received || existing.items.some((line) => line.receivedQty.gt(0))) {
+            throw new BadRequestException("Purchase orders with received goods cannot be edited");
+        }
+
+        const party = await this.prisma.party.findFirst({
+            where: { id: input.partyId, companyId: user.companyId }
+        });
+        if (!party) throw new BadRequestException("Supplier not found");
+
+        const resolvedDate = resolveAdDate(input.orderDate, input.orderDateBs);
+        const resolvedDelivery = input.expectedDelivery || input.expectedDeliveryBs
+            ? resolveAdDate(input.expectedDelivery, input.expectedDeliveryBs)
+            : { date: null, bs: null };
+
+        const taxCodes = await this.prisma.taxCode.findMany({
+            where: { companyId: user.companyId }
+        });
+        const taxMap = new Map(taxCodes.map(t => [t.id, t]));
+
+        const processedItems = input.items.map((item: any) => {
+            const amount = new Prisma.Decimal(item.qty).mul(item.rate);
+            const tax = item.taxCodeId ? taxMap.get(item.taxCodeId) : null;
+            const taxAmount = tax ? amount.mul(tax.rate).div(100) : new Prisma.Decimal(0);
+            return { ...item, amount, taxAmount };
+        });
+
+        const { subtotal, vatAmount, total: baseTotal } = this.computeTotals(processedItems);
+        let total = baseTotal;
+        const processedSundries = (input.sundries || []).map((s: any) => {
+            const amt = new Prisma.Decimal(s.amount);
+            if (s.type === "add") total = total.add(amt);
+            else total = total.sub(amt);
+            return { ...s, amount: amt };
+        });
+
+        return this.prisma.$transaction(async (tx) => {
+            await tx.purchaseOrderSundry.deleteMany({ where: { orderId: id } });
+            await tx.purchaseOrderItem.deleteMany({ where: { orderId: id } });
+            return tx.purchaseOrder.update({
+                where: { id },
+                data: {
+                    partyId: input.partyId,
+                    status: PurchaseOrderStatus.open,
+                    date: resolvedDate.date,
+                    dateBs: resolvedDate.bs || input.orderDateBs,
+                    expectedDelivery: resolvedDelivery.date,
+                    expectedDeliveryBs: resolvedDelivery.bs || input.expectedDeliveryBs,
+                    subtotal,
+                    vatAmount,
+                    total,
+                    memo: input.memo,
+                    additionalNote: input.notes,
+                    terms: input.terms,
+                    items: {
+                        create: processedItems.map((item: any) => ({
+                            itemId: item.itemId,
+                            description: item.description,
+                            qty: new Prisma.Decimal(item.qty),
+                            rate: new Prisma.Decimal(item.rate),
+                            amount: item.amount,
+                            taxCodeId: item.taxCodeId,
+                            taxAmount: item.taxAmount
+                        }))
+                    },
+                    sundries: {
+                        create: processedSundries.map((s: any) => ({
+                            billSundryId: s.billSundryId,
+                            name: s.name,
+                            type: s.type,
+                            rate: s.rate ? new Prisma.Decimal(s.rate) : null,
+                            amount: s.amount
+                        }))
+                    }
+                },
+                include: { items: true, sundries: true, party: { select: { id: true, name: true } } }
+            });
+        });
+    }
+
     async list(user: AuthUser, filters: any) {
         const where: Prisma.PurchaseOrderWhereInput = { companyId: user.companyId };
         if (filters.status) where.status = filters.status;
@@ -177,8 +267,19 @@ export class PurchaseOrdersService {
             })
         ]);
 
+        const normalizedData = data.map((order) => ({
+            ...order,
+            orderDate: order.date,
+            orderDateBs: order.dateBs,
+            partyName: order.party?.name ?? null,
+            items: order.items.map((line) => ({
+                ...line,
+                itemName: line.item?.name ?? null
+            }))
+        }));
+
         return {
-            data,
+            data: normalizedData,
             meta: {
                 total,
                 page: Math.floor((filters.skip || 0) / (filters.take || 50)) + 1,

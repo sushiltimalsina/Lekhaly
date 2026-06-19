@@ -7,6 +7,7 @@ import {
   BadgeCheck,
   CalendarCheck,
   PackageSearch,
+  Plus,
   RefreshCw,
   RotateCcw,
   ShieldCheck,
@@ -26,6 +27,7 @@ import {
   approveInventoryMovement,
   closeInventoryPeriod,
   createInventoryMovementApproval,
+  getInventorySettings,
   getReorderSuggestions,
   listBatchLotMaster,
   listGoodsReceipts,
@@ -40,12 +42,14 @@ import {
   reverseInventoryMovement,
   type GoodsReceiptInput,
   type GoodsReceiptRecord,
+  type InventorySettings,
   type InventoryMovementApproval,
   type InventoryPeriodClose,
   type InventoryMovementLineInput,
   type StockDispatchInput,
   type StockReservationRecord
 } from "@/lib/api/inventory";
+import { inventoryFeatures } from "@/lib/inventory-features";
 
 type Status = { type: "success" | "error"; message: string } | null;
 
@@ -107,17 +111,21 @@ function WorkflowShell({
   description,
   icon,
   children,
-  actions
+  actions,
+  backLabel = "Back to Inventory",
+  onBack
 }: {
   title: string;
   description: string;
   icon: any;
   children: React.ReactNode;
   actions?: React.ReactNode;
+  backLabel?: string;
+  onBack?: () => void;
 }) {
   return (
     <div className="space-y-6 pb-20">
-      <PageHeader title={title} description={description} icon={icon} showBack backHref="/inventory" backLabel="Back to Inventory" actions={actions} />
+      <PageHeader title={title} description={description} icon={icon} showBack backHref="/inventory" backLabel={backLabel} onBack={onBack} actions={actions} />
       {children}
     </div>
   );
@@ -364,6 +372,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 export function GoodsReceiptWorkflowPage() {
+  const [view, setView] = React.useState<"register" | "create">("register");
+  const [settings, setSettings] = React.useState<InventorySettings | null>(null);
   const [orders, setOrders] = React.useState<any[]>([]);
   const [receipts, setReceipts] = React.useState<GoodsReceiptRecord[]>([]);
   const [warehouses, setWarehouses] = React.useState<Warehouse[]>([]);
@@ -384,6 +394,7 @@ export function GoodsReceiptWorkflowPage() {
     batchNo: string;
     lotNo: string;
     expiryDate: string;
+    expiryDateBs: string;
   }>>([]);
   const [status, setStatus] = React.useState<Status>(null);
   const [loading, setLoading] = React.useState(false);
@@ -394,34 +405,41 @@ export function GoodsReceiptWorkflowPage() {
   const selectedOrder = orders.find((order) => order.id === selectedOrderId);
   const selectedWarehouse = warehouses.find((warehouse) => warehouse.id === warehouseId);
   const bins = selectedWarehouse?.bins ?? [];
+  const features = inventoryFeatures(settings);
 
   const refresh = React.useCallback(async () => {
     setLoading(true);
     try {
-      const [orderRows, warehouseRows, receiptRows] = await Promise.all([
+      const [settingsData, orderRows, warehouseRows, receiptRows] = await Promise.all([
+        getInventorySettings(),
         listPurchaseOrders({ take: 200 }).then((res) => pendingPurchaseOrders(normalizeOrders(res))),
         listWarehouses({ isActive: true }).then(normalizeWarehouses),
         listGoodsReceipts({ take: 50, q: receiptSearch || undefined }).then(normalizeGoodsReceipts)
       ]);
+      setSettings(settingsData);
       setOrders(orderRows);
       setWarehouses(warehouseRows);
       setReceipts(receiptRows);
       setWarehouseId((current) => current || warehouseRows[0]?.id || "");
-      const firstOrder = orderRows[0];
-      if (!selectedOrderId && firstOrder) applyPurchaseOrder(firstOrder, warehouseRows[0]?.id || "");
     } finally {
       setLoading(false);
     }
-  }, [receiptSearch, selectedOrderId]);
+  }, [receiptSearch]);
 
   React.useEffect(() => { refresh(); }, [refresh]);
 
   React.useEffect(() => {
+    if (view !== "create") return;
     const timer = window.setTimeout(() => {
       receiptDateRef.current?.focus();
     }, 80);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [view]);
+
+  React.useEffect(() => {
+    if (view !== "create" || selectedOrderId || !orders[0]) return;
+    applyPurchaseOrder(orders[0], warehouseId);
+  }, [orders, selectedOrderId, view, warehouseId]);
 
   const applyPurchaseOrder = (order: any, nextWarehouseId = warehouseId) => {
     setSelectedOrderId(order?.id || "");
@@ -441,7 +459,8 @@ export function GoodsReceiptWorkflowPage() {
           rate: line.rate ? String(line.rate) : "",
           batchNo: "",
           lotNo: "",
-          expiryDate: ""
+          expiryDate: "",
+          expiryDateBs: ""
         };
       }));
     setWarehouseId(nextWarehouseId || warehouseId);
@@ -484,12 +503,14 @@ export function GoodsReceiptWorkflowPage() {
           binId: binId || undefined,
           batchNo: line.batchNo.trim() || undefined,
           lotNo: line.lotNo.trim() || undefined,
-          expiryDate: line.expiryDate || undefined
+          expiryDate: line.expiryDate || undefined,
+          expiryDateBs: line.expiryDateBs || undefined
         }))
       });
       setStatus({ type: "success", message: "Goods receipt posted and purchase order received quantity updated." });
       setMemo("");
       await refresh();
+      setView("register");
     } catch (error: any) {
       setStatus({ type: "error", message: error?.message ?? "Unable to post goods receipt." });
     } finally {
@@ -497,10 +518,51 @@ export function GoodsReceiptWorkflowPage() {
     }
   };
 
+  const openCreate = () => {
+    setStatus(null);
+    setView("create");
+    if (!selectedOrderId && orders[0]) applyPurchaseOrder(orders[0], warehouseId);
+  };
+
   return (
-    <WorkflowShell title="Goods Receipt" description="Receive purchased goods into stock with warehouse, bin, batch, lot, and expiry tracking." icon={ArrowDownToLine}>
-      <Card>
-        <CardContent className="space-y-5 pt-6">
+    <WorkflowShell
+      title={view === "create" ? "Create Goods Receipt" : "Goods Receipt Register"}
+      description={view === "create" ? "Receive items from purchase orders into warehouse and bin stock." : "Review posted goods receipts and create new receiving entries."}
+      icon={ArrowDownToLine}
+      backLabel={view === "create" ? "Back to Register" : "Back to Inventory"}
+      onBack={view === "create" ? () => setView("register") : undefined}
+      actions={
+        view === "register" ? (
+          <div className="flex gap-2">
+            <Button variant="outline" type="button" onClick={refresh} disabled={loading}>
+              <RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} />
+              Refresh
+            </Button>
+            {features.goodsReceipt && <Button type="button" onClick={openCreate} className="bg-emerald-600 text-white hover:bg-emerald-700">
+              <Plus className="mr-2 h-4 w-4" />
+              New Goods Receipt
+            </Button>}
+          </div>
+        ) : null
+      }
+    >
+      {!settings && (
+        <Card>
+          <CardContent className="pt-6">
+            <EmptyState text="Loading goods receipt configuration..." />
+          </CardContent>
+        </Card>
+      )}
+      {settings && !features.goodsReceipt && (
+        <Card>
+          <CardContent className="pt-6">
+            <EmptyState text="Goods Receipt Workflow is disabled. Enable it from Configuration > Inventory Configuration to use GRN receiving." />
+          </CardContent>
+        </Card>
+      )}
+      {features.goodsReceipt && view === "create" && (
+        <Card>
+          <CardContent className="space-y-5 pt-6">
           <StatusMessage status={status} />
           <div className="grid gap-4 md:grid-cols-4">
             <Field label="Purchase Order">
@@ -572,7 +634,15 @@ export function GoodsReceiptWorkflowPage() {
                         <td className="px-3 py-3"><input type="number" min="0" step="0.01" className={cn(inputClass, "w-28")} value={line.rate} onChange={(e) => updateLine(line.lineId, { rate: e.target.value })} /></td>
                         <td className="px-3 py-3"><input className={cn(inputClass, "w-36")} value={line.batchNo} onChange={(e) => updateLine(line.lineId, { batchNo: e.target.value })} /></td>
                         <td className="px-3 py-3"><input className={cn(inputClass, "w-36")} value={line.lotNo} onChange={(e) => updateLine(line.lineId, { lotNo: e.target.value })} /></td>
-                        <td className="px-3 py-3"><input type="date" className={cn(inputClass, "w-40")} value={line.expiryDate} onChange={(e) => updateLine(line.lineId, { expiryDate: e.target.value })} /></td>
+                        <td className="px-3 py-3">
+                          <div className="w-48">
+                            <DualDateInput
+                              value={{ ad: line.expiryDate, bs: line.expiryDateBs }}
+                              onChange={(next) => updateLine(line.lineId, { expiryDate: next.ad, expiryDateBs: next.bs })}
+                              accentColor="bg-orange-600"
+                            />
+                          </div>
+                        </td>
                       </tr>
                     );
                   })}
@@ -588,8 +658,10 @@ export function GoodsReceiptWorkflowPage() {
               {saving ? "Posting..." : "Post Goods Receipt"}
             </Button>
           </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
+      {features.goodsReceipt && view === "register" && (
       <Card>
         <CardContent className="space-y-4 pt-6">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -653,6 +725,7 @@ export function GoodsReceiptWorkflowPage() {
           )}
         </CardContent>
       </Card>
+      )}
     </WorkflowShell>
   );
 }

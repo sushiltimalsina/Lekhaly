@@ -34,6 +34,7 @@ import {
   ClipboardList,
   KeyRoundIcon,
   ArrowRightLeft,
+  ArrowDownToLine,
   Hammer
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -162,6 +163,7 @@ const navData: NavItem[] = [
       { label: "Add Item", href: "/items/new", icon: Plus },
       { label: "Assemblies", href: "/inventory/assemblies", icon: Hammer },
       { label: "Warehouse & Bins", href: "/inventory/warehouses", icon: Building2 },
+      { label: "Goods Receipt", href: "/inventory/goods-receipt", icon: ArrowDownToLine },
       { label: "Adjust Stock", href: "/inventory/adjust", icon: Plus },
       { label: "Transfer Stock", href: "/inventory/transfer", icon: ArrowRightLeft },
       { label: "Physical Count", href: "/inventory/stock-counts", icon: ClipboardList },
@@ -220,6 +222,7 @@ function isInventoryRouteVisible(item: NavItem, features: InventoryFeatureSet) {
   if (item.href === "/inventory") return features.inventory;
   if (item.href === "/inventory/assemblies") return features.kits;
   if (item.href === "/inventory/warehouses") return features.warehouses;
+  if (item.href === "/inventory/goods-receipt") return features.goodsReceipt;
   if (item.href === "/inventory/adjust") return features.inventory;
   if (item.href === "/inventory/transfer") return features.warehouses;
   if (item.href === "/inventory/stock-counts") return features.inventory;

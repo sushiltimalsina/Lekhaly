@@ -347,7 +347,7 @@ export default function InventoryDashboardPage() {
             color="purple"
           />
         )}
-        {features.inventory && (
+        {features.goodsReceipt && (
           <QuickLink
             href="/inventory/goods-receipt"
             icon={ArrowDownToLine}

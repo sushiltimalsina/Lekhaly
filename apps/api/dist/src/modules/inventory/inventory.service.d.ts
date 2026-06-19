@@ -21,6 +21,7 @@ export declare class InventoryService {
         expiryTrackingEnabled?: boolean;
         serialTrackingEnabled?: boolean;
         kitsEnabled?: boolean;
+        goodsReceiptWorkflowEnabled?: boolean;
         allowNegativeStock?: boolean;
         requireWarehouseOnMovements?: boolean;
         defaultWarehouseId?: string | null;
@@ -28,6 +29,9 @@ export declare class InventoryService {
     }): Promise<{
         id: string;
         companyId: string;
+        createdAt: Date;
+        updatedAt: Date;
+        defaultWarehouseId: string | null;
         inventoryTrackingEnabled: boolean;
         warehousesEnabled: boolean;
         binsEnabled: boolean;
@@ -36,12 +40,10 @@ export declare class InventoryService {
         expiryTrackingEnabled: boolean;
         serialTrackingEnabled: boolean;
         kitsEnabled: boolean;
+        goodsReceiptWorkflowEnabled: boolean;
         allowNegativeStock: boolean;
         requireWarehouseOnMovements: boolean;
-        defaultWarehouseId: string | null;
         costingMethod: string;
-        createdAt: Date;
-        updatedAt: Date;
     }>;
     private assertSettingsCanChange;
     private normalizeSerialNumbers;
@@ -380,10 +382,10 @@ export declare class InventoryService {
         }[];
         expiringSoon: {
             qty: number;
-            itemId: string;
             batchNo: string | null;
             lotNo: string | null;
             expiryDate: Date | null;
+            itemId: string;
             _sum: {
                 qtyIn: Prisma.Decimal | null;
                 qtyOut: Prisma.Decimal | null;
@@ -520,27 +522,27 @@ export declare class InventoryService {
         take?: number;
     }): Promise<({
         item: {
-            name: string;
             id: string;
+            name: string;
             sku: string | null;
         };
         warehouse: {
-            name: string;
             id: string;
+            name: string;
         } | null;
         bin: {
-            name: string;
             id: string;
+            name: string;
         } | null;
     } & {
         id: string;
         companyId: string;
+        status: string;
         createdAt: Date;
         updatedAt: Date;
         itemId: string;
         warehouseId: string | null;
         binId: string | null;
-        status: string;
         serialNo: string;
         purchaseInvoiceId: string | null;
         salesInvoiceId: string | null;
@@ -551,8 +553,8 @@ export declare class InventoryService {
         binId?: string;
     }): Promise<{
         item: {
-            name: string;
             id: string;
+            name: string;
             sku: string | null;
             isSerialized: boolean;
             tracksBatch: boolean;
