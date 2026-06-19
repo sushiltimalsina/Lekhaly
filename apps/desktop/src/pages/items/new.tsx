@@ -13,9 +13,9 @@ import { listItemGroups, type ItemGroupRecord } from "@/lib/api/item-groups";
 import { listWarehouses, type Warehouse, type WarehouseBin } from "@/lib/api/warehouses";
 import { cn } from "@/lib/utils";
 import { hasItemPolicyTracking, inventoryFeatures } from "@/lib/inventory-features";
-import { useNavigate, Link, useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
-  ArrowLeft, PackagePlus, Save, Plus, X, Layers,
+  PackagePlus, Save, Plus, X, Layers,
   ShieldCheck, AlertTriangle, Package, BookOpen, DollarSign
 } from "lucide-react";
 import AddUnitDialog from "@/components/app/add-unit-dialog";
@@ -323,11 +323,8 @@ export default function NewItemPage() {
         title={isEditMode ? "Edit Item" : "Add New Item"}
         description={isEditMode ? "Update item details, pricing, and inventory policy." : "Create a goods or services item with full inventory and accounting setup."}
         icon={PackagePlus}
-        actions={
-          <Link to="/items" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition">
-            <ArrowLeft className="h-4 w-4" /> Back to Items
-          </Link>
-        }
+        backHref="/items"
+        backLabel="Back to Items"
       />
 
       <form onSubmit={onSubmit} className="space-y-8">

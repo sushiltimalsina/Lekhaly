@@ -21,6 +21,107 @@ export declare const StockQuerySchema: z.ZodObject<{
     from: z.ZodOptional<z.ZodCoercedDate<unknown>>;
     to: z.ZodOptional<z.ZodCoercedDate<unknown>>;
 }, z.core.$strip>;
+export declare const GoodsReceiptSchema: z.ZodObject<{
+    receiptNo: z.ZodOptional<z.ZodString>;
+    purchaseOrderId: z.ZodOptional<z.ZodString>;
+    supplierId: z.ZodOptional<z.ZodString>;
+    date: z.ZodOptional<z.ZodCoercedDate<unknown>>;
+    dateBs: z.ZodOptional<z.ZodString>;
+    memo: z.ZodOptional<z.ZodString>;
+    lines: z.ZodArray<z.ZodObject<{
+        itemId: z.ZodString;
+        qty: z.ZodNumber;
+        rate: z.ZodOptional<z.ZodNumber>;
+        warehouseId: z.ZodOptional<z.ZodString>;
+        binId: z.ZodOptional<z.ZodString>;
+        batchNo: z.ZodOptional<z.ZodString>;
+        lotNo: z.ZodOptional<z.ZodString>;
+        expiryDate: z.ZodOptional<z.ZodCoercedDate<unknown>>;
+        expiryDateBs: z.ZodOptional<z.ZodString>;
+        serialNumbers: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+export declare const StockDispatchSchema: z.ZodObject<{
+    dispatchNo: z.ZodOptional<z.ZodString>;
+    salesOrderId: z.ZodOptional<z.ZodString>;
+    customerId: z.ZodOptional<z.ZodString>;
+    date: z.ZodOptional<z.ZodCoercedDate<unknown>>;
+    dateBs: z.ZodOptional<z.ZodString>;
+    memo: z.ZodOptional<z.ZodString>;
+    lines: z.ZodArray<z.ZodObject<{
+        itemId: z.ZodString;
+        qty: z.ZodNumber;
+        rate: z.ZodOptional<z.ZodNumber>;
+        warehouseId: z.ZodOptional<z.ZodString>;
+        binId: z.ZodOptional<z.ZodString>;
+        batchNo: z.ZodOptional<z.ZodString>;
+        lotNo: z.ZodOptional<z.ZodString>;
+        expiryDate: z.ZodOptional<z.ZodCoercedDate<unknown>>;
+        expiryDateBs: z.ZodOptional<z.ZodString>;
+        serialNumbers: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+export declare const SalesOrderReservationSchema: z.ZodObject<{
+    salesOrderId: z.ZodString;
+    expiresAt: z.ZodOptional<z.ZodCoercedDate<unknown>>;
+}, z.core.$strip>;
+export declare const ReservationQuerySchema: z.ZodObject<{
+    itemId: z.ZodOptional<z.ZodString>;
+    salesOrderId: z.ZodOptional<z.ZodString>;
+    status: z.ZodOptional<z.ZodEnum<{
+        active: "active";
+        partial: "partial";
+        fulfilled: "fulfilled";
+        released: "released";
+        cancelled: "cancelled";
+    }>>;
+    take: z.ZodOptional<z.ZodCoercedNumber<unknown>>;
+}, z.core.$strip>;
+export declare const MovementApprovalRequestSchema: z.ZodObject<{
+    movementType: z.ZodEnum<{
+        adjustment: "adjustment";
+        transfer: "transfer";
+    }>;
+    payload: z.ZodRecord<z.ZodString, z.ZodAny>;
+    reason: z.ZodOptional<z.ZodString>;
+}, z.core.$strip>;
+export declare const MovementApprovalQuerySchema: z.ZodObject<{
+    status: z.ZodOptional<z.ZodEnum<{
+        pending: "pending";
+        approved: "approved";
+        rejected: "rejected";
+        reversed: "reversed";
+    }>>;
+    movementType: z.ZodOptional<z.ZodEnum<{
+        adjustment: "adjustment";
+        transfer: "transfer";
+    }>>;
+    take: z.ZodOptional<z.ZodCoercedNumber<unknown>>;
+}, z.core.$strip>;
+export declare const MovementApprovalActionSchema: z.ZodObject<{
+    reason: z.ZodOptional<z.ZodString>;
+}, z.core.$strip>;
+export declare const InventoryPeriodCloseSchema: z.ZodObject<{
+    periodFrom: z.ZodOptional<z.ZodCoercedDate<unknown>>;
+    periodFromBs: z.ZodOptional<z.ZodString>;
+    periodTo: z.ZodOptional<z.ZodCoercedDate<unknown>>;
+    periodToBs: z.ZodOptional<z.ZodString>;
+}, z.core.$strip>;
+export declare const InventoryPeriodCloseQuerySchema: z.ZodObject<{
+    status: z.ZodOptional<z.ZodEnum<{
+        closed: "closed";
+        reopened: "reopened";
+    }>>;
+    take: z.ZodOptional<z.ZodCoercedNumber<unknown>>;
+}, z.core.$strip>;
+export declare const BatchLotMasterQuerySchema: z.ZodObject<{
+    itemId: z.ZodOptional<z.ZodString>;
+    warehouseId: z.ZodOptional<z.ZodString>;
+    binId: z.ZodOptional<z.ZodString>;
+    q: z.ZodOptional<z.ZodString>;
+    includeZero: z.ZodOptional<z.ZodCoercedBoolean<unknown>>;
+    take: z.ZodOptional<z.ZodCoercedNumber<unknown>>;
+}, z.core.$strip>;
 export declare const StockAgingQuerySchema: z.ZodObject<{
     asOf: z.ZodOptional<z.ZodCoercedDate<unknown>>;
     asOfBs: z.ZodOptional<z.ZodString>;

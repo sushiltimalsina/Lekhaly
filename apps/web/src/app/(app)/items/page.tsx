@@ -34,7 +34,6 @@ import {
   transferInventoryStock,
 } from "@/lib/api/inventory";
 import AddItemDialog from "@/components/app/add-item-dialog";
-import AddGroupDialog from "@/components/app/add-group-dialog";
 import { inventoryFeatures } from "@/lib/inventory-features";
 import { listWarehouses, type Warehouse as WarehouseRecord, type WarehouseBin } from "@/lib/api/warehouses";
 import AddWarehouseDialog from "@/components/app/add-warehouse-dialog";
@@ -372,7 +371,6 @@ export default function ItemsPage() {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [addItemOpen, setAddItemOpen] = React.useState(false);
-  const [addGroupOpen, setAddGroupOpen] = React.useState(false);
   const [visibleColumnKeys, setVisibleColumnKeys] = React.useState<StockColumnKey[]>(DEFAULT_VISIBLE_STOCK_COLUMNS);
   const [columnsReady, setColumnsReady] = React.useState(false);
   const [activeDatePreset, setActiveDatePreset] = React.useState<DatePreset | null>(null);
@@ -1843,10 +1841,6 @@ export default function ItemsPage() {
               document.body
             )}
             </div>
-            <Button variant="outline" onClick={() => setAddGroupOpen(true)} className="h-10 rounded-xl border-border/50 bg-background/70 px-4 font-semibold">
-              <Plus className="mr-2 h-4 w-4" />
-              New Group
-            </Button>
             <Button onClick={() => setAddItemOpen(true)} className="h-10 rounded-xl shadow-lg shadow-primary/20">
               <Plus className="mr-2 h-4 w-4" />
               New Item
@@ -2124,13 +2118,6 @@ export default function ItemsPage() {
         }}
       />
 
-      <AddGroupDialog
-        open={addGroupOpen}
-        onClose={() => setAddGroupOpen(false)}
-        onSuccess={() => {
-          // No need to refresh stock report but could refresh group list if we had one
-        }}
-      />
       {importWizardOpen ? (
         <div className="fixed inset-0 z-[1600] bg-black/30 backdrop-blur-sm p-4" onClick={() => setImportWizardOpen(false)}>
           <div className="mx-auto mt-6 w-full max-w-6xl rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-800 dark:bg-slate-950" onClick={(e) => e.stopPropagation()}>

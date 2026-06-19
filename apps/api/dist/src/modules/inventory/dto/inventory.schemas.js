@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SerialMovementQuerySchema = exports.SerialQuerySchema = exports.InventorySettingsSchema = exports.InventoryAlertsQuerySchema = exports.StockTransferSchema = exports.TrackedStockQuerySchema = exports.StockValuationQuerySchema = exports.StockAgingQuerySchema = exports.StockQuerySchema = exports.StockAdjustmentSchema = void 0;
+exports.SerialMovementQuerySchema = exports.SerialQuerySchema = exports.InventorySettingsSchema = exports.InventoryAlertsQuerySchema = exports.StockTransferSchema = exports.TrackedStockQuerySchema = exports.StockValuationQuerySchema = exports.StockAgingQuerySchema = exports.BatchLotMasterQuerySchema = exports.InventoryPeriodCloseQuerySchema = exports.InventoryPeriodCloseSchema = exports.MovementApprovalActionSchema = exports.MovementApprovalQuerySchema = exports.MovementApprovalRequestSchema = exports.ReservationQuerySchema = exports.SalesOrderReservationSchema = exports.StockDispatchSchema = exports.GoodsReceiptSchema = exports.StockQuerySchema = exports.StockAdjustmentSchema = void 0;
 const zod_1 = require("zod");
 exports.StockAdjustmentSchema = zod_1.z.object({
     itemId: zod_1.z.string().uuid(),
@@ -34,6 +34,92 @@ exports.StockAdjustmentSchema = zod_1.z.object({
 exports.StockQuerySchema = zod_1.z.object({
     from: zod_1.z.coerce.date().optional(),
     to: zod_1.z.coerce.date().optional()
+});
+const TrackedMovementLineSchema = zod_1.z.object({
+    itemId: zod_1.z.string().uuid(),
+    qty: zod_1.z.number().positive(),
+    rate: zod_1.z.number().nonnegative().optional(),
+    warehouseId: zod_1.z.string().uuid().optional(),
+    binId: zod_1.z.string().uuid().optional(),
+    batchNo: zod_1.z.string().trim().max(64).optional(),
+    lotNo: zod_1.z.string().trim().max(64).optional(),
+    expiryDate: zod_1.z.coerce.date().optional(),
+    expiryDateBs: zod_1.z.string().trim().max(20).optional(),
+    serialNumbers: zod_1.z.array(zod_1.z.string().trim().min(1).max(120)).optional()
+});
+exports.GoodsReceiptSchema = zod_1.z.object({
+    receiptNo: zod_1.z.string().trim().max(64).optional(),
+    purchaseOrderId: zod_1.z.string().uuid().optional(),
+    supplierId: zod_1.z.string().uuid().optional(),
+    date: zod_1.z.coerce.date().optional(),
+    dateBs: zod_1.z.string().trim().max(20).optional(),
+    memo: zod_1.z.string().trim().max(255).optional(),
+    lines: zod_1.z.array(TrackedMovementLineSchema).min(1)
+}).superRefine((data, ctx) => {
+    if (!data.date && !data.dateBs) {
+        ctx.addIssue({ code: "custom", message: "date or dateBs is required", path: ["date"] });
+    }
+});
+exports.StockDispatchSchema = zod_1.z.object({
+    dispatchNo: zod_1.z.string().trim().max(64).optional(),
+    salesOrderId: zod_1.z.string().uuid().optional(),
+    customerId: zod_1.z.string().uuid().optional(),
+    date: zod_1.z.coerce.date().optional(),
+    dateBs: zod_1.z.string().trim().max(20).optional(),
+    memo: zod_1.z.string().trim().max(255).optional(),
+    lines: zod_1.z.array(TrackedMovementLineSchema).min(1)
+}).superRefine((data, ctx) => {
+    if (!data.date && !data.dateBs) {
+        ctx.addIssue({ code: "custom", message: "date or dateBs is required", path: ["date"] });
+    }
+});
+exports.SalesOrderReservationSchema = zod_1.z.object({
+    salesOrderId: zod_1.z.string().uuid(),
+    expiresAt: zod_1.z.coerce.date().optional()
+});
+exports.ReservationQuerySchema = zod_1.z.object({
+    itemId: zod_1.z.string().uuid().optional(),
+    salesOrderId: zod_1.z.string().uuid().optional(),
+    status: zod_1.z.enum(["active", "partial", "fulfilled", "released", "cancelled"]).optional(),
+    take: zod_1.z.coerce.number().int().min(1).max(1000).optional()
+});
+exports.MovementApprovalRequestSchema = zod_1.z.object({
+    movementType: zod_1.z.enum(["adjustment", "transfer"]),
+    payload: zod_1.z.record(zod_1.z.string(), zod_1.z.any()),
+    reason: zod_1.z.string().trim().max(255).optional()
+});
+exports.MovementApprovalQuerySchema = zod_1.z.object({
+    status: zod_1.z.enum(["pending", "approved", "rejected", "reversed"]).optional(),
+    movementType: zod_1.z.enum(["adjustment", "transfer"]).optional(),
+    take: zod_1.z.coerce.number().int().min(1).max(1000).optional()
+});
+exports.MovementApprovalActionSchema = zod_1.z.object({
+    reason: zod_1.z.string().trim().max(255).optional()
+});
+exports.InventoryPeriodCloseSchema = zod_1.z.object({
+    periodFrom: zod_1.z.coerce.date().optional(),
+    periodFromBs: zod_1.z.string().trim().max(20).optional(),
+    periodTo: zod_1.z.coerce.date().optional(),
+    periodToBs: zod_1.z.string().trim().max(20).optional()
+}).superRefine((data, ctx) => {
+    if (!data.periodFrom && !data.periodFromBs) {
+        ctx.addIssue({ code: "custom", message: "periodFrom or periodFromBs is required", path: ["periodFrom"] });
+    }
+    if (!data.periodTo && !data.periodToBs) {
+        ctx.addIssue({ code: "custom", message: "periodTo or periodToBs is required", path: ["periodTo"] });
+    }
+});
+exports.InventoryPeriodCloseQuerySchema = zod_1.z.object({
+    status: zod_1.z.enum(["closed", "reopened"]).optional(),
+    take: zod_1.z.coerce.number().int().min(1).max(1000).optional()
+});
+exports.BatchLotMasterQuerySchema = zod_1.z.object({
+    itemId: zod_1.z.string().uuid().optional(),
+    warehouseId: zod_1.z.string().uuid().optional(),
+    binId: zod_1.z.string().uuid().optional(),
+    q: zod_1.z.string().trim().max(120).optional(),
+    includeZero: zod_1.z.coerce.boolean().optional(),
+    take: zod_1.z.coerce.number().int().min(1).max(1000).optional()
 });
 exports.StockAgingQuerySchema = zod_1.z.object({
     asOf: zod_1.z.coerce.date().optional(),

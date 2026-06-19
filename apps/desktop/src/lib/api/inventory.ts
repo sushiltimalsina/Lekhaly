@@ -239,6 +239,159 @@ export async function getInventoryAlerts(query?: { expiringWithinDays?: number; 
   });
 }
 
+export type StockReservationRecord = {
+  id: string;
+  salesOrderId?: string | null;
+  salesOrderItemId?: string | null;
+  itemId: string;
+  warehouseId?: string | null;
+  binId?: string | null;
+  batchNo?: string | null;
+  lotNo?: string | null;
+  expiryDate?: string | null;
+  expiryDateBs?: string | null;
+  qty: number;
+  reservedQty: number;
+  releasedQty: number;
+  fulfilledQty: number;
+  status: string;
+  expiresAt?: string | null;
+};
+
+export type InventoryMovementLineInput = {
+  itemId: string;
+  qty: number;
+  rate?: number;
+  warehouseId?: string;
+  binId?: string;
+  batchNo?: string;
+  lotNo?: string;
+  expiryDate?: string;
+  expiryDateBs?: string;
+  serialNumbers?: string[];
+};
+
+export type GoodsReceiptInput = {
+  receiptNo?: string;
+  purchaseOrderId?: string;
+  supplierId?: string;
+  date?: string;
+  dateBs?: string;
+  memo?: string;
+  lines: InventoryMovementLineInput[];
+};
+
+export type StockDispatchInput = {
+  dispatchNo?: string;
+  salesOrderId?: string;
+  customerId?: string;
+  date?: string;
+  dateBs?: string;
+  memo?: string;
+  lines: InventoryMovementLineInput[];
+};
+
+export type InventoryMovementApproval = {
+  id: string;
+  movementType: "adjustment" | "transfer";
+  status: "pending" | "approved" | "rejected" | "reversed";
+  payloadJson: unknown;
+  reason?: string | null;
+  postedVoucherId?: string | null;
+  reversalVoucherId?: string | null;
+};
+
+export type InventoryPeriodClose = {
+  id: string;
+  periodFrom: string;
+  periodFromBs?: string | null;
+  periodTo: string;
+  periodToBs?: string | null;
+  status: string;
+  costingMethod?: string | null;
+  totalQty: number;
+  totalValue: number;
+  snapshotJson: unknown;
+};
+
+export async function reserveSalesOrderStock(input: { salesOrderId: string; expiresAt?: string }) {
+  return apiRequest<{ ok: boolean; salesOrderId: string; reservations: StockReservationRecord[] }>({
+    path: "/inventory/reservations/sales-order",
+    method: "POST",
+    body: input,
+  });
+}
+
+export async function listStockReservations(query?: { itemId?: string; salesOrderId?: string; status?: string; take?: number }) {
+  return apiRequest<StockReservationRecord[]>({ path: "/inventory/reservations", query });
+}
+
+export async function releaseStockReservation(id: string) {
+  return apiRequest<StockReservationRecord>({ path: `/inventory/reservations/${id}/release`, method: "POST" });
+}
+
+export async function postGoodsReceipt(input: GoodsReceiptInput) {
+  return apiRequest<{ ok: boolean; receiptId: string; lines: unknown[] }>({
+    path: "/inventory/goods-receipts",
+    method: "POST",
+    body: input,
+  });
+}
+
+export async function postStockDispatch(input: StockDispatchInput) {
+  return apiRequest<{ ok: boolean; dispatchId: string; lines: unknown[] }>({
+    path: "/inventory/dispatches",
+    method: "POST",
+    body: input,
+  });
+}
+
+export async function listBatchLotMaster(query?: { itemId?: string; warehouseId?: string; binId?: string; q?: string; includeZero?: boolean; take?: number }) {
+  return apiRequest<unknown[]>({ path: "/inventory/batch-lots", query });
+}
+
+export async function getReorderSuggestions() {
+  return apiRequest<Array<StockReportRow & { availableQty: number; reorderLevel: number; suggestedQty: number }>>({
+    path: "/inventory/reorder-suggestions",
+  });
+}
+
+export async function listInventoryMovementApprovals(query?: { status?: string; movementType?: string; take?: number }) {
+  return apiRequest<InventoryMovementApproval[]>({ path: "/inventory/movement-approvals", query });
+}
+
+export async function createInventoryMovementApproval(input: { movementType: "adjustment" | "transfer"; payload: Record<string, unknown>; reason?: string }) {
+  return apiRequest<InventoryMovementApproval>({
+    path: "/inventory/movement-approvals",
+    method: "POST",
+    body: input,
+  });
+}
+
+export async function approveInventoryMovement(id: string, input?: { reason?: string }) {
+  return apiRequest<InventoryMovementApproval>({ path: `/inventory/movement-approvals/${id}/approve`, method: "POST", body: input ?? {} });
+}
+
+export async function rejectInventoryMovement(id: string, input?: { reason?: string }) {
+  return apiRequest<InventoryMovementApproval>({ path: `/inventory/movement-approvals/${id}/reject`, method: "POST", body: input ?? {} });
+}
+
+export async function reverseInventoryMovement(id: string, input?: { reason?: string }) {
+  return apiRequest<InventoryMovementApproval>({ path: `/inventory/movement-approvals/${id}/reverse`, method: "POST", body: input ?? {} });
+}
+
+export async function listInventoryPeriodCloses(query?: { status?: string; take?: number }) {
+  return apiRequest<InventoryPeriodClose[]>({ path: "/inventory/period-closes", query });
+}
+
+export async function closeInventoryPeriod(input: { periodFrom?: string; periodFromBs?: string; periodTo?: string; periodToBs?: string }) {
+  return apiRequest<InventoryPeriodClose>({
+    path: "/inventory/period-closes",
+    method: "POST",
+    body: input,
+  });
+}
+
 export type StockAdjustmentInput = {
   itemId: string;
   date?: string;

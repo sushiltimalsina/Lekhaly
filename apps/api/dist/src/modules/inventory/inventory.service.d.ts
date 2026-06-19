@@ -28,9 +28,6 @@ export declare class InventoryService {
     }): Promise<{
         id: string;
         companyId: string;
-        createdAt: Date;
-        updatedAt: Date;
-        defaultWarehouseId: string | null;
         inventoryTrackingEnabled: boolean;
         warehousesEnabled: boolean;
         binsEnabled: boolean;
@@ -41,7 +38,10 @@ export declare class InventoryService {
         kitsEnabled: boolean;
         allowNegativeStock: boolean;
         requireWarehouseOnMovements: boolean;
+        defaultWarehouseId: string | null;
         costingMethod: string;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     private assertSettingsCanChange;
     private normalizeSerialNumbers;
@@ -380,10 +380,10 @@ export declare class InventoryService {
         }[];
         expiringSoon: {
             qty: number;
+            itemId: string;
             batchNo: string | null;
             lotNo: string | null;
             expiryDate: Date | null;
-            itemId: string;
             _sum: {
                 qtyIn: Prisma.Decimal | null;
                 qtyOut: Prisma.Decimal | null;
@@ -395,6 +395,107 @@ export declare class InventoryService {
             sku: any;
         }[];
     }>;
+    listReservations(user: AuthUser, query: {
+        itemId?: string;
+        salesOrderId?: string;
+        status?: string;
+        take?: number;
+    }): Promise<any>;
+    reserveSalesOrderStock(user: AuthUser, salesOrderId: string, options: {
+        expiresAt?: Date;
+    }): Promise<{
+        ok: boolean;
+        salesOrderId: string;
+        reservations: any[];
+    }>;
+    releaseReservation(user: AuthUser, id: string): Promise<any>;
+    private refreshTrackedStockMaster;
+    postGoodsReceipt(user: AuthUser, input: {
+        receiptNo?: string;
+        purchaseOrderId?: string;
+        supplierId?: string;
+        date?: Date;
+        dateBs?: string;
+        memo?: string;
+        lines: Array<{
+            itemId: string;
+            qty: number;
+            rate?: number;
+            warehouseId?: string;
+            binId?: string;
+            batchNo?: string;
+            lotNo?: string;
+            expiryDate?: Date;
+            expiryDateBs?: string;
+            serialNumbers?: string[];
+        }>;
+    }): Promise<{
+        ok: boolean;
+        receiptId: any;
+        lines: any[];
+    }>;
+    postStockDispatch(user: AuthUser, input: {
+        dispatchNo?: string;
+        salesOrderId?: string;
+        customerId?: string;
+        date?: Date;
+        dateBs?: string;
+        memo?: string;
+        lines: Array<{
+            itemId: string;
+            qty: number;
+            rate?: number;
+            warehouseId?: string;
+            binId?: string;
+            batchNo?: string;
+            lotNo?: string;
+            expiryDate?: Date;
+            expiryDateBs?: string;
+            serialNumbers?: string[];
+        }>;
+    }): Promise<{
+        ok: boolean;
+        dispatchId: any;
+        lines: any[];
+    }>;
+    listBatchLotMaster(user: AuthUser, query: {
+        itemId?: string;
+        warehouseId?: string;
+        binId?: string;
+        q?: string;
+        includeZero?: boolean;
+        take?: number;
+    }): Promise<any>;
+    getReorderSuggestions(user: AuthUser): Promise<any[]>;
+    listMovementApprovals(user: AuthUser, query: {
+        status?: string;
+        movementType?: string;
+        take?: number;
+    }): Promise<any>;
+    createMovementApproval(user: AuthUser, input: {
+        movementType: "adjustment" | "transfer";
+        payload: any;
+        reason?: string;
+    }): Promise<any>;
+    approveMovementApproval(user: AuthUser, id: string, input: {
+        reason?: string;
+    }): Promise<any>;
+    rejectMovementApproval(user: AuthUser, id: string, input: {
+        reason?: string;
+    }): Promise<any>;
+    reverseMovementApproval(user: AuthUser, id: string, input: {
+        reason?: string;
+    }): Promise<any>;
+    listPeriodCloses(user: AuthUser, query: {
+        status?: string;
+        take?: number;
+    }): Promise<any>;
+    closeInventoryPeriod(user: AuthUser, input: {
+        periodFrom?: Date;
+        periodFromBs?: string;
+        periodTo?: Date;
+        periodToBs?: string;
+    }): Promise<any>;
     listSerialNumbers(user: AuthUser, query: {
         itemId?: string;
         status?: string;
@@ -402,27 +503,27 @@ export declare class InventoryService {
         take?: number;
     }): Promise<({
         item: {
-            id: string;
             name: string;
+            id: string;
             sku: string | null;
         };
         warehouse: {
-            id: string;
             name: string;
+            id: string;
         } | null;
         bin: {
-            id: string;
             name: string;
+            id: string;
         } | null;
     } & {
         id: string;
         companyId: string;
-        status: string;
         createdAt: Date;
         updatedAt: Date;
         itemId: string;
         warehouseId: string | null;
         binId: string | null;
+        status: string;
         serialNo: string;
         purchaseInvoiceId: string | null;
         salesInvoiceId: string | null;
@@ -433,8 +534,8 @@ export declare class InventoryService {
         binId?: string;
     }): Promise<{
         item: {
-            id: string;
             name: string;
+            id: string;
             sku: string | null;
             isSerialized: boolean;
             tracksBatch: boolean;

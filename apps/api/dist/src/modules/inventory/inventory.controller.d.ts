@@ -7,9 +7,6 @@ export declare class InventoryController {
     updateSettings(user: AuthUser, body: any): Promise<{
         id: string;
         companyId: string;
-        createdAt: Date;
-        updatedAt: Date;
-        defaultWarehouseId: string | null;
         inventoryTrackingEnabled: boolean;
         warehousesEnabled: boolean;
         binsEnabled: boolean;
@@ -20,31 +17,34 @@ export declare class InventoryController {
         kitsEnabled: boolean;
         allowNegativeStock: boolean;
         requireWarehouseOnMovements: boolean;
+        defaultWarehouseId: string | null;
         costingMethod: string;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     serials(user: AuthUser, query: any): Promise<({
         item: {
-            id: string;
             name: string;
+            id: string;
             sku: string | null;
         };
         warehouse: {
-            id: string;
             name: string;
+            id: string;
         } | null;
         bin: {
-            id: string;
             name: string;
+            id: string;
         } | null;
     } & {
         id: string;
         companyId: string;
-        status: string;
         createdAt: Date;
         updatedAt: Date;
         itemId: string;
         warehouseId: string | null;
         binId: string | null;
+        status: string;
         serialNo: string;
         purchaseInvoiceId: string | null;
         salesInvoiceId: string | null;
@@ -54,6 +54,23 @@ export declare class InventoryController {
         ok: boolean;
         voucherId: string;
     }>;
+    goodsReceipt(user: AuthUser, body: any): Promise<{
+        ok: boolean;
+        receiptId: any;
+        lines: any[];
+    }>;
+    dispatch(user: AuthUser, body: any): Promise<{
+        ok: boolean;
+        dispatchId: any;
+        lines: any[];
+    }>;
+    reservations(user: AuthUser, query: any): Promise<any>;
+    reserveSalesOrder(user: AuthUser, body: any): Promise<{
+        ok: boolean;
+        salesOrderId: string;
+        reservations: any[];
+    }>;
+    releaseReservation(user: AuthUser, id: string): Promise<any>;
     report(user: AuthUser, query: any): Promise<{
         id: string;
         name: string;
@@ -189,10 +206,12 @@ export declare class InventoryController {
             }[];
         }[];
     }>;
+    batchLots(user: AuthUser, query: any): Promise<any>;
+    reorderSuggestions(user: AuthUser): Promise<any[]>;
     trackedStock(user: AuthUser, query: any): Promise<{
         item: {
-            id: string;
             name: string;
+            id: string;
             sku: string | null;
             isSerialized: boolean;
             tracksBatch: boolean;
@@ -224,6 +243,13 @@ export declare class InventoryController {
         ok: boolean;
         voucherId: string;
     }>;
+    movementApprovals(user: AuthUser, query: any): Promise<any>;
+    createMovementApproval(user: AuthUser, body: any): Promise<any>;
+    approveMovement(user: AuthUser, id: string, body: any): Promise<any>;
+    rejectMovement(user: AuthUser, id: string, body: any): Promise<any>;
+    reverseMovement(user: AuthUser, id: string, body: any): Promise<any>;
+    periodCloses(user: AuthUser, query: any): Promise<any>;
+    closePeriod(user: AuthUser, body: any): Promise<any>;
     alerts(user: AuthUser, query: any): Promise<{
         meta: {
             expiringWithinDays: number;
@@ -250,10 +276,10 @@ export declare class InventoryController {
         }[];
         expiringSoon: {
             qty: number;
+            itemId: string;
             batchNo: string | null;
             lotNo: string | null;
             expiryDate: Date | null;
-            itemId: string;
             _sum: {
                 qtyIn: import("@prisma/client/runtime/client").Decimal | null;
                 qtyOut: import("@prisma/client/runtime/client").Decimal | null;

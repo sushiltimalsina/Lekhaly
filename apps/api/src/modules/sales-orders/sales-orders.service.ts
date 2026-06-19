@@ -44,6 +44,73 @@ export class SalesOrdersService {
         return { subtotal, vatAmount, total };
     }
 
+    private async tryReserveOrderItems(tx: Prisma.TransactionClient, companyId: string, order: any) {
+        const db = tx as any;
+        if (!db.stockReservation) return;
+
+        for (const line of order.items ?? []) {
+            if (!line.itemId) continue;
+            const item = await tx.item.findFirst({
+                where: { id: line.itemId, companyId },
+                select: { id: true, type: true, trackInventory: true }
+            });
+            if (!item || item.type === "services" || item.trackInventory === false) continue;
+
+            const requiredQty = new Prisma.Decimal(line.qty ?? 0).sub(new Prisma.Decimal(line.fulfilledQty ?? 0));
+            if (requiredQty.lte(0)) continue;
+
+            const [stock, reservations] = await Promise.all([
+                tx.stockLedger.aggregate({
+                    where: { companyId, itemId: line.itemId },
+                    _sum: { qtyIn: true, qtyOut: true }
+                }),
+                db.stockReservation.findMany({
+                    where: { companyId, itemId: line.itemId, status: { in: ["active", "partial"] } },
+                    select: { reservedQty: true, releasedQty: true, fulfilledQty: true }
+                }).catch(() => [])
+            ]);
+
+            const onHand = new Prisma.Decimal(stock._sum.qtyIn ?? 0).sub(new Prisma.Decimal(stock._sum.qtyOut ?? 0));
+            const alreadyReserved = reservations.reduce(
+                (sum: Prisma.Decimal, row: any) => sum.add(row.reservedQty).sub(row.releasedQty).sub(row.fulfilledQty),
+                new Prisma.Decimal(0)
+            );
+            const available = onHand.sub(alreadyReserved);
+            const reservedQty = Prisma.Decimal.min(requiredQty, available.gt(0) ? available : new Prisma.Decimal(0));
+
+            await db.stockReservation.create({
+                data: {
+                    companyId,
+                    salesOrderId: order.id,
+                    salesOrderItemId: line.id,
+                    itemId: line.itemId,
+                    qty: requiredQty,
+                    reservedQty,
+                    fulfilledQty: new Prisma.Decimal(line.fulfilledQty ?? 0),
+                    status: reservedQty.gte(requiredQty) ? "active" : "partial"
+                }
+            }).catch(() => null);
+        }
+    }
+
+    private async releaseOrderReservations(tx: Prisma.TransactionClient, companyId: string, salesOrderId: string) {
+        const db = tx as any;
+        if (!db.stockReservation) return;
+        const reservations = await db.stockReservation.findMany({
+            where: { companyId, salesOrderId, status: { in: ["active", "partial"] } }
+        }).catch(() => []);
+        for (const reservation of reservations) {
+            const openQty = reservation.reservedQty.sub(reservation.releasedQty).sub(reservation.fulfilledQty);
+            await db.stockReservation.update({
+                where: { id: reservation.id },
+                data: {
+                    releasedQty: reservation.releasedQty.add(openQty.gt(0) ? openQty : new Prisma.Decimal(0)),
+                    status: "released"
+                }
+            }).catch(() => null);
+        }
+    }
+
     async create(user: AuthUser, input: any) {
         await this.validateItems(user.companyId, input.items);
 
@@ -103,7 +170,7 @@ export class SalesOrdersService {
                 data: { nextOrderNumber: sequence + 1 }
             });
 
-            return await tx.salesOrder.create({
+            const order = await tx.salesOrder.create({
                 data: {
                     companyId: user.companyId,
                     partyId: input.partyId,
@@ -143,6 +210,8 @@ export class SalesOrdersService {
                 },
                 include: { items: true, sundries: true }
             });
+            await this.tryReserveOrderItems(tx, user.companyId, order);
+            return order;
         });
     }
 
@@ -194,9 +263,13 @@ export class SalesOrdersService {
             where: { id, companyId: user.companyId }
         });
         if (!order) throw new NotFoundException("Sales order not found");
-        return this.prisma.salesOrder.update({
-            where: { id },
-            data: { status: SalesOrderStatus.cancelled }
+        return this.prisma.$transaction(async (tx) => {
+            const cancelled = await tx.salesOrder.update({
+                where: { id },
+                data: { status: SalesOrderStatus.cancelled }
+            });
+            await this.releaseOrderReservations(tx, user.companyId, id);
+            return cancelled;
         });
     }
 

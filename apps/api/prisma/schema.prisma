@@ -78,61 +78,61 @@ enum PdfJobStatus {
 }
 
 model Company {
-  id           String @id @default(uuid())
+  id           String  @id @default(uuid())
   code         String? @unique
   name         String
-  baseCurrency String @default("NPR")
-  timezone     String @default("Asia/Kathmandu")
+  baseCurrency String  @default("NPR")
+  timezone     String  @default("Asia/Kathmandu")
 
   fiscalYearStartMonth Int @default(4) // Nepal common FY start is mid-April; UI can configure.
 
   // Profile Information
-  address             String?
-  phone               String?
-  email               String?
-  panNumber           String?
-  vatNumber           String?
+  address   String?
+  phone     String?
+  email     String?
+  panNumber String?
+  vatNumber String?
 
   // numbering + lock settings
-  invoicePrefix       String    @default("SI")
-  purchasePrefix      String    @default("PURI")
-  salesReturnPrefix   String    @default("SR")
-  purchaseReturnPrefix String   @default("PR")
-  orderPrefix         String    @default("SO")
-  quotationPrefix     String    @default("QT")
-  purchaseOrderPrefix String    @default("PO")
-  receiptPrefix       String    @default("RV")
-  paymentPrefix       String    @default("PV")
-  journalPrefix       String    @default("JV")
-  contraPrefix        String    @default("CV")
+  invoicePrefix        String @default("SI")
+  purchasePrefix       String @default("PURI")
+  salesReturnPrefix    String @default("SR")
+  purchaseReturnPrefix String @default("PR")
+  orderPrefix          String @default("SO")
+  quotationPrefix      String @default("QT")
+  purchaseOrderPrefix  String @default("PO")
+  receiptPrefix        String @default("RV")
+  paymentPrefix        String @default("PV")
+  journalPrefix        String @default("JV")
+  contraPrefix         String @default("CV")
 
-  invoiceSuffix       String    @default("80/81")
-  purchaseSuffix      String    @default("80/81")
-  salesReturnSuffix   String    @default("80/81")
-  purchaseReturnSuffix String   @default("80/81")
-  orderSuffix         String    @default("80/81")
-  quotationSuffix     String    @default("80/81")
-  purchaseOrderSuffix String    @default("80/81")
-  receiptSuffix       String    @default("80/81")
-  paymentSuffix       String    @default("80/81")
-  journalSuffix       String    @default("80/81")
-  contraSuffix        String    @default("80/81")
+  invoiceSuffix        String @default("80/81")
+  purchaseSuffix       String @default("80/81")
+  salesReturnSuffix    String @default("80/81")
+  purchaseReturnSuffix String @default("80/81")
+  orderSuffix          String @default("80/81")
+  quotationSuffix      String @default("80/81")
+  purchaseOrderSuffix  String @default("80/81")
+  receiptSuffix        String @default("80/81")
+  paymentSuffix        String @default("80/81")
+  journalSuffix        String @default("80/81")
+  contraSuffix         String @default("80/81")
 
-  nextInvoiceNumber   Int       @default(1)
-  nextPurchaseNumber  Int       @default(1)
-  nextSalesReturnNumber Int     @default(1)
-  nextPurchaseReturnNumber Int   @default(1)
-  nextOrderNumber     Int       @default(1)
-  nextQuotationNumber Int       @default(1)
-  nextPurchaseOrderNumber Int @default(1)
-  nextReceiptNumber   Int       @default(1)
-  nextPaymentNumber   Int       @default(1)
-  nextJournalNumber   Int       @default(1)
-  nextContraNumber    Int       @default(1)
+  nextInvoiceNumber        Int @default(1)
+  nextPurchaseNumber       Int @default(1)
+  nextSalesReturnNumber    Int @default(1)
+  nextPurchaseReturnNumber Int @default(1)
+  nextOrderNumber          Int @default(1)
+  nextQuotationNumber      Int @default(1)
+  nextPurchaseOrderNumber  Int @default(1)
+  nextReceiptNumber        Int @default(1)
+  nextPaymentNumber        Int @default(1)
+  nextJournalNumber        Int @default(1)
+  nextContraNumber         Int @default(1)
 
-  lockDate            DateTime?
-  creditLimitAmount   Decimal   @default(0) @db.Decimal(14, 2)
-  printLogo           Boolean   @default(true)
+  lockDate          DateTime?
+  creditLimitAmount Decimal   @default(0) @db.Decimal(14, 2)
+  printLogo         Boolean   @default(true)
 
   activeFiscalSessionId String?
   fiscalSessions        FiscalSession[]
@@ -175,11 +175,11 @@ model Company {
   purchaseOrders     PurchaseOrder[]
   proformaInvoices   ProformaInvoice[]
 
-  changeLog ChangeLog[]
-  paymentMethods PaymentMethod[]
-  saleTypes      SaleType[]
-  purchaseTypes  PurchaseType[]
-  stockCounts    StockCount[]
+  changeLog         ChangeLog[]
+  paymentMethods    PaymentMethod[]
+  saleTypes         SaleType[]
+  purchaseTypes     PurchaseType[]
+  stockCounts       StockCount[]
   inventorySettings InventorySettings?
 }
 
@@ -201,19 +201,19 @@ model User {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  userRoles       UserRole[]
-  sessions        AuthSession[]
-  backupCodes     BackupCode[]
-  createdVouchers Voucher[]     @relation("VoucherCreatedBy")
-  postedVouchers  Voucher[]     @relation("VoucherPostedBy")
-  voidedVouchers  Voucher[]     @relation("VoucherVoidedBy")
-    auditLogs       AuditLog[]
-    changeLogs      ChangeLog[]
-    uploadedVoucherAttachments VoucherAttachment[]
+  userRoles                  UserRole[]
+  sessions                   AuthSession[]
+  backupCodes                BackupCode[]
+  createdVouchers            Voucher[]           @relation("VoucherCreatedBy")
+  postedVouchers             Voucher[]           @relation("VoucherPostedBy")
+  voidedVouchers             Voucher[]           @relation("VoucherVoidedBy")
+  auditLogs                  AuditLog[]
+  changeLogs                 ChangeLog[]
+  uploadedVoucherAttachments VoucherAttachment[]
 
-  deviceLinks DeviceUserLink[]
+  deviceLinks      DeviceUserLink[]
   apiIdempotencies ApiIdempotency[]
-  stockCounts      StockCount[] @relation("StockCountCreator")
+  stockCounts      StockCount[]     @relation("StockCountCreator")
 
   @@unique([companyId, email])
   @@index([companyId, status])
@@ -225,7 +225,7 @@ model Role {
   company   Company @relation(fields: [companyId], references: [id])
 
   name      String
-  sortOrder Int @default(0)
+  sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -306,14 +306,14 @@ model Party {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  vouchers     Voucher[]
-  voucherLines VoucherLine[]
-  expenses     Expense[]
+  vouchers         Voucher[]
+  voucherLines     VoucherLine[]
+  expenses         Expense[]
   vatRegisterLines VatRegisterLine[]
-  invoices     Invoice[]
-  quotations   Quotation[]
-  salesOrders  SalesOrder[]
-  purchaseOrders PurchaseOrder[]
+  invoices         Invoice[]
+  quotations       Quotation[]
+  salesOrders      SalesOrder[]
+  purchaseOrders   PurchaseOrder[]
 
   @@index([companyId, type, isActive])
   @@index([companyId, name])
@@ -327,8 +327,8 @@ model ChartOfAccount {
   code     String
   name     String
   type     CoaType
-  level    Int      @default(0)
-  isGroup  Boolean  @default(false)
+  level    Int              @default(0)
+  isGroup  Boolean          @default(false)
   parentId String?
   parent   ChartOfAccount?  @relation("CoaTree", fields: [parentId], references: [id])
   children ChartOfAccount[] @relation("CoaTree")
@@ -339,19 +339,19 @@ model ChartOfAccount {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  voucherLines   VoucherLine[]
-  incomeItems    Item[]        @relation("IncomeAccount")
-  expenseItems   Item[]        @relation("ExpenseAccount")
+  voucherLines          VoucherLine[]
+  incomeItems           Item[]                @relation("IncomeAccount")
+  expenseItems          Item[]                @relation("ExpenseAccount")
   // Back-relations for Tax codes
-    inputTaxCodes  TaxCode[]     @relation("TaxInputAccount")
-    outputTaxCodes TaxCode[]     @relation("TaxOutputAccount")
-    bankAccounts   BankAccount[]
-    invoices       Invoice[]     @relation("InvoiceReceivableAccount")
-    billSundries   BillSundry[]
-    invoiceSundries InvoiceSundry[]
-    quotationSundries QuotationSundry[]
-    salesOrderSundries SalesOrderSundry[]
-    purchaseOrderSundries PurchaseOrderSundry[]
+  inputTaxCodes         TaxCode[]             @relation("TaxInputAccount")
+  outputTaxCodes        TaxCode[]             @relation("TaxOutputAccount")
+  bankAccounts          BankAccount[]
+  invoices              Invoice[]             @relation("InvoiceReceivableAccount")
+  billSundries          BillSundry[]
+  invoiceSundries       InvoiceSundry[]
+  quotationSundries     QuotationSundry[]
+  salesOrderSundries    SalesOrderSundry[]
+  purchaseOrderSundries PurchaseOrderSundry[]
 
   @@unique([companyId, code])
   @@index([companyId, type])
@@ -373,41 +373,41 @@ model TaxCode {
   outputTaxAccount   ChartOfAccount? @relation("TaxOutputAccount", fields: [outputTaxAccountId], references: [id])
 
   isActive  Boolean  @default(true)
-  sortOrder Int @default(0)
+  sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  voucherLines     VoucherLine[]
-  items            Item[]
-  itemTaxCodes     ItemTaxCode[]
-  invoiceItems     InvoiceItem[]
-  invoiceItemTaxes InvoiceItemTax[]
-  quotationItems   QuotationItem[]
-  salesOrderItems  SalesOrderItem[]
+  voucherLines       VoucherLine[]
+  items              Item[]
+  itemTaxCodes       ItemTaxCode[]
+  invoiceItems       InvoiceItem[]
+  invoiceItemTaxes   InvoiceItemTax[]
+  quotationItems     QuotationItem[]
+  salesOrderItems    SalesOrderItem[]
   purchaseOrderItems PurchaseOrderItem[]
-  expenses         Expense[]
-  vatRegisterLines VatRegisterLine[]
+  expenses           Expense[]
+  vatRegisterLines   VatRegisterLine[]
 
   @@index([companyId, isActive])
 }
 
 model BillSundry {
-  id        String   @id @default(uuid())
+  id        String          @id @default(uuid())
   companyId String
-  company   Company  @relation(fields: [companyId], references: [id])
+  company   Company         @relation(fields: [companyId], references: [id])
   name      String
-  type      String   @default("add") // add | less
-  rate      Decimal? @db.Decimal(10, 2)
+  type      String          @default("add") // add | less
+  rate      Decimal?        @db.Decimal(10, 2)
   accountId String?
   account   ChartOfAccount? @relation(fields: [accountId], references: [id])
-  isActive  Boolean  @default(true)
-  sortOrder Int @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  isActive  Boolean         @default(true)
+  sortOrder Int             @default(0)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
 
-  invoiceSundries InvoiceSundry[]
-  quotationSundries QuotationSundry[]
-  salesOrderSundries SalesOrderSundry[]
+  invoiceSundries       InvoiceSundry[]
+  quotationSundries     QuotationSundry[]
+  salesOrderSundries    SalesOrderSundry[]
   purchaseOrderSundries PurchaseOrderSundry[]
 
   @@unique([companyId, name])
@@ -442,12 +442,12 @@ model BankStatement {
   bankAccountId String
   bankAccount   BankAccount @relation(fields: [bankAccountId], references: [id])
 
-    periodFrom     DateTime
-    periodFromBs   String?
-    periodTo       DateTime
-    periodToBs     String?
-  openingBalance Decimal @db.Decimal(14, 2)
-  closingBalance Decimal @db.Decimal(14, 2)
+  periodFrom     DateTime
+  periodFromBs   String?
+  periodTo       DateTime
+  periodToBs     String?
+  openingBalance Decimal  @db.Decimal(14, 2)
+  closingBalance Decimal  @db.Decimal(14, 2)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -465,10 +465,10 @@ model BankStatementLine {
   statementId String
   statement   BankStatement @relation(fields: [statementId], references: [id], onDelete: Cascade)
 
-    date        DateTime
-    dateBs      String?
+  date        DateTime
+  dateBs      String?
   description String?
-  amount      Decimal @db.Decimal(14, 2)
+  amount      Decimal  @db.Decimal(14, 2)
   debitCredit String // debit | credit
 
   matchedVoucherId String?
@@ -490,12 +490,12 @@ model Item {
   groupId String?
   group   ItemGroup? @relation(fields: [groupId], references: [id])
 
-  name String
-  sku  String?
-  hsCode String?
-  unit String?
+  name     String
+  sku      String?
+  hsCode   String?
+  unit     String?
   baseUnit String?
-  type ItemType @default(goods)
+  type     ItemType @default(goods)
 
   salesPrice    Decimal? @db.Decimal(14, 2)
   purchasePrice Decimal? @db.Decimal(14, 2)
@@ -508,41 +508,41 @@ model Item {
   expenseAccountId String?
   expenseAccount   ChartOfAccount? @relation("ExpenseAccount", fields: [expenseAccountId], references: [id])
 
-  taxCodeId    String?
-  taxCode      TaxCode? @relation(fields: [taxCodeId], references: [id])
-  itemTaxCodes ItemTaxCode[]
-  uomConversions ItemUomConversion[]
-  voucherLines VoucherLine[]
-  invoiceItems InvoiceItem[]
-  quotationItems QuotationItem[]
-  salesOrderItems SalesOrderItem[]
+  taxCodeId          String?
+  taxCode            TaxCode?            @relation(fields: [taxCodeId], references: [id])
+  itemTaxCodes       ItemTaxCode[]
+  uomConversions     ItemUomConversion[]
+  voucherLines       VoucherLine[]
+  invoiceItems       InvoiceItem[]
+  quotationItems     QuotationItem[]
+  salesOrderItems    SalesOrderItem[]
   purchaseOrderItems PurchaseOrderItem[]
 
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  stockLedger StockLedger[]
+  stockLedger     StockLedger[]
   stockCountLines StockCountLine[]
 
-  trackInventory Boolean  @default(true)
-  isSerialized   Boolean  @default(false)
-  isKit          Boolean  @default(false)
-  tracksBatch    Boolean  @default(false)
-  tracksLot      Boolean  @default(false)
-  tracksExpiry   Boolean  @default(false)
-  minStockLevel  Decimal? @db.Decimal(14, 2)
-  reorderQty     Decimal? @db.Decimal(14, 2)
-  defaultWarehouseId String?
-  defaultBinId       String?
-  defaultBatchNo     String?
-  defaultLotNo       String?
-  defaultExpiryDate  DateTime?
+  trackInventory      Boolean   @default(true)
+  isSerialized        Boolean   @default(false)
+  isKit               Boolean   @default(false)
+  tracksBatch         Boolean   @default(false)
+  tracksLot           Boolean   @default(false)
+  tracksExpiry        Boolean   @default(false)
+  minStockLevel       Decimal?  @db.Decimal(14, 2)
+  reorderQty          Decimal?  @db.Decimal(14, 2)
+  defaultWarehouseId  String?
+  defaultBinId        String?
+  defaultBatchNo      String?
+  defaultLotNo        String?
+  defaultExpiryDate   DateTime?
   defaultExpiryDateBs String?
 
-  components     ItemComponent[] @relation("KitComponents")
-  usedInKits     ItemComponent[] @relation("ComponentOfKit")
-  serialNumbers  SerialNumber[]
+  components    ItemComponent[] @relation("KitComponents")
+  usedInKits    ItemComponent[] @relation("ComponentOfKit")
+  serialNumbers SerialNumber[]
 
   @@unique([companyId, name])
 }
@@ -552,20 +552,20 @@ model InventorySettings {
   companyId String  @unique
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  inventoryTrackingEnabled Boolean @default(true)
-  warehousesEnabled        Boolean @default(false)
-  binsEnabled              Boolean @default(false)
-  batchTrackingEnabled     Boolean @default(false)
-  lotTrackingEnabled       Boolean @default(false)
-  expiryTrackingEnabled    Boolean @default(false)
-  serialTrackingEnabled    Boolean @default(false)
-  kitsEnabled              Boolean @default(false)
-  allowNegativeStock       Boolean @default(false)
-  requireWarehouseOnMovements Boolean @default(false)
-  defaultWarehouseId       String?
-  costingMethod            String  @default("moving_average")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  inventoryTrackingEnabled    Boolean  @default(true)
+  warehousesEnabled           Boolean  @default(false)
+  binsEnabled                 Boolean  @default(false)
+  batchTrackingEnabled        Boolean  @default(false)
+  lotTrackingEnabled          Boolean  @default(false)
+  expiryTrackingEnabled       Boolean  @default(false)
+  serialTrackingEnabled       Boolean  @default(false)
+  kitsEnabled                 Boolean  @default(false)
+  allowNegativeStock          Boolean  @default(false)
+  requireWarehouseOnMovements Boolean  @default(false)
+  defaultWarehouseId          String?
+  costingMethod               String   @default("moving_average")
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
 
   @@index([companyId])
 }
@@ -575,7 +575,7 @@ model Unit {
   companyId String
   company   Company  @relation(fields: [companyId], references: [id])
   name      String
-  sortOrder Int @default(0)
+  sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -587,7 +587,7 @@ model ItemGroup {
   companyId String
   company   Company  @relation(fields: [companyId], references: [id])
   name      String
-  sortOrder Int @default(0)
+  sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -601,13 +601,13 @@ model ItemComponent {
   companyId String
   company   Company @relation(fields: [companyId], references: [id])
 
-  parentId  String
-  parent    Item    @relation("KitComponents", fields: [parentId], references: [id], onDelete: Cascade)
+  parentId String
+  parent   Item   @relation("KitComponents", fields: [parentId], references: [id], onDelete: Cascade)
 
   componentId String
-  component   Item  @relation("ComponentOfKit", fields: [componentId], references: [id], onDelete: Cascade)
+  component   Item   @relation("ComponentOfKit", fields: [componentId], references: [id], onDelete: Cascade)
 
-  qty       Decimal @db.Decimal(14, 2)
+  qty Decimal @db.Decimal(14, 2)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -621,24 +621,24 @@ model SerialNumber {
   companyId String
   company   Company @relation(fields: [companyId], references: [id])
 
-  itemId    String
-  item      Item    @relation(fields: [itemId], references: [id])
+  itemId String
+  item   Item   @relation(fields: [itemId], references: [id])
 
-  serialNo  String
+  serialNo String
 
   warehouseId String?
   warehouse   Warehouse? @relation(fields: [warehouseId], references: [id])
 
-  binId       String?
-  bin         WarehouseBin? @relation(fields: [binId], references: [id])
+  binId String?
+  bin   WarehouseBin? @relation(fields: [binId], references: [id])
 
-  status    String @default("available") // available, sold, returned, reserved
+  status String @default("available") // available, sold, returned, reserved
 
   purchaseInvoiceId String?
   purchaseInvoice   Invoice? @relation("SerialNumberPurchase", fields: [purchaseInvoiceId], references: [id])
 
-  salesInvoiceId    String?
-  salesInvoice      Invoice? @relation("SerialNumberSales", fields: [salesInvoiceId], references: [id])
+  salesInvoiceId String?
+  salesInvoice   Invoice? @relation("SerialNumberSales", fields: [salesInvoiceId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -676,7 +676,7 @@ model Voucher {
   partyId String?
   party   Party?  @relation(fields: [partyId], references: [id])
 
-  memo String?
+  memo           String?
   additionalNote String? @db.Text
 
   source String @default("api") // web|desktop|sync|ai_client later
@@ -704,14 +704,14 @@ model Voucher {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  lines VoucherLine[]
-  attachments VoucherAttachment[]
+  lines              VoucherLine[]
+  attachments        VoucherAttachment[]
   bankStatementLines BankStatementLine[]
-  invoice Invoice?
-  stockLedger StockLedger[]
-  expenses Expense[]
-  vatRegisterLines VatRegisterLine[]
-  proformas ProformaInvoice[]
+  invoice            Invoice?
+  stockLedger        StockLedger[]
+  expenses           Expense[]
+  vatRegisterLines   VatRegisterLine[]
+  proformas          ProformaInvoice[]
 
   fiscalSessionId String?
   fiscalSession   FiscalSession? @relation(fields: [fiscalSessionId], references: [id])
@@ -725,7 +725,7 @@ model Invoice {
   companyId String
   company   Company @relation(fields: [companyId], references: [id])
 
-  voucherId String? @unique
+  voucherId String?  @unique
   voucher   Voucher? @relation(fields: [voucherId], references: [id])
 
   invoiceNo   String?
@@ -733,31 +733,31 @@ model Invoice {
   type        String // sales | sales_return
 
   partyId String
-  party   Party @relation(fields: [partyId], references: [id])
+  party   Party  @relation(fields: [partyId], references: [id])
 
   receivableAccountId String
   receivableAccount   ChartOfAccount @relation("InvoiceReceivableAccount", fields: [receivableAccountId], references: [id])
 
-  date    DateTime
-  dateBs  String?
-  dueDate DateTime?
+  date      DateTime
+  dateBs    String?
+  dueDate   DateTime?
   dueDateBs String?
 
-  subtotal  Decimal @db.Decimal(14, 2)
-  vatAmount Decimal @db.Decimal(14, 2)
-  total     Decimal @db.Decimal(14, 2)
-  status    String
-  memo      String?
+  subtotal       Decimal @db.Decimal(14, 2)
+  vatAmount      Decimal @db.Decimal(14, 2)
+  total          Decimal @db.Decimal(14, 2)
+  status         String
+  memo           String?
   additionalNote String? @db.Text
 
-  items     InvoiceItem[]
-  sundries  InvoiceSundry[]
+  items    InvoiceItem[]
+  sundries InvoiceSundry[]
 
   paymentMethodId String?
   paymentMethod   PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
 
-  saleTypeId      String?
-  saleType        SaleType?      @relation(fields: [saleTypeId], references: [id])
+  saleTypeId String?
+  saleType   SaleType? @relation(fields: [saleTypeId], references: [id])
 
   purchasedSerialNumbers SerialNumber[] @relation("SerialNumberPurchase")
   soldSerialNumbers      SerialNumber[] @relation("SerialNumberSales")
@@ -774,28 +774,28 @@ model InvoiceItem {
   invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
   itemId String?
-  item   Item? @relation(fields: [itemId], references: [id])
+  item   Item?   @relation(fields: [itemId], references: [id])
 
-  description String?
-  qty         Decimal @db.Decimal(14, 2)
-  rate        Decimal @db.Decimal(14, 2)
-  amount      Decimal @db.Decimal(14, 2)
+  description      String?
+  qty              Decimal  @db.Decimal(14, 2)
+  rate             Decimal  @db.Decimal(14, 2)
+  amount           Decimal  @db.Decimal(14, 2)
   landedCostAmount Decimal? @db.Decimal(14, 2)
 
   taxCodeId String?
-  taxCode   TaxCode? @relation(fields: [taxCodeId], references: [id])
-  taxAmount Decimal @db.Decimal(14, 2)
+  taxCode   TaxCode?         @relation(fields: [taxCodeId], references: [id])
+  taxAmount Decimal          @db.Decimal(14, 2)
   taxes     InvoiceItemTax[]
 
-  warehouseId String?
-  warehouse   Warehouse? @relation(fields: [warehouseId], references: [id])
-  binId       String?
-  bin         WarehouseBin? @relation(fields: [binId], references: [id])
-  batchNo     String?
-  lotNo       String?
-  expiryDate  DateTime?
-  expiryDateBs String?
-  serialNumbers String[] @default([])
+  warehouseId   String?
+  warehouse     Warehouse?    @relation(fields: [warehouseId], references: [id])
+  binId         String?
+  bin           WarehouseBin? @relation(fields: [binId], references: [id])
+  batchNo       String?
+  lotNo         String?
+  expiryDate    DateTime?
+  expiryDateBs  String?
+  serialNumbers String[]      @default([])
 
   createdAt DateTime @default(now())
 
@@ -803,12 +803,12 @@ model InvoiceItem {
 }
 
 model InvoiceItemTax {
-  id            String  @id @default(uuid())
+  id            String      @id @default(uuid())
   invoiceItemId String
   invoiceItem   InvoiceItem @relation(fields: [invoiceItemId], references: [id], onDelete: Cascade)
   taxCodeId     String
-  taxCode       TaxCode @relation(fields: [taxCodeId], references: [id])
-  taxAmount     Decimal @db.Decimal(14, 2)
+  taxCode       TaxCode     @relation(fields: [taxCodeId], references: [id])
+  taxAmount     Decimal     @db.Decimal(14, 2)
 
   @@unique([invoiceItemId, taxCodeId])
 }
@@ -821,10 +821,10 @@ model InvoiceSundry {
   billSundryId String?
   billSundry   BillSundry? @relation(fields: [billSundryId], references: [id])
 
-  name      String
-  type      String   // add | less
-  rate      Decimal? @db.Decimal(10, 2)
-  amount    Decimal  @db.Decimal(14, 2)
+  name   String
+  type   String // add | less
+  rate   Decimal? @db.Decimal(10, 2)
+  amount Decimal  @db.Decimal(14, 2)
 
   accountId String?
   account   ChartOfAccount? @relation(fields: [accountId], references: [id])
@@ -837,27 +837,27 @@ model StockLedger {
   companyId String
   company   Company @relation(fields: [companyId], references: [id])
 
-  itemId String
-  item   Item @relation(fields: [itemId], references: [id])
+  itemId      String
+  item        Item          @relation(fields: [itemId], references: [id])
   warehouseId String?
-  warehouse   Warehouse? @relation(fields: [warehouseId], references: [id])
+  warehouse   Warehouse?    @relation(fields: [warehouseId], references: [id])
   binId       String?
   bin         WarehouseBin? @relation(fields: [binId], references: [id])
 
-  date     DateTime
-  dateBs   String?
-  voucherId String?
-  voucher   Voucher? @relation(fields: [voucherId], references: [id])
+  date               DateTime
+  dateBs             String?
+  voucherId          String?
+  voucher            Voucher? @relation(fields: [voucherId], references: [id])
   sourceDocumentType String?
   sourceDocumentId   String?
 
-  qtyIn  Decimal @db.Decimal(14, 2)
-  qtyOut Decimal @db.Decimal(14, 2)
-  rate   Decimal @db.Decimal(14, 2)
-  amount Decimal @db.Decimal(14, 2)
-  batchNo    String?
-  lotNo      String?
-  expiryDate DateTime?
+  qtyIn        Decimal   @db.Decimal(14, 2)
+  qtyOut       Decimal   @db.Decimal(14, 2)
+  rate         Decimal   @db.Decimal(14, 2)
+  amount       Decimal   @db.Decimal(14, 2)
+  batchNo      String?
+  lotNo        String?
+  expiryDate   DateTime?
   expiryDateBs String?
 
   createdAt DateTime @default(now())
@@ -868,26 +868,26 @@ model StockLedger {
 }
 
 model InventoryLayer {
-  id        String  @id @default(uuid())
+  id        String @id @default(uuid())
   companyId String
   itemId    String
 
-  sourceLedgerId String?
+  sourceLedgerId  String?
   sourceVoucherId String?
-  sourceType String @default("movement")
+  sourceType      String  @default("movement")
 
-  warehouseId String?
-  binId       String?
-  batchNo     String?
-  lotNo       String?
-  expiryDate  DateTime?
+  warehouseId  String?
+  binId        String?
+  batchNo      String?
+  lotNo        String?
+  expiryDate   DateTime?
   expiryDateBs String?
 
   receivedDate DateTime
-  qtyIn        Decimal @db.Decimal(14, 2)
-  remainingQty Decimal @db.Decimal(14, 2)
-  unitCost     Decimal @db.Decimal(14, 6)
-  totalCost    Decimal @db.Decimal(14, 2)
+  qtyIn        Decimal  @db.Decimal(14, 2)
+  remainingQty Decimal  @db.Decimal(14, 2)
+  unitCost     Decimal  @db.Decimal(14, 6)
+  totalCost    Decimal  @db.Decimal(14, 2)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -899,26 +899,26 @@ model InventoryLayer {
 }
 
 model SerialNumberMovement {
-  id        String @id @default(uuid())
-  companyId String
-  itemId    String
+  id             String @id @default(uuid())
+  companyId      String
+  itemId         String
   serialNumberId String
 
-  serialNo String
-  voucherId String?
+  serialNo      String
+  voucherId     String?
   stockLedgerId String?
-  movementType String
+  movementType  String
 
-  statusFrom String?
-  statusTo   String?
+  statusFrom      String?
+  statusTo        String?
   fromWarehouseId String?
   fromBinId       String?
   toWarehouseId   String?
   toBinId         String?
 
-  movementDate DateTime
+  movementDate   DateTime
   movementDateBs String?
-  createdAt DateTime @default(now())
+  createdAt      DateTime @default(now())
 
   @@index([companyId, itemId, movementDate])
   @@index([companyId, serialNo])
@@ -926,13 +926,207 @@ model SerialNumberMovement {
   @@index([voucherId])
 }
 
-model ItemUomConversion {
+model StockReservation {
   id        String @id @default(uuid())
+  companyId String
+
+  salesOrderId     String?
+  salesOrderItemId String?
+  itemId           String
+
+  warehouseId   String?
+  binId         String?
+  batchNo       String?
+  lotNo         String?
+  expiryDate    DateTime?
+  expiryDateBs  String?
+  serialNumbers String[]  @default([])
+
+  qty          Decimal @db.Decimal(14, 2)
+  reservedQty  Decimal @default(0) @db.Decimal(14, 2)
+  releasedQty  Decimal @default(0) @db.Decimal(14, 2)
+  fulfilledQty Decimal @default(0) @db.Decimal(14, 2)
+  status       String  @default("active") // active | partial | fulfilled | released | cancelled
+
+  reservedAt DateTime  @default(now())
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([companyId, itemId, status])
+  @@index([companyId, salesOrderId])
+  @@index([companyId, warehouseId, binId])
+  @@index([companyId, batchNo, lotNo, expiryDate])
+}
+
+model InventoryTrackedStockMaster {
+  id        String @id @default(uuid())
+  companyId String
   itemId    String
-  item      Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  warehouseId  String?
+  binId        String?
+  batchNo      String?
+  lotNo        String?
+  expiryDate   DateTime?
+  expiryDateBs String?
+  status       String    @default("active") // active | blocked | expired | closed
+
+  firstReceivedAt DateTime?
+  lastMovementAt  DateTime?
+  currentQty      Decimal   @default(0) @db.Decimal(14, 2)
+  reservedQty     Decimal   @default(0) @db.Decimal(14, 2)
+  unitCost        Decimal   @default(0) @db.Decimal(14, 6)
+  value           Decimal   @default(0) @db.Decimal(14, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId, itemId])
+  @@index([companyId, warehouseId, binId])
+  @@index([companyId, batchNo, lotNo, expiryDate])
+}
+
+model GoodsReceipt {
+  id              String    @id @default(uuid())
+  companyId       String
+  receiptNo       String?
+  purchaseOrderId String?
+  supplierId      String?
+  date            DateTime
+  dateBs          String?
+  status          String    @default("posted") // draft | posted | reversed
+  memo            String?
+  postedByUserId  String?
+  postedAt        DateTime?
+  reversedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  lines GoodsReceiptLine[]
+
+  @@index([companyId, date])
+  @@index([companyId, purchaseOrderId])
+}
+
+model GoodsReceiptLine {
+  id             String       @id @default(uuid())
+  goodsReceiptId String
+  goodsReceipt   GoodsReceipt @relation(fields: [goodsReceiptId], references: [id], onDelete: Cascade)
+  itemId         String
+  qty            Decimal      @db.Decimal(14, 2)
+  rate           Decimal      @default(0) @db.Decimal(14, 6)
+  amount         Decimal      @default(0) @db.Decimal(14, 2)
+  warehouseId    String?
+  binId          String?
+  batchNo        String?
+  lotNo          String?
+  expiryDate     DateTime?
+  expiryDateBs   String?
+  stockLedgerId  String?
+  createdAt      DateTime     @default(now())
+
+  @@index([goodsReceiptId])
+  @@index([itemId])
+}
+
+model StockDispatch {
+  id             String    @id @default(uuid())
+  companyId      String
+  dispatchNo     String?
+  salesOrderId   String?
+  customerId     String?
+  date           DateTime
+  dateBs         String?
+  status         String    @default("posted") // draft | posted | reversed
+  memo           String?
+  postedByUserId String?
+  postedAt       DateTime?
+  reversedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  lines StockDispatchLine[]
+
+  @@index([companyId, date])
+  @@index([companyId, salesOrderId])
+}
+
+model StockDispatchLine {
+  id              String        @id @default(uuid())
+  stockDispatchId String
+  stockDispatch   StockDispatch @relation(fields: [stockDispatchId], references: [id], onDelete: Cascade)
+  itemId          String
+  qty             Decimal       @db.Decimal(14, 2)
+  rate            Decimal       @default(0) @db.Decimal(14, 6)
+  amount          Decimal       @default(0) @db.Decimal(14, 2)
+  warehouseId     String?
+  binId           String?
+  batchNo         String?
+  lotNo           String?
+  expiryDate      DateTime?
+  expiryDateBs    String?
+  stockLedgerId   String?
+  createdAt       DateTime      @default(now())
+
+  @@index([stockDispatchId])
+  @@index([itemId])
+}
+
+model InventoryMovementApproval {
+  id                String    @id @default(uuid())
+  companyId         String
+  movementType      String // adjustment | transfer
+  status            String    @default("pending") // pending | approved | rejected | reversed
+  payloadJson       Json
+  reason            String?
+  requestedByUserId String?
+  approvedByUserId  String?
+  rejectedByUserId  String?
+  reversedByUserId  String?
+  postedVoucherId   String?
+  reversalVoucherId String?
+  requestedAt       DateTime  @default(now())
+  approvedAt        DateTime?
+  rejectedAt        DateTime?
+  reversedAt        DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([companyId, status])
+  @@index([companyId, movementType])
+}
+
+model InventoryPeriodClose {
+  id               String    @id @default(uuid())
+  companyId        String
+  periodFrom       DateTime
+  periodFromBs     String?
+  periodTo         DateTime
+  periodToBs       String?
+  status           String    @default("closed") // closed | reopened
+  costingMethod    String?
+  totalQty         Decimal   @default(0) @db.Decimal(14, 2)
+  totalValue       Decimal   @default(0) @db.Decimal(14, 2)
+  snapshotJson     Json
+  closedByUserId   String?
+  reopenedByUserId String?
+  closedAt         DateTime  @default(now())
+  reopenedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([companyId, periodFrom, periodTo])
+  @@index([companyId, periodTo])
+}
+
+model ItemUomConversion {
+  id        String   @id @default(uuid())
+  itemId    String
+  item      Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
   unit      String
-  factor    Decimal @db.Decimal(14, 6) // unit -> baseUnit multiplier
-  isBase    Boolean @default(false)
+  factor    Decimal  @db.Decimal(14, 6) // unit -> baseUnit multiplier
+  isBase    Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -947,47 +1141,47 @@ model Warehouse {
 
   name      String
   code      String?
-  isActive  Boolean @default(true)
-  sortOrder Int @default(0)
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  bins        WarehouseBin[]
-  stockLedger StockLedger[]
-  stockCounts StockCount[]
+  bins          WarehouseBin[]
+  stockLedger   StockLedger[]
+  stockCounts   StockCount[]
   serialNumbers SerialNumber[]
-  invoiceItems InvoiceItem[]
-  voucherLines VoucherLine[]
+  invoiceItems  InvoiceItem[]
+  voucherLines  VoucherLine[]
 
   @@unique([companyId, name])
   @@index([companyId, isActive])
 }
 
 model WarehouseBin {
-  id          String  @id @default(uuid())
+  id          String    @id @default(uuid())
   companyId   String
-  company     Company @relation(fields: [companyId], references: [id])
+  company     Company   @relation(fields: [companyId], references: [id])
   warehouseId String
   warehouse   Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
 
   name      String
   code      String?
-  isActive  Boolean @default(true)
-  sortOrder Int @default(0)
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  stockLedger StockLedger[]
+  stockLedger     StockLedger[]
   stockCountLines StockCountLine[]
   serialNumbers   SerialNumber[]
-  invoiceItems InvoiceItem[]
-  voucherLines VoucherLine[]
+  invoiceItems    InvoiceItem[]
+  voucherLines    VoucherLine[]
 
   @@unique([warehouseId, name])
   @@index([companyId, warehouseId, isActive])
 }
 
-  model VoucherLine {
+model VoucherLine {
   id String @id @default(uuid())
 
   voucherId String
@@ -1012,52 +1206,52 @@ model WarehouseBin {
   debit  Decimal @default(0) @db.Decimal(14, 2)
   credit Decimal @default(0) @db.Decimal(14, 2)
 
-  qty    Decimal @default(0) @db.Decimal(14, 2)
+  qty Decimal @default(0) @db.Decimal(14, 2)
 
   taxCodeId String?
   taxCode   TaxCode? @relation(fields: [taxCodeId], references: [id])
 
-    taxAmount Decimal @default(0) @db.Decimal(14, 2)
+  taxAmount Decimal @default(0) @db.Decimal(14, 2)
 
-    warehouseId String?
-    warehouse   Warehouse? @relation(fields: [warehouseId], references: [id])
-    binId       String?
-    bin         WarehouseBin? @relation(fields: [binId], references: [id])
-    batchNo     String?
-    lotNo       String?
-    expiryDate  DateTime?
-    expiryDateBs String?
-    serialNumbers String[] @default([])
-
-    createdAt DateTime @default(now())
-
-    bankStatementLines BankStatementLine[]
-
-    @@index([companyId, accountId, createdAt])
-    @@index([companyId, partyId, createdAt])
-    @@index([warehouseId, binId])
-  }
-
-model VoucherAttachment {
-    id        String  @id @default(uuid())
-    companyId String
-    company   Company @relation(fields: [companyId], references: [id])
-
-    voucherId String
-    voucher   Voucher @relation(fields: [voucherId], references: [id], onDelete: Cascade)
-
-    uploadedByUserId String?
-    uploadedByUser   User? @relation(fields: [uploadedByUserId], references: [id])
-
-    fileName   String
-    mimeType   String
-    sizeBytes  Int
-    storageKey String
+  warehouseId   String?
+  warehouse     Warehouse?    @relation(fields: [warehouseId], references: [id])
+  binId         String?
+  bin           WarehouseBin? @relation(fields: [binId], references: [id])
+  batchNo       String?
+  lotNo         String?
+  expiryDate    DateTime?
+  expiryDateBs  String?
+  serialNumbers String[]      @default([])
 
   createdAt DateTime @default(now())
 
+  bankStatementLines BankStatementLine[]
+
+  @@index([companyId, accountId, createdAt])
+  @@index([companyId, partyId, createdAt])
+  @@index([warehouseId, binId])
+}
+
+model VoucherAttachment {
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  voucherId String
+  voucher   Voucher @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+
+  uploadedByUserId String?
+  uploadedByUser   User?   @relation(fields: [uploadedByUserId], references: [id])
+
+  fileName   String
+  mimeType   String
+  sizeBytes  Int
+  storageKey String
+
+  createdAt DateTime  @default(now())
+  expenses  Expense[]
+
   @@index([companyId, voucherId, createdAt])
-  expenses Expense[]
 }
 
 model Expense {
@@ -1065,17 +1259,17 @@ model Expense {
   companyId String
   company   Company @relation(fields: [companyId], references: [id])
 
-  voucherId String? @unique
+  voucherId String?  @unique
   voucher   Voucher? @relation(fields: [voucherId], references: [id])
 
-  date       DateTime
-  dateBs     String?
-  vendorId   String?
-  vendor     Party? @relation(fields: [vendorId], references: [id])
-  amount     Decimal @db.Decimal(14, 2)
-  taxCodeId  String?
-  taxCode    TaxCode? @relation(fields: [taxCodeId], references: [id])
-  description String?
+  date         DateTime
+  dateBs       String?
+  vendorId     String?
+  vendor       Party?             @relation(fields: [vendorId], references: [id])
+  amount       Decimal            @db.Decimal(14, 2)
+  taxCodeId    String?
+  taxCode      TaxCode?           @relation(fields: [taxCodeId], references: [id])
+  description  String?
   attachmentId String?
   attachment   VoucherAttachment? @relation(fields: [attachmentId], references: [id])
 
@@ -1097,7 +1291,7 @@ model VatRegisterLine {
 
   date    DateTime
   partyId String?
-  party   Party? @relation(fields: [partyId], references: [id])
+  party   Party?   @relation(fields: [partyId], references: [id])
 
   taxableAmount Decimal @db.Decimal(14, 2)
   vatAmount     Decimal @db.Decimal(14, 2)
@@ -1170,7 +1364,7 @@ model Device {
 
   // Proforma (offline) numbering
   proformaPrefix   String?
-  proformaSequence Int @default(1)
+  proformaSequence Int     @default(1)
 
   lastSeenAt DateTime?
   createdAt  DateTime   @default(now())
@@ -1239,30 +1433,30 @@ model ProformaInvoice {
   deviceId String
   device   Device @relation(fields: [deviceId], references: [id])
 
-  localNumber String   // e.g. "PRF-D1-001"
-  voucherId   String?  // linked after conversion to real voucher
+  localNumber String // e.g. "PRF-D1-001"
+  voucherId   String? // linked after conversion to real voucher
   voucher     Voucher? @relation(fields: [voucherId], references: [id])
 
   voucherType VoucherType
-  payload     Json          // full voucher draft data for offline print
+  payload     Json // full voucher draft data for offline print
   memo        String?
 
-  convertedAt DateTime?     // set when converted to real posted voucher
-  createdAt   DateTime @default(now())
+  convertedAt DateTime? // set when converted to real posted voucher
+  createdAt   DateTime  @default(now())
 
   @@unique([companyId, localNumber])
   @@index([companyId, convertedAt])
 }
 
 model ApiIdempotency {
-  id        String   @id @default(uuid())
-  companyId String
-  userId    String?
-  key       String
-  action    String
-  requestHash String?
+  id           String   @id @default(uuid())
+  companyId    String
+  userId       String?
+  key          String
+  action       String
+  requestHash  String?
   responseJson Json
-  createdAt DateTime @default(now())
+  createdAt    DateTime @default(now())
 
   company Company @relation(fields: [companyId], references: [id])
   user    User?   @relation(fields: [userId], references: [id])
@@ -1272,18 +1466,18 @@ model ApiIdempotency {
 }
 
 model OutboxEvent {
-  id        String @id @default(uuid())
+  id        String  @id @default(uuid())
   companyId String
   company   Company @relation(fields: [companyId], references: [id])
 
-  type   String
-  status OutboxStatus @default(pending)
+  type    String
+  status  OutboxStatus @default(pending)
   payload Json
 
-  createdAt   DateTime @default(now())
-  processedAt DateTime?
-  lastError   String?
-  attempts    Int      @default(0)
+  createdAt     DateTime  @default(now())
+  processedAt   DateTime?
+  lastError     String?
+  attempts      Int       @default(0)
   nextAttemptAt DateTime?
 
   @@index([companyId, status, createdAt])
@@ -1291,13 +1485,13 @@ model OutboxEvent {
 }
 
 model PdfJob {
-  id        String @id @default(uuid())
+  id        String  @id @default(uuid())
   companyId String
   company   Company @relation(fields: [companyId], references: [id])
 
-  type   String
-  status PdfJobStatus @default(pending)
-  payload Json
+  type      String
+  status    PdfJobStatus @default(pending)
+  payload   Json
   resultKey String?
   error     String?
 
@@ -1330,7 +1524,7 @@ enum PurchaseOrderStatus {
 }
 
 model Quotation {
-  id        String @id @default(uuid())
+  id        String  @id @default(uuid())
   companyId String
   company   Company @relation(fields: [companyId], references: [id])
 
@@ -1339,23 +1533,23 @@ model Quotation {
   status      QuotationStatus @default(draft)
 
   partyId String
-  party   Party @relation(fields: [partyId], references: [id])
+  party   Party  @relation(fields: [partyId], references: [id])
 
-  date    DateTime
-  dateBs  String?
-  expiryDate DateTime?
+  date         DateTime
+  dateBs       String?
+  expiryDate   DateTime?
   expiryDateBs String?
 
   subtotal  Decimal @db.Decimal(14, 2)
   vatAmount Decimal @db.Decimal(14, 2)
   total     Decimal @db.Decimal(14, 2)
 
-  memo      String?
+  memo           String?
   additionalNote String? @db.Text
-  terms      String? @db.Text
+  terms          String? @db.Text
 
-  items     QuotationItem[]
-  sundries  QuotationSundry[]
+  items    QuotationItem[]
+  sundries QuotationSundry[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1371,19 +1565,19 @@ model QuotationItem {
   quotationId String
   quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
 
-  itemId      String?
-  item        Item?     @relation(fields: [itemId], references: [id])
+  itemId String?
+  item   Item?   @relation(fields: [itemId], references: [id])
 
   description String?
-  qty         Decimal   @db.Decimal(14, 2)
-  rate        Decimal   @db.Decimal(14, 2)
-  amount      Decimal   @db.Decimal(14, 2)
+  qty         Decimal @db.Decimal(14, 2)
+  rate        Decimal @db.Decimal(14, 2)
+  amount      Decimal @db.Decimal(14, 2)
 
-  taxCodeId   String?
-  taxCode     TaxCode?  @relation(fields: [taxCodeId], references: [id])
-  taxAmount   Decimal   @db.Decimal(14, 2)
+  taxCodeId String?
+  taxCode   TaxCode? @relation(fields: [taxCodeId], references: [id])
+  taxAmount Decimal  @db.Decimal(14, 2)
 
-  createdAt   DateTime  @default(now())
+  createdAt DateTime @default(now())
 }
 
 model QuotationSundry {
@@ -1394,44 +1588,44 @@ model QuotationSundry {
   billSundryId String?
   billSundry   BillSundry? @relation(fields: [billSundryId], references: [id])
 
-  name        String
-  type        String   // add | less
-  rate        Decimal? @db.Decimal(10, 2)
-  amount      Decimal  @db.Decimal(14, 2)
+  name   String
+  type   String // add | less
+  rate   Decimal? @db.Decimal(10, 2)
+  amount Decimal  @db.Decimal(14, 2)
 
-  accountId   String?
-  account     ChartOfAccount? @relation(fields: [accountId], references: [id])
+  accountId String?
+  account   ChartOfAccount? @relation(fields: [accountId], references: [id])
 
-  createdAt   DateTime  @default(now())
+  createdAt DateTime @default(now())
 }
 
 model SalesOrder {
-  id        String @id @default(uuid())
+  id        String  @id @default(uuid())
   companyId String
   company   Company @relation(fields: [companyId], references: [id])
 
-  orderNo     String?
+  orderNo       String?
   customerPoRef String?
-  status      SalesOrderStatus @default(draft)
+  status        SalesOrderStatus @default(draft)
 
   partyId String
-  party   Party @relation(fields: [partyId], references: [id])
+  party   Party  @relation(fields: [partyId], references: [id])
 
-  date    DateTime
-  dateBs  String?
-  expectedDelivery DateTime?
+  date               DateTime
+  dateBs             String?
+  expectedDelivery   DateTime?
   expectedDeliveryBs String?
 
   subtotal  Decimal @db.Decimal(14, 2)
   vatAmount Decimal @db.Decimal(14, 2)
   total     Decimal @db.Decimal(14, 2)
 
-  memo      String?
+  memo           String?
   additionalNote String? @db.Text
-  terms      String? @db.Text
+  terms          String? @db.Text
 
-  items     SalesOrderItem[]
-  sundries  SalesOrderSundry[]
+  items    SalesOrderItem[]
+  sundries SalesOrderSundry[]
 
   quotationId String?
   quotation   Quotation? @relation(fields: [quotationId], references: [id])
@@ -1444,75 +1638,75 @@ model SalesOrder {
 }
 
 model SalesOrderItem {
-  id          String     @id @default(uuid())
-  orderId     String
-  order       SalesOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  id      String     @id @default(uuid())
+  orderId String
+  order   SalesOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
-  itemId      String?
-  item        Item?      @relation(fields: [itemId], references: [id])
+  itemId String?
+  item   Item?   @relation(fields: [itemId], references: [id])
 
   description String?
-  qty         Decimal    @db.Decimal(14, 2)
-  rate        Decimal    @db.Decimal(14, 2)
-  amount      Decimal    @db.Decimal(14, 2)
+  qty         Decimal @db.Decimal(14, 2)
+  rate        Decimal @db.Decimal(14, 2)
+  amount      Decimal @db.Decimal(14, 2)
 
-  fulfilledQty Decimal   @default(0) @db.Decimal(14, 2)
+  fulfilledQty Decimal @default(0) @db.Decimal(14, 2)
 
-  taxCodeId   String?
-  taxCode     TaxCode?   @relation(fields: [taxCodeId], references: [id])
-  taxAmount   Decimal    @db.Decimal(14, 2)
+  taxCodeId String?
+  taxCode   TaxCode? @relation(fields: [taxCodeId], references: [id])
+  taxAmount Decimal  @db.Decimal(14, 2)
 
-  createdAt   DateTime   @default(now())
+  createdAt DateTime @default(now())
 }
 
 model SalesOrderSundry {
-  id          String     @id @default(uuid())
-  orderId     String
-  order       SalesOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  id      String     @id @default(uuid())
+  orderId String
+  order   SalesOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   billSundryId String?
   billSundry   BillSundry? @relation(fields: [billSundryId], references: [id])
 
-  name        String
-  type        String   // add | less
-  rate        Decimal? @db.Decimal(10, 2)
-  amount      Decimal  @db.Decimal(14, 2)
+  name   String
+  type   String // add | less
+  rate   Decimal? @db.Decimal(10, 2)
+  amount Decimal  @db.Decimal(14, 2)
 
-  accountId   String?
-  account     ChartOfAccount? @relation(fields: [accountId], references: [id])
+  accountId String?
+  account   ChartOfAccount? @relation(fields: [accountId], references: [id])
 
-  createdAt   DateTime   @default(now())
+  createdAt DateTime @default(now())
 }
 
 model PurchaseOrder {
-  id        String @id @default(uuid())
+  id        String  @id @default(uuid())
   companyId String
   company   Company @relation(fields: [companyId], references: [id])
 
-  orderNo     String?
-  status      PurchaseOrderStatus @default(draft)
+  orderNo String?
+  status  PurchaseOrderStatus @default(draft)
 
   partyId String
-  party   Party @relation(fields: [partyId], references: [id])
+  party   Party  @relation(fields: [partyId], references: [id])
 
   purchaseTypeId String?
   purchaseType   PurchaseType? @relation(fields: [purchaseTypeId], references: [id])
 
-  date    DateTime
-  dateBs  String?
-  expectedDelivery DateTime?
+  date               DateTime
+  dateBs             String?
+  expectedDelivery   DateTime?
   expectedDeliveryBs String?
 
   subtotal  Decimal @db.Decimal(14, 2)
   vatAmount Decimal @db.Decimal(14, 2)
   total     Decimal @db.Decimal(14, 2)
 
-  memo      String?
+  memo           String?
   additionalNote String? @db.Text
-  terms      String? @db.Text
+  terms          String? @db.Text
 
-  items     PurchaseOrderItem[]
-  sundries  PurchaseOrderSundry[]
+  items    PurchaseOrderItem[]
+  sundries PurchaseOrderSundry[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1522,44 +1716,44 @@ model PurchaseOrder {
 }
 
 model PurchaseOrderItem {
-  id          String        @id @default(uuid())
-  orderId     String
-  order       PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  id      String        @id @default(uuid())
+  orderId String
+  order   PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
-  itemId      String?
-  item        Item?         @relation(fields: [itemId], references: [id])
+  itemId String?
+  item   Item?   @relation(fields: [itemId], references: [id])
 
   description String?
-  qty         Decimal       @db.Decimal(14, 2)
-  rate        Decimal       @db.Decimal(14, 2)
-  amount      Decimal       @db.Decimal(14, 2)
+  qty         Decimal @db.Decimal(14, 2)
+  rate        Decimal @db.Decimal(14, 2)
+  amount      Decimal @db.Decimal(14, 2)
 
-  receivedQty Decimal       @default(0) @db.Decimal(14, 2)
+  receivedQty Decimal @default(0) @db.Decimal(14, 2)
 
-  taxCodeId   String?
-  taxCode     TaxCode?      @relation(fields: [taxCodeId], references: [id])
-  taxAmount   Decimal       @db.Decimal(14, 2)
+  taxCodeId String?
+  taxCode   TaxCode? @relation(fields: [taxCodeId], references: [id])
+  taxAmount Decimal  @db.Decimal(14, 2)
 
-  createdAt   DateTime      @default(now())
+  createdAt DateTime @default(now())
 }
 
 model PurchaseOrderSundry {
-  id          String        @id @default(uuid())
-  orderId     String
-  order       PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  id      String        @id @default(uuid())
+  orderId String
+  order   PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   billSundryId String?
   billSundry   BillSundry? @relation(fields: [billSundryId], references: [id])
 
-  name        String
-  type        String   // add | less
-  rate        Decimal? @db.Decimal(10, 2)
-  amount      Decimal  @db.Decimal(14, 2)
+  name   String
+  type   String // add | less
+  rate   Decimal? @db.Decimal(10, 2)
+  amount Decimal  @db.Decimal(14, 2)
 
-  accountId   String?
-  account     ChartOfAccount? @relation(fields: [accountId], references: [id])
+  accountId String?
+  account   ChartOfAccount? @relation(fields: [accountId], references: [id])
 
-  createdAt   DateTime      @default(now())
+  createdAt DateTime @default(now())
 }
 
 model FiscalSession {
@@ -1567,47 +1761,47 @@ model FiscalSession {
   companyId String
   company   Company @relation(fields: [companyId], references: [id])
 
-  name      String   // e.g. "Year 2080/81"
+  name      String // e.g. "Year 2080/81"
   startDate DateTime
   endDate   DateTime
   isLocked  Boolean  @default(false)
 
   // Session-specific numbering + lock settings
-  invoicePrefix       String    @default("SI")
-  purchasePrefix      String    @default("PURI")
-  salesReturnPrefix   String    @default("SR")
-  purchaseReturnPrefix String   @default("PR")
-  orderPrefix         String    @default("SO")
-  quotationPrefix     String    @default("QT")
-  purchaseOrderPrefix String    @default("PO")
-  receiptPrefix       String    @default("RV")
-  paymentPrefix       String    @default("PV")
-  journalPrefix       String    @default("JV")
-  contraPrefix        String    @default("CV")
+  invoicePrefix        String @default("SI")
+  purchasePrefix       String @default("PURI")
+  salesReturnPrefix    String @default("SR")
+  purchaseReturnPrefix String @default("PR")
+  orderPrefix          String @default("SO")
+  quotationPrefix      String @default("QT")
+  purchaseOrderPrefix  String @default("PO")
+  receiptPrefix        String @default("RV")
+  paymentPrefix        String @default("PV")
+  journalPrefix        String @default("JV")
+  contraPrefix         String @default("CV")
 
-  invoiceSuffix       String    @default("80/81")
-  purchaseSuffix      String    @default("80/81")
-  salesReturnSuffix   String    @default("80/81")
-  purchaseReturnSuffix String   @default("80/81")
-  orderSuffix         String    @default("80/81")
-  quotationSuffix     String    @default("80/81")
-  purchaseOrderSuffix String    @default("80/81")
-  receiptSuffix       String    @default("80/81")
-  paymentSuffix       String    @default("80/81")
-  journalSuffix       String    @default("80/81")
-  contraSuffix        String    @default("80/81")
+  invoiceSuffix        String @default("80/81")
+  purchaseSuffix       String @default("80/81")
+  salesReturnSuffix    String @default("80/81")
+  purchaseReturnSuffix String @default("80/81")
+  orderSuffix          String @default("80/81")
+  quotationSuffix      String @default("80/81")
+  purchaseOrderSuffix  String @default("80/81")
+  receiptSuffix        String @default("80/81")
+  paymentSuffix        String @default("80/81")
+  journalSuffix        String @default("80/81")
+  contraSuffix         String @default("80/81")
 
-  nextInvoiceNumber   Int       @default(1)
-  nextPurchaseNumber  Int       @default(1)
-  nextSalesReturnNumber Int     @default(1)
-  nextPurchaseReturnNumber Int   @default(1)
-  nextOrderNumber     Int       @default(1)
-  nextQuotationNumber Int       @default(1)
-  nextPurchaseOrderNumber Int @default(1)
-  nextReceiptNumber   Int       @default(1)
-  nextPaymentNumber   Int       @default(1)
-  nextJournalNumber   Int       @default(1)
-  nextContraNumber    Int       @default(1)
+  nextInvoiceNumber        Int @default(1)
+  nextPurchaseNumber       Int @default(1)
+  nextSalesReturnNumber    Int @default(1)
+  nextPurchaseReturnNumber Int @default(1)
+  nextOrderNumber          Int @default(1)
+  nextQuotationNumber      Int @default(1)
+  nextPurchaseOrderNumber  Int @default(1)
+  nextReceiptNumber        Int @default(1)
+  nextPaymentNumber        Int @default(1)
+  nextJournalNumber        Int @default(1)
+  nextContraNumber         Int @default(1)
 
   vouchers Voucher[]
 
@@ -1625,12 +1819,12 @@ model PaymentMethod {
 
   name      String
   isActive  Boolean @default(true)
-  sortOrder Int @default(0)
+  sortOrder Int     @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  invoices  Invoice[]
+  invoices Invoice[]
 
   @@unique([companyId, name])
 }
@@ -1642,12 +1836,12 @@ model SaleType {
 
   name      String
   isActive  Boolean @default(true)
-  sortOrder Int @default(0)
+  sortOrder Int     @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  invoices  Invoice[]
+  invoices Invoice[]
 
   @@unique([companyId, name])
 }
@@ -1659,7 +1853,7 @@ model PurchaseType {
 
   name      String
   isActive  Boolean @default(true)
-  sortOrder Int @default(0)
+  sortOrder Int     @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1681,18 +1875,18 @@ model StockCount {
   companyId String
   company   Company @relation(fields: [companyId], references: [id])
 
-  reference     String?
-  warehouseId   String?
-  warehouse     Warehouse? @relation(fields: [warehouseId], references: [id])
-  countDate     DateTime
-  countDateBs   String?
-  status        StockCountStatus @default(draft)
-  memo          String?
+  reference   String?
+  warehouseId String?
+  warehouse   Warehouse?       @relation(fields: [warehouseId], references: [id])
+  countDate   DateTime
+  countDateBs String?
+  status      StockCountStatus @default(draft)
+  memo        String?
 
   createdByUserId String?
-  createdByUser   User? @relation("StockCountCreator", fields: [createdByUserId], references: [id])
+  createdByUser   User?   @relation("StockCountCreator", fields: [createdByUserId], references: [id])
 
-  completedAt DateTime?
+  completedAt         DateTime?
   adjustmentVoucherId String?
 
   lines StockCountLine[]
@@ -1715,7 +1909,7 @@ model StockCountLine {
   binId String?
   bin   WarehouseBin? @relation(fields: [binId], references: [id])
 
-  systemQty  Decimal @db.Decimal(14, 2)
+  systemQty  Decimal  @db.Decimal(14, 2)
   countedQty Decimal? @db.Decimal(14, 2)
   variance   Decimal? @db.Decimal(14, 2)
 

@@ -1198,12 +1198,23 @@ export class InventoryService {
 
     const db = this.prisma as any;
     const useCurrentLayerValuation = !filters.to || filters.to >= new Date(new Date().setHours(0, 0, 0, 0));
-    const [periodEntries, openingEntries, openingSeedEntries, reservationRows, layerRows] = await Promise.all([
+    const reservationPromise = db.stockReservation
+      ? db.stockReservation.findMany({
+          where: { companyId: user.companyId, status: { in: ["active", "partial"] } },
+          select: { itemId: true, reservedQty: true, releasedQty: true, fulfilledQty: true }
+        }).catch((error: unknown) => {
+          if (this.isMissingInventoryTableError(error)) return null;
+          throw error;
+        })
+      : Promise.resolve(null);
+
+    const [periodEntries, openingEntries, openingSeedEntries, reservationRows, fallbackReservationRows, layerRows] = await Promise.all([
       this.prisma.stockLedger.findMany({ where: periodWhere }),
       openingWhere ? this.prisma.stockLedger.findMany({ where: openingWhere }) : Promise.resolve([]),
       this.prisma.stockLedger.findMany({
         where: { companyId: user.companyId, voucherId: null }
       }),
+      reservationPromise,
       this.prisma.salesOrderItem.findMany({
         where: {
           order: {
@@ -1231,13 +1242,22 @@ export class InventoryService {
 
     const zero = new Prisma.Decimal(0);
     const reservedByItem = new Map<string, Prisma.Decimal>();
-    for (const row of reservationRows) {
-      const itemId = row.itemId;
-      if (!itemId) continue;
-      const pending = row.qty.sub(row.fulfilledQty);
-      if (pending.lte(0)) continue;
-      const prev = reservedByItem.get(itemId) ?? zero;
-      reservedByItem.set(itemId, prev.add(pending));
+    if (Array.isArray(reservationRows)) {
+      for (const row of reservationRows as Array<{ itemId: string; reservedQty: Prisma.Decimal; releasedQty: Prisma.Decimal; fulfilledQty: Prisma.Decimal }>) {
+        const reserved = row.reservedQty.sub(row.releasedQty).sub(row.fulfilledQty);
+        if (reserved.lte(0)) continue;
+        const prev = reservedByItem.get(row.itemId) ?? zero;
+        reservedByItem.set(row.itemId, prev.add(reserved));
+      }
+    } else {
+      for (const row of fallbackReservationRows) {
+        const itemId = row.itemId;
+        if (!itemId) continue;
+        const pending = row.qty.sub(row.fulfilledQty);
+        if (pending.lte(0)) continue;
+        const prev = reservedByItem.get(itemId) ?? zero;
+        reservedByItem.set(itemId, prev.add(pending));
+      }
     }
 
     const layerValueByItem = new Map<string, { qty: Prisma.Decimal; amount: Prisma.Decimal }>();
@@ -2078,6 +2098,596 @@ export class InventoryService {
       expiringSoon,
       noMovement
     };
+  }
+
+  async listReservations(
+    user: AuthUser,
+    query: { itemId?: string; salesOrderId?: string; status?: string; take?: number }
+  ) {
+    const db = this.prisma as any;
+    if (!db.stockReservation) return [];
+    return db.stockReservation.findMany({
+      where: {
+        companyId: user.companyId,
+        itemId: query.itemId,
+        salesOrderId: query.salesOrderId,
+        status: query.status
+      },
+      orderBy: [{ reservedAt: "desc" }, { createdAt: "desc" }],
+      take: query.take ?? 200
+    }).catch((error: unknown) => {
+      if (this.isMissingInventoryTableError(error)) return [];
+      throw error;
+    });
+  }
+
+  async reserveSalesOrderStock(user: AuthUser, salesOrderId: string, options: { expiresAt?: Date }) {
+    const db = this.prisma as any;
+    if (!db.stockReservation) throw new BadRequestException("Run the inventory workflow migration before reserving stock");
+
+    const order = await this.prisma.salesOrder.findFirst({
+      where: { id: salesOrderId, companyId: user.companyId, status: "open" },
+      include: { items: { include: { item: true } } }
+    });
+    if (!order) throw new BadRequestException("Open sales order not found");
+
+    const stockRows = await this.getStockReport(user, {});
+    const stockByItem = new Map(stockRows.map((row: any) => [row.id, row]));
+    const results: any[] = [];
+
+    for (const line of order.items) {
+      if (!line.itemId || !line.item || line.item.type === "services" || (line.item as any).trackInventory === false) continue;
+      const requiredQty = line.qty.sub(line.fulfilledQty);
+      if (requiredQty.lte(0)) continue;
+
+      const existing = await db.stockReservation.findFirst({
+        where: {
+          companyId: user.companyId,
+          salesOrderItemId: line.id,
+          status: { in: ["active", "partial"] }
+        }
+      });
+      const existingOpen = existing
+        ? existing.reservedQty.sub(existing.releasedQty).sub(existing.fulfilledQty)
+        : new Prisma.Decimal(0);
+      const row = stockByItem.get(line.itemId) as any;
+      const available = new Prisma.Decimal(row?.availableQty ?? row?.closingQty ?? 0).add(existingOpen);
+      const reservedQty = Prisma.Decimal.min(requiredQty, available.gt(0) ? available : new Prisma.Decimal(0));
+      const status = reservedQty.gte(requiredQty) ? "active" : "partial";
+
+      const payload = {
+        companyId: user.companyId,
+        salesOrderId: order.id,
+        salesOrderItemId: line.id,
+        itemId: line.itemId,
+        qty: requiredQty,
+        reservedQty,
+        releasedQty: new Prisma.Decimal(0),
+        fulfilledQty: line.fulfilledQty,
+        status,
+        expiresAt: options.expiresAt ?? null
+      };
+
+      const saved = existing
+        ? await db.stockReservation.update({
+            where: { id: existing.id },
+            data: payload
+          })
+        : await db.stockReservation.create({ data: payload });
+      results.push(saved);
+    }
+
+    return { ok: true, salesOrderId, reservations: results };
+  }
+
+  async releaseReservation(user: AuthUser, id: string) {
+    const db = this.prisma as any;
+    if (!db.stockReservation) throw new BadRequestException("Run the inventory workflow migration before releasing stock reservations");
+    const reservation = await db.stockReservation.findFirst({ where: { id, companyId: user.companyId } });
+    if (!reservation) throw new BadRequestException("Reservation not found");
+    const openQty = reservation.reservedQty.sub(reservation.releasedQty).sub(reservation.fulfilledQty);
+    return db.stockReservation.update({
+      where: { id },
+      data: {
+        releasedQty: reservation.releasedQty.add(openQty.gt(0) ? openQty : new Prisma.Decimal(0)),
+        status: "released"
+      }
+    });
+  }
+
+  private async refreshTrackedStockMaster(
+    tx: Prisma.TransactionClient,
+    companyId: string,
+    itemId: string
+  ) {
+    const db = tx as any;
+    if (!db.inventoryTrackedStockMaster || !db.inventoryLayer) return;
+    const layers = await db.inventoryLayer.groupBy({
+      by: ["warehouseId", "binId", "batchNo", "lotNo", "expiryDate", "expiryDateBs"],
+      where: { companyId, itemId, remainingQty: { gt: new Prisma.Decimal(0) } },
+      _sum: { remainingQty: true, totalCost: true },
+      _avg: { unitCost: true },
+      _min: { receivedDate: true },
+      _max: { updatedAt: true }
+    }).catch((error: unknown) => {
+      if (this.isMissingInventoryTableError(error)) return [];
+      throw error;
+    });
+    await db.inventoryTrackedStockMaster.deleteMany({ where: { companyId, itemId } }).catch((error: unknown) => {
+      if (this.isMissingInventoryTableError(error)) return null;
+      throw error;
+    });
+    if (!layers.length) return;
+    await db.inventoryTrackedStockMaster.createMany({
+      data: layers.map((layer: any) => ({
+        companyId,
+        itemId,
+        warehouseId: layer.warehouseId ?? null,
+        binId: layer.binId ?? null,
+        batchNo: layer.batchNo ?? null,
+        lotNo: layer.lotNo ?? null,
+        expiryDate: layer.expiryDate ?? null,
+        expiryDateBs: layer.expiryDateBs ?? null,
+        firstReceivedAt: layer._min.receivedDate ?? null,
+        lastMovementAt: layer._max.updatedAt ?? null,
+        currentQty: layer._sum.remainingQty ?? new Prisma.Decimal(0),
+        unitCost: layer._avg.unitCost ?? new Prisma.Decimal(0),
+        value: layer._sum.totalCost ?? new Prisma.Decimal(0),
+        status: layer.expiryDate && layer.expiryDate < new Date() ? "expired" : "active"
+      }))
+    }).catch((error: unknown) => {
+      if (this.isMissingInventoryTableError(error)) return null;
+      throw error;
+    });
+  }
+
+  async postGoodsReceipt(
+    user: AuthUser,
+    input: {
+      receiptNo?: string;
+      purchaseOrderId?: string;
+      supplierId?: string;
+      date?: Date;
+      dateBs?: string;
+      memo?: string;
+      lines: Array<{
+        itemId: string;
+        qty: number;
+        rate?: number;
+        warehouseId?: string;
+        binId?: string;
+        batchNo?: string;
+        lotNo?: string;
+        expiryDate?: Date;
+        expiryDateBs?: string;
+        serialNumbers?: string[];
+      }>;
+    }
+  ) {
+    const db = this.prisma as any;
+    if (!db.goodsReceipt) throw new BadRequestException("Run the inventory workflow migration before posting goods receipts");
+    const resolved = resolveAdDate(input.date, input.dateBs);
+
+    return this.prisma.$transaction(async (tx) => {
+      const receipt = await (tx as any).goodsReceipt.create({
+        data: {
+          companyId: user.companyId,
+          receiptNo: input.receiptNo ?? null,
+          purchaseOrderId: input.purchaseOrderId ?? null,
+          supplierId: input.supplierId ?? null,
+          date: resolved.date,
+          dateBs: resolved.bs || input.dateBs || null,
+          status: "posted",
+          memo: input.memo ?? null,
+          postedByUserId: user.sub,
+          postedAt: new Date()
+        }
+      });
+
+      const postedLines: any[] = [];
+      for (const line of input.lines) {
+        const item = await tx.item.findFirst({ where: { id: line.itemId, companyId: user.companyId } });
+        if (!item) throw new BadRequestException("Item not found");
+        const qty = new Prisma.Decimal(line.qty);
+        const rate = new Prisma.Decimal(line.rate ?? (item as any).purchasePrice ?? 0);
+        if (rate.lte(0)) throw new BadRequestException(`Rate is required for goods receipt item "${item.name}"`);
+        const movement = await this.applyMovementPolicy(user.companyId, item, line, tx);
+        const serialNumbers = this.assertSerializedQuantity(item, qty, line.serialNumbers);
+        const amount = qty.mul(rate);
+        const ledger = await tx.stockLedger.create({
+          data: {
+            companyId: user.companyId,
+            itemId: item.id,
+            date: resolved.date,
+            dateBs: resolved.bs || input.dateBs || null,
+            sourceDocumentType: "goods_receipt",
+            sourceDocumentId: receipt.id,
+            warehouseId: movement.warehouseId,
+            binId: movement.binId,
+            qtyIn: qty,
+            qtyOut: new Prisma.Decimal(0),
+            rate,
+            amount,
+            batchNo: line.batchNo || null,
+            lotNo: line.lotNo || null,
+            expiryDate: line.expiryDate || null,
+            expiryDateBs: line.expiryDateBs || null
+          }
+        });
+        await this.receiveInventoryLayer(tx, {
+          companyId: user.companyId,
+          itemId: item.id,
+          qty,
+          unitCost: rate,
+          date: resolved.date,
+          sourceLedgerId: ledger.id,
+          sourceType: "goods_receipt",
+          warehouseId: movement.warehouseId,
+          binId: movement.binId,
+          batchNo: line.batchNo || null,
+          lotNo: line.lotNo || null,
+          expiryDate: line.expiryDate || null,
+          expiryDateBs: line.expiryDateBs || null
+        });
+        if (serialNumbers.length) {
+          await tx.serialNumber.createMany({
+            data: serialNumbers.map((serialNo) => ({
+              companyId: user.companyId,
+              itemId: item.id,
+              serialNo,
+              warehouseId: movement.warehouseId,
+              binId: movement.binId,
+              status: "available"
+            }))
+          });
+        }
+        const savedLine = await (tx as any).goodsReceiptLine.create({
+          data: {
+            goodsReceiptId: receipt.id,
+            itemId: item.id,
+            qty,
+            rate,
+            amount,
+            warehouseId: movement.warehouseId,
+            binId: movement.binId,
+            batchNo: line.batchNo || null,
+            lotNo: line.lotNo || null,
+            expiryDate: line.expiryDate || null,
+            expiryDateBs: line.expiryDateBs || null,
+            stockLedgerId: ledger.id
+          }
+        });
+        await this.refreshTrackedStockMaster(tx, user.companyId, item.id);
+        postedLines.push(savedLine);
+      }
+      return { ok: true, receiptId: receipt.id, lines: postedLines };
+    });
+  }
+
+  async postStockDispatch(
+    user: AuthUser,
+    input: {
+      dispatchNo?: string;
+      salesOrderId?: string;
+      customerId?: string;
+      date?: Date;
+      dateBs?: string;
+      memo?: string;
+      lines: Array<{
+        itemId: string;
+        qty: number;
+        rate?: number;
+        warehouseId?: string;
+        binId?: string;
+        batchNo?: string;
+        lotNo?: string;
+        expiryDate?: Date;
+        expiryDateBs?: string;
+        serialNumbers?: string[];
+      }>;
+    }
+  ) {
+    const db = this.prisma as any;
+    if (!db.stockDispatch) throw new BadRequestException("Run the inventory workflow migration before posting dispatches");
+    const settings = await this.getOrCreateSettings(user.companyId);
+    const resolved = resolveAdDate(input.date, input.dateBs);
+
+    return this.prisma.$transaction(async (tx) => {
+      const dispatch = await (tx as any).stockDispatch.create({
+        data: {
+          companyId: user.companyId,
+          dispatchNo: input.dispatchNo ?? null,
+          salesOrderId: input.salesOrderId ?? null,
+          customerId: input.customerId ?? null,
+          date: resolved.date,
+          dateBs: resolved.bs || input.dateBs || null,
+          status: "posted",
+          memo: input.memo ?? null,
+          postedByUserId: user.sub,
+          postedAt: new Date()
+        }
+      });
+      const postedLines: any[] = [];
+      for (const line of input.lines) {
+        const item = await tx.item.findFirst({ where: { id: line.itemId, companyId: user.companyId } });
+        if (!item) throw new BadRequestException("Item not found");
+        const qty = new Prisma.Decimal(line.qty);
+        const movement = await this.applyMovementPolicy(user.companyId, item, line, tx);
+        const serialNumbers = this.assertSerializedQuantity(item, qty, line.serialNumbers);
+        const cost = await this.consumeInventoryCost(tx, {
+          companyId: user.companyId,
+          itemId: item.id,
+          qty,
+          costingMethod: settings.costingMethod,
+          allowNegative: settings.allowNegativeStock,
+          warehouseId: movement.warehouseId,
+          binId: movement.binId,
+          batchNo: line.batchNo || null,
+          lotNo: line.lotNo || null,
+          expiryDate: line.expiryDate || null
+        });
+        const ledger = await tx.stockLedger.create({
+          data: {
+            companyId: user.companyId,
+            itemId: item.id,
+            date: resolved.date,
+            dateBs: resolved.bs || input.dateBs || null,
+            sourceDocumentType: "dispatch",
+            sourceDocumentId: dispatch.id,
+            warehouseId: movement.warehouseId,
+            binId: movement.binId,
+            qtyIn: new Prisma.Decimal(0),
+            qtyOut: qty,
+            rate: cost.unitCost,
+            amount: cost.amount,
+            batchNo: line.batchNo || null,
+            lotNo: line.lotNo || null,
+            expiryDate: line.expiryDate || null,
+            expiryDateBs: line.expiryDateBs || null
+          }
+        });
+        if (serialNumbers.length) {
+          const serialRows = await tx.serialNumber.findMany({
+            where: {
+              companyId: user.companyId,
+              itemId: item.id,
+              serialNo: { in: serialNumbers },
+              status: "available",
+              warehouseId: movement.warehouseId ?? undefined,
+              binId: movement.binId ?? undefined
+            },
+            select: { id: true, serialNo: true, status: true, warehouseId: true, binId: true }
+          });
+          if (serialRows.length !== serialNumbers.length) throw new BadRequestException("One or more serial numbers are not available for dispatch");
+          await tx.serialNumber.updateMany({ where: { id: { in: serialRows.map((s) => s.id) } }, data: { status: "sold" } });
+          await this.recordSerialMovements(tx, {
+            companyId: user.companyId,
+            itemId: item.id,
+            serials: serialRows,
+            stockLedgerId: ledger.id,
+            movementType: "dispatch",
+            statusTo: "sold",
+            movementDate: resolved.date,
+            movementDateBs: resolved.bs || null
+          });
+        }
+        const savedLine = await (tx as any).stockDispatchLine.create({
+          data: {
+            stockDispatchId: dispatch.id,
+            itemId: item.id,
+            qty,
+            rate: cost.unitCost,
+            amount: cost.amount,
+            warehouseId: movement.warehouseId,
+            binId: movement.binId,
+            batchNo: line.batchNo || null,
+            lotNo: line.lotNo || null,
+            expiryDate: line.expiryDate || null,
+            expiryDateBs: line.expiryDateBs || null,
+            stockLedgerId: ledger.id
+          }
+        });
+        await this.refreshTrackedStockMaster(tx, user.companyId, item.id);
+        postedLines.push(savedLine);
+      }
+      return { ok: true, dispatchId: dispatch.id, lines: postedLines };
+    });
+  }
+
+  async listBatchLotMaster(user: AuthUser, query: { itemId?: string; warehouseId?: string; binId?: string; q?: string; includeZero?: boolean; take?: number }) {
+    const db = this.prisma as any;
+    if (db.inventoryTrackedStockMaster) {
+      const where: any = {
+        companyId: user.companyId,
+        itemId: query.itemId,
+        warehouseId: query.warehouseId,
+        binId: query.binId
+      };
+      if (query.includeZero === false) where.currentQty = { gt: new Prisma.Decimal(0) };
+      if (query.q) {
+        where.OR = [
+          { batchNo: { contains: query.q, mode: "insensitive" } },
+          { lotNo: { contains: query.q, mode: "insensitive" } }
+        ];
+      }
+      const rows = await db.inventoryTrackedStockMaster.findMany({
+        where,
+        orderBy: [{ lastMovementAt: "desc" }, { createdAt: "desc" }],
+        take: query.take ?? 500
+      }).catch((error: unknown) => {
+        if (this.isMissingInventoryTableError(error)) return null;
+        throw error;
+      });
+      if (rows) return rows;
+    }
+    const valuation = await this.getStockValuationReport(user, {
+      itemId: query.itemId,
+      warehouseId: query.warehouseId,
+      binId: query.binId,
+      includeZero: query.includeZero
+    });
+    return valuation.rows.flatMap((row: any) =>
+      row.layers
+        .filter((layer: any) => !query.q || [layer.batchNo, layer.lotNo].some((v) => String(v ?? "").toLowerCase().includes(query.q!.toLowerCase())))
+        .map((layer: any) => ({ itemId: row.itemId, itemName: row.name, sku: row.sku, ...layer, currentQty: layer.qty, value: layer.value }))
+    ).slice(0, query.take ?? 500);
+  }
+
+  async getReorderSuggestions(user: AuthUser) {
+    const report = await this.getStockReport(user, {});
+    return report
+      .filter((row: any) => row.type === "goods" && row.trackInventory !== false)
+      .map((row: any) => {
+        const availableQty = Number(row.availableQty ?? row.closingQty ?? 0);
+        const reorderLevel = Number(row.reorderLevel ?? row.safetyStock ?? 0);
+        const reorderQty = Number((row as any).reorderQty ?? 0);
+        const suggestedQty = Math.max(reorderQty || reorderLevel - availableQty, 0);
+        return { ...row, availableQty, reorderLevel, suggestedQty };
+      })
+      .filter((row: any) => row.suggestedQty > 0)
+      .sort((a: any, b: any) => a.availableQty - b.availableQty);
+  }
+
+  async listMovementApprovals(user: AuthUser, query: { status?: string; movementType?: string; take?: number }) {
+    const db = this.prisma as any;
+    if (!db.inventoryMovementApproval) return [];
+    return db.inventoryMovementApproval.findMany({
+      where: { companyId: user.companyId, status: query.status, movementType: query.movementType },
+      orderBy: { requestedAt: "desc" },
+      take: query.take ?? 100
+    }).catch((error: unknown) => {
+      if (this.isMissingInventoryTableError(error)) return [];
+      throw error;
+    });
+  }
+
+  async createMovementApproval(user: AuthUser, input: { movementType: "adjustment" | "transfer"; payload: any; reason?: string }) {
+    const db = this.prisma as any;
+    if (!db.inventoryMovementApproval) throw new BadRequestException("Run the inventory workflow migration before using movement approvals");
+    return db.inventoryMovementApproval.create({
+      data: {
+        companyId: user.companyId,
+        movementType: input.movementType,
+        payloadJson: input.payload,
+        reason: input.reason ?? null,
+        requestedByUserId: user.sub,
+        status: "pending"
+      }
+    });
+  }
+
+  async approveMovementApproval(user: AuthUser, id: string, input: { reason?: string }) {
+    const db = this.prisma as any;
+    if (!db.inventoryMovementApproval) throw new BadRequestException("Run the inventory workflow migration before using movement approvals");
+    const approval = await db.inventoryMovementApproval.findFirst({ where: { id, companyId: user.companyId } });
+    if (!approval) throw new BadRequestException("Approval request not found");
+    if (approval.status !== "pending") throw new BadRequestException("Only pending movement requests can be approved");
+    const result = approval.movementType === "adjustment"
+      ? await this.adjustStock(user, approval.payloadJson)
+      : await this.transferStock(user, approval.payloadJson);
+    return db.inventoryMovementApproval.update({
+      where: { id },
+      data: {
+        status: "approved",
+        approvedByUserId: user.sub,
+        approvedAt: new Date(),
+        reason: input.reason ?? approval.reason,
+        postedVoucherId: result.voucherId ?? null
+      }
+    });
+  }
+
+  async rejectMovementApproval(user: AuthUser, id: string, input: { reason?: string }) {
+    const db = this.prisma as any;
+    if (!db.inventoryMovementApproval) throw new BadRequestException("Run the inventory workflow migration before using movement approvals");
+    const approval = await db.inventoryMovementApproval.findFirst({ where: { id, companyId: user.companyId } });
+    if (!approval) throw new BadRequestException("Approval request not found");
+    if (approval.status !== "pending") throw new BadRequestException("Only pending movement requests can be rejected");
+    return db.inventoryMovementApproval.update({
+      where: { id },
+      data: { status: "rejected", rejectedByUserId: user.sub, rejectedAt: new Date(), reason: input.reason ?? approval.reason }
+    });
+  }
+
+  async reverseMovementApproval(user: AuthUser, id: string, input: { reason?: string }) {
+    const db = this.prisma as any;
+    if (!db.inventoryMovementApproval) throw new BadRequestException("Run the inventory workflow migration before using movement approvals");
+    const approval = await db.inventoryMovementApproval.findFirst({ where: { id, companyId: user.companyId } });
+    if (!approval) throw new BadRequestException("Approval request not found");
+    if (approval.status !== "approved") throw new BadRequestException("Only approved movement requests can be reversed");
+    const payload = approval.payloadJson as any;
+    const result = approval.movementType === "adjustment"
+      ? await this.adjustStock(user, { ...payload, qty: -Number(payload.qty), memo: input.reason || `Reversal of approved adjustment ${approval.id}` })
+      : await this.transferStock(user, {
+          ...payload,
+          fromWarehouseId: payload.toWarehouseId,
+          fromBinId: payload.toBinId,
+          toWarehouseId: payload.fromWarehouseId,
+          toBinId: payload.fromBinId,
+          memo: input.reason || `Reversal of approved transfer ${approval.id}`
+        });
+    return db.inventoryMovementApproval.update({
+      where: { id },
+      data: { status: "reversed", reversedByUserId: user.sub, reversedAt: new Date(), reversalVoucherId: result.voucherId ?? null }
+    });
+  }
+
+  async listPeriodCloses(user: AuthUser, query: { status?: string; take?: number }) {
+    const db = this.prisma as any;
+    if (!db.inventoryPeriodClose) return [];
+    return db.inventoryPeriodClose.findMany({
+      where: { companyId: user.companyId, status: query.status },
+      orderBy: { periodTo: "desc" },
+      take: query.take ?? 100
+    }).catch((error: unknown) => {
+      if (this.isMissingInventoryTableError(error)) return [];
+      throw error;
+    });
+  }
+
+  async closeInventoryPeriod(user: AuthUser, input: { periodFrom?: Date; periodFromBs?: string; periodTo?: Date; periodToBs?: string }) {
+    const db = this.prisma as any;
+    if (!db.inventoryPeriodClose) throw new BadRequestException("Run the inventory workflow migration before closing inventory periods");
+    const from = resolveAdDate(input.periodFrom, input.periodFromBs);
+    const to = resolveAdDate(input.periodTo, input.periodToBs);
+    if (from.date > to.date) throw new BadRequestException("Period start cannot be after period end");
+    const valuation = await this.getStockValuationReport(user, { includeZero: false });
+    const valuationRows = valuation.rows as any[];
+    const totalQty = valuationRows.reduce((sum: Prisma.Decimal, row: any) => sum.add(row.totalQty ?? 0), new Prisma.Decimal(0));
+    const totalValue = valuationRows.reduce((sum: Prisma.Decimal, row: any) => sum.add(row.totalValue ?? 0), new Prisma.Decimal(0));
+    return db.inventoryPeriodClose.upsert({
+      where: {
+        companyId_periodFrom_periodTo: {
+          companyId: user.companyId,
+          periodFrom: from.date,
+          periodTo: to.date
+        }
+      },
+      create: {
+        companyId: user.companyId,
+        periodFrom: from.date,
+        periodFromBs: from.bs || input.periodFromBs || null,
+        periodTo: to.date,
+        periodToBs: to.bs || input.periodToBs || null,
+        status: "closed",
+        costingMethod: valuation.meta.costingMethod ?? null,
+        totalQty,
+        totalValue,
+        snapshotJson: valuation,
+        closedByUserId: user.sub
+      },
+      update: {
+        status: "closed",
+        costingMethod: valuation.meta.costingMethod ?? null,
+        totalQty,
+        totalValue,
+        snapshotJson: valuation,
+        closedByUserId: user.sub,
+        closedAt: new Date(),
+        reopenedByUserId: null,
+        reopenedAt: null
+      }
+    });
   }
 
   async listSerialNumbers(
