@@ -17,6 +17,12 @@ import {
   ShieldAlert,
   PackageX,
   Activity,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  CalendarCheck,
+  PackageSearch,
+  ShieldCheck,
+  ShoppingCart,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -175,6 +181,13 @@ export default function InventoryDashboardPage() {
           ...(features.warehouses ? [{ href: "/inventory/warehouses", icon: Warehouse, title: "Warehouses", desc: "Manage storage locations & bins" }] : []),
           ...(features.inventory ? [{ href: "/inventory/adjust", icon: Plus, title: "Stock Adjustment", desc: "Increase or decrease item stock" }] : []),
           ...(features.warehouses ? [{ href: "/inventory/transfer", icon: ArrowRightLeft, title: "Stock Transfer", desc: "Move stock between warehouses" }] : []),
+          ...(features.inventory ? [{ href: "/inventory/goods-receipt", icon: ArrowDownToLine, title: "Goods Receipt", desc: "Receive purchased stock into inventory" }] : []),
+          ...(features.inventory ? [{ href: "/inventory/dispatch", icon: ArrowUpFromLine, title: "Delivery / Dispatch", desc: "Issue stock for customer delivery" }] : []),
+          ...(features.inventory ? [{ href: "/inventory/reservations", icon: ShoppingCart, title: "Reservations", desc: "View sales order stock reservations" }] : []),
+          ...(features.inventory ? [{ href: "/inventory/reorder", icon: PackageSearch, title: "Reorder Suggestions", desc: "Suggested purchase quantities" }] : []),
+          ...(features.inventory ? [{ href: "/inventory/approvals", icon: ShieldCheck, title: "Movement Approvals", desc: "Approve and reverse stock movements" }] : []),
+          ...(features.inventory ? [{ href: "/inventory/period-close", icon: CalendarCheck, title: "Period Close", desc: "Save inventory valuation snapshots" }] : []),
+          ...(features.batch || features.lot || features.expiry ? [{ href: "/inventory/batch-lots", icon: PackageSearch, title: "Batch & Lot Master", desc: "Review selectable tracked stock" }] : []),
         ].map(({ href, icon: Icon, title, desc }) => (
           <div key={href} className="cursor-pointer group" onClick={() => navigate(href)}>
             <Card className="border-border/50 transition-all duration-200 hover:shadow-lg h-full">

@@ -18,6 +18,12 @@ import {
   ShieldAlert,
   PackageX,
   Activity,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  CalendarCheck,
+  PackageSearch,
+  ShieldCheck,
+  ShoppingCart,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -339,6 +345,69 @@ export default function InventoryDashboardPage() {
             title="Stock Transfer"
             desc="Move stock between warehouses"
             color="purple"
+          />
+        )}
+        {features.inventory && (
+          <QuickLink
+            href="/inventory/goods-receipt"
+            icon={ArrowDownToLine}
+            title="Goods Receipt"
+            desc="Receive purchased stock into inventory"
+            color="emerald"
+          />
+        )}
+        {features.inventory && (
+          <QuickLink
+            href="/inventory/dispatch"
+            icon={ArrowUpFromLine}
+            title="Delivery / Dispatch"
+            desc="Issue stock for customer delivery"
+            color="blue"
+          />
+        )}
+        {features.inventory && (
+          <QuickLink
+            href="/inventory/reservations"
+            icon={ShoppingCart}
+            title="Reservations"
+            desc="View sales order stock reservations"
+            color="amber"
+          />
+        )}
+        {features.inventory && (
+          <QuickLink
+            href="/inventory/reorder"
+            icon={PackageSearch}
+            title="Reorder Suggestions"
+            desc="Suggested purchase quantities"
+            color="purple"
+          />
+        )}
+        {features.inventory && (
+          <QuickLink
+            href="/inventory/approvals"
+            icon={ShieldCheck}
+            title="Movement Approvals"
+            desc="Approve and reverse stock movements"
+            color="amber"
+          />
+        )}
+        {features.inventory && (
+          <QuickLink
+            href="/inventory/period-close"
+            icon={CalendarCheck}
+            title="Period Close"
+            desc="Save inventory valuation snapshots"
+            color="blue"
+          />
+        )}
+        {(features.batch || features.lot || features.expiry) && (
+          <QuickLink
+            href="/inventory/batch-lots"
+            icon={PackageSearch}
+            title="Batch & Lot Master"
+            desc="Review selectable tracked stock"
+            color="emerald"
           />
         )}
       </div>

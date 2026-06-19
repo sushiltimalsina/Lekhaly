@@ -49,6 +49,13 @@ import AssemblyOrdersPage from "@/pages/inventory/assemblies";
 import StockCountsPage from "@/pages/inventory/stock-counts/index";
 import CreateStockCountPage from "@/pages/inventory/stock-counts/create";
 import ViewStockCountPage from "@/pages/inventory/stock-counts/view";
+import GoodsReceiptPage from "@/pages/inventory/goods-receipt";
+import DispatchPage from "@/pages/inventory/dispatch";
+import ReservationsPage from "@/pages/inventory/reservations";
+import ReorderPage from "@/pages/inventory/reorder";
+import MovementApprovalsPage from "@/pages/inventory/approvals";
+import PeriodClosePage from "@/pages/inventory/period-close";
+import BatchLotsPage from "@/pages/inventory/batch-lots";
 
 // Purchase Module
 import PurchaseListPage from "@/pages/purchase/index";
@@ -250,6 +257,13 @@ export default function App() {
                 <Route path="/inventory/adjust" element={<StockAdjustPage />} />
                 <Route path="/inventory/transfer" element={<StockTransferPage />} />
                 <Route path="/inventory/assemblies" element={<AssemblyOrdersPage />} />
+                <Route path="/inventory/goods-receipt" element={<GoodsReceiptPage />} />
+                <Route path="/inventory/dispatch" element={<DispatchPage />} />
+                <Route path="/inventory/reservations" element={<ReservationsPage />} />
+                <Route path="/inventory/reorder" element={<ReorderPage />} />
+                <Route path="/inventory/approvals" element={<MovementApprovalsPage />} />
+                <Route path="/inventory/period-close" element={<PeriodClosePage />} />
+                <Route path="/inventory/batch-lots" element={<BatchLotsPage />} />
                 <Route path="/inventory/stock-counts" element={<StockCountsPage />} />
                 <Route path="/inventory/stock-counts/create" element={<CreateStockCountPage />} />
                 <Route path="/inventory/stock-counts/view/:id" element={<ViewStockCountPage />} />
