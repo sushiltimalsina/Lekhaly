@@ -223,6 +223,7 @@ function isInventoryRouteVisible(item: NavItem, features: InventoryFeatureSet) {
   if (item.href === "/inventory/assemblies") return features.kits;
   if (item.href === "/inventory/warehouses") return features.warehouses;
   if (item.href === "/inventory/goods-receipt") return features.goodsReceipt;
+  if (item.href === "/inventory/dispatch") return features.dispatch;
   if (item.href === "/inventory/adjust") return features.inventory;
   if (item.href === "/inventory/transfer") return features.warehouses;
   if (item.href === "/inventory/stock-counts") return features.inventory;

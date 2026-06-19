@@ -217,6 +217,7 @@ export const InventorySettingsSchema = z.object({
   serialTrackingEnabled: z.boolean().optional(),
   kitsEnabled: z.boolean().optional(),
   goodsReceiptWorkflowEnabled: z.boolean().optional(),
+  dispatchWorkflowEnabled: z.boolean().optional(),
   allowNegativeStock: z.boolean().optional(),
   requireWarehouseOnMovements: z.boolean().optional(),
   defaultWarehouseId: z.string().uuid().nullable().optional(),

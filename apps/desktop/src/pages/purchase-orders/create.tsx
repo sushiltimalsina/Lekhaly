@@ -49,6 +49,7 @@ const isoAddDays = (iso: string, days: number) => {
     d.setDate(d.getDate() + days);
     return d.toISOString().slice(0, 10);
 };
+const REORDER_PO_DRAFT_KEY = "lekhaly.reorderPurchaseOrderDraft";
 
 function useOutsideClick<T extends HTMLElement>(
     onOutside: () => void,
@@ -485,6 +486,33 @@ export default function PurchaseOrderCreatePage() {
 
                 // Load Edit ID if present
                 const editId = searchParams.get("id");
+                if (!editId && searchParams.get("source") === "reorder") {
+                    try {
+                        const raw = window.localStorage.getItem(REORDER_PO_DRAFT_KEY);
+                        const draft = raw ? JSON.parse(raw) : null;
+                        const draftLines = Array.isArray(draft?.lines) ? draft.lines : [];
+                        if (draftLines.length) {
+                            setLines(draftLines.map((line: any) => {
+                                const item = normalizeList<ItemRecord>(i).find((candidate) => candidate.id === line.itemId);
+                                return {
+                                    itemId: line.itemId,
+                                    qty: String(Number(line.qty || 0)),
+                                    rate: String(Number(line.rate || item?.purchasePrice || 0)),
+                                    unit: line.unit || item?.unit || "",
+                                    description: line.name || item?.name || ""
+                                };
+                            }));
+                            setForm((f) => ({
+                                ...f,
+                                memo: f.memo || "Created from inventory reorder suggestions."
+                            }));
+                            setSuccess(`Loaded ${draftLines.length} reorder item${draftLines.length === 1 ? "" : "s"}. Select supplier and save the purchase order.`);
+                            window.localStorage.removeItem(REORDER_PO_DRAFT_KEY);
+                        }
+                    } catch {
+                        setError("Unable to load reorder suggestions into purchase order.");
+                    }
+                }
                 if (editId) {
                     setIsEditMode(false);
                     getPurchaseOrder(editId).then(po => {

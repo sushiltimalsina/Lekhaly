@@ -22,6 +22,7 @@ export declare class InventoryService {
         serialTrackingEnabled?: boolean;
         kitsEnabled?: boolean;
         goodsReceiptWorkflowEnabled?: boolean;
+        dispatchWorkflowEnabled?: boolean;
         allowNegativeStock?: boolean;
         requireWarehouseOnMovements?: boolean;
         defaultWarehouseId?: string | null;
@@ -29,9 +30,6 @@ export declare class InventoryService {
     }): Promise<{
         id: string;
         companyId: string;
-        createdAt: Date;
-        updatedAt: Date;
-        defaultWarehouseId: string | null;
         inventoryTrackingEnabled: boolean;
         warehousesEnabled: boolean;
         binsEnabled: boolean;
@@ -41,9 +39,13 @@ export declare class InventoryService {
         serialTrackingEnabled: boolean;
         kitsEnabled: boolean;
         goodsReceiptWorkflowEnabled: boolean;
+        dispatchWorkflowEnabled: boolean;
         allowNegativeStock: boolean;
         requireWarehouseOnMovements: boolean;
+        defaultWarehouseId: string | null;
         costingMethod: string;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     private assertSettingsCanChange;
     private normalizeSerialNumbers;
@@ -207,9 +209,16 @@ export declare class InventoryService {
         parentGroup: string;
         reorderLevel: number;
         safetyStock: number;
+        minStockLevel: number;
+        reorderQty: number;
         onHandQty: number;
         reservedQty: number;
         availableQty: number;
+        pendingPurchaseQty: number;
+        effectiveAvailableQty: number;
+        reorderThreshold: number;
+        shortageQty: number;
+        suggestedQty: number;
         isLowStock: boolean;
         openingQty: number;
         openingAvgPrice: number;
@@ -382,10 +391,10 @@ export declare class InventoryService {
         }[];
         expiringSoon: {
             qty: number;
+            itemId: string;
             batchNo: string | null;
             lotNo: string | null;
             expiryDate: Date | null;
-            itemId: string;
             _sum: {
                 qtyIn: Prisma.Decimal | null;
                 qtyOut: Prisma.Decimal | null;
@@ -411,6 +420,7 @@ export declare class InventoryService {
         reservations: any[];
     }>;
     releaseReservation(user: AuthUser, id: string): Promise<any>;
+    private fulfillSalesOrderDispatchLine;
     private refreshTrackedStockMaster;
     postGoodsReceipt(user: AuthUser, input: {
         receiptNo?: string;
@@ -539,27 +549,27 @@ export declare class InventoryService {
         take?: number;
     }): Promise<({
         item: {
-            id: string;
             name: string;
+            id: string;
             sku: string | null;
         };
         warehouse: {
-            id: string;
             name: string;
+            id: string;
         } | null;
         bin: {
-            id: string;
             name: string;
+            id: string;
         } | null;
     } & {
         id: string;
         companyId: string;
-        status: string;
         createdAt: Date;
         updatedAt: Date;
         itemId: string;
         warehouseId: string | null;
         binId: string | null;
+        status: string;
         serialNo: string;
         purchaseInvoiceId: string | null;
         salesInvoiceId: string | null;
@@ -570,8 +580,8 @@ export declare class InventoryService {
         binId?: string;
     }): Promise<{
         item: {
-            id: string;
             name: string;
+            id: string;
             sku: string | null;
             isSerialized: boolean;
             tracksBatch: boolean;

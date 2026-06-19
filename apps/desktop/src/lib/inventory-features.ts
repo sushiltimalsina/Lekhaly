@@ -10,6 +10,7 @@ export type InventoryFeatureSet = {
   serial: boolean;
   kits: boolean;
   goodsReceipt: boolean;
+  dispatch: boolean;
   requireWarehouse: boolean;
   negativeStock: boolean;
 };
@@ -27,6 +28,7 @@ export function inventoryFeatures(settings: InventorySettings | null | undefined
     serial: inventory && Boolean(settings?.serialTrackingEnabled),
     kits: inventory && Boolean(settings?.kitsEnabled),
     goodsReceipt: inventory && Boolean(settings?.goodsReceiptWorkflowEnabled),
+    dispatch: inventory && Boolean(settings?.dispatchWorkflowEnabled),
     requireWarehouse: warehouses && Boolean(settings?.requireWarehouseOnMovements),
     negativeStock: inventory && Boolean(settings?.allowNegativeStock),
   };

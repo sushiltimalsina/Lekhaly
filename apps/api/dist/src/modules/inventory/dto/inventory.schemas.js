@@ -199,6 +199,7 @@ exports.InventorySettingsSchema = zod_1.z.object({
     serialTrackingEnabled: zod_1.z.boolean().optional(),
     kitsEnabled: zod_1.z.boolean().optional(),
     goodsReceiptWorkflowEnabled: zod_1.z.boolean().optional(),
+    dispatchWorkflowEnabled: zod_1.z.boolean().optional(),
     allowNegativeStock: zod_1.z.boolean().optional(),
     requireWarehouseOnMovements: zod_1.z.boolean().optional(),
     defaultWarehouseId: zod_1.z.string().uuid().nullable().optional(),

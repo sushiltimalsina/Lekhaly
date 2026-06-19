@@ -204,6 +204,7 @@ export declare const InventorySettingsSchema: z.ZodObject<{
     serialTrackingEnabled: z.ZodOptional<z.ZodBoolean>;
     kitsEnabled: z.ZodOptional<z.ZodBoolean>;
     goodsReceiptWorkflowEnabled: z.ZodOptional<z.ZodBoolean>;
+    dispatchWorkflowEnabled: z.ZodOptional<z.ZodBoolean>;
     allowNegativeStock: z.ZodOptional<z.ZodBoolean>;
     requireWarehouseOnMovements: z.ZodOptional<z.ZodBoolean>;
     defaultWarehouseId: z.ZodOptional<z.ZodNullable<z.ZodString>>;

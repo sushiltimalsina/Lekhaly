@@ -356,7 +356,7 @@ export default function InventoryDashboardPage() {
             color="emerald"
           />
         )}
-        {features.inventory && (
+        {features.dispatch && (
           <QuickLink
             href="/inventory/dispatch"
             icon={ArrowUpFromLine}

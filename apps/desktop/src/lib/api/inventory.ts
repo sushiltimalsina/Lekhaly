@@ -244,6 +244,13 @@ export type StockReservationRecord = {
   salesOrderId?: string | null;
   salesOrderItemId?: string | null;
   itemId: string;
+  itemName?: string | null;
+  sku?: string | null;
+  unit?: string | null;
+  salesOrderNo?: string | null;
+  salesOrderStatus?: string | null;
+  customerId?: string | null;
+  customerName?: string | null;
   warehouseId?: string | null;
   binId?: string | null;
   batchNo?: string | null;
@@ -254,6 +261,7 @@ export type StockReservationRecord = {
   reservedQty: number;
   releasedQty: number;
   fulfilledQty: number;
+  openQty?: number;
   status: string;
   expiresAt?: string | null;
 };
@@ -353,6 +361,14 @@ export type InventoryMovementApproval = {
   status: "pending" | "approved" | "rejected" | "reversed";
   payloadJson: unknown;
   reason?: string | null;
+  requestedByUserId?: string | null;
+  approvedByUserId?: string | null;
+  rejectedByUserId?: string | null;
+  reversedByUserId?: string | null;
+  requestedAt?: string | null;
+  approvedAt?: string | null;
+  rejectedAt?: string | null;
+  reversedAt?: string | null;
   postedVoucherId?: string | null;
   reversalVoucherId?: string | null;
 };
@@ -439,7 +455,7 @@ export async function listBatchLotMaster(query?: { itemId?: string; warehouseId?
 }
 
 export async function getReorderSuggestions() {
-  return apiRequest<Array<StockReportRow & { availableQty: number; reorderLevel: number; suggestedQty: number }>>({
+  return apiRequest<Array<StockReportRow & { availableQty: number; pendingPurchaseQty: number; effectiveAvailableQty: number; reorderLevel: number; shortageQty: number; suggestedQty: number }>>({
     path: "/inventory/reorder-suggestions",
   });
 }
@@ -529,6 +545,7 @@ export type InventorySettings = {
   serialTrackingEnabled: boolean;
   kitsEnabled: boolean;
   goodsReceiptWorkflowEnabled: boolean;
+  dispatchWorkflowEnabled: boolean;
   allowNegativeStock: boolean;
   requireWarehouseOnMovements: boolean;
   defaultWarehouseId?: string | null;

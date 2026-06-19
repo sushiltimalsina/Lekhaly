@@ -255,6 +255,7 @@ let InventoryService = class InventoryService {
             next.serialTrackingEnabled = false;
             next.kitsEnabled = false;
             next.goodsReceiptWorkflowEnabled = false;
+            next.dispatchWorkflowEnabled = false;
             next.allowNegativeStock = false;
             next.requireWarehouseOnMovements = false;
             next.defaultWarehouseId = null;
@@ -281,6 +282,7 @@ let InventoryService = class InventoryService {
             next.serialTrackingEnabled = false;
             next.kitsEnabled = false;
             next.goodsReceiptWorkflowEnabled = false;
+            next.dispatchWorkflowEnabled = false;
             next.allowNegativeStock = false;
             next.requireWarehouseOnMovements = false;
             next.defaultWarehouseId = null;
@@ -308,6 +310,7 @@ let InventoryService = class InventoryService {
                 serialTrackingEnabled: next.serialTrackingEnabled,
                 kitsEnabled: next.kitsEnabled,
                 goodsReceiptWorkflowEnabled: next.goodsReceiptWorkflowEnabled,
+                dispatchWorkflowEnabled: next.dispatchWorkflowEnabled,
                 allowNegativeStock: next.allowNegativeStock,
                 requireWarehouseOnMovements: next.requireWarehouseOnMovements,
                 defaultWarehouseId: next.defaultWarehouseId,
@@ -323,6 +326,7 @@ let InventoryService = class InventoryService {
                 serialTrackingEnabled: next.serialTrackingEnabled,
                 kitsEnabled: next.kitsEnabled,
                 goodsReceiptWorkflowEnabled: next.goodsReceiptWorkflowEnabled,
+                dispatchWorkflowEnabled: next.dispatchWorkflowEnabled,
                 allowNegativeStock: next.allowNegativeStock,
                 requireWarehouseOnMovements: next.requireWarehouseOnMovements,
                 defaultWarehouseId: next.defaultWarehouseId,
@@ -1081,7 +1085,7 @@ let InventoryService = class InventoryService {
                 throw error;
             })
             : Promise.resolve(null);
-        const [periodEntries, openingEntries, openingSeedEntries, reservationRows, fallbackReservationRows, layerRows] = await Promise.all([
+        const [periodEntries, openingEntries, openingSeedEntries, reservationRows, fallbackReservationRows, openPurchaseLines, layerRows] = await Promise.all([
             this.prisma.stockLedger.findMany({ where: periodWhere }),
             openingWhere ? this.prisma.stockLedger.findMany({ where: openingWhere }) : Promise.resolve([]),
             this.prisma.stockLedger.findMany({
@@ -1100,6 +1104,20 @@ let InventoryService = class InventoryService {
                     itemId: true,
                     qty: true,
                     fulfilledQty: true
+                }
+            }),
+            this.prisma.purchaseOrderItem.findMany({
+                where: {
+                    order: {
+                        companyId: user.companyId,
+                        status: "open"
+                    },
+                    itemId: { not: null }
+                },
+                select: {
+                    itemId: true,
+                    qty: true,
+                    receivedQty: true
                 }
             }),
             useCurrentLayerValuation && db.inventoryLayer
@@ -1135,6 +1153,15 @@ let InventoryService = class InventoryService {
                 const prev = reservedByItem.get(itemId) ?? zero;
                 reservedByItem.set(itemId, prev.add(pending));
             }
+        }
+        const pendingPurchaseQtyByItem = new Map();
+        for (const row of openPurchaseLines) {
+            if (!row.itemId)
+                continue;
+            const pending = Math.max(Number(row.qty ?? 0) - Number(row.receivedQty ?? 0), 0);
+            if (pending <= 0)
+                continue;
+            pendingPurchaseQtyByItem.set(row.itemId, (pendingPurchaseQtyByItem.get(row.itemId) ?? 0) + pending);
         }
         const layerValueByItem = new Map();
         for (const layer of layerRows) {
@@ -1183,6 +1210,11 @@ let InventoryService = class InventoryService {
         }
         return items.map((item) => {
             if (item.type === "services" || item.trackInventory === false) {
+                const reorderLevel = Number(item.reorderLevel ?? 0);
+                const safetyStock = Number(item.safetyStock ?? 0);
+                const minStockLevel = Number(item.minStockLevel ?? 0);
+                const reorderQty = Number(item.reorderQty ?? 0);
+                const reorderThreshold = Math.max(reorderLevel, safetyStock, minStockLevel);
                 return {
                     id: item.id,
                     name: item.name,
@@ -1203,11 +1235,18 @@ let InventoryService = class InventoryService {
                     defaultExpiryDate: item.defaultExpiryDate ?? null,
                     defaultExpiryDateBs: item.defaultExpiryDateBs ?? null,
                     parentGroup: item.group?.name ?? item.incomeAccount?.name ?? item.expenseAccount?.name ?? "—",
-                    reorderLevel: Number(item.reorderLevel ?? 0),
-                    safetyStock: Number(item.safetyStock ?? 0),
+                    reorderLevel,
+                    safetyStock,
+                    minStockLevel,
+                    reorderQty,
                     onHandQty: 0,
                     reservedQty: 0,
                     availableQty: 0,
+                    pendingPurchaseQty: 0,
+                    effectiveAvailableQty: 0,
+                    reorderThreshold,
+                    shortageQty: 0,
+                    suggestedQty: 0,
                     isLowStock: false,
                     openingQty: 0,
                     openingAvgPrice: 0,
@@ -1239,11 +1278,19 @@ let InventoryService = class InventoryService {
                 : ledgerClosingAmt;
             const reorderLevel = Number(item.reorderLevel ?? 0);
             const safetyStock = Number(item.safetyStock ?? 0);
+            const minStockLevel = Number(item.minStockLevel ?? 0);
+            const reorderQty = Number(item.reorderQty ?? 0);
             const onHandQty = Number(closingQty.toString());
             const reservedQty = Number((reservedByItem.get(item.id) ?? zero).toString());
             const availableQty = onHandQty - reservedQty;
-            const lowStockThreshold = Math.max(reorderLevel, safetyStock);
-            const isLowStock = availableQty <= lowStockThreshold;
+            const pendingPurchaseQty = pendingPurchaseQtyByItem.get(item.id) ?? 0;
+            const effectiveAvailableQty = availableQty + pendingPurchaseQty;
+            const reorderThreshold = Math.max(reorderLevel, safetyStock, minStockLevel);
+            const isLowStock = effectiveAvailableQty <= reorderThreshold;
+            const shortageQty = Math.max(reorderThreshold - effectiveAvailableQty, 0);
+            const suggestedQty = isLowStock
+                ? (reorderQty > 0 ? reorderQty : Math.max(shortageQty, effectiveAvailableQty <= 0 ? 1 : 0))
+                : 0;
             const opAvg = s.openQty.equals(0) ? zero : s.openAmt.div(s.openQty);
             const inAvg = s.inQty.equals(0) ? zero : s.inAmt.div(s.inQty);
             const outAvg = s.outQty.equals(0) ? zero : s.outAmt.div(s.outQty);
@@ -1270,9 +1317,16 @@ let InventoryService = class InventoryService {
                 parentGroup: item.group?.name ?? item.incomeAccount?.name ?? item.expenseAccount?.name ?? "—",
                 reorderLevel,
                 safetyStock,
+                minStockLevel,
+                reorderQty,
                 onHandQty,
                 reservedQty,
                 availableQty,
+                pendingPurchaseQty,
+                effectiveAvailableQty,
+                reorderThreshold,
+                shortageQty,
+                suggestedQty,
                 isLowStock,
                 openingQty: Number(s.openQty.toString()),
                 openingAvgPrice: Number(opAvg.toString()),
@@ -1904,7 +1958,7 @@ let InventoryService = class InventoryService {
         const db = this.prisma;
         if (!db.stockReservation)
             return [];
-        return db.stockReservation.findMany({
+        const rows = await db.stockReservation.findMany({
             where: {
                 companyId: user.companyId,
                 itemId: query.itemId,
@@ -1917,6 +1971,39 @@ let InventoryService = class InventoryService {
             if (this.isMissingInventoryTableError(error))
                 return [];
             throw error;
+        });
+        const itemIds = Array.from(new Set(rows.map((row) => row.itemId).filter(Boolean)));
+        const salesOrderIds = Array.from(new Set(rows.map((row) => row.salesOrderId).filter(Boolean)));
+        const [items, orders] = await Promise.all([
+            itemIds.length
+                ? this.prisma.item.findMany({
+                    where: { companyId: user.companyId, id: { in: itemIds } },
+                    select: { id: true, name: true, sku: true, unit: true }
+                })
+                : Promise.resolve([]),
+            salesOrderIds.length
+                ? this.prisma.salesOrder.findMany({
+                    where: { companyId: user.companyId, id: { in: salesOrderIds } },
+                    select: { id: true, orderNo: true, status: true, party: { select: { id: true, name: true } } }
+                })
+                : Promise.resolve([])
+        ]);
+        const itemMap = new Map(items.map((item) => [item.id, item]));
+        const orderMap = new Map(orders.map((order) => [order.id, order]));
+        return rows.map((row) => {
+            const item = itemMap.get(row.itemId);
+            const order = row.salesOrderId ? orderMap.get(row.salesOrderId) : null;
+            return {
+                ...row,
+                openQty: row.reservedQty.sub(row.releasedQty).sub(row.fulfilledQty),
+                itemName: item?.name ?? null,
+                sku: item?.sku ?? null,
+                unit: item?.unit ?? null,
+                salesOrderNo: order?.orderNo ?? null,
+                salesOrderStatus: order?.status ?? null,
+                customerId: order?.party?.id ?? null,
+                customerName: order?.party?.name ?? null
+            };
         });
     }
     async reserveSalesOrderStock(user, salesOrderId, options) {
@@ -1988,6 +2075,82 @@ let InventoryService = class InventoryService {
                 releasedQty: reservation.releasedQty.add(openQty.gt(0) ? openQty : new client_1.Prisma.Decimal(0)),
                 status: "released"
             }
+        });
+    }
+    async fulfillSalesOrderDispatchLine(tx, companyId, salesOrderId, itemId, dispatchQty) {
+        if (!salesOrderId || dispatchQty.lte(0))
+            return;
+        const order = await tx.salesOrder.findFirst({
+            where: { id: salesOrderId, companyId, status: { in: [client_1.SalesOrderStatus.open, client_1.SalesOrderStatus.draft] } },
+            select: { id: true }
+        });
+        if (!order)
+            throw new common_1.BadRequestException("Open sales order not found for dispatch");
+        const orderLines = await tx.salesOrderItem.findMany({
+            where: { orderId: salesOrderId, itemId },
+            orderBy: [{ createdAt: "asc" }, { id: "asc" }]
+        });
+        if (!orderLines.length)
+            throw new common_1.BadRequestException("Dispatch item is not present in the selected sales order");
+        const db = tx;
+        let remaining = dispatchQty;
+        for (const orderLine of orderLines) {
+            if (remaining.lte(0))
+                break;
+            const pending = orderLine.qty.sub(orderLine.fulfilledQty);
+            if (pending.lte(0))
+                continue;
+            const consumeQty = client_1.Prisma.Decimal.min(pending, remaining);
+            await tx.salesOrderItem.update({
+                where: { id: orderLine.id },
+                data: { fulfilledQty: orderLine.fulfilledQty.add(consumeQty) }
+            });
+            if (db.stockReservation) {
+                let reservationRemaining = consumeQty;
+                const reservations = await db.stockReservation.findMany({
+                    where: {
+                        companyId,
+                        salesOrderId,
+                        salesOrderItemId: orderLine.id,
+                        status: { in: ["active", "partial"] }
+                    },
+                    orderBy: [{ reservedAt: "asc" }, { createdAt: "asc" }]
+                }).catch((error) => {
+                    if (this.isMissingInventoryTableError(error))
+                        return [];
+                    throw error;
+                });
+                for (const reservation of reservations) {
+                    if (reservationRemaining.lte(0))
+                        break;
+                    const reservationOpen = reservation.reservedQty.sub(reservation.releasedQty).sub(reservation.fulfilledQty);
+                    if (reservationOpen.lte(0))
+                        continue;
+                    const fulfilledQty = client_1.Prisma.Decimal.min(reservationOpen, reservationRemaining);
+                    const nextFulfilled = reservation.fulfilledQty.add(fulfilledQty);
+                    const nextOpen = reservation.reservedQty.sub(reservation.releasedQty).sub(nextFulfilled);
+                    await db.stockReservation.update({
+                        where: { id: reservation.id },
+                        data: {
+                            fulfilledQty: nextFulfilled,
+                            status: nextOpen.lte(0) ? "fulfilled" : "partial"
+                        }
+                    });
+                    reservationRemaining = reservationRemaining.sub(fulfilledQty);
+                }
+            }
+            remaining = remaining.sub(consumeQty);
+        }
+        if (remaining.gt(0))
+            throw new common_1.BadRequestException("Dispatch quantity exceeds pending sales order quantity");
+        const remainingLines = await tx.salesOrderItem.findMany({
+            where: { orderId: salesOrderId },
+            select: { qty: true, fulfilledQty: true }
+        });
+        const fulfilled = remainingLines.every((line) => line.fulfilledQty.gte(line.qty));
+        await tx.salesOrder.update({
+            where: { id: salesOrderId },
+            data: { status: fulfilled ? client_1.SalesOrderStatus.fulfilled : client_1.SalesOrderStatus.open }
         });
     }
     async refreshTrackedStockMaster(tx, companyId, itemId) {
@@ -2387,6 +2550,9 @@ let InventoryService = class InventoryService {
         if (!db.stockDispatch)
             throw new common_1.BadRequestException("Run the inventory workflow migration before posting dispatches");
         const settings = await this.getOrCreateSettings(user.companyId);
+        if (!settings.inventoryTrackingEnabled || !settings.dispatchWorkflowEnabled) {
+            throw new common_1.BadRequestException("Delivery / Dispatch workflow is disabled in Inventory Configuration");
+        }
         const resolved = (0, nepali_date_1.resolveAdDate)(input.date, input.dateBs);
         return this.prisma.$transaction(async (tx) => {
             const dispatch = await tx.stockDispatch.create({
@@ -2485,6 +2651,7 @@ let InventoryService = class InventoryService {
                         stockLedgerId: ledger.id
                     }
                 });
+                await this.fulfillSalesOrderDispatchLine(tx, user.companyId, input.salesOrderId, item.id, qty);
                 await this.refreshTrackedStockMaster(tx, user.companyId, item.id);
                 postedLines.push(savedLine);
             }
@@ -2535,13 +2702,10 @@ let InventoryService = class InventoryService {
         return report
             .filter((row) => row.type === "goods" && row.trackInventory !== false)
             .map((row) => {
-            const availableQty = Number(row.availableQty ?? row.closingQty ?? 0);
-            const reorderLevel = Number(row.reorderLevel ?? row.safetyStock ?? 0);
-            const reorderQty = Number(row.reorderQty ?? 0);
-            const suggestedQty = Math.max(reorderQty || reorderLevel - availableQty, 0);
-            return { ...row, availableQty, reorderLevel, suggestedQty };
+            const suggestedQty = Number(row.suggestedQty ?? 0);
+            return { ...row, suggestedQty };
         })
-            .filter((row) => row.suggestedQty > 0)
+            .filter((row) => Boolean(row.isLowStock) && Number(row.suggestedQty ?? 0) > 0)
             .sort((a, b) => a.availableQty - b.availableQty);
     }
     async listMovementApprovals(user, query) {

@@ -59,6 +59,7 @@ type Status = { type: "success" | "error"; message: string } | null;
 
 const inputClass = "h-11 rounded-xl border border-border bg-background px-3 text-sm outline-none transition-colors focus:border-orange-500";
 const labelClass = "text-[11px] font-bold uppercase tracking-widest text-muted-foreground";
+const REORDER_PO_DRAFT_KEY = "lekhaly.reorderPurchaseOrderDraft";
 
 function normalizeItems(res: Awaited<ReturnType<typeof listItems>>) {
   const rows = Array.isArray(res) ? res : res?.items ?? [];
@@ -1125,26 +1126,38 @@ export function DispatchWorkflowPage() {
 }
 
 export function ReservationsWorkflowPage() {
+  const [view, setView] = React.useState<"register" | "create">("register");
   const [rows, setRows] = React.useState<StockReservationRecord[]>([]);
-  const [items, setItems] = React.useState<ItemRecord[]>([]);
   const [orders, setOrders] = React.useState<any[]>([]);
   const [salesOrderId, setSalesOrderId] = React.useState("");
   const [status, setStatus] = React.useState<Status>(null);
   const [loading, setLoading] = React.useState(false);
 
-  const itemName = React.useMemo(() => new Map(items.map((item) => [item.id, item.name])), [items]);
   const selectedOrder = orders.find((order) => order.id === salesOrderId);
+  const orderOptions = React.useMemo(
+    () => orders.map((order) => ({
+      value: order.id,
+      label: `${order.orderNo || order.id} - ${order.party?.name || order.partyName || "No customer"}`,
+      meta: order.status ? String(order.status).toUpperCase() : undefined
+    })),
+    [orders]
+  );
+  const totals = React.useMemo(() => rows.reduce((acc, row) => {
+    acc.reserved += Number(row.reservedQty ?? 0);
+    acc.open += Number(row.openQty ?? (Number(row.reservedQty ?? 0) - Number(row.releasedQty ?? 0) - Number(row.fulfilledQty ?? 0)));
+    acc.fulfilled += Number(row.fulfilledQty ?? 0);
+    return acc;
+  }, { reserved: 0, open: 0, fulfilled: 0 }), [rows]);
+  const statusLabel = (value: string) => value === "active" ? "Reserved" : value;
 
   const refresh = React.useCallback(async () => {
     setLoading(true);
     try {
-      const [reservationRows, itemRows, orderRows] = await Promise.all([
+      const [reservationRows, orderRows] = await Promise.all([
         listStockReservations({ take: 500 }),
-        listItems({ isActive: true, take: 1000 }).then(normalizeItems),
         listSalesOrders({ status: "open", take: 100 }).then(normalizeOrders)
       ]);
       setRows(reservationRows);
-      setItems(itemRows);
       setOrders(orderRows);
       setSalesOrderId((current) => current || orderRows[0]?.id || "");
     } finally {
@@ -1161,6 +1174,7 @@ export function ReservationsWorkflowPage() {
       await reserveSalesOrderStock({ salesOrderId: salesOrderId.trim() });
       setStatus({ type: "success", message: "Sales order stock reserved." });
       setSalesOrderId("");
+      setView("register");
       refresh();
     } catch (error: any) {
       setStatus({ type: "error", message: error?.message ?? "Unable to reserve sales order stock." });
@@ -1173,20 +1187,40 @@ export function ReservationsWorkflowPage() {
   };
 
   return (
-    <WorkflowShell title="Stock Reservations" description="Reserve stock from sales orders without posting ledger movements." icon={ShoppingCart} actions={<RefreshButton loading={loading} onClick={refresh} />}>
-      <Card>
+    <WorkflowShell
+      title="Stock Reservations"
+      description={view === "create" ? "Reserve available stock against an open sales order." : "Review sales order stock reservations and open reserved quantities."}
+      icon={ShoppingCart}
+      actions={
+        <div className="flex flex-wrap gap-2">
+          <RefreshButton loading={loading} onClick={refresh} />
+          {view === "register" ? (
+            <Button onClick={() => { setStatus(null); setView("create"); }} className="bg-emerald-600 text-white hover:bg-emerald-700">
+              <Plus className="mr-2 h-4 w-4" /> New Reservation
+            </Button>
+          ) : (
+            <Button variant="outline" onClick={() => setView("register")}>Back to Registry</Button>
+          )}
+        </div>
+      }
+    >
+      {view === "create" && <Card>
         <CardContent className="space-y-4 pt-6">
           <StatusMessage status={status} />
           <div className="grid gap-3 md:grid-cols-[1fr_auto]">
-            <select className={inputClass} value={salesOrderId} onChange={(e) => setSalesOrderId(e.target.value)}>
-              <option value="">Select open sales order</option>
-              {orders.map((order) => (
-                <option key={order.id} value={order.id}>
-                  {order.orderNo || order.id} - {order.party?.name || order.partyName || "No customer"}
-                </option>
-              ))}
-            </select>
+            <SearchableSelect
+              options={orderOptions}
+              value={salesOrderId}
+              onChange={setSalesOrderId}
+              placeholder="Search open sales order..."
+              emptyText="No open sales orders found"
+            />
             <Button onClick={reserve} className="bg-emerald-600 text-white hover:bg-emerald-700">Reserve Sales Order</Button>
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="rounded-xl border border-border bg-background p-4"><div className={labelClass}>Reserved Qty</div><div className="mt-1 text-2xl font-black">{totals.reserved}</div></div>
+            <div className="rounded-xl border border-orange-500/30 bg-orange-500/10 p-4"><div className={labelClass}>Open Reserved</div><div className="mt-1 text-2xl font-black text-orange-500">{totals.open}</div></div>
+            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4"><div className={labelClass}>Fulfilled</div><div className="mt-1 text-2xl font-black text-emerald-500">{totals.fulfilled}</div></div>
           </div>
           {selectedOrder ? (
             <div className="rounded-xl border border-border bg-muted/30 p-4">
@@ -1223,21 +1257,30 @@ export function ReservationsWorkflowPage() {
             <EmptyState text="No open sales orders found for reservation." />
           )}
         </CardContent>
-      </Card>
+      </Card>}
+      {view === "register" && <>
+      <div className="grid gap-3 md:grid-cols-3">
+        <Card><CardContent className="p-4"><div className={labelClass}>Reserved Qty</div><div className="mt-1 text-2xl font-black">{totals.reserved}</div></CardContent></Card>
+        <Card><CardContent className="p-4"><div className={labelClass}>Open Reserved</div><div className="mt-1 text-2xl font-black text-orange-500">{totals.open}</div></CardContent></Card>
+        <Card><CardContent className="p-4"><div className={labelClass}>Fulfilled</div><div className="mt-1 text-2xl font-black text-emerald-500">{totals.fulfilled}</div></CardContent></Card>
+      </div>
       <SimpleTable
-        columns={["Item", "Reserved", "Released", "Fulfilled", "Status", "Action"]}
+        columns={["Sales Order", "Customer", "Item / SKU", "Reserved", "Open", "Fulfilled", "Status", "Action"]}
         rows={rows.map((row) => [
-          itemName.get(row.itemId) ?? row.itemId,
+          row.salesOrderNo || row.salesOrderId || "-",
+          row.customerName || "-",
+          <div key={`${row.id}-item`}><div className="font-bold">{row.itemName || row.itemId}</div><div className="text-xs text-muted-foreground">{row.sku || "-"} {row.unit ? `/ ${row.unit}` : ""}</div></div>,
           row.reservedQty,
-          row.releasedQty,
+          Number(row.openQty ?? (Number(row.reservedQty ?? 0) - Number(row.releasedQty ?? 0) - Number(row.fulfilledQty ?? 0))),
           row.fulfilledQty,
-          row.status,
+          <span key={`${row.id}-status`} className={cn("rounded-full px-2 py-1 text-xs font-bold capitalize", row.status === "fulfilled" ? "bg-emerald-500/10 text-emerald-500" : row.status === "released" ? "bg-red-500/10 text-red-500" : row.status === "partial" ? "bg-orange-500/10 text-orange-500" : "bg-blue-500/10 text-blue-500")}>{statusLabel(row.status)}</span>,
           row.status === "active" || row.status === "partial"
             ? <button className="text-xs font-bold text-red-500 hover:underline" onClick={() => release(row.id)}>Release</button>
             : "-"
         ])}
         empty="No reservations found."
       />
+      </>}
     </WorkflowShell>
   );
 }
@@ -1245,22 +1288,100 @@ export function ReservationsWorkflowPage() {
 export function ReorderWorkflowPage() {
   const [rows, setRows] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(false);
+  const [status, setStatus] = React.useState<Status>(null);
+  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
+  const [qtyById, setQtyById] = React.useState<Record<string, number>>({});
   const refresh = React.useCallback(async () => {
     setLoading(true);
     try {
-      setRows(await getReorderSuggestions());
+      const nextRows = await getReorderSuggestions();
+      setRows(nextRows);
+      setSelectedIds(new Set(nextRows.map((row: any) => row.id).filter(Boolean)));
+      setQtyById(Object.fromEntries(nextRows.map((row: any) => [row.id, Number(row.suggestedQty ?? 0)]).filter(([id]) => Boolean(id))));
     } finally {
       setLoading(false);
     }
   }, []);
   React.useEffect(() => { refresh(); }, [refresh]);
+  const selectedRows = React.useMemo(() => rows.filter((row) => selectedIds.has(row.id)), [rows, selectedIds]);
+
+  const createPurchaseOrderDraft = (selectedRows: any[]) => {
+    setStatus(null);
+    const lines = selectedRows
+      .filter((row) => row.id && Number(qtyById[row.id] ?? row.suggestedQty ?? 0) > 0)
+      .map((row) => ({
+        itemId: row.id,
+        name: row.name,
+        sku: row.sku ?? null,
+        unit: row.unit ?? null,
+        qty: Number(qtyById[row.id] ?? row.suggestedQty ?? 0),
+        rate: Number(row.purchasePrice ?? row.closingPrice ?? 0),
+        availableQty: Number(row.availableQty ?? 0),
+        reorderLevel: Number(row.reorderLevel ?? 0),
+        pendingPurchaseQty: Number(row.pendingPurchaseQty ?? 0)
+      }));
+    if (!lines.length) {
+      setStatus({ type: "error", message: "No reorder lines are available to create a purchase order." });
+      return;
+    }
+    window.localStorage.setItem(REORDER_PO_DRAFT_KEY, JSON.stringify({
+      source: "reorder-suggestions",
+      createdAt: new Date().toISOString(),
+      lines
+    }));
+    window.location.href = "/purchase-orders/create?source=reorder";
+  };
 
   return (
-    <WorkflowShell title="Reorder Suggestions" description="Items below reorder level with suggested purchase quantities." icon={PackageSearch} actions={<RefreshButton loading={loading} onClick={refresh} />}>
+    <WorkflowShell
+      title="Reorder Suggestions"
+      description="Items below reorder level with suggested purchase quantities."
+      icon={PackageSearch}
+      actions={
+        <div className="flex flex-wrap gap-2">
+          <RefreshButton loading={loading} onClick={refresh} />
+          <Button disabled={!selectedRows.length} onClick={() => createPurchaseOrderDraft(selectedRows)} className="bg-emerald-600 text-white hover:bg-emerald-700">
+            <Plus className="mr-2 h-4 w-4" /> Create Purchase Order ({selectedRows.length})
+          </Button>
+        </div>
+      }
+    >
+      <StatusMessage status={status} />
       <SimpleTable
-        columns={["Item", "SKU", "Available", "Reorder Level", "Suggested Qty", "Value"]}
-        rows={rows.map((row) => [row.name, row.sku || "-", row.availableQty, row.reorderLevel, row.suggestedQty, <MoneyText key={row.id} value={(row.suggestedQty || 0) * (row.purchasePrice || row.closingPrice || 0)} />])}
-        empty="No reorder suggestions right now."
+        columns={["Select", "Item", "SKU", "Available", "On PO", "Reorder Level", "Shortage", "Order Qty", "Rate", "Value", "Action"]}
+        rows={rows.map((row) => [
+          <input
+            key={`${row.id}-select`}
+            type="checkbox"
+            checked={selectedIds.has(row.id)}
+            onChange={(event) => setSelectedIds((current) => {
+              const next = new Set(current);
+              if (event.target.checked) next.add(row.id);
+              else next.delete(row.id);
+              return next;
+            })}
+            className="h-4 w-4 rounded border-border"
+          />,
+          row.name,
+          row.sku || "-",
+          row.availableQty,
+          row.pendingPurchaseQty ?? 0,
+          row.reorderLevel,
+          row.shortageQty ?? row.suggestedQty,
+          <input
+            key={`${row.id}-qty`}
+            type="number"
+            min="0"
+            step="0.01"
+            value={qtyById[row.id] ?? row.suggestedQty ?? 0}
+            onChange={(event) => setQtyById((current) => ({ ...current, [row.id]: Number(event.target.value || 0) }))}
+            className="h-9 w-24 rounded-lg border border-border bg-background px-2 text-right text-sm"
+          />,
+          <MoneyText key={`${row.id}-rate`} value={Number(row.purchasePrice || row.closingPrice || 0)} />,
+          <MoneyText key={`${row.id}-value`} value={Number(qtyById[row.id] ?? row.suggestedQty ?? 0) * (row.purchasePrice || row.closingPrice || 0)} />,
+          <button key={`${row.id}-action`} className="text-xs font-bold text-emerald-500 hover:underline" onClick={() => createPurchaseOrderDraft([row])}>Create PO</button>
+        ])}
+        empty="No reorder suggestions. Set Reorder Level or Safety Stock on items, then refresh."
       />
     </WorkflowShell>
   );
@@ -1270,47 +1391,134 @@ export function ApprovalsWorkflowPage() {
   const [rows, setRows] = React.useState<InventoryMovementApproval[]>([]);
   const [status, setStatus] = React.useState<Status>(null);
   const [loading, setLoading] = React.useState(false);
+  const [statusFilter, setStatusFilter] = React.useState<"all" | "pending" | "approved" | "rejected" | "reversed">("pending");
+  const [typeFilter, setTypeFilter] = React.useState<"all" | "adjustment" | "transfer">("all");
+  const [reasonDraft, setReasonDraft] = React.useState<Record<string, string>>({});
+
   const refresh = React.useCallback(async () => {
     setLoading(true);
     try {
-      setRows(await listInventoryMovementApprovals({ take: 200 }));
+      setRows(await listInventoryMovementApprovals({
+        status: statusFilter === "all" ? undefined : statusFilter,
+        movementType: typeFilter === "all" ? undefined : typeFilter,
+        take: 200
+      }));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [statusFilter, typeFilter]);
   React.useEffect(() => { refresh(); }, [refresh]);
 
   const act = async (id: string, action: "approve" | "reject" | "reverse") => {
     setStatus(null);
     try {
-      if (action === "approve") await approveInventoryMovement(id);
-      if (action === "reject") await rejectInventoryMovement(id);
-      if (action === "reverse") await reverseInventoryMovement(id);
+      const reason = reasonDraft[id]?.trim() || undefined;
+      if (action === "approve") await approveInventoryMovement(id, { reason });
+      if (action === "reject") await rejectInventoryMovement(id, { reason });
+      if (action === "reverse") await reverseInventoryMovement(id, { reason });
       setStatus({ type: "success", message: `Movement ${action}d.` });
+      setReasonDraft((current) => ({ ...current, [id]: "" }));
       refresh();
     } catch (error: any) {
       setStatus({ type: "error", message: error?.message ?? "Unable to update movement approval." });
     }
   };
 
+  const formatPayload = (payload: unknown) => {
+    const data = (payload && typeof payload === "object" ? payload : {}) as Record<string, any>;
+    const qty = data.qty ?? data.quantity ?? "-";
+    const rate = data.rate ?? data.unitCost ?? null;
+    const date = data.dateBs || data.date || "-";
+    const location = [data.warehouseId || data.fromWarehouseId, data.binId || data.fromBinId].filter(Boolean).join(" / ") || "-";
+    const destination = [data.toWarehouseId, data.toBinId].filter(Boolean).join(" / ") || null;
+    const tracking = [data.batchNo && `Batch ${data.batchNo}`, data.lotNo && `Lot ${data.lotNo}`, (data.expiryDateBs || data.expiryDate) && `Exp ${data.expiryDateBs || data.expiryDate}`].filter(Boolean).join(" | ");
+    return { data, qty, rate, date, location, destination, tracking };
+  };
+
+  const counts = rows.reduce((acc, row) => {
+    acc[row.status] = (acc[row.status] ?? 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
   return (
-    <WorkflowShell title="Movement Approvals" description="Approve, reject, and reverse stock adjustment or transfer requests." icon={ShieldCheck} actions={<RefreshButton loading={loading} onClick={refresh} />}>
+    <WorkflowShell
+      title="Movement Approvals"
+      description="Approve, reject, and reverse stock adjustment or transfer requests."
+      icon={ShieldCheck}
+      actions={<RefreshButton loading={loading} onClick={refresh} />}
+    >
       <StatusMessage status={status} />
-      <SimpleTable
-        columns={["Type", "Status", "Reason", "Payload", "Action"]}
-        rows={rows.map((row) => [
-          row.movementType,
-          <StatusBadge key={`${row.id}-status`} value={row.status} />,
-          row.reason || "-",
-          <code key={`${row.id}-payload`} className="block max-w-md truncate text-xs text-muted-foreground">{JSON.stringify(row.payloadJson)}</code>,
-          <div key={`${row.id}-actions`} className="flex flex-wrap gap-2">
-            {row.status === "pending" && <button className="text-xs font-bold text-emerald-500 hover:underline" onClick={() => act(row.id, "approve")}><BadgeCheck className="mr-1 inline h-3 w-3" />Approve</button>}
-            {row.status === "pending" && <button className="text-xs font-bold text-red-500 hover:underline" onClick={() => act(row.id, "reject")}><XCircle className="mr-1 inline h-3 w-3" />Reject</button>}
-            {row.status === "approved" && <button className="text-xs font-bold text-orange-500 hover:underline" onClick={() => act(row.id, "reverse")}><RotateCcw className="mr-1 inline h-3 w-3" />Reverse</button>}
+      <div className="grid gap-3 md:grid-cols-4">
+        {(["pending", "approved", "rejected", "reversed"] as const).map((key) => (
+          <Card key={key}><CardContent className="p-4"><div className={labelClass}>{key}</div><div className="mt-1 text-2xl font-black">{counts[key] ?? 0}</div></CardContent></Card>
+        ))}
+      </div>
+      <Card>
+        <CardContent className="grid gap-3 pt-6 md:grid-cols-[1fr_1fr_auto]">
+          <Field label="Status">
+            <select className={inputClass} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)}>
+              <option value="all">All statuses</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+              <option value="reversed">Reversed</option>
+            </select>
+          </Field>
+          <Field label="Movement Type">
+            <select className={inputClass} value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as any)}>
+              <option value="all">All movements</option>
+              <option value="adjustment">Adjustments</option>
+              <option value="transfer">Transfers</option>
+            </select>
+          </Field>
+          <div className="flex items-end">
+            <Button variant="outline" className="h-11" onClick={() => { setStatusFilter("pending"); setTypeFilter("all"); }}>Reset</Button>
           </div>
-        ])}
-        empty="No movement approval requests found."
-      />
+        </CardContent>
+      </Card>
+      <div className="space-y-3">
+        {rows.length ? rows.map((row) => {
+          const payload = formatPayload(row.payloadJson);
+          return (
+            <Card key={row.id}>
+              <CardContent className="space-y-4 p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg font-black capitalize">{row.movementType}</span>
+                      <StatusBadge value={row.status} />
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">Requested {row.requestedAt ? toDateInputValue(row.requestedAt) : "-"}</div>
+                  </div>
+                  <div className="text-right text-xs text-muted-foreground">
+                    {row.postedVoucherId ? <div>Posted voucher: <span className="font-mono">{row.postedVoucherId}</span></div> : null}
+                    {row.reversalVoucherId ? <div>Reversal voucher: <span className="font-mono">{row.reversalVoucherId}</span></div> : null}
+                  </div>
+                </div>
+                <div className="grid gap-3 md:grid-cols-5">
+                  <div><div className={labelClass}>Item</div><div className="font-bold">{payload.data.itemName || payload.data.itemId || "-"}</div></div>
+                  <div><div className={labelClass}>Qty</div><div className="font-bold">{payload.qty}</div></div>
+                  <div><div className={labelClass}>Rate</div><div className="font-bold">{payload.rate != null ? <MoneyText value={Number(payload.rate)} /> : "-"}</div></div>
+                  <div><div className={labelClass}>Date</div><div className="font-bold">{String(payload.date).slice(0, 10)}</div></div>
+                  <div><div className={labelClass}>{payload.destination ? "From / To" : "Location"}</div><div className="font-bold">{payload.destination ? `${payload.location} -> ${payload.destination}` : payload.location}</div></div>
+                </div>
+                {payload.tracking ? <div className="rounded-xl border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">{payload.tracking}</div> : null}
+                {row.reason ? <div className="rounded-xl border border-border bg-background px-3 py-2 text-sm"><span className="font-bold">Reason:</span> {row.reason}</div> : null}
+                {(row.status === "pending" || row.status === "approved") ? (
+                  <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+                    <input className={inputClass} value={reasonDraft[row.id] ?? ""} onChange={(e) => setReasonDraft((current) => ({ ...current, [row.id]: e.target.value }))} placeholder={row.status === "pending" ? "Approval/rejection note" : "Reversal reason"} />
+                    <div className="flex flex-wrap gap-2">
+                      {row.status === "pending" && <Button className="bg-emerald-600 text-white hover:bg-emerald-700" onClick={() => act(row.id, "approve")}><BadgeCheck className="mr-2 h-4 w-4" />Approve</Button>}
+                      {row.status === "pending" && <Button variant="outline" className="border-red-500 text-red-500 hover:bg-red-500 hover:text-white" onClick={() => act(row.id, "reject")}><XCircle className="mr-2 h-4 w-4" />Reject</Button>}
+                      {row.status === "approved" && <Button variant="outline" className="border-orange-500 text-orange-500 hover:bg-orange-500 hover:text-white" onClick={() => act(row.id, "reverse")}><RotateCcw className="mr-2 h-4 w-4" />Reverse</Button>}
+                    </div>
+                  </div>
+                ) : null}
+              </CardContent>
+            </Card>
+          );
+        }) : <EmptyState text={loading ? "Loading movement approvals..." : "No movement approval requests found."} />}
+      </div>
     </WorkflowShell>
   );
 }

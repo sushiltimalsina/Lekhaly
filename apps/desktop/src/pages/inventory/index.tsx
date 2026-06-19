@@ -182,7 +182,7 @@ export default function InventoryDashboardPage() {
           ...(features.inventory ? [{ href: "/inventory/adjust", icon: Plus, title: "Stock Adjustment", desc: "Increase or decrease item stock" }] : []),
           ...(features.warehouses ? [{ href: "/inventory/transfer", icon: ArrowRightLeft, title: "Stock Transfer", desc: "Move stock between warehouses" }] : []),
           ...(features.goodsReceipt ? [{ href: "/inventory/goods-receipt", icon: ArrowDownToLine, title: "Goods Receipt", desc: "Receive purchased stock into inventory" }] : []),
-          ...(features.inventory ? [{ href: "/inventory/dispatch", icon: ArrowUpFromLine, title: "Delivery / Dispatch", desc: "Issue stock for customer delivery" }] : []),
+          ...(features.dispatch ? [{ href: "/inventory/dispatch", icon: ArrowUpFromLine, title: "Delivery / Dispatch", desc: "Issue stock for customer delivery" }] : []),
           ...(features.inventory ? [{ href: "/inventory/reservations", icon: ShoppingCart, title: "Reservations", desc: "View sales order stock reservations" }] : []),
           ...(features.inventory ? [{ href: "/inventory/reorder", icon: PackageSearch, title: "Reorder Suggestions", desc: "Suggested purchase quantities" }] : []),
           ...(features.inventory ? [{ href: "/inventory/approvals", icon: ShieldCheck, title: "Movement Approvals", desc: "Approve and reverse stock movements" }] : []),

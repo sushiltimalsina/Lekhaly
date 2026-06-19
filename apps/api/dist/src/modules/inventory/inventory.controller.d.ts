@@ -16,6 +16,7 @@ export declare class InventoryController {
         serialTrackingEnabled: boolean;
         kitsEnabled: boolean;
         goodsReceiptWorkflowEnabled: boolean;
+        dispatchWorkflowEnabled: boolean;
         allowNegativeStock: boolean;
         requireWarehouseOnMovements: boolean;
         defaultWarehouseId: string | null;
@@ -25,17 +26,17 @@ export declare class InventoryController {
     }>;
     serials(user: AuthUser, query: any): Promise<({
         item: {
-            id: string;
             name: string;
+            id: string;
             sku: string | null;
         };
         warehouse: {
-            id: string;
             name: string;
+            id: string;
         } | null;
         bin: {
-            id: string;
             name: string;
+            id: string;
         } | null;
     } & {
         id: string;
@@ -43,10 +44,10 @@ export declare class InventoryController {
         createdAt: Date;
         updatedAt: Date;
         itemId: string;
-        serialNo: string;
         warehouseId: string | null;
         binId: string | null;
         status: string;
+        serialNo: string;
         purchaseInvoiceId: string | null;
         salesInvoiceId: string | null;
     })[]>;
@@ -110,9 +111,16 @@ export declare class InventoryController {
         parentGroup: string;
         reorderLevel: number;
         safetyStock: number;
+        minStockLevel: number;
+        reorderQty: number;
         onHandQty: number;
         reservedQty: number;
         availableQty: number;
+        pendingPurchaseQty: number;
+        effectiveAvailableQty: number;
+        reorderThreshold: number;
+        shortageQty: number;
+        suggestedQty: number;
         isLowStock: boolean;
         openingQty: number;
         openingAvgPrice: number;
@@ -227,8 +235,8 @@ export declare class InventoryController {
     reorderSuggestions(user: AuthUser): Promise<any[]>;
     trackedStock(user: AuthUser, query: any): Promise<{
         item: {
-            id: string;
             name: string;
+            id: string;
             sku: string | null;
             isSerialized: boolean;
             tracksBatch: boolean;
@@ -251,9 +259,9 @@ export declare class InventoryController {
         }[];
         serials: never[] | {
             id: string;
-            serialNo: string;
             warehouseId: string | null;
             binId: string | null;
+            serialNo: string;
         }[];
     }>;
     transfer(user: AuthUser, body: any): Promise<{
