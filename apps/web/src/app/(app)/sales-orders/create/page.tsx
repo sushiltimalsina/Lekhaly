@@ -40,6 +40,8 @@ import {
 import { toBs } from "@/lib/dates/bs";
 import { useRouter, useSearchParams } from "next/navigation";
 
+const SALES_INVOICE_DRAFT_KEY = "lekhaly.salesInvoiceSourceDraft";
+
 // --- Components (SearchableSelect, isoAddDays) - Reused ---
 
 const isoAddDays = (iso: string, days: number) => {
@@ -654,22 +656,34 @@ function SalesOrderCreateContent() {
         }
     };
 
-    const onConvertToInvoice = async () => {
-        if (!searchParams.get("id")) return;
-        setLoading(true);
+    const onCreateSalesInvoice = () => {
+        const sourceId = searchParams.get("id");
+        if (!sourceId) return;
         try {
-            const res = await convertToInvoice(searchParams.get("id")!);
-            const newInvoiceId = res?.id || res?.data?.id;
-            if (newInvoiceId) {
-                setSuccess("Converted to Invoice successfully.");
-                setTimeout(() => router.push(`/sales/create?id=${newInvoiceId}`), 1000);
-            } else {
-                setSuccess("Converted to Invoice.");
-            }
+            const payload = buildPayload();
+            window.localStorage.setItem(SALES_INVOICE_DRAFT_KEY, JSON.stringify({
+                sourceType: "sales_order",
+                sourceId,
+                sourceNo: form.orderNo || form.orderNoDisplay,
+                partyId: payload.partyId,
+                partyName: form.partyName,
+                referenceNo: form.orderNo || form.orderNoDisplay,
+                salesType: payload.salesType || form.salesType || "vat_13",
+                memo: payload.memo || undefined,
+                notes: payload.notes || undefined,
+                termsText: payload.terms || undefined,
+                lines: payload.items.map((line: any) => ({
+                    itemId: line.itemId,
+                    qty: line.qty,
+                    rate: line.rate,
+                    unit: line.unit || undefined,
+                    description: line.description || undefined
+                })),
+                sundries: payload.sundries || []
+            }));
+            router.push("/sales/create");
         } catch (e: any) {
-            setError(e?.message ?? "Failed to convert.");
-        } finally {
-            setLoading(false);
+            setError(e?.message ?? "Unable to prepare sales invoice.");
         }
     };
 
@@ -700,11 +714,11 @@ function SalesOrderCreateContent() {
                             {/* Convert Action */}
                             {!isEditMode && searchParams.get("id") && (
                                 <Button
-                                    onClick={onConvertToInvoice}
+                                    onClick={onCreateSalesInvoice}
                                     className="rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg h-10 px-4"
                                 >
-                                    <RefreshCw className="mr-2 h-4 w-4" />
-                                    Convert to Invoice
+                                    <FileText className="mr-2 h-4 w-4" />
+                                    Create Sales Invoice
                                 </Button>
                             )}
 

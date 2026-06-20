@@ -50,6 +50,7 @@ const isoAddDays = (iso: string, days: number) => {
     return d.toISOString().slice(0, 10);
 };
 const REORDER_PO_DRAFT_KEY = "lekhaly.reorderPurchaseOrderDraft";
+const PURCHASE_INVOICE_DRAFT_KEY = "lekhaly.purchaseInvoiceSourceDraft";
 
 function useOutsideClick<T extends HTMLElement>(
     onOutside: () => void,
@@ -710,24 +711,33 @@ export default function PurchaseOrderCreatePage() {
         }
     };
 
-    const onConvertToPurchase = async () => {
-        if (!searchParams.get("id")) return;
-        setLoading(true);
+    const onCreatePurchaseInvoice = () => {
+        const sourceId = searchParams.get("id");
+        if (!sourceId) return;
         try {
-            const res = await convertToPurchase(searchParams.get("id")!);
-            const newVoucherId = res?.id || res?.data?.id;
-            if (newVoucherId) {
-                setSuccess("Converted to Purchase Voucher successfully.");
-                // Assuming route for purchase voucher is /purchase/create?id=... (or /vouchers/purchase/...)
-                // Based on previous chats, purchase invoice is at /purchase/create
-                setTimeout(() => navigate(`/purchase/create?id=${newVoucherId}`), 1000);
-            } else {
-                setSuccess("Converted to Purchase Voucher.");
-            }
+            const payload = buildPayload();
+            window.localStorage.setItem(PURCHASE_INVOICE_DRAFT_KEY, JSON.stringify({
+                sourceType: "purchase_order",
+                sourceId,
+                sourceNo: form.orderNo || form.orderNoDisplay,
+                partyId: payload.partyId,
+                partyName: form.partyName,
+                referenceNo: form.orderNo || form.orderNoDisplay,
+                purchaseType: payload.purchaseType || form.purchaseType || "vat_13",
+                memo: payload.memo || undefined,
+                notes: payload.notes || undefined,
+                lines: payload.items.map((line: any) => ({
+                    itemId: line.itemId,
+                    qty: line.qty,
+                    rate: line.rate,
+                    unit: line.unit || undefined,
+                    description: line.description || undefined
+                })),
+                sundries: payload.sundries || []
+            }));
+            navigate("/purchase/create");
         } catch (e: any) {
-            setError(e?.message ?? "Failed to convert.");
-        } finally {
-            setLoading(false);
+            setError(e?.message ?? "Unable to prepare purchase invoice.");
         }
     };
 
@@ -758,11 +768,11 @@ export default function PurchaseOrderCreatePage() {
                             {/* Convert Action */}
                             {!isEditMode && searchParams.get("id") && (
                                 <Button
-                                    onClick={onConvertToPurchase}
+                                    onClick={onCreatePurchaseInvoice}
                                     className="rounded-full h-10 px-8 bg-white text-slate-900 border border-slate-200 hover:!bg-orange-600 hover:!text-white hover:!border-orange-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm active:scale-95 text-xs font-bold uppercase tracking-widest"
                                 >
-                                    <RefreshCw className="mr-2 h-4 w-4" />
-                                    Convert to Bill
+                                    <FileText className="mr-2 h-4 w-4" />
+                                    Create Purchase Invoice
                                 </Button>
                             )}
 

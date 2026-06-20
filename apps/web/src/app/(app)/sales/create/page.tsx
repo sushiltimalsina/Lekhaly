@@ -47,6 +47,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { getInvoice, updateInvoiceDraft } from "@/lib/api/invoices";
 import AddBillSundryDialog from "@/components/app/add-bill-sundry-dialog";
 
+const SALES_INVOICE_DRAFT_KEY = "lekhaly.salesInvoiceSourceDraft";
+
 type Line = {
   itemId: string;
   qty: string;
@@ -596,9 +598,60 @@ function SalesCreateContent() {
           }
           return row;
         }));
-
-        // Load Edit ID if present
+        // Load source document draft when coming from a sales order or dispatch.
         const editId = searchParams.get("id");
+        if (!editId && typeof window !== "undefined") {
+          const rawDraft = window.localStorage.getItem(SALES_INVOICE_DRAFT_KEY);
+          if (rawDraft) {
+            try {
+              const draft = JSON.parse(rawDraft);
+              const draftLines = Array.isArray(draft?.lines) ? draft.lines : [];
+              if (draftLines.length) {
+                setForm((f) => ({
+                  ...f,
+                  partyId: draft.partyId || "",
+                  partyName: draft.partyName || "",
+                  referenceNo: draft.referenceNo || draft.sourceNo || "",
+                  salesType: draft.salesType || f.salesType || "vat_13",
+                  memo: draft.memo || f.memo,
+                  notes: draft.notes || f.notes,
+                  termsText: draft.termsText || f.termsText,
+                  termsOverrideEnabled: Boolean(draft.termsText || f.termsOverrideEnabled)
+                }));
+                setLines(draftLines.map((line: any) => ({
+                  itemId: line.itemId || "",
+                  qty: String(Number(line.qty || 0)),
+                  rate: String(Number(line.rate || 0)),
+                  unit: line.unit || "",
+                  description: line.description || line.itemName || "",
+                  warehouseId: line.warehouseId || "",
+                  binId: line.binId || "",
+                  batchNo: line.batchNo || "",
+                  lotNo: line.lotNo || "",
+                  expiryDate: line.expiryDate ? String(line.expiryDate).split("T")[0] : "",
+                  expiryDateBs: line.expiryDateBs || "",
+                  serialText: Array.isArray(line.serialNumbers) ? line.serialNumbers.join("\\n") : ""
+                })));
+                if (Array.isArray(draft.sundries) && draft.sundries.length) {
+                  setBillSundries(draft.sundries.map((sn: any) => ({
+                    id: crypto.randomUUID?.() || Math.random().toString(36).slice(2),
+                    sundryId: sn.billSundryId || sn.sundryId,
+                    name: sn.name || "",
+                    type: sn.type || "add",
+                    ratePct: String(sn.rate ?? sn.ratePct ?? "0"),
+                    manualAmount: sn.amount !== undefined ? String(sn.amount) : undefined,
+                    isManual: sn.amount !== undefined
+                  })));
+                }
+                setSuccess(`Loaded ${draftLines.length} item${draftLines.length === 1 ? "" : "s"} from ${draft.sourceNo || "source document"}. Review and save the sales invoice.`);
+              }
+            } catch (err) {
+              console.error("Failed to load sales invoice source draft", err);
+            } finally {
+              window.localStorage.removeItem(SALES_INVOICE_DRAFT_KEY);
+            }
+          }
+        }
         if (editId) {
           setIsEditMode(false);
           getInvoice(editId).then(inv => {

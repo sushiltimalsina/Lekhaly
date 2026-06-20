@@ -36,6 +36,8 @@ import {
     DropdownMenuTrigger
 } from "@lekhaly/ui";
 
+const SALES_INVOICE_DRAFT_KEY = "lekhaly.salesInvoiceSourceDraft";
+
 export default function SalesOrderDetailPage() {
     const params = useParams<{ id: string }>();
     const router = useRouter();
@@ -87,22 +89,35 @@ export default function SalesOrderDetailPage() {
         }
     }
 
-    async function onConvert() {
-        if (!id) return;
-        setActionLoading(true);
+    function onConvert() {
+        if (!id || !order) return;
         try {
-            const res: any = await convertToInvoice(id);
-            const invoiceId = res?.id ?? res?.invoiceId;
+            const orderLines = Array.isArray(order.items) ? order.items : [];
+            if (!orderLines.length) throw new Error("Sales order has no item lines to invoice.");
+            window.localStorage.setItem(SALES_INVOICE_DRAFT_KEY, JSON.stringify({
+                sourceType: "sales_order",
+                sourceId: id,
+                sourceNo: order.orderNo,
+                partyId: order.partyId || order.party?.id || "",
+                partyName: order.partyName || order.party?.name || "",
+                referenceNo: order.orderNo,
+                salesType: order.salesType || "vat_13",
+                memo: order.memo || undefined,
+                notes: order.notes || order.additionalNote || undefined,
+                termsText: order.terms || undefined,
+                lines: orderLines.map((line: any) => ({
+                    itemId: line.itemId || line.item?.id || "",
+                    qty: Number(line.qty || 0),
+                    rate: Number(line.rate || 0),
+                    unit: line.item?.unit || line.unit || undefined,
+                    description: line.description || line.item?.name || undefined
+                })).filter((line: any) => line.itemId && line.qty > 0),
+                sundries: order.sundries || []
+            }));
             setConfirmConvert(false);
-            if (invoiceId) {
-                router.push(`/sales/create?id=${invoiceId}`);
-            } else {
-                await load();
-            }
+            router.push("/sales/create");
         } catch (e: any) {
-            setError(e?.message ?? "Failed to convert to invoice");
-        } finally {
-            setActionLoading(false);
+            setError(e?.message ?? "Failed to prepare sales invoice");
         }
     }
 
@@ -177,7 +192,7 @@ export default function SalesOrderDetailPage() {
                             className="rounded-2xl h-11 bg-indigo-600 text-white font-black text-xs uppercase tracking-widest px-8 shadow-xl shadow-indigo-500/20 hover:bg-indigo-700 hover:scale-105 active:scale-95 transition-all"
                         >
                             <Receipt className="mr-2 h-4 w-4" />
-                            Generate Invoice
+                            Create Sales Invoice
                         </Button>
                     )}
 
@@ -400,7 +415,7 @@ export default function SalesOrderDetailPage() {
                 open={confirmConvert}
                 title="Initialize Invoicing?"
                 description="This will prepare a sales invoice based on the current order items. You can finalize quantities on the Next screen."
-                confirmText="Create Invoice Draft"
+                confirmText="Create Sales Invoice Draft"
                 onConfirm={onConvert}
                 onCancel={() => setConfirmConvert(false)}
                 loading={actionLoading}

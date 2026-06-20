@@ -13,7 +13,8 @@ import {
   ShieldCheck,
   ShoppingCart,
   Trash2,
-  XCircle
+  XCircle,
+  FileText
 } from "lucide-react";
 import { Button, Card, CardContent } from "@lekhaly/ui";
 import PageHeader from "@/components/app/page-header";
@@ -60,6 +61,7 @@ type Status = { type: "success" | "error"; message: string } | null;
 const inputClass = "h-11 rounded-xl border border-border bg-background px-3 text-sm outline-none transition-colors focus:border-orange-500";
 const labelClass = "text-[11px] font-bold uppercase tracking-widest text-muted-foreground";
 const REORDER_PO_DRAFT_KEY = "lekhaly.reorderPurchaseOrderDraft";
+const SALES_INVOICE_DRAFT_KEY = "lekhaly.salesInvoiceSourceDraft";
 
 function normalizeItems(res: Awaited<ReturnType<typeof listItems>>) {
   const rows = Array.isArray(res) ? res : res?.items ?? [];
@@ -736,7 +738,7 @@ export function GoodsReceiptWorkflowPage() {
                     <th className="px-3 py-3 text-right">Items</th>
                     <th className="px-3 py-3 text-right">Qty</th>
                     <th className="px-3 py-3 text-right">Amount</th>
-                    <th className="px-3 py-3">Status</th>
+                    <th className="px-3 py-3">Status</th>`r`n                      <th className="px-3 py-3 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -949,6 +951,38 @@ export function DispatchWorkflowPage() {
     setView("create");
   };
 
+  const createSalesInvoiceFromDispatch = (dispatch: StockDispatchRecord) => {
+    const sourceNo = dispatch.dispatchNo || `DS-${dispatch.id.slice(0, 8).toUpperCase()}`;
+    const dispatchLines = Array.isArray(dispatch.lines) ? dispatch.lines : [];
+    if (!dispatchLines.length) {
+      setStatus({ type: "error", message: "This dispatch has no item lines to invoice." });
+      return;
+    }
+    window.localStorage.setItem(SALES_INVOICE_DRAFT_KEY, JSON.stringify({
+      sourceType: "dispatch",
+      sourceId: dispatch.id,
+      sourceNo,
+      partyId: dispatch.customerId || "",
+      partyName: dispatch.customerName || "",
+      referenceNo: sourceNo,
+      salesType: "vat_13",
+      memo: dispatch.memo || undefined,
+      lines: dispatchLines.map((line) => ({
+        itemId: line.itemId,
+        qty: Number(line.qty || 0),
+        rate: Number(line.rate || 0),
+        unit: line.item?.unit || undefined,
+        description: line.item?.name || undefined,
+        warehouseId: line.warehouseId || undefined,
+        binId: line.binId || undefined,
+        batchNo: line.batchNo || undefined,
+        lotNo: line.lotNo || undefined,
+        expiryDate: line.expiryDate || undefined
+      })).filter((line) => line.itemId && line.qty > 0)
+    }));
+    window.location.href = "/sales/create";
+  };
+
   return (
     <WorkflowShell
       title={view === "create" ? "Create Dispatch" : "Dispatch Register"}
@@ -1092,7 +1126,7 @@ export function DispatchWorkflowPage() {
                       <th className="px-3 py-3 text-right">Items</th>
                       <th className="px-3 py-3 text-right">Qty</th>
                       <th className="px-3 py-3 text-right">Amount</th>
-                      <th className="px-3 py-3">Status</th>
+                      <th className="px-3 py-3">Status</th>`r`n                      <th className="px-3 py-3 text-right">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -1109,6 +1143,11 @@ export function DispatchWorkflowPage() {
                           <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs font-bold capitalize text-emerald-600 dark:text-emerald-300">
                             {dispatch.status}
                           </span>
+                        </td>
+                        <td className="px-3 py-3 text-right">
+                          <Button type="button" size="sm" onClick={() => createSalesInvoiceFromDispatch(dispatch)} className="h-9 rounded-xl bg-emerald-600 px-3 text-white hover:bg-emerald-700">
+                            <FileText className="mr-2 h-3.5 w-3.5" /> Create Sales Invoice
+                          </Button>
                         </td>
                       </tr>
                     ))}

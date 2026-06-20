@@ -15,7 +15,6 @@ import {
   Save,
   AlertTriangle,
   CheckCircle2,
-  ChevronLeft,
   Info,
   Plus,
 } from "lucide-react";
@@ -47,7 +46,6 @@ type ItemOption = {
 type AccountOption = { id: string; name: string; code?: string; type?: string };
 
 export default function StockAdjustPage() {
-  const router = useRouter();
   const dateInputRef = React.useRef<HTMLInputElement>(null);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);

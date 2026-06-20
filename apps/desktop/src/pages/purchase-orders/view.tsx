@@ -36,6 +36,8 @@ import {
     DropdownMenuTrigger
 } from "@lekhaly/ui";
 
+const PURCHASE_INVOICE_DRAFT_KEY = "lekhaly.purchaseInvoiceSourceDraft";
+
 export default function PurchaseOrderDetailPage() {
     const params = useParams();
     const navigate = useNavigate();
@@ -87,22 +89,34 @@ export default function PurchaseOrderDetailPage() {
         }
     }
 
-    async function onConvert() {
-        if (!id) return;
-        setActionLoading(true);
+    function onConvert() {
+        if (!id || !order) return;
         try {
-            const res: any = await convertToPurchase(id);
-            const voucherId = res?.id ?? res?.voucherId;
+            const orderLines = Array.isArray(order.items) ? order.items : [];
+            if (!orderLines.length) throw new Error("Purchase order has no item lines to invoice.");
+            window.localStorage.setItem(PURCHASE_INVOICE_DRAFT_KEY, JSON.stringify({
+                sourceType: "purchase_order",
+                sourceId: id,
+                sourceNo: order.orderNo,
+                partyId: order.partyId || order.party?.id || "",
+                partyName: order.partyName || order.party?.name || "",
+                referenceNo: order.orderNo,
+                purchaseType: order.purchaseType || "vat_13",
+                memo: order.memo || undefined,
+                notes: order.notes || order.additionalNote || undefined,
+                lines: orderLines.map((line: any) => ({
+                    itemId: line.itemId || line.item?.id || "",
+                    qty: Number(line.qty || 0),
+                    rate: Number(line.rate || 0),
+                    unit: line.item?.unit || line.unit || undefined,
+                    description: line.description || line.item?.name || undefined
+                })).filter((line: any) => line.itemId && line.qty > 0),
+                sundries: order.sundries || []
+            }));
             setConfirmConvert(false);
-            if (voucherId) {
-                navigate(`/purchase/create?id=${voucherId}`);
-            } else {
-                await load();
-            }
+            navigate("/purchase/create");
         } catch (e: any) {
-            setError(e?.message ?? "Failed to initialize purchase bill");
-        } finally {
-            setActionLoading(false);
+            setError(e?.message ?? "Failed to prepare purchase invoice");
         }
     }
 
@@ -399,7 +413,7 @@ export default function PurchaseOrderDetailPage() {
                 open={confirmConvert}
                 title="Record Purchase Bill?"
                 description="This will initialize a purchase bill based on items in this order. You can adjust the billed quantities on the next screen."
-                confirmText="Create Bill Draft"
+                confirmText="Create Purchase Invoice Draft"
                 onConfirm={onConvert}
                 onCancel={() => setConfirmConvert(false)}
                 loading={actionLoading}

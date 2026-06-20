@@ -47,6 +47,8 @@ import AddPurchaseTypeDialog from "../../components/app/add-purchase-type-dialog
 import { getInventorySettings, type InventorySettings } from "@/lib/api/inventory";
 import { listWarehouses, type Warehouse } from "@/lib/api/warehouses";
 
+const PURCHASE_INVOICE_DRAFT_KEY = "lekhaly.purchaseInvoiceSourceDraft";
+
 type Line = {
     itemId: string;
     qty: string;
@@ -565,10 +567,61 @@ export default function PurchaseCreatePage() {
                     }
                     return row;
                 }));
-
-                // Load Edit ID if present
+                // Load source document draft when coming from a purchase order.
                 const editId = searchParams.get("id");
-                if (editId) {
+                if (!editId && typeof window !== "undefined") {
+                    const rawDraft = window.localStorage.getItem(PURCHASE_INVOICE_DRAFT_KEY);
+                    if (rawDraft) {
+                        try {
+                            const draft = JSON.parse(rawDraft);
+                            const draftLines = Array.isArray(draft?.lines) ? draft.lines : [];
+                            if (draftLines.length) {
+                                setForm((f) => ({
+                                    ...f,
+                                    partyId: draft.partyId || "",
+                                    referenceNo: draft.referenceNo || draft.sourceNo || f.referenceNo,
+                                    vendorInvoiceNo: draft.vendorInvoiceNo || "",
+                                    purchaseType: draft.purchaseType || f.purchaseType || "vat_13",
+                                    memo: draft.memo || f.memo,
+                                    notes: draft.notes || f.notes,
+                                    partyName: draft.partyName || ""
+                                }));
+                                setLines(draftLines.map((line: any) => ({
+                                    itemId: line.itemId || "",
+                                    qty: String(Number(line.qty || 0)),
+                                    rate: String(Number(line.rate || 0)),
+                                    unit: line.unit || "",
+                                    description: line.description || line.itemName || "",
+                                    expenseAccountId: line.expenseAccountId || undefined,
+                                    warehouseId: line.warehouseId || "",
+                                    binId: line.binId || "",
+                                    batchNo: line.batchNo || "",
+                                    lotNo: line.lotNo || "",
+                                    expiryDate: line.expiryDate ? String(line.expiryDate).split("T")[0] : "",
+                                    expiryDateBs: line.expiryDateBs || "",
+                                    serialText: Array.isArray(line.serialNumbers) ? line.serialNumbers.join("
+") : ""
+                                })));
+                                if (Array.isArray(draft.sundries) && draft.sundries.length) {
+                                    setBillSundries(draft.sundries.map((sn: any) => ({
+                                        id: crypto.randomUUID?.() || Math.random().toString(36).slice(2),
+                                        sundryId: sn.billSundryId || sn.sundryId,
+                                        name: sn.name || "",
+                                        type: sn.type || "add",
+                                        ratePct: String(sn.rate ?? sn.ratePct ?? "0"),
+                                        manualAmount: sn.amount !== undefined ? String(sn.amount) : undefined,
+                                        isManual: sn.amount !== undefined
+                                    })));
+                                }
+                                setSuccess(`Loaded ${draftLines.length} item${draftLines.length === 1 ? "" : "s"} from ${draft.sourceNo || "purchase order"}. Review and save the purchase invoice.`);
+                            }
+                        } catch (err) {
+                            console.error("Failed to load purchase invoice source draft", err);
+                        } finally {
+                            window.localStorage.removeItem(PURCHASE_INVOICE_DRAFT_KEY);
+                        }
+                    }
+                }                if (editId) {
                     setIsEditMode(false); // Start in view mode for existing vouchers
                     getVoucher(editId).then(v => {
                         setVoucherStatus(v.status || null);

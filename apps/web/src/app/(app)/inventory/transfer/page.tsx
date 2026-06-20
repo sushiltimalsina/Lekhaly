@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
 import PageHeader from "@/components/app/page-header";
 import DualDateInput from "@/components/app/dual-date-input";
 import SearchableSelect from "@/components/app/searchable-select";
@@ -14,7 +13,6 @@ import {
   Save,
   AlertTriangle,
   CheckCircle2,
-  ChevronLeft,
   Info,
   ArrowRight,
   Warehouse,
@@ -51,7 +49,6 @@ type ItemOption = {
 };
 
 export default function StockTransferPage() {
-  const router = useRouter();
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<string | null>(null);
