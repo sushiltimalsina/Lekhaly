@@ -85,44 +85,46 @@ export default function PageHeader({ title, description, actions, breadcrumb, cl
   };
 
   return (
-    <div className={cn("mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between", className)}>
-      <div className="flex items-center gap-4">
-        {Icon && (
-          <div className={cn(
-            "flex h-12 w-12 items-center justify-center rounded-2xl text-white shrink-0",
-            iconContainerClassName || "bg-orange-600 shadow-lg shadow-orange-500/20"
-          )}>
-            <Icon className="h-6 w-6" />
-          </div>
-        )}
-        <div className="space-y-1">
-          {shouldShowBack && (
-            <button
-              type="button"
-              onClick={goBack}
-              aria-label={backLabel}
-              title={backLabel}
-              className="mb-2 inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-full border border-transparent bg-transparent px-4 text-sm font-bold text-slate-950 transition-colors hover:border-orange-600 hover:bg-orange-600 hover:text-white dark:text-white"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span>{backLabel}</span>
-            </button>
+    <div className={cn("mb-6 flex flex-col gap-3", className)}>
+      {shouldShowBack && (
+        <button
+          type="button"
+          onClick={goBack}
+          aria-label={backLabel}
+          title={backLabel}
+          className="inline-flex h-10 w-fit shrink-0 items-center justify-center gap-2 rounded-full border border-transparent bg-transparent px-4 text-sm font-bold text-slate-950 transition-colors hover:border-orange-600 hover:bg-orange-600 hover:text-white dark:text-white"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span>{backLabel}</span>
+        </button>
+      )}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-4">
+          {Icon && (
+            <div className={cn(
+              "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white",
+              iconContainerClassName || "bg-orange-600 shadow-lg shadow-orange-500/20"
+            )}>
+              <Icon className="h-6 w-6" />
+            </div>
           )}
-          {breadcrumb ? <div className="mb-2">{breadcrumb}</div> : null}
-          <h1 className="text-2xl font-heading font-bold tracking-tight text-foreground sm:text-3xl">
-            {title}
-          </h1>
-          {description ? (
-            <p className="text-sm text-muted-foreground max-w-2xl">{description}</p>
-          ) : null}
+          <div className="space-y-1">
+            {breadcrumb ? <div className="mb-2">{breadcrumb}</div> : null}
+            <h1 className="text-2xl font-heading font-bold tracking-tight text-foreground sm:text-3xl">
+              {title}
+            </h1>
+            {description ? (
+              <p className="text-sm text-muted-foreground max-w-2xl">{description}</p>
+            ) : null}
+          </div>
         </div>
-      </div>
 
-      {actions ? (
-        <div className="flex shrink-0 items-center gap-2 sm:self-end">
-          {actions}
-        </div>
-      ) : null}
+        {actions ? (
+          <div className="flex shrink-0 items-center gap-2 sm:self-end">
+            {actions}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

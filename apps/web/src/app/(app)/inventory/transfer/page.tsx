@@ -238,14 +238,9 @@ export default function StockTransferPage() {
           title="Stock Transfer"
           description="Move inventory between warehouses, bins, and storage locations."
           icon={ArrowRightLeft}
-          breadcrumb={
-            <button
-              onClick={() => router.push("/inventory")}
-              className="inline-flex items-center gap-2 rounded-full border border-transparent bg-transparent px-4 py-2 text-sm font-semibold text-foreground transition-all hover:border-orange-600 hover:bg-orange-600 hover:text-white"
-            >
-              <ChevronLeft className="h-4 w-4" /> Back to Inventory
-            </button>
-          }
+          showBack
+          backHref="/inventory"
+          backLabel="Back to Inventory"
         />
       </div>
 

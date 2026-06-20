@@ -98,10 +98,10 @@ export declare const ReservationQuerySchema: z.ZodObject<{
     salesOrderId: z.ZodOptional<z.ZodString>;
     status: z.ZodOptional<z.ZodEnum<{
         active: "active";
-        partial: "partial";
         fulfilled: "fulfilled";
-        released: "released";
         cancelled: "cancelled";
+        partial: "partial";
+        released: "released";
     }>>;
     take: z.ZodOptional<z.ZodCoercedNumber<unknown>>;
 }, z.core.$strip>;
@@ -115,8 +115,8 @@ export declare const MovementApprovalRequestSchema: z.ZodObject<{
 }, z.core.$strip>;
 export declare const MovementApprovalQuerySchema: z.ZodObject<{
     status: z.ZodOptional<z.ZodEnum<{
-        reversed: "reversed";
         pending: "pending";
+        reversed: "reversed";
         approved: "approved";
         rejected: "rejected";
     }>>;

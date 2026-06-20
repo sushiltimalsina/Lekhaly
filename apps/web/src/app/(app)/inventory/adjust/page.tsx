@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
 import PageHeader from "@/components/app/page-header";
 import DualDateInput from "@/components/app/dual-date-input";
 import SearchableSelect from "@/components/app/searchable-select";
@@ -232,14 +231,9 @@ export default function StockAdjustPage() {
           title="Stock Adjustment"
           description="Increase or decrease stock quantities with journal entry generation."
           icon={Package}
-          breadcrumb={
-            <button
-              onClick={() => router.push("/inventory")}
-              className="inline-flex items-center gap-2 rounded-full border border-transparent bg-transparent px-4 py-2 text-sm font-semibold text-foreground transition-all hover:border-orange-600 hover:bg-orange-600 hover:text-white"
-            >
-              <ChevronLeft className="h-4 w-4" /> Back to Inventory
-            </button>
-          }
+          showBack
+          backHref="/inventory"
+          backLabel="Back to Inventory"
         />
       </div>
 
