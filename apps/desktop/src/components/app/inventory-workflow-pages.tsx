@@ -1498,13 +1498,17 @@ export function ApprovalsWorkflowPage() {
 
   const formatPayload = (payload: unknown) => {
     const data = (payload && typeof payload === "object" ? payload : {}) as Record<string, any>;
+    const shortId = (value?: string | null) => value ? `${String(value).slice(0, 8)}...` : null;
+    const itemLabel = data.itemName
+      ? `${data.itemName}${data.itemSku ? ` [${data.itemSku}]` : ""}`
+      : shortId(data.itemId) || "-";
     const qty = data.qty ?? data.quantity ?? "-";
     const rate = data.rate ?? data.unitCost ?? null;
     const date = data.dateBs || data.date || "-";
-    const location = [data.warehouseId || data.fromWarehouseId, data.binId || data.fromBinId].filter(Boolean).join(" / ") || "-";
-    const destination = [data.toWarehouseId, data.toBinId].filter(Boolean).join(" / ") || null;
+    const location = [data.warehouseName || data.fromWarehouseName || shortId(data.warehouseId || data.fromWarehouseId), data.binName || data.fromBinName || shortId(data.binId || data.fromBinId)].filter(Boolean).join(" / ") || "-";
+    const destination = [data.toWarehouseName || shortId(data.toWarehouseId), data.toBinName || shortId(data.toBinId)].filter(Boolean).join(" / ") || null;
     const tracking = [data.batchNo && `Batch ${data.batchNo}`, data.lotNo && `Lot ${data.lotNo}`, (data.expiryDateBs || data.expiryDate) && `Exp ${data.expiryDateBs || data.expiryDate}`].filter(Boolean).join(" | ");
-    return { data, qty, rate, date, location, destination, tracking };
+    return { data, itemLabel, qty, rate, date, location, destination, tracking };
   };
 
   const counts = rows.reduce((acc, row) => {
@@ -1568,7 +1572,7 @@ export function ApprovalsWorkflowPage() {
                   </div>
                 </div>
                 <div className="grid gap-3 md:grid-cols-5">
-                  <div><div className={labelClass}>Item</div><div className="font-bold">{payload.data.itemName || payload.data.itemId || "-"}</div></div>
+                  <div><div className={labelClass}>Item</div><div className="font-bold">{payload.itemLabel}</div></div>
                   <div><div className={labelClass}>Qty</div><div className="font-bold">{payload.qty}</div></div>
                   <div><div className={labelClass}>Rate</div><div className="font-bold">{payload.rate != null ? <MoneyText value={Number(payload.rate)} /> : "-"}</div></div>
                   <div><div className={labelClass}>Date</div><div className="font-bold">{String(payload.date).slice(0, 10)}</div></div>

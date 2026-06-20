@@ -2754,7 +2754,7 @@ let InventoryService = class InventoryService {
         const db = this.prisma;
         if (!db.inventoryMovementApproval)
             return [];
-        return db.inventoryMovementApproval.findMany({
+        const approvals = await db.inventoryMovementApproval.findMany({
             where: { companyId: user.companyId, status: query.status, movementType: query.movementType },
             orderBy: { requestedAt: "desc" },
             take: query.take ?? 100
@@ -2762,6 +2762,61 @@ let InventoryService = class InventoryService {
             if (this.isMissingInventoryTableError(error))
                 return [];
             throw error;
+        });
+        const itemIds = new Set();
+        const warehouseIds = new Set();
+        const binIds = new Set();
+        for (const row of approvals) {
+            const payload = (row.payloadJson && typeof row.payloadJson === "object" ? row.payloadJson : {});
+            if (payload.itemId)
+                itemIds.add(payload.itemId);
+            for (const key of ["warehouseId", "fromWarehouseId", "toWarehouseId"])
+                if (payload[key])
+                    warehouseIds.add(payload[key]);
+            for (const key of ["binId", "fromBinId", "toBinId"])
+                if (payload[key])
+                    binIds.add(payload[key]);
+        }
+        const [items, warehouses, bins] = await Promise.all([
+            itemIds.size
+                ? this.prisma.item.findMany({ where: { companyId: user.companyId, id: { in: [...itemIds] } }, select: { id: true, name: true, sku: true, unit: true } })
+                : Promise.resolve([]),
+            warehouseIds.size
+                ? this.prisma.warehouse.findMany({ where: { companyId: user.companyId, id: { in: [...warehouseIds] } }, select: { id: true, name: true, code: true } })
+                : Promise.resolve([]),
+            binIds.size
+                ? this.prisma.warehouseBin.findMany({ where: { companyId: user.companyId, id: { in: [...binIds] } }, select: { id: true, name: true, code: true, warehouseId: true } })
+                : Promise.resolve([])
+        ]);
+        const itemMap = new Map(items.map((item) => [item.id, item]));
+        const warehouseMap = new Map(warehouses.map((warehouse) => [warehouse.id, warehouse]));
+        const binMap = new Map(bins.map((bin) => [bin.id, bin]));
+        return approvals.map((row) => {
+            const payload = (row.payloadJson && typeof row.payloadJson === "object" ? row.payloadJson : {});
+            const item = payload.itemId ? itemMap.get(payload.itemId) : null;
+            const decorateWarehouse = (id) => {
+                const warehouse = id ? warehouseMap.get(id) : null;
+                return warehouse ? `${warehouse.name}${warehouse.code ? ` (${warehouse.code})` : ""}` : null;
+            };
+            const decorateBin = (id) => {
+                const bin = id ? binMap.get(id) : null;
+                return bin ? `${bin.name}${bin.code ? ` (${bin.code})` : ""}` : null;
+            };
+            return {
+                ...row,
+                payloadJson: {
+                    ...payload,
+                    itemName: item?.name ?? null,
+                    itemSku: item?.sku ?? null,
+                    itemUnit: item?.unit ?? null,
+                    warehouseName: decorateWarehouse(payload.warehouseId),
+                    binName: decorateBin(payload.binId),
+                    fromWarehouseName: decorateWarehouse(payload.fromWarehouseId),
+                    fromBinName: decorateBin(payload.fromBinId),
+                    toWarehouseName: decorateWarehouse(payload.toWarehouseId),
+                    toBinName: decorateBin(payload.toBinId)
+                }
+            };
         });
     }
     async createMovementApproval(user, input) {
