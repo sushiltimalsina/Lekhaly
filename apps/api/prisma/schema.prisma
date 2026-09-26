@@ -181,6 +181,7 @@ model Company {
   purchaseTypes     PurchaseType[]
   stockCounts       StockCount[]
   inventorySettings InventorySettings?
+  landedCostAllocations LandedCostAllocation[]
 }
 
 model User {
@@ -718,6 +719,7 @@ model Voucher {
   expenses           Expense[]
   vatRegisterLines   VatRegisterLine[]
   proformas          ProformaInvoice[]
+  landedCostExpenses LandedCostAllocation[] @relation("LandedCostExpenses")
 
   fiscalSessionId String?
   fiscalSession   FiscalSession? @relation(fields: [fiscalSessionId], references: [id])
@@ -1231,7 +1233,8 @@ model VoucherLine {
 
   createdAt DateTime @default(now())
 
-  bankStatementLines BankStatementLine[]
+  bankStatementLines    BankStatementLine[]
+  landedCostAllocations LandedCostAllocation[] @relation("LandedCostTargets")
 
   @@index([companyId, accountId, createdAt])
   @@index([companyId, partyId, createdAt])
@@ -1926,4 +1929,24 @@ model StockCountLine {
   createdAt DateTime @default(now())
 
   @@index([stockCountId, itemId])
+}
+
+model LandedCostAllocation {
+  id                    String      @id @default(uuid())
+  companyId             String
+  company               Company     @relation(fields: [companyId], references: [id])
+  
+  expenseVoucherId      String
+  expenseVoucher        Voucher     @relation("LandedCostExpenses", fields: [expenseVoucherId], references: [id])
+  
+  purchaseVoucherLineId String
+  purchaseVoucherLine   VoucherLine @relation("LandedCostTargets", fields: [purchaseVoucherLineId], references: [id])
+  
+  amount                Decimal     @db.Decimal(14, 2)
+  
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  @@index([companyId, expenseVoucherId])
+  @@index([purchaseVoucherLineId])
 }

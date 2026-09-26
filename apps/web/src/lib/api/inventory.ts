@@ -384,6 +384,12 @@ export type InventoryPeriodClose = {
   totalQty: number;
   totalValue: number;
   snapshotJson: unknown;
+  closedByUserId?: string | null;
+  closedAt?: string | null;
+  reopenedByUserId?: string | null;
+  reopenedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export async function reserveSalesOrderStock(input: { salesOrderId: string; expiresAt?: string }) {
@@ -496,6 +502,13 @@ export async function closeInventoryPeriod(input: { periodFrom?: string; periodF
   });
 }
 
+export async function reopenInventoryPeriod(id: string) {
+  return apiRequest<InventoryPeriodClose>({
+    path: `/inventory/period-closes/${id}/reopen`,
+    method: "POST",
+  });
+}
+
 export type StockAdjustmentInput = {
   itemId: string;
   date?: string;
@@ -600,4 +613,111 @@ export async function updateInventorySettings(input: InventorySettingsInput) {
 
 export async function listSerialNumbers(query?: { itemId?: string; status?: string; q?: string; take?: number }) {
   return apiRequest<SerialNumberRecord[]>({ path: "/inventory/serials", query });
+}
+
+// ─── Landed Cost Capitalization ──────────────────────────────────────────────
+
+export type EligibleExpenseVoucher = {
+  id: string;
+  voucherNumber?: string | null;
+  voucherDate: string;
+  voucherDateBs?: string | null;
+  partyName?: string | null;
+  memo?: string | null;
+  amount: number;
+  lines: Array<{
+    lineId: string;
+    accountId: string;
+    accountName: string;
+    accountCode?: string | null;
+    amount: number;
+  }>;
+};
+
+export type EligiblePurchaseVoucher = {
+  id: string;
+  voucherNumber?: string | null;
+  voucherDate: string;
+  voucherDateBs?: string | null;
+  partyName?: string | null;
+  memo?: string | null;
+  itemsCount: number;
+  totalAmount: number;
+  lines: Array<{
+    lineId: string;
+    itemId?: string | null;
+    itemName: string;
+    itemSku?: string | null;
+    qty: number;
+    amount: number;
+    warehouseId?: string | null;
+    warehouseName?: string | null;
+  }>;
+};
+
+export type LandedCostPreviewLine = {
+  purchaseVoucherLineId: string;
+  itemId?: string | null;
+  itemName: string;
+  itemSku?: string | null;
+  qty: number;
+  originalAmount: number;
+  originalRate: number;
+  allocatedAmount: number;
+  newAmount: number;
+  newRate: number;
+};
+
+export type LandedCostPreview = {
+  expenseVoucherId: string;
+  expenseVoucherNumber?: string | null;
+  totalExpense: number;
+  purchaseVoucherId: string;
+  purchaseVoucherNumber?: string | null;
+  allocationMethod: "value" | "quantity";
+  lines: LandedCostPreviewLine[];
+};
+
+export type LandedCostAllocationResult = {
+  success: boolean;
+  adjustmentVoucherId: string;
+  adjustmentVoucherNumber?: string | null;
+  allocatedAmount: number;
+};
+
+export async function listEligibleExpenses() {
+  return apiRequest<EligibleExpenseVoucher[]>({
+    path: "/inventory/landed-costs/eligible-expenses",
+  });
+}
+
+export async function listEligiblePurchases() {
+  return apiRequest<EligiblePurchaseVoucher[]>({
+    path: "/inventory/landed-costs/eligible-purchases",
+  });
+}
+
+export async function previewLandedCostAllocation(input: {
+  expenseVoucherId: string;
+  purchaseVoucherId: string;
+  allocationMethod: "value" | "quantity";
+}) {
+  return apiRequest<LandedCostPreview>({
+    path: "/inventory/landed-costs/preview",
+    method: "POST",
+    body: input,
+  });
+}
+
+export async function allocateLandedCost(input: {
+  expenseVoucherId: string;
+  purchaseVoucherId: string;
+  allocationMethod: "value" | "quantity";
+  allocationLines: Array<{ purchaseVoucherLineId: string; amount: number }>;
+}) {
+  return apiRequest<LandedCostAllocationResult>({
+    path: "/inventory/landed-costs/allocate",
+    method: "POST",
+    body: input,
+  });
 }

@@ -384,6 +384,12 @@ export type InventoryPeriodClose = {
   totalQty: number;
   totalValue: number;
   snapshotJson: unknown;
+  closedByUserId?: string | null;
+  closedAt?: string | null;
+  reopenedByUserId?: string | null;
+  reopenedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export async function reserveSalesOrderStock(input: { salesOrderId: string; expiresAt?: string }) {
@@ -493,6 +499,13 @@ export async function closeInventoryPeriod(input: { periodFrom?: string; periodF
     path: "/inventory/period-closes",
     method: "POST",
     body: input,
+  });
+}
+
+export async function reopenInventoryPeriod(id: string) {
+  return apiRequest<InventoryPeriodClose>({
+    path: `/inventory/period-closes/${id}/reopen`,
+    method: "POST",
   });
 }
 
