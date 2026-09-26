@@ -20,6 +20,7 @@ import AddBillSundryDialog from "@/components/app/add-bill-sundry-dialog";
 import { listBillSundries, type BillSundryRecord } from "@/lib/api/bill-sundries";
 import { useUiState } from "@/lib/store/ui";
 import { useExcelPaste } from "@/hooks/use-excel-paste";
+import { useNextVoucherNumber } from "@/hooks/use-next-voucher-number";
 
 import {
     Plus,
@@ -371,6 +372,9 @@ export default function PurchaseCreatePage() {
 
 function PurchaseCreateContent() {
     const [mounted, setMounted] = React.useState(false);
+    const searchParamsForSkip = useSearchParams();
+    const isEditModeForSkip = !!searchParamsForSkip.get("id");
+    const { preview: nextPurchasePreview } = useNextVoucherNumber("purchase", isEditModeForSkip);
 
     const purchaseDateRef = React.useRef<HTMLInputElement>(null);
     const vendorInvoiceDateRef = React.useRef<HTMLInputElement>(null);
@@ -613,8 +617,7 @@ function PurchaseCreateContent() {
                                     lotNo: line.lotNo || "",
                                     expiryDate: line.expiryDate ? String(line.expiryDate).split("T")[0] : "",
                                     expiryDateBs: line.expiryDateBs || "",
-                                    serialText: Array.isArray(line.serialNumbers) ? line.serialNumbers.join("
-") : ""
+                                    serialText: Array.isArray(line.serialNumbers) ? line.serialNumbers.join("\\n") : ""
                                 })));
                                 if (Array.isArray(draft.sundries) && draft.sundries.length) {
                                     setBillSundries(draft.sundries.map((sn: any) => ({
@@ -1027,21 +1030,6 @@ function PurchaseCreateContent() {
     return (
         <div className="space-y-6" onPaste={handlePaste}>
             <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-                <div className="mb-4">
-                    <Button
-                        onClick={() => {
-                            const goToRegistry = () => router.push("/purchase");
-                            const guard = window.lekhalyUnsavedChanges;
-                            if (guard && !guard.requestNavigation(goToRegistry)) return;
-                            goToRegistry();
-                        }}
-                        className="rounded-full h-10 px-4 bg-white text-slate-900 border border-slate-200 hover:!bg-orange-600 hover:!text-white hover:!border-orange-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm"
-                    >
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to Registry
-                    </Button>
-                </div>
-
                 <PageHeader
                     icon={ShoppingBag}
                     title={searchParams.get("id") ? (isEditMode ? "Edit Purchase Invoice" : "View Purchase Invoice") : "Create New Purchase Invoice"}
@@ -1108,10 +1096,10 @@ function PurchaseCreateContent() {
                                 <span className="text-xs text-muted-foreground">Invoice No.</span>
                                 <Input
                                     ref={invoiceNoRef}
-                                    value={form.referenceNo}
+                                    value={form.referenceNo || (isEditMode ? "System generated" : nextPurchasePreview)}
                                     onChange={(e) => setForm((f) => ({ ...f, referenceNo: e.target.value }))}
                                     placeholder="Reference No."
-                                    className="h-11 rounded-2xl bg-slate-50/60 dark:bg-slate-900/60"
+                                    className="h-11 rounded-2xl bg-slate-50/60 dark:bg-slate-900/60 font-semibold text-slate-700 dark:text-slate-200"
                                     disabled={true}
                                 />
                             </label>

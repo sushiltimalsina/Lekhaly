@@ -23,6 +23,7 @@ import AddCustomerDialog from "@/components/app/add-customer-dialog";
 import AddBillSundryDialog from "@/components/app/add-bill-sundry-dialog";
 import { listBillSundries, type BillSundryRecord } from "@/lib/api/bill-sundries";
 import { useUiState } from "@/lib/store/ui";
+import { useNextVoucherNumber } from "@/hooks/use-next-voucher-number";
 
 import {
     Plus,
@@ -36,7 +37,11 @@ import {
     ChevronRight,
     ArrowLeft,
     RefreshCw,
+    ShoppingCart,
 } from "lucide-react";
+const SALES_ORDER_DRAFT_KEY = "lekhaly.salesOrderSourceDraft";
+const SALES_INVOICE_DRAFT_KEY = "lekhaly.salesInvoiceSourceDraft";
+
 import { toBs } from "@/lib/dates/bs";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -332,6 +337,9 @@ export default function QuotationCreatePage() {
 
 function QuotationCreateContent() {
     const [mounted, setMounted] = React.useState(false);
+    const searchParamsForSkip = useSearchParams();
+    const isEditModeForSkip = !!searchParamsForSkip.get("id");
+    const { preview: nextQuotationPreview } = useNextVoucherNumber("quotation", isEditModeForSkip);
 
     const dateRef = React.useRef<HTMLInputElement>(null);
     const expiryDateRef = React.useRef<HTMLInputElement>(null);
@@ -657,23 +665,48 @@ function QuotationCreateContent() {
         }
     };
 
-    const onConvertToOrder = async () => {
-        if (!searchParams.get("id")) return;
-        setLoading(true);
+    const buildSalesSourceDraft = () => {
+        const sourceId = searchParams.get("id");
+        if (!sourceId) throw new Error("Save the quotation before creating another document.");
+        const payload = buildPayload();
+        return {
+            sourceType: "quotation",
+            sourceId,
+            sourceNo: form.quotationNoDisplay,
+            partyId: payload.partyId,
+            partyName: form.partyName,
+            referenceNo: form.quotationNoDisplay,
+            salesType: payload.salesType || form.salesType || "vat_13",
+            memo: payload.memo || undefined,
+            notes: payload.notes || undefined,
+            terms: payload.terms || undefined,
+            termsText: payload.terms || undefined,
+            lines: payload.items.map((line: any) => ({
+                itemId: line.itemId,
+                qty: line.qty,
+                rate: line.rate,
+                unit: line.unit || undefined,
+                description: line.description || undefined
+            })),
+            sundries: payload.sundries || []
+        };
+    };
+
+    const onCreateSalesOrder = () => {
         try {
-            const res = await convertToSalesOrder(searchParams.get("id")!);
-            // Assuming res contains the new sales order ID
-            const newOrderId = res?.id || res?.data?.id;
-            if (newOrderId) {
-                setSuccess("Converted to Sales Order successfully.");
-                setTimeout(() => router.push(`/sales-orders/create?id=${newOrderId}`), 1000);
-            } else {
-                setSuccess("Converted to Sales Order.");
-            }
+            window.localStorage.setItem(SALES_ORDER_DRAFT_KEY, JSON.stringify(buildSalesSourceDraft()));
+            router.push("/sales-orders/create");
         } catch (e: any) {
-            setError(e?.message ?? "Failed to convert.");
-        } finally {
-            setLoading(false);
+            setError(e?.message ?? "Unable to prepare sales order.");
+        }
+    };
+
+    const onCreateSalesInvoice = () => {
+        try {
+            window.localStorage.setItem(SALES_INVOICE_DRAFT_KEY, JSON.stringify(buildSalesSourceDraft()));
+            router.push("/sales/create");
+        } catch (e: any) {
+            setError(e?.message ?? "Unable to prepare sales invoice.");
         }
     };
 
@@ -683,19 +716,9 @@ function QuotationCreateContent() {
 
     return (
         <div className="space-y-6">
-            <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-                <div className="mb-4">
-                    <Button
-                        variant="ghost"
-                        onClick={() => router.push("/quotations")}
-                        className="rounded-full h-10 px-4 text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors"
-                    >
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to Registry
-                    </Button>
-                </div>
+            <div className="rounded-[32px] border border-indigo-200/70 bg-gradient-to-br from-white via-indigo-50/40 to-white p-6 shadow-sm dark:border-indigo-900/40 dark:from-slate-950 dark:via-indigo-950/20 dark:to-slate-950">
                 <PageHeader
-                    title={searchParams.get("id") ? (isEditMode ? "Edit Quotation" : "View Quotation") : "Create New Quotation"}
+                    title={searchParams.get("id") ? (isEditMode ? "Edit Client Proposal" : "View Client Proposal") : "Create Client Proposal"}
                     description={
                         searchParams.get("id")
                             ? `${quotationStatus ? `Status: ${quotationStatus.charAt(0).toUpperCase() + quotationStatus.slice(1)}. ` : ""}${isEditMode ? "Modify the details below." : "Click Edit to modify this quotation."}`
@@ -706,18 +729,27 @@ function QuotationCreateContent() {
                             {/* Convert Action */}
                             {!isEditMode && searchParams.get("id") && (
                                 <Button
-                                    onClick={onConvertToOrder}
-                                    className="rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg h-10 px-4"
+                                    onClick={onCreateSalesOrder}
+                                    className="rounded-full h-10 px-6 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 text-xs font-bold uppercase tracking-widest"
                                 >
-                                    <RefreshCw className="mr-2 h-4 w-4" />
-                                    Convert to Order
+                                    <ShoppingCart className="mr-2 h-4 w-4" />
+                                    Create Sales Order
+                                </Button>
+                            )}
+                            {!isEditMode && searchParams.get("id") && (
+                                <Button
+                                    onClick={onCreateSalesInvoice}
+                                    className="rounded-full h-10 px-6 bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20 text-xs font-bold uppercase tracking-widest"
+                                >
+                                    <FileText className="mr-2 h-4 w-4" />
+                                    Create Sales Invoice
                                 </Button>
                             )}
 
                             {!isEditMode && searchParams.get("id") ? (
                                 <Button
                                     onClick={() => setIsEditMode(true)}
-                                    className="rounded-2xl bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-500/20 h-10 px-6 font-black text-xs uppercase tracking-widest transition-all active:scale-95 border-none"
+                                    className="rounded-full h-10 px-6 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20 text-xs font-bold uppercase tracking-widest transition-all active:scale-95 border-none"
                                 >
                                     Edit
                                 </Button>
@@ -745,7 +777,7 @@ function QuotationCreateContent() {
                     {/* Top Row: Customer & Meta */}
                     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                         {/* Customer */}
-                        <div className="space-y-4 rounded-2xl bg-slate-50 p-4 dark:bg-slate-900/50">
+                        <div className="space-y-4 rounded-3xl border border-indigo-100 bg-white/85 p-5 shadow-sm dark:border-indigo-900/40 dark:bg-slate-950/60">
                             <div className="flex items-center justify-between">
                                 <label className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                                     Customer
@@ -776,7 +808,7 @@ function QuotationCreateContent() {
                         </div>
 
                         {/* Dates & No */}
-                        <div className="col-span-1 space-y-4 rounded-2xl bg-slate-50 p-4 dark:bg-slate-900/50 lg:col-span-2">
+                        <div className="col-span-1 space-y-4 rounded-3xl border border-indigo-100 bg-white/85 p-5 shadow-sm dark:border-indigo-900/40 dark:bg-slate-950/60 lg:col-span-2">
                             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                 <div className="space-y-1">
                                     <label className="text-xs font-medium text-slate-500">Quotation Date</label>
@@ -826,7 +858,7 @@ function QuotationCreateContent() {
                                     <label className="text-xs font-medium text-slate-500">Quotation No.</label>
                                     <Input
                                         ref={quotationNoRef}
-                                        value={form.quotationNoDisplay}
+                                        value={form.quotationNoDisplay !== "System generated" ? form.quotationNoDisplay : (isEditMode ? "System generated" : nextQuotationPreview)}
                                         readOnly
                                         className="bg-slate-100 text-slate-500"
                                         tabIndex={-1}
@@ -1019,7 +1051,7 @@ function QuotationCreateContent() {
                         </div>
 
                         {/* Totals */}
-                        <div className="space-y-4 rounded-2xl bg-slate-50 p-6 dark:bg-slate-900/50">
+                        <div className="space-y-4 rounded-3xl border border-indigo-100 bg-white/85 p-6 shadow-sm dark:border-indigo-900/40 dark:bg-slate-950/60">
                             <div className="flex items-center justify-between">
                                 <h3 className="font-semibold">Bill Sundries</h3>
                                 {isEditMode && (
@@ -1089,10 +1121,10 @@ function QuotationCreateContent() {
 
                 {/* Footer Actions */}
                 {isEditMode && (
-                    <div className="mt-8 flex items-center justify-end gap-4 rounded-2xl bg-slate-50 p-4 dark:bg-slate-900/50">
+                    <div className="mt-8 flex items-center justify-end gap-4 rounded-3xl border border-indigo-100 bg-white/85 p-4 shadow-sm dark:border-indigo-900/40 dark:bg-slate-950/60">
                         <Button variant="ghost" onClick={() => router.back()}>Cancel</Button>
-                        <Button onClick={onSave} disabled={loading} className="rounded-xl px-8">
-                            {loading ? "Saving..." : "Save Quotation"}
+                        <Button onClick={onSave} disabled={loading} className="rounded-full h-12 px-10 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-500/20">
+                            {loading ? "Saving..." : "Save Proposal"}
                         </Button>
                     </div>
                 )}
