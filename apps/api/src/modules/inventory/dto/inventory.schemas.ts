@@ -248,3 +248,19 @@ export const SerialMovementQuerySchema = z.object({
   voucherId: z.string().uuid().optional(),
   take: z.coerce.number().int().min(1).max(1000).optional()
 });
+
+export const LandedCostPreviewSchema = z.object({
+  expenseVoucherId: z.string().uuid(),
+  purchaseVoucherId: z.string().uuid(),
+  allocationMethod: z.enum(["value", "quantity"])
+});
+
+export const LandedCostAllocateSchema = z.object({
+  expenseVoucherId: z.string().uuid(),
+  purchaseVoucherId: z.string().uuid(),
+  allocationMethod: z.enum(["value", "quantity"]),
+  allocationLines: z.array(z.object({
+    purchaseVoucherLineId: z.string().uuid(),
+    amount: z.number().positive()
+  })).min(1)
+});

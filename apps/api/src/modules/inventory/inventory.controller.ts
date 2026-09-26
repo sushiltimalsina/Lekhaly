@@ -11,6 +11,8 @@ import {
   InventoryPeriodCloseQuerySchema,
   InventoryPeriodCloseSchema,
   InventorySettingsSchema,
+  LandedCostAllocateSchema,
+  LandedCostPreviewSchema,
   MovementApprovalActionSchema,
   MovementApprovalQuerySchema,
   MovementApprovalRequestSchema,
@@ -263,6 +265,15 @@ export class InventoryController {
     return this.inventory.closeInventoryPeriod(user, body);
   }
 
+  @Post("period-closes/:id/reopen")
+  @RequirePerm("masters.write")
+  reopenPeriod(
+    @CurrentUser() user: AuthUser,
+    @Param("id") id: string
+  ) {
+    return this.inventory.reopenInventoryPeriod(user, id);
+  }
+
   @Get("alerts")
   @RequirePerm("masters.read")
   alerts(
@@ -270,5 +281,38 @@ export class InventoryController {
     @Query(new ZodValidationPipe(InventoryAlertsQuerySchema)) query: any
   ) {
     return this.inventory.getInventoryAlerts(user, query);
+  }
+
+  // ─── Landed Cost Capitalization ───────────────────────────────────────────
+
+  @Get("landed-costs/eligible-expenses")
+  @RequirePerm("masters.read")
+  eligibleExpenses(@CurrentUser() user: AuthUser) {
+    return this.inventory.listEligibleExpenses(user);
+  }
+
+  @Get("landed-costs/eligible-purchases")
+  @RequirePerm("masters.read")
+  eligiblePurchases(@CurrentUser() user: AuthUser) {
+    return this.inventory.listEligiblePurchases(user);
+  }
+
+  @Post("landed-costs/preview")
+  @RequirePerm("masters.read")
+  previewLandedCost(
+    @CurrentUser() user: AuthUser,
+    @Body(new ZodValidationPipe(LandedCostPreviewSchema)) body: any
+  ) {
+    return this.inventory.previewAllocation(user, body);
+  }
+
+  @Post("landed-costs/allocate")
+  @RequirePerm("masters.write")
+  @RequireStep("sensitive")
+  allocateLandedCost(
+    @CurrentUser() user: AuthUser,
+    @Body(new ZodValidationPipe(LandedCostAllocateSchema)) body: any
+  ) {
+    return this.inventory.allocateLandedCost(user, body);
   }
 }

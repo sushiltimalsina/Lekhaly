@@ -3052,6 +3052,31 @@ export class InventoryService {
         if (this.isMissingInventoryTableError(error)) return null;
         throw error;
       });
+      if (rows && rows.length > 0) {
+        const itemIds = new Set<string>();
+        const warehouseIds = new Set<string>();
+        const binIds = new Set<string>();
+        for (const r of rows) {
+          if (r.itemId) itemIds.add(r.itemId);
+          if (r.warehouseId) warehouseIds.add(r.warehouseId);
+          if (r.binId) binIds.add(r.binId);
+        }
+        const [items, warehouses, bins] = await Promise.all([
+          itemIds.size ? this.prisma.item.findMany({ where: { companyId: user.companyId, id: { in: [...itemIds] } }, select: { id: true, name: true, sku: true } }) : [],
+          warehouseIds.size ? this.prisma.warehouse.findMany({ where: { companyId: user.companyId, id: { in: [...warehouseIds] } }, select: { id: true, name: true } }) : [],
+          binIds.size ? this.prisma.warehouseBin.findMany({ where: { companyId: user.companyId, id: { in: [...binIds] } }, select: { id: true, name: true } }) : []
+        ]);
+        const itemsMap = new Map(items.map((i) => [i.id, i]));
+        const warehousesMap = new Map(warehouses.map((w) => [w.id, w]));
+        const binsMap = new Map(bins.map((b) => [b.id, b]));
+        return rows.map((r: any) => ({
+          ...r,
+          itemName: itemsMap.get(r.itemId)?.name,
+          sku: itemsMap.get(r.itemId)?.sku,
+          warehouseName: warehousesMap.get(r.warehouseId)?.name,
+          binName: binsMap.get(r.binId)?.name
+        }));
+      }
       if (rows) return rows;
     }
     const valuation = await this.getStockValuationReport(user, {
@@ -3260,6 +3285,23 @@ export class InventoryService {
     const from = resolveAdDate(input.periodFrom, input.periodFromBs);
     const to = resolveAdDate(input.periodTo, input.periodToBs);
     if (from.date > to.date) throw new BadRequestException("Period start cannot be after period end");
+
+    const overlapping = await db.inventoryPeriodClose.findFirst({
+      where: {
+        companyId: user.companyId,
+        status: "closed",
+        periodFrom: { lte: to.date },
+        periodTo: { gte: from.date },
+        NOT: {
+          periodFrom: from.date,
+          periodTo: to.date
+        }
+      }
+    });
+    if (overlapping) {
+      throw new BadRequestException("Requested period overlaps with an already closed period");
+    }
+
     const valuation = await this.getStockValuationReport(user, { includeZero: false });
     const valuationRows = valuation.rows as any[];
     const totalQty = valuationRows.reduce((sum: Prisma.Decimal, row: any) => sum.add(row.totalQty ?? 0), new Prisma.Decimal(0));
@@ -3295,6 +3337,24 @@ export class InventoryService {
         closedAt: new Date(),
         reopenedByUserId: null,
         reopenedAt: null
+      }
+    });
+  }
+
+  async reopenInventoryPeriod(user: AuthUser, periodId: string) {
+    const db = this.prisma as any;
+    if (!db.inventoryPeriodClose) throw new BadRequestException("Inventory period close not enabled");
+    const period = await db.inventoryPeriodClose.findUnique({
+      where: { id: periodId, companyId: user.companyId }
+    });
+    if (!period) throw new BadRequestException("Period close not found");
+    if (period.status !== "closed") throw new BadRequestException("Period is not closed");
+    return db.inventoryPeriodClose.update({
+      where: { id: periodId },
+      data: {
+        status: "reopened",
+        reopenedByUserId: user.sub,
+        reopenedAt: new Date()
       }
     });
   }
@@ -3427,4 +3487,402 @@ export class InventoryService {
       throw error;
     });
   }
+
+  async listEligibleExpenses(user: AuthUser) {
+    const vouchers = await this.prisma.voucher.findMany({
+      where: {
+        companyId: user.companyId,
+        status: VoucherStatus.posted,
+        lines: {
+          some: {
+            debit: { gt: 0 },
+            account: {
+              type: CoaType.expense
+            }
+          }
+        }
+      },
+      include: {
+        lines: {
+          where: {
+            debit: { gt: 0 },
+            account: { type: CoaType.expense }
+          },
+          include: {
+            account: { select: { id: true, name: true, code: true } }
+          }
+        },
+        party: { select: { id: true, name: true } }
+      },
+      orderBy: { voucherDate: "desc" }
+    });
+
+    return vouchers.map(v => {
+      const totalExpense = v.lines.reduce((sum, l) => sum.add(l.debit), new Prisma.Decimal(0));
+      return {
+        id: v.id,
+        voucherNumber: v.voucherNumber,
+        voucherDate: v.voucherDate,
+        voucherDateBs: v.voucherDateBs,
+        partyName: v.party?.name || null,
+        memo: v.memo,
+        amount: totalExpense,
+        lines: v.lines.map(l => ({
+          lineId: l.id,
+          accountId: l.accountId,
+          accountName: l.account.name,
+          accountCode: l.account.code,
+          amount: l.debit
+        }))
+      };
+    });
+  }
+
+  async listEligiblePurchases(user: AuthUser) {
+    const vouchers = await this.prisma.voucher.findMany({
+      where: {
+        companyId: user.companyId,
+        voucherType: VoucherType.purchase,
+        status: VoucherStatus.posted,
+        lines: {
+          some: {
+            itemId: { not: null },
+            qty: { gt: 0 }
+          }
+        }
+      },
+      include: {
+        lines: {
+          where: {
+            itemId: { not: null },
+            qty: { gt: 0 }
+          },
+          include: {
+            item: { select: { id: true, name: true, sku: true } },
+            warehouse: { select: { id: true, name: true } }
+          }
+        },
+        party: { select: { id: true, name: true } }
+      },
+      orderBy: { voucherDate: "desc" }
+    });
+
+    return vouchers.map(v => {
+      const itemsCount = v.lines.length;
+      const totalAmount = v.lines.reduce((sum, l) => sum.add(l.debit), new Prisma.Decimal(0));
+      return {
+        id: v.id,
+        voucherNumber: v.voucherNumber,
+        voucherDate: v.voucherDate,
+        voucherDateBs: v.voucherDateBs,
+        partyName: v.party?.name || null,
+        memo: v.memo,
+        itemsCount,
+        totalAmount,
+        lines: v.lines.map(l => ({
+          lineId: l.id,
+          itemId: l.itemId,
+          itemName: l.item?.name || "",
+          itemSku: l.item?.sku || "",
+          qty: l.qty,
+          amount: l.debit,
+          warehouseId: l.warehouseId,
+          warehouseName: l.warehouse?.name || ""
+        }))
+      };
+    });
+  }
+
+  async previewAllocation(
+    user: AuthUser,
+    input: { expenseVoucherId: string; purchaseVoucherId: string; allocationMethod: "value" | "quantity" }
+  ) {
+    const expenseVoucher = await this.prisma.voucher.findFirst({
+      where: { id: input.expenseVoucherId, companyId: user.companyId, status: VoucherStatus.posted },
+      include: {
+        lines: {
+          where: { debit: { gt: 0 }, account: { type: CoaType.expense } }
+        }
+      }
+    });
+    if (!expenseVoucher) throw new BadRequestException("Expense voucher not found or not posted");
+    const totalExpense = expenseVoucher.lines.reduce((sum, l) => sum.add(l.debit), new Prisma.Decimal(0));
+    if (totalExpense.lte(0)) throw new BadRequestException("No debit expense lines found in the expense voucher");
+
+    const purchaseVoucher = await this.prisma.voucher.findFirst({
+      where: { id: input.purchaseVoucherId, companyId: user.companyId, voucherType: VoucherType.purchase, status: VoucherStatus.posted },
+      include: {
+        lines: {
+          where: { itemId: { not: null }, qty: { gt: 0 } },
+          include: {
+            item: { select: { id: true, name: true, sku: true } }
+          }
+        }
+      }
+    });
+    if (!purchaseVoucher) throw new BadRequestException("Purchase voucher not found or not posted");
+    if (purchaseVoucher.lines.length === 0) throw new BadRequestException("No item lines found in the purchase voucher");
+
+    const purchaseLines = purchaseVoucher.lines;
+    const totalLinesValue = purchaseLines.reduce((sum, l) => sum.add(l.debit), new Prisma.Decimal(0));
+    const totalLinesQty = purchaseLines.reduce((sum, l) => sum.add(l.qty), new Prisma.Decimal(0));
+
+    if (input.allocationMethod === "value" && totalLinesValue.lte(0)) {
+      throw new BadRequestException("Cannot allocate by value since total purchase lines value is zero");
+    }
+    if (input.allocationMethod === "quantity" && totalLinesQty.lte(0)) {
+      throw new BadRequestException("Cannot allocate by quantity since total purchase lines quantity is zero");
+    }
+
+    let allocatedSum = new Prisma.Decimal(0);
+    const lines = purchaseLines.map((l, index) => {
+      let allocatedAmount = new Prisma.Decimal(0);
+      
+      if (index === purchaseLines.length - 1) {
+        allocatedAmount = totalExpense.sub(allocatedSum);
+      } else {
+        if (input.allocationMethod === "value") {
+          allocatedAmount = totalExpense.mul(l.debit).div(totalLinesValue);
+        } else {
+          allocatedAmount = totalExpense.mul(l.qty).div(totalLinesQty);
+        }
+        allocatedAmount = new Prisma.Decimal(allocatedAmount.toFixed(2));
+        allocatedSum = allocatedSum.add(allocatedAmount);
+      }
+
+      const qty = l.qty;
+      const originalAmount = l.debit;
+      const originalRate = qty.gt(0) ? originalAmount.div(qty) : new Prisma.Decimal(0);
+      const newAmount = originalAmount.add(allocatedAmount);
+      const newRate = qty.gt(0) ? newAmount.div(qty) : new Prisma.Decimal(0);
+
+      return {
+        purchaseVoucherLineId: l.id,
+        itemId: l.itemId,
+        itemName: l.item?.name || "",
+        itemSku: l.item?.sku || "",
+        qty,
+        originalAmount,
+        originalRate,
+        allocatedAmount,
+        newAmount,
+        newRate
+      };
+    });
+
+    return {
+      expenseVoucherId: expenseVoucher.id,
+      expenseVoucherNumber: expenseVoucher.voucherNumber,
+      totalExpense,
+      purchaseVoucherId: purchaseVoucher.id,
+      purchaseVoucherNumber: purchaseVoucher.voucherNumber,
+      allocationMethod: input.allocationMethod,
+      lines
+    };
+  }
+
+  async allocateLandedCost(
+    user: AuthUser,
+    input: {
+      expenseVoucherId: string;
+      purchaseVoucherId: string;
+      allocationMethod: "value" | "quantity";
+      allocationLines: Array<{ purchaseVoucherLineId: string; amount: number }>;
+    }
+  ) {
+    const preview = await this.previewAllocation(user, input);
+    const company = await this.prisma.company.findUnique({
+      where: { id: user.companyId },
+      include: {
+        fiscalSessions: {
+          where: {
+            id: (await this.prisma.company.findFirst({ where: { id: user.companyId } }))?.activeFiscalSessionId || undefined
+          }
+        }
+      }
+    });
+    if (!company) throw new BadRequestException("Company not found");
+    const activeSession = company.fiscalSessions[0];
+    if (!activeSession) {
+      throw new BadRequestException("No active fiscal session found. Please create and activate a fiscal session first.");
+    }
+    if (activeSession.isLocked) {
+      throw new BadRequestException("The active fiscal session is locked.");
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Create adjusting journal voucher
+      const prefix = activeSession.journalPrefix || "JV";
+      const sequence = activeSession.nextJournalNumber;
+      const suffix = activeSession.journalSuffix || "";
+      const formattedPrefix = prefix ? (prefix.endsWith("-") ? prefix : `${prefix}-`) : "";
+      const formattedSuffix = suffix ? (suffix.startsWith("-") ? suffix : `-${suffix}`) : "";
+      const jvNumber = `${formattedPrefix}${sequence}${formattedSuffix}`;
+
+      const voucher = await tx.voucher.create({
+        data: {
+          companyId: user.companyId,
+          voucherType: VoucherType.journal,
+          status: VoucherStatus.posted,
+          voucherDate: new Date(),
+          memo: `Landed Cost Capitalization Adjustment - Expense JV: ${preview.expenseVoucherNumber} -> Purchase JV: ${preview.purchaseVoucherNumber}`,
+          postedAt: new Date(),
+          postedByUserId: user.sub,
+          voucherNumber: jvNumber,
+          fiscalSessionId: activeSession.id
+        }
+      });
+
+      await tx.fiscalSession.update({
+        where: { id: activeSession.id },
+        data: { nextJournalNumber: sequence + 1 }
+      });
+
+      // 2. Load targets from database
+      const purchaseVoucher = await tx.voucher.findFirst({
+        where: { id: input.purchaseVoucherId, companyId: user.companyId },
+        include: { lines: true }
+      });
+      if (!purchaseVoucher) throw new BadRequestException("Purchase voucher not found");
+
+      // 3. For each allocation line:
+      let lineNo = 1;
+      const debitLines: any[] = [];
+
+      for (const line of preview.lines) {
+        const allocInput = input.allocationLines.find(al => al.purchaseVoucherLineId === line.purchaseVoucherLineId);
+        if (!allocInput || allocInput.amount <= 0) continue;
+
+        const allocatedAmount = new Prisma.Decimal(allocInput.amount);
+
+        // Save LandedCostAllocation record
+        const db = tx as any;
+        await db.landedCostAllocation.create({
+          data: {
+            companyId: user.companyId,
+            expenseVoucherId: input.expenseVoucherId,
+            purchaseVoucherLineId: line.purchaseVoucherLineId,
+            amount: allocatedAmount
+          }
+        });
+
+        // Match with StockLedger
+        const originalLine = purchaseVoucher.lines.find(pl => pl.id === line.purchaseVoucherLineId);
+        if (!originalLine) throw new BadRequestException("Original purchase voucher line not found");
+
+        const stockLedgers = await tx.stockLedger.findMany({
+          where: {
+            voucherId: purchaseVoucher.id,
+            itemId: line.itemId ?? undefined,
+            qtyIn: line.qty,
+            warehouseId: originalLine.warehouseId ?? undefined,
+            binId: originalLine.binId ?? undefined,
+            batchNo: originalLine.batchNo ?? undefined,
+            lotNo: originalLine.lotNo ?? undefined
+          }
+        });
+
+        if (stockLedgers.length === 0) {
+          throw new BadRequestException(`No stock ledger entry found for item ${line.itemName} in purchase voucher`);
+        }
+        const stockLedger = stockLedgers[0];
+
+        // Update StockLedger
+        const newLedgerAmount = stockLedger.amount.add(allocatedAmount);
+        const newLedgerRate = stockLedger.qtyIn.gt(0) ? newLedgerAmount.div(stockLedger.qtyIn) : new Prisma.Decimal(0);
+
+        await tx.stockLedger.update({
+          where: { id: stockLedger.id },
+          data: {
+            amount: newLedgerAmount,
+            rate: newLedgerRate
+          }
+        });
+
+        // Update InventoryLayer
+        const invLayer = await tx.inventoryLayer.findFirst({
+          where: { sourceLedgerId: stockLedger.id }
+        });
+        if (invLayer) {
+          const newLayerCost = invLayer.totalCost.add(allocatedAmount);
+          const newLayerUnitCost = invLayer.qtyIn.gt(0) ? newLayerCost.div(invLayer.qtyIn) : new Prisma.Decimal(0);
+
+          await tx.inventoryLayer.update({
+            where: { id: invLayer.id },
+            data: {
+              totalCost: newLayerCost,
+              unitCost: newLayerUnitCost
+            }
+          });
+        }
+
+        // Prepare adjusting GL VoucherLine (Debit Inventory Asset)
+        const itemId = line.itemId ?? undefined;
+        const itemRecord = itemId ? await tx.item.findUnique({ where: { id: itemId } }) : null;
+        const invAssetAccountId = await this.resolveInventoryAssetAccountId(user.companyId, itemRecord, tx);
+
+        debitLines.push({
+          voucherId: voucher.id,
+          companyId: user.companyId,
+          lineNo: lineNo++,
+          accountId: invAssetAccountId,
+          description: `Capitalized Landed Cost for ${line.itemName} (Qty: ${line.qty})`,
+          debit: allocatedAmount,
+          credit: new Prisma.Decimal(0),
+          qty: new Prisma.Decimal(0),
+          taxAmount: new Prisma.Decimal(0)
+        });
+      }
+
+      // Prepare adjusting GL VoucherLines (Credit offset to original Expense Accounts)
+      const expenseVoucher = await tx.voucher.findFirst({
+        where: { id: input.expenseVoucherId, companyId: user.companyId },
+        include: { lines: { where: { debit: { gt: 0 }, account: { type: CoaType.expense } } } }
+      });
+      if (!expenseVoucher) throw new BadRequestException("Expense voucher not found");
+
+      const totalAllocated = input.allocationLines.reduce((sum, al) => sum + al.amount, 0);
+      const totalExpense = expenseVoucher.lines.reduce((sum, l) => sum.add(l.debit), new Prisma.Decimal(0)).toNumber();
+      
+      const creditLines: any[] = [];
+      let creditSum = new Prisma.Decimal(0);
+
+      expenseVoucher.lines.forEach((el, index) => {
+        let creditAmt = new Prisma.Decimal(0);
+        if (index === expenseVoucher.lines.length - 1) {
+          creditAmt = new Prisma.Decimal(totalAllocated).sub(creditSum);
+        } else {
+          creditAmt = new Prisma.Decimal(totalAllocated).mul(el.debit).div(totalExpense);
+          creditAmt = new Prisma.Decimal(creditAmt.toFixed(2));
+          creditSum = creditSum.add(creditAmt);
+        }
+
+        if (creditAmt.gt(0)) {
+          creditLines.push({
+            voucherId: voucher.id,
+            companyId: user.companyId,
+            lineNo: lineNo++,
+            accountId: el.accountId,
+            description: `Offset allocated expense from ${preview.expenseVoucherNumber}`,
+            debit: new Prisma.Decimal(0),
+            credit: creditAmt,
+            qty: new Prisma.Decimal(0),
+            taxAmount: new Prisma.Decimal(0)
+          });
+        }
+      });
+
+      await tx.voucherLine.createMany({
+        data: [...debitLines, ...creditLines]
+      });
+
+      return {
+        success: true,
+        adjustmentVoucherId: voucher.id,
+        adjustmentVoucherNumber: voucher.voucherNumber,
+        allocatedAmount: totalAllocated
+      };
+    });
+  }
 }
+
