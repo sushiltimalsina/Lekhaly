@@ -105,6 +105,17 @@ export class FiscalSessionsService {
     });
   }
 
+  async getActiveSession(user: AuthUser) {
+    const company = await this.prisma.company.findUnique({
+      where: { id: user.companyId },
+      select: { activeFiscalSessionId: true },
+    });
+    if (!company?.activeFiscalSessionId) return null;
+    return this.prisma.fiscalSession.findUnique({
+      where: { id: company.activeFiscalSessionId },
+    });
+  }
+
   async initActiveSession(companyId: string) {
     const today = new Date();
     const session = await this.findSessionByDate(companyId, today);

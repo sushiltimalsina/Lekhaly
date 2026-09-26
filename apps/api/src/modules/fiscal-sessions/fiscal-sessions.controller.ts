@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Put, Query } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Put } from "@nestjs/common";
 import { CurrentUser, RequirePerm } from "../../common/auth/auth.decorator";
 import { ZodValidationPipe } from "../../common/zod/zod.pipe";
 import type { AuthUser } from "../../common/auth/auth.types";
@@ -13,6 +13,12 @@ export class FiscalSessionsController {
   @RequirePerm("masters.read")
   list(@CurrentUser() user: AuthUser) {
     return this.fiscalSessions.listSessions(user);
+  }
+
+  @Get("active")
+  @RequirePerm("masters.read")
+  getActive(@CurrentUser() user: AuthUser) {
+    return this.fiscalSessions.getActiveSession(user);
   }
 
   @Post()
