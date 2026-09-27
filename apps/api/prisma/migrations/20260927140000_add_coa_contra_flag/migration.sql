@@ -1,0 +1,2 @@
+ALTER TABLE "ChartOfAccount"
+  ADD COLUMN "isContra" BOOLEAN NOT NULL DEFAULT false;
