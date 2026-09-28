@@ -63,7 +63,7 @@ export default function CreateStockCountPage() {
   return (
     <div className="space-y-6 pb-20 text-foreground max-w-5xl mx-auto animate-fade-in">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <PageHeader title="Start Stock Count" description="Create a new physical inventory counting sheet." icon={ClipboardList} breadcrumb={<button onClick={() => navigate("/inventory/stock-counts")} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"><ChevronLeft className="h-3 w-3" /> Back to List</button>} />
+        <PageHeader title="Start Stock Count" description="Create a new physical inventory counting sheet." icon={ClipboardList}  />
         <Button onClick={handleSubmit} disabled={submitting} className="rounded-2xl h-12 px-6 bg-orange-600 hover:bg-orange-700 text-white font-bold shadow-lg shadow-orange-500/20"><Save className="mr-2 h-4 w-4" />{submitting ? "Saving…" : "Save Draft"}</Button>
       </div>
       {error && <div className="rounded-xl border border-red-200 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 flex items-center gap-2"><AlertTriangle className="h-4 w-4 shrink-0" /> {error}</div>}

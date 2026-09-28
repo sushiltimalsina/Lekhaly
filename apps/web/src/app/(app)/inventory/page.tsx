@@ -24,6 +24,7 @@ import {
   PackageSearch,
   ShieldCheck,
   ShoppingCart,
+  Coins,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -408,6 +409,15 @@ export default function InventoryDashboardPage() {
             title="Batch & Lot Master"
             desc="Review selectable tracked stock"
             color="emerald"
+          />
+        )}
+        {features.inventory && (
+          <QuickLink
+            href="/inventory/landed-costs"
+            icon={Coins}
+            title="Landed Cost Capitalization"
+            desc="Add freight & duty costs to inventory value"
+            color="amber"
           />
         )}
       </div>

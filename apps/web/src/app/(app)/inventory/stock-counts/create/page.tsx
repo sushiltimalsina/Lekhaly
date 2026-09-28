@@ -109,14 +109,7 @@ export default function CreateStockCountPage() {
           title="Start Stock Count"
           description="Create a new physical inventory counting sheet."
           icon={ClipboardList}
-          breadcrumb={
-            <button
-              onClick={() => router.push("/inventory/stock-counts")}
-              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ChevronLeft className="h-3 w-3" /> Back to List
-            </button>
-          }
+          
         />
         <Button
           onClick={handleSubmit}

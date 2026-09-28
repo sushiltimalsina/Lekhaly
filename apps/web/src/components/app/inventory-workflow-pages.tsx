@@ -14,7 +14,12 @@ import {
   ShoppingCart,
   Trash2,
   XCircle,
-  FileText
+  FileText,
+  AlertTriangle,
+  TrendingUp,
+  Banknote,
+  Clock,
+  Warehouse
 } from "lucide-react";
 import { Button, Card, CardContent } from "@lekhaly/ui";
 import PageHeader from "@/components/app/page-header";
@@ -23,7 +28,7 @@ import DualDateInput from "@/components/app/dual-date-input";
 import SearchableSelect from "@/components/app/searchable-select";
 import { cn } from "@/lib/utils";
 import { listItems, type ItemRecord } from "@/lib/api/items";
-import { listWarehouses, type Warehouse } from "@/lib/api/warehouses";
+import { listWarehouses, type Warehouse as WarehouseRecord } from "@/lib/api/warehouses";
 import { getSalesOrder, listSalesOrders } from "@/lib/api/sales-orders";
 import { listPurchaseOrders } from "@/lib/api/purchase-orders";
 import {
@@ -42,6 +47,7 @@ import {
   postStockDispatch,
   rejectInventoryMovement,
   releaseStockReservation,
+  reopenInventoryPeriod,
   reserveSalesOrderStock,
   reverseInventoryMovement,
   type GoodsReceiptInput,
@@ -68,7 +74,7 @@ function normalizeItems(res: Awaited<ReturnType<typeof listItems>>) {
   return rows.filter((item) => item.type !== "services" && item.trackInventory !== false);
 }
 
-function normalizeWarehouses(res: any): Warehouse[] {
+function normalizeWarehouses(res: any): WarehouseRecord[] {
   return Array.isArray(res) ? res : res?.items ?? res?.data ?? [];
 }
 
@@ -153,7 +159,7 @@ function LineForm({
   onSubmit: (input: GoodsReceiptInput | StockDispatchInput) => Promise<unknown>;
 }) {
   const [items, setItems] = React.useState<ItemRecord[]>([]);
-  const [warehouses, setWarehouses] = React.useState<Warehouse[]>([]);
+  const [warehouses, setWarehouses] = React.useState<WarehouseRecord[]>([]);
   const [orders, setOrders] = React.useState<any[]>([]);
   const [status, setStatus] = React.useState<Status>(null);
   const [saving, setSaving] = React.useState(false);
@@ -390,7 +396,7 @@ export function GoodsReceiptWorkflowPage() {
   const [settings, setSettings] = React.useState<InventorySettings | null>(null);
   const [orders, setOrders] = React.useState<any[]>([]);
   const [receipts, setReceipts] = React.useState<GoodsReceiptRecord[]>([]);
-  const [warehouses, setWarehouses] = React.useState<Warehouse[]>([]);
+  const [warehouses, setWarehouses] = React.useState<WarehouseRecord[]>([]);
   const [selectedOrderId, setSelectedOrderId] = React.useState("");
   const [receiptSearch, setReceiptSearch] = React.useState("");
   const [date, setDate] = React.useState({ ad: new Date().toISOString().slice(0, 10), bs: "" });
@@ -738,7 +744,8 @@ export function GoodsReceiptWorkflowPage() {
                     <th className="px-3 py-3 text-right">Items</th>
                     <th className="px-3 py-3 text-right">Qty</th>
                     <th className="px-3 py-3 text-right">Amount</th>
-                    <th className="px-3 py-3">Status</th>`r`n                      <th className="px-3 py-3 text-right">Action</th>
+                    <th className="px-3 py-3">Status</th>
+                    <th className="px-3 py-3 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -780,7 +787,7 @@ export function DispatchWorkflowPage() {
   const [orders, setOrders] = React.useState<any[]>([]);
   const [selectedOrderDetails, setSelectedOrderDetails] = React.useState<any>(null);
   const [items, setItems] = React.useState<ItemRecord[]>([]);
-  const [warehouses, setWarehouses] = React.useState<Warehouse[]>([]);
+  const [warehouses, setWarehouses] = React.useState<WarehouseRecord[]>([]);
   const [dispatchSearch, setDispatchSearch] = React.useState("");
   const [dispatchLines, setDispatchLines] = React.useState<Array<{
     id: string;
@@ -1126,7 +1133,8 @@ export function DispatchWorkflowPage() {
                       <th className="px-3 py-3 text-right">Items</th>
                       <th className="px-3 py-3 text-right">Qty</th>
                       <th className="px-3 py-3 text-right">Amount</th>
-                      <th className="px-3 py-3">Status</th>`r`n                      <th className="px-3 py-3 text-right">Action</th>
+                      <th className="px-3 py-3">Status</th>
+                      <th className="px-3 py-3 text-right">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -1570,7 +1578,11 @@ export function PeriodCloseWorkflowPage() {
   const [rows, setRows] = React.useState<InventoryPeriodClose[]>([]);
   const [status, setStatus] = React.useState<Status>(null);
   const [loading, setLoading] = React.useState(false);
-  const [form, setForm] = React.useState({ from: "", to: new Date().toISOString().slice(0, 10) });
+  const [saving, setSaving] = React.useState(false);
+  const [form, setForm] = React.useState({ 
+    from: { ad: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10), bs: "" }, 
+    to: { ad: new Date().toISOString().slice(0, 10), bs: "" } 
+  });
   const refresh = React.useCallback(async () => {
     setLoading(true);
     try {
@@ -1583,13 +1595,34 @@ export function PeriodCloseWorkflowPage() {
 
   const close = async () => {
     setStatus(null);
-    if (!form.from || !form.to) return setStatus({ type: "error", message: "Select both period dates." });
+    if (!form.from.ad || !form.to.ad) return setStatus({ type: "error", message: "Select both period dates." });
+    if (!window.confirm("Are you sure? This will snapshot current inventory valuation for this period.")) return;
+    setSaving(true);
     try {
-      await closeInventoryPeriod({ periodFrom: form.from, periodTo: form.to });
+      await closeInventoryPeriod({ 
+        periodFrom: form.from.ad,
+        periodFromBs: form.from.bs || undefined,
+        periodTo: form.to.ad,
+        periodToBs: form.to.bs || undefined
+      });
       setStatus({ type: "success", message: "Inventory period closed and valuation snapshot saved." });
       refresh();
     } catch (error: any) {
       setStatus({ type: "error", message: error?.message ?? "Unable to close inventory period." });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const reopen = async (id: string) => {
+    setStatus(null);
+    if (!window.confirm("Are you sure you want to reopen this period?")) return;
+    try {
+      await reopenInventoryPeriod(id);
+      setStatus({ type: "success", message: "Period reopened successfully." });
+      refresh();
+    } catch (error: any) {
+      setStatus({ type: "error", message: error?.message ?? "Unable to reopen period." });
     }
   };
 
@@ -1599,50 +1632,285 @@ export function PeriodCloseWorkflowPage() {
         <CardContent className="space-y-4 pt-6">
           <StatusMessage status={status} />
           <div className="grid gap-4 md:grid-cols-[1fr_1fr_auto]">
-            <Field label="Period From"><input type="date" className={inputClass} value={form.from} onChange={(e) => setForm({ ...form, from: e.target.value })} /></Field>
-            <Field label="Period To"><input type="date" className={inputClass} value={form.to} onChange={(e) => setForm({ ...form, to: e.target.value })} /></Field>
-            <div className="flex items-end"><Button onClick={close} className="h-11 bg-emerald-600 text-white hover:bg-emerald-700">Close Period</Button></div>
+            <Field label="Period From">
+              <DualDateInput value={form.from} onChange={(val) => setForm({ ...form, from: val })} accentColor="bg-blue-600" />
+            </Field>
+            <Field label="Period To">
+              <DualDateInput value={form.to} onChange={(val) => setForm({ ...form, to: val })} accentColor="bg-blue-600" />
+            </Field>
+            <div className="flex items-end">
+              <Button onClick={close} disabled={saving} className="h-11 bg-emerald-600 text-white hover:bg-emerald-700">
+                {saving ? "Closing..." : "Close Period"}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
       <SimpleTable
-        columns={["From", "To", "Status", "Costing", "Qty", "Value"]}
-        rows={rows.map((row) => [toDateInputValue(row.periodFrom), toDateInputValue(row.periodTo), row.status, row.costingMethod || "-", row.totalQty, <MoneyText key={row.id} value={row.totalValue} />])}
+        columns={["From", "To", "Status", "Costing", "Qty", "Value", "Closed At", "Action"]}
+        rows={rows.map((row) => [
+          toDateInputValue(row.periodFrom) + (row.periodFromBs ? ` (${row.periodFromBs})` : ""), 
+          toDateInputValue(row.periodTo) + (row.periodToBs ? ` (${row.periodToBs})` : ""), 
+          <StatusBadge key={row.id + "-status"} value={row.status} />, 
+          row.costingMethod || "-", 
+          row.totalQty, 
+          <MoneyText key={row.id + "-val"} value={row.totalValue} />,
+          row.createdAt ? new Date(row.createdAt).toLocaleString() : "-",
+          row.status === "closed" ? (
+            <button
+              key={row.id + "-action"}
+              className="text-xs font-bold text-orange-500 hover:underline"
+              onClick={() => reopen(row.id)}
+            >
+              Reopen
+            </button>
+          ) : "-"
+        ])}
         empty="No inventory periods closed yet."
       />
     </WorkflowShell>
   );
 }
 
+function getDaysToExpiry(expiryDate?: string) {
+  if (!expiryDate) return null;
+  const days = Math.ceil((new Date(expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  return days;
+}
+
 export function BatchLotWorkflowPage() {
   const [rows, setRows] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(false);
+  const [q, setQ] = React.useState("");
+  const [search, setSearch] = React.useState("");
+  const [statusFilter, setStatusFilter] = React.useState("all");
+  const [includeZero, setIncludeZero] = React.useState(false);
+
   const refresh = React.useCallback(async () => {
     setLoading(true);
     try {
-      setRows(await listBatchLotMaster({ includeZero: false, take: 500 }));
+      setRows(await listBatchLotMaster({ q: search, includeZero, take: 500 }));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [search, includeZero]);
   React.useEffect(() => { refresh(); }, [refresh]);
 
+  const filteredRows = React.useMemo(() => {
+    return rows.filter((row) => {
+      if (statusFilter === "all") return true;
+      return row.status === statusFilter;
+    });
+  }, [rows, statusFilter]);
+
+  const metrics = React.useMemo(() => {
+    let totalValue = 0;
+    let activeBatches = 0;
+    let expiringSoon = 0;
+    let expiredValue = 0;
+
+    for (const row of rows) {
+      if (row.status === "expired") {
+        expiredValue += Number(row.value ?? 0);
+      } else {
+        totalValue += Number(row.value ?? 0);
+        if (Number(row.currentQty ?? 0) > 0) activeBatches++;
+        
+        const days = getDaysToExpiry(row.expiryDate);
+        if (days !== null && days <= 30 && days >= 0 && Number(row.currentQty ?? 0) > 0) {
+          expiringSoon++;
+        }
+      }
+    }
+
+    return { totalValue, activeBatches, expiringSoon, expiredValue };
+  }, [rows]);
+
   return (
-    <WorkflowShell title="Batch & Lot Master" description="Selectable tracked stock by item, warehouse, bin, batch, lot, and expiry." icon={PackageSearch} actions={<RefreshButton loading={loading} onClick={refresh} />}>
-      <SimpleTable
-        columns={["Item", "Warehouse", "Bin", "Batch No", "Lot No", "Expiry", "Qty", "Value"]}
-        rows={rows.map((row, index) => [
-          row.itemName || row.itemId || "-",
-          row.warehouseName || row.warehouseId || "-",
-          row.binName || row.binId || "-",
-          row.batchNo || "-",
-          row.lotNo || "-",
-          toDateInputValue(row.expiryDate) || row.expiryDateBs || "-",
-          row.currentQty ?? row.qty ?? 0,
-          <MoneyText key={row.id || index} value={row.value ?? 0} />
-        ])}
-        empty="No tracked batch or lot stock found."
-      />
+    <WorkflowShell title="Batch & Lot Master" description="Advanced lifecycle tracking, valuation, and shelf-life monitoring for tracked stock." icon={PackageSearch} actions={<RefreshButton loading={loading} onClick={refresh} />}>
+      {/* KPI Cards */}
+      <div className="grid gap-4 md:grid-cols-4 mb-6">
+        <Card className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/20 dark:to-background border-blue-100 dark:border-blue-900/50 shadow-sm">
+          <CardContent className="p-6 flex flex-col justify-between h-full">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-sm font-medium text-blue-600 dark:text-blue-400">Total Tracked Value</span>
+              <Banknote className="h-5 w-5 text-blue-500/50" />
+            </div>
+            <div>
+              <div className="text-2xl font-bold tracking-tight"><MoneyText value={metrics.totalValue} /></div>
+              <p className="text-xs text-muted-foreground mt-1">Across all active batches</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/20 dark:to-background border-emerald-100 dark:border-emerald-900/50 shadow-sm">
+          <CardContent className="p-6 flex flex-col justify-between h-full">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">Active Batches</span>
+              <TrendingUp className="h-5 w-5 text-emerald-500/50" />
+            </div>
+            <div>
+              <div className="text-2xl font-bold tracking-tight">{metrics.activeBatches}</div>
+              <p className="text-xs text-muted-foreground mt-1">Batches with {">"} 0 quantity</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/20 dark:to-background border-amber-100 dark:border-amber-900/50 shadow-sm">
+          <CardContent className="p-6 flex flex-col justify-between h-full">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-sm font-medium text-amber-600 dark:text-amber-400">Expiring Soon</span>
+              <Clock className="h-5 w-5 text-amber-500/50" />
+            </div>
+            <div>
+              <div className="text-2xl font-bold tracking-tight text-amber-600 dark:text-amber-400">{metrics.expiringSoon}</div>
+              <p className="text-xs text-muted-foreground mt-1">Within the next 30 days</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-red-50 to-white dark:from-red-950/20 dark:to-background border-red-100 dark:border-red-900/50 shadow-sm">
+          <CardContent className="p-6 flex flex-col justify-between h-full">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-sm font-medium text-red-600 dark:text-red-400">Expired Value</span>
+              <AlertTriangle className="h-5 w-5 text-red-500/50" />
+            </div>
+            <div>
+              <div className="text-2xl font-bold tracking-tight text-red-600 dark:text-red-400"><MoneyText value={metrics.expiredValue} /></div>
+              <p className="text-xs text-muted-foreground mt-1">Dead stock valuation</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Control Bar */}
+      <Card className="mb-4 overflow-visible shadow-sm border-muted/60">
+        <CardContent className="flex flex-wrap items-center gap-4 py-3 px-4 bg-muted/10">
+          <div className="flex-1 min-w-[240px] relative">
+            <PackageSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              type="search"
+              className="w-full rounded-full border border-input bg-background pl-9 pr-4 py-2 text-sm shadow-sm transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+              placeholder="Search by item, batch, or lot..."
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") setSearch(q); }}
+            />
+          </div>
+          <Button onClick={() => setSearch(q)} className="rounded-full px-6 shadow-sm">Search</Button>
+          <div className="h-8 w-px bg-border hidden sm:block mx-2" />
+          
+          <div className="flex items-center gap-2 bg-background border border-input rounded-full p-1 shadow-sm">
+            <button 
+              onClick={() => setStatusFilter("all")}
+              className={cn("px-4 py-1.5 text-xs font-semibold rounded-full transition-colors", statusFilter === "all" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}
+            >
+              All
+            </button>
+            <button 
+              onClick={() => setStatusFilter("active")}
+              className={cn("px-4 py-1.5 text-xs font-semibold rounded-full transition-colors", statusFilter === "active" ? "bg-emerald-500 text-white" : "text-muted-foreground hover:bg-muted")}
+            >
+              Active
+            </button>
+            <button 
+              onClick={() => setStatusFilter("expired")}
+              className={cn("px-4 py-1.5 text-xs font-semibold rounded-full transition-colors", statusFilter === "expired" ? "bg-red-500 text-white" : "text-muted-foreground hover:bg-muted")}
+            >
+              Expired
+            </button>
+          </div>
+
+          <label className="flex items-center gap-2 text-sm font-medium cursor-pointer ml-auto bg-background border border-input rounded-full px-4 py-2 shadow-sm hover:bg-accent transition-colors">
+            <input type="checkbox" checked={includeZero} onChange={(e) => setIncludeZero(e.target.checked)} className="h-4 w-4 rounded accent-primary" />
+            Show Depleted
+          </label>
+        </CardContent>
+      </Card>
+
+      {/* Premium Data Grid */}
+      <Card className="overflow-hidden shadow-md border-muted/60">
+        <CardContent className="p-0">
+          {filteredRows.length === 0 ? <div className="p-12"><EmptyState text="No tracked batch or lot stock found matching criteria." /></div> : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[900px] text-sm">
+                <thead className="bg-muted/50 border-b text-left text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+                  <tr>
+                    <th className="px-5 py-4 w-[25%]">Item & SKU</th>
+                    <th className="px-5 py-4 w-[20%]">Location</th>
+                    <th className="px-5 py-4 w-[15%]">Batch / Lot</th>
+                    <th className="px-5 py-4 w-[15%]">Shelf Life</th>
+                    <th className="px-5 py-4 w-[10%] text-right">Qty</th>
+                    <th className="px-5 py-4 w-[15%] text-right">Value</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {filteredRows.map((row, index) => {
+                    const days = getDaysToExpiry(row.expiryDate);
+                    let healthClass = "bg-emerald-500";
+                    let healthText = "Healthy";
+                    if (row.status === "expired") {
+                      healthClass = "bg-red-500";
+                      healthText = "Expired";
+                    } else if (days !== null && days <= 30) {
+                      healthClass = "bg-amber-500";
+                      healthText = "Expiring Soon";
+                    } else if (days === null) {
+                      healthClass = "bg-gray-400";
+                      healthText = "No Expiry";
+                    }
+
+                    return (
+                      <tr key={row.id || index} className="group hover:bg-muted/30 transition-colors">
+                        <td className="px-5 py-4 align-top">
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-foreground group-hover:text-primary transition-colors">{row.itemName || row.itemId || "-"}</span>
+                            {row.sku && <span className="text-xs text-muted-foreground mt-0.5">SKU: {row.sku}</span>}
+                          </div>
+                        </td>
+                        <td className="px-5 py-4 align-top">
+                          <div className="flex flex-col text-sm">
+                            <span className="font-medium text-foreground flex items-center gap-1.5">
+                              <Warehouse className="h-3 w-3 text-muted-foreground" />
+                              {row.warehouseName || row.warehouseId || "-"}
+                            </span>
+                            {row.binName || row.binId ? <span className="text-xs text-muted-foreground mt-1 ml-4 border-l-2 border-muted pl-2">Bin: {row.binName || row.binId}</span> : null}
+                          </div>
+                        </td>
+                        <td className="px-5 py-4 align-top">
+                          <div className="flex flex-col gap-1.5">
+                            {row.batchNo ? <span className="inline-flex items-center rounded-md bg-blue-50 dark:bg-blue-900/30 px-2 py-1 text-xs font-semibold text-blue-700 dark:text-blue-300 ring-1 ring-inset ring-blue-700/10 dark:ring-blue-400/20 w-fit">B: {row.batchNo}</span> : null}
+                            {row.lotNo ? <span className="inline-flex items-center rounded-md bg-purple-50 dark:bg-purple-900/30 px-2 py-1 text-xs font-medium text-purple-700 dark:text-purple-300 ring-1 ring-inset ring-purple-700/10 dark:ring-purple-400/20 w-fit">L: {row.lotNo}</span> : null}
+                            {!row.batchNo && !row.lotNo && <span className="text-muted-foreground">-</span>}
+                          </div>
+                        </td>
+                        <td className="px-5 py-4 align-top">
+                          <div className="flex flex-col gap-1.5">
+                            <span className="text-sm font-medium">{toDateInputValue(row.expiryDate) || row.expiryDateBs || "-"}</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className={cn("h-2 w-2 rounded-full", healthClass)} />
+                              <span className="text-xs font-medium text-muted-foreground">{healthText} {days !== null && days > 0 ? `(${days}d)` : ""}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-5 py-4 align-top text-right font-medium">
+                          <span className={cn("text-lg", (row.currentQty ?? row.qty ?? 0) <= 0 ? "text-muted-foreground/50" : "text-foreground")}>
+                            {row.currentQty ?? row.qty ?? 0}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 align-top text-right">
+                          <div className="font-semibold text-foreground"><MoneyText value={row.value ?? 0} /></div>
+                          {row.lastMovementAt && <div className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider">Moved: {new Date(row.lastMovementAt).toLocaleDateString()}</div>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </WorkflowShell>
   );
 }
@@ -1661,9 +1929,13 @@ function StatusBadge({ value }: { value: string }) {
     pending: "border-amber-500/40 bg-amber-500/10 text-amber-600",
     approved: "border-emerald-500/40 bg-emerald-500/10 text-emerald-600",
     rejected: "border-red-500/40 bg-red-500/10 text-red-600",
-    reversed: "border-orange-500/40 bg-orange-500/10 text-orange-600"
+    reversed: "border-orange-500/40 bg-orange-500/10 text-orange-600",
+    closed: "border-gray-500/40 bg-gray-500/10 text-gray-600",
+    reopened: "border-blue-500/40 bg-blue-500/10 text-blue-600",
+    active: "border-blue-500/40 bg-blue-500/10 text-blue-600",
+    expired: "border-red-500/40 bg-red-500/10 text-red-600"
   };
-  return <span className={cn("rounded-full border px-2 py-1 text-xs font-bold capitalize", classes[value] ?? "border-border text-muted-foreground")}>{value}</span>;
+  return <span className={cn("rounded-full border px-2 py-1 text-xs font-bold capitalize whitespace-nowrap", classes[value] ?? "border-border text-muted-foreground")}>{value}</span>;
 }
 
 function SimpleTable({ columns, rows, empty }: { columns: string[]; rows: React.ReactNode[][]; empty: string }) {

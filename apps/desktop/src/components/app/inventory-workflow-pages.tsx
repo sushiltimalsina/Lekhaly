@@ -730,7 +730,8 @@ export function GoodsReceiptWorkflowPage() {
                     <th className="px-3 py-3 text-right">Items</th>
                     <th className="px-3 py-3 text-right">Qty</th>
                     <th className="px-3 py-3 text-right">Amount</th>
-                    <th className="px-3 py-3">Status</th>`r`n                      <th className="px-3 py-3 text-right">Action</th>
+                    <th className="px-3 py-3">Status</th>
+                    <th className="px-3 py-3 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -1204,7 +1205,8 @@ export function DispatchWorkflowPage() {
                       <th className="px-3 py-3 text-right">Items</th>
                       <th className="px-3 py-3 text-right">Qty</th>
                       <th className="px-3 py-3 text-right">Amount</th>
-                      <th className="px-3 py-3">Status</th>`r`n                      <th className="px-3 py-3 text-right">Action</th>
+                      <th className="px-3 py-3">Status</th>
+                      <th className="px-3 py-3 text-right">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
