@@ -95,13 +95,15 @@ export class ReportsService {
     lines.push("");
     lines.push("Income");
     for (const row of data.income) {
-      lines.push(`${row.label} | ${this.formatAmount(row.amount)}`);
+      const label = row.amount.lessThan(new Prisma.Decimal(0)) ? `Less: ${row.label}` : row.label;
+      lines.push(`${label} | ${this.formatAmount(row.amount)}`);
     }
     lines.push(`Total Income | ${this.formatAmount(data.totalIncome)}`);
     lines.push("");
     lines.push("Expense");
     for (const row of data.expense) {
-      lines.push(`${row.label} | ${this.formatAmount(row.amount)}`);
+      const label = row.amount.lessThan(new Prisma.Decimal(0)) ? `Less: ${row.label}` : row.label;
+      lines.push(`${label} | ${this.formatAmount(row.amount)}`);
     }
     lines.push(`Total Expense | ${this.formatAmount(data.totalExpense)}`);
     lines.push("");
@@ -197,11 +199,13 @@ export class ReportsService {
   }) {
     const rows: Array<Record<string, string>> = [];
     for (const row of data.income) {
-      rows.push({ section: "income", label: row.label, amount: this.formatAmount(row.amount) });
+      const label = row.amount.lessThan(new Prisma.Decimal(0)) ? `Less: ${row.label}` : row.label;
+      rows.push({ section: "income", label, amount: this.formatAmount(row.amount) });
     }
     rows.push({ section: "income", label: "Total Income", amount: this.formatAmount(data.totalIncome) });
     for (const row of data.expense) {
-      rows.push({ section: "expense", label: row.label, amount: this.formatAmount(row.amount) });
+      const label = row.amount.lessThan(new Prisma.Decimal(0)) ? `Less: ${row.label}` : row.label;
+      rows.push({ section: "expense", label, amount: this.formatAmount(row.amount) });
     }
     rows.push({ section: "expense", label: "Total Expense", amount: this.formatAmount(data.totalExpense) });
     rows.push({ section: "summary", label: "Net Profit", amount: this.formatAmount(data.netProfit) });
@@ -488,7 +492,7 @@ export class ReportsService {
           companyId,
           accountId: filters.accountId || undefined,
           partyId: filters.partyId || undefined,
-          voucher: { 
+          voucher: {
             status: "posted",
             voucherDate: { lt: range.from }
           }
@@ -521,7 +525,7 @@ export class ReportsService {
         const debit = line.debit;
         const credit = line.credit;
         running = running.add(debit).sub(credit);
-        
+
         // Improve memo: use voucher memo if available, otherwise account name
         const memo = line.voucher.memo || line.account.name + (line.party ? ` — ${line.party.name}` : "");
 
@@ -536,12 +540,12 @@ export class ReportsService {
         };
       });
 
-    return { 
-      accountId: filters.accountId, 
-      partyId: filters.partyId, 
-      openingBalance, 
-      rows, 
-      balance: running 
+    return {
+      accountId: filters.accountId,
+      partyId: filters.partyId,
+      openingBalance,
+      rows,
+      balance: running
     };
   }
 

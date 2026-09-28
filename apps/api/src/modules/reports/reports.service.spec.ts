@@ -86,6 +86,49 @@ describe("ReportsService export", () => {
     expect(decoded).toContain("expense,5000 Rent,50.00");
   });
 
+  it("treats contra-income as a deduction and contra-expense as a deduction in profit and loss", async () => {
+    prisma.voucherLine.findMany.mockResolvedValue([
+      {
+        accountId: "acc-income",
+        debit: new Prisma.Decimal(0),
+        credit: new Prisma.Decimal(1000),
+        account: { code: "4001", name: "Sales", type: "income", isContra: false }
+      },
+      {
+        accountId: "acc-sales-return",
+        debit: new Prisma.Decimal(75),
+        credit: new Prisma.Decimal(0),
+        account: { code: "4002", name: "Sales Return", type: "income", isContra: true }
+      },
+      {
+        accountId: "acc-expense",
+        debit: new Prisma.Decimal(300),
+        credit: new Prisma.Decimal(0),
+        account: { code: "5001", name: "Rent", type: "expense", isContra: false }
+      },
+      {
+        accountId: "acc-expense-rebate",
+        debit: new Prisma.Decimal(0),
+        credit: new Prisma.Decimal(40),
+        account: { code: "5002", name: "Expense Rebate", type: "expense", isContra: true }
+      }
+    ]);
+
+    const result = await service.profitAndLoss("company-1", {});
+
+    expect(result.totalIncome.toString()).toBe("925");
+    expect(result.totalExpense.toString()).toBe("260");
+    expect(result.netProfit.toString()).toBe("665");
+
+    expect(result.income.some((row) => row.label.includes("Sales Return") && row.amount.toString() === "-75")).toBe(true);
+    expect(result.expense.some((row) => row.label.includes("Expense Rebate") && row.amount.toString() === "-40")).toBe(true);
+
+    const csv = await service.exportPdf("company-1", { report: "profit-loss", format: "csv" });
+    const decoded = Buffer.from(csv.contentBase64, "base64").toString("utf8");
+    expect(decoded).toContain("Less: 4002 Sales Return");
+    expect(decoded).toContain("Less: 5002 Expense Rebate");
+  });
+
   it("computes party aging buckets", async () => {
     const asOf = new Date("2026-01-31T00:00:00.000Z");
     prisma.voucherLine.findMany.mockResolvedValue([
