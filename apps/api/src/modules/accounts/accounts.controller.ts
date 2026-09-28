@@ -15,6 +15,12 @@ export class AccountsController {
     return this.accounts.create(user, body);
   }
 
+  @Get("types")
+  @RequirePerm("masters.read")
+  getTypes() {
+    return this.accounts.listTypes();
+  }
+
   @Put(":id")
   @RequirePerm("masters.write")
   update(
