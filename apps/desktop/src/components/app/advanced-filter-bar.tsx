@@ -27,7 +27,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@lekhaly/ui";
-import { DATE_RANGE_LABELS, DateRangeKey, getDateRange } from "@/lib/dates/ranges";
+import { DATE_RANGE_LABELS, DATE_RANGE_ORDER, DateRangeKey, getDateRange } from "@/lib/dates/ranges";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDateFormat } from "@/lib/date-format";
 import {
@@ -84,7 +84,11 @@ export default function AdvancedFilterBar(props: AdvancedFilterBarProps) {
     const [activeDateRange, setActiveDateRange] = React.useState<DateRangeKey>(defaultRangeKey);
     const [selectedFilters, setSelectedFilters] = React.useState<Record<string, any>>(config.defaultValues || {});
     const [isCustomDateOpen, setIsCustomDateOpen] = React.useState(false);
+    const [isFilterBackdropOpen, setIsFilterBackdropOpen] = React.useState(false);
     const [compareEnabled, setCompareEnabled] = React.useState(false);
+    const customRangeOpenRef = React.useRef(false);
+    const customStartInputRef = React.useRef<HTMLInputElement | null>(null);
+    const customEndInputRef = React.useRef<HTMLInputElement | null>(null);
 
     const defaultColumns = React.useMemo(() => {
         const cols = config.columns || [];
@@ -139,6 +143,7 @@ export default function AdvancedFilterBar(props: AdvancedFilterBarProps) {
             setIsCustomDateOpen(true);
             return;
         }
+        setIsCustomDateOpen(false);
         setActiveDateRange(key);
         notifyChange(selectedFilters, key, compareEnabled, visibleColumns, searchValue);
     };
@@ -151,10 +156,17 @@ export default function AdvancedFilterBar(props: AdvancedFilterBarProps) {
     };
 
     const handleApplyCustomRange = () => {
+        customRangeOpenRef.current = false;
         setActiveDateRange("custom");
         notifyChange(selectedFilters, "custom", compareEnabled, visibleColumns, searchValue);
         setIsCustomDateOpen(false);
     };
+
+    React.useEffect(() => {
+        if (isCustomDateOpen) {
+            window.requestAnimationFrame(() => customStartInputRef.current?.focus());
+        }
+    }, [isCustomDateOpen]);
 
     const handleFilterSelect = (key: string, value: any) => {
         const current = selectedFilters[key] || [];
@@ -238,8 +250,31 @@ export default function AdvancedFilterBar(props: AdvancedFilterBarProps) {
     const isSearchEnabled = config.search?.enabled !== false;
     const isDateEnabled = config.dateRange?.enabled !== false;
 
+    const formatDateLabel = React.useCallback((value: Date | null) => {
+        if (!value) return "—";
+        const adValue = value.toISOString().slice(0, 10);
+        return dateFormat === "bs" ? adToBs(adValue) : adValue;
+    }, [dateFormat]);
+
+    const activeRangeSummary = React.useMemo(() => {
+        const selectedRange = activeDateRange === "custom"
+            ? {
+                from: tempCustomRange.from ? new Date(`${tempCustomRange.from}T00:00:00`) : null,
+                to: tempCustomRange.to ? new Date(`${tempCustomRange.to}T23:59:59.999`) : null,
+            }
+            : getDateRange(activeDateRange, dateFormat);
+
+        const from = formatDateLabel(selectedRange.from);
+        const to = formatDateLabel(selectedRange.to);
+        return `${from} to ${to}`;
+    }, [activeDateRange, dateFormat, formatDateLabel, tempCustomRange.from, tempCustomRange.to]);
+
     return (
-        <div className={cn("flex flex-col gap-3 p-3.5 bg-white dark:bg-slate-900 rounded-[24px] border border-slate-200/80 dark:border-slate-800 shadow-sm transition-all", props.className)}>
+        <>
+            {isFilterBackdropOpen && (
+                <div className="fixed inset-0 z-40 bg-slate-900/15 backdrop-blur-[2px] transition-all duration-200" />
+            )}
+            <div className={cn("flex flex-col gap-3 p-3.5 bg-white dark:bg-slate-900 rounded-[24px] border border-slate-200/80 dark:border-slate-800 shadow-sm transition-all relative z-50", props.className)}>
             <div className="flex flex-wrap items-center gap-2.5">
                 {/* Search */}
                 {isSearchEnabled && (
@@ -270,7 +305,14 @@ export default function AdvancedFilterBar(props: AdvancedFilterBarProps) {
                     <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-50/80 dark:bg-slate-800/50 rounded-xl border border-slate-200/80 dark:border-slate-700/80 group hover:border-indigo-300 transition-all relative h-9">
                         <CalendarIcon className="h-3.5 w-3.5 text-slate-400 group-hover:text-indigo-500" />
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-0.5">Date:</span>
-                        <DropdownMenu>
+                        <DropdownMenu onOpenChange={(open) => {
+                            if (!open && customRangeOpenRef.current) {
+                                customRangeOpenRef.current = false;
+                                return;
+                            }
+                            setIsFilterBackdropOpen(open);
+                            if (!open) setIsCustomDateOpen(false);
+                        }}>
                             <DropdownMenuTrigger asChild>
                                 <button className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-indigo-600 transition-colors outline-none">
                                     {activeDateRange === "custom" ? "Custom Range" : DATE_RANGE_LABELS[activeDateRange]}
@@ -278,10 +320,18 @@ export default function AdvancedFilterBar(props: AdvancedFilterBarProps) {
                                 </button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="w-52 max-h-[380px] overflow-y-auto">
-                                {(Object.keys(DATE_RANGE_LABELS) as DateRangeKey[]).map((key) => (
+                                {DATE_RANGE_ORDER.map((key) => (
                                     <DropdownMenuItem
                                         key={key}
-                                        onClick={() => handleDateRangeSelect(key)}
+                                        onClick={() => {
+                                            if (key === "custom") {
+                                                customRangeOpenRef.current = true;
+                                                setIsFilterBackdropOpen(false);
+                                                setIsCustomDateOpen(true);
+                                                return;
+                                            }
+                                            handleDateRangeSelect(key);
+                                        }}
                                         className={cn(
                                             activeDateRange === key && key !== "custom" && "text-indigo-600 bg-indigo-50 font-bold dark:bg-indigo-950/40 dark:text-indigo-400",
                                             key === "custom" && "border-t mt-1 pt-2 font-semibold"
@@ -296,13 +346,21 @@ export default function AdvancedFilterBar(props: AdvancedFilterBarProps) {
                             </DropdownMenuContent>
                         </DropdownMenu>
 
+                        <div className="mt-1.5 flex w-fit items-center gap-2 pl-1.5 text-[10px] leading-none text-indigo-600 dark:text-indigo-400">
+                            <span className="uppercase tracking-[0.18em] font-bold text-slate-500 dark:text-slate-400">Range</span>
+                            <span className="font-semibold text-indigo-600 dark:text-indigo-400">{activeRangeSummary}</span>
+                        </div>
+
                         {/* Custom Date Modal */}
                         <AnimatePresence>
                             {isCustomDateOpen && (
                                 <>
                                     <div
-                                        className="fixed inset-0 z-[60] bg-slate-900/10 backdrop-blur-xs"
-                                        onClick={() => setIsCustomDateOpen(false)}
+                                        className="absolute inset-0 z-[60] bg-transparent"
+                                        onClick={() => {
+                                            customRangeOpenRef.current = false;
+                                            setIsCustomDateOpen(false);
+                                        }}
                                     />
                                     <motion.div
                                         initial={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -311,7 +369,7 @@ export default function AdvancedFilterBar(props: AdvancedFilterBarProps) {
                                         className="absolute top-full right-0 mt-3 z-[70] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[24px] shadow-2xl overflow-hidden flex min-w-[620px]"
                                     >
                                         <div className="w-44 border-r border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 p-2 overflow-y-auto max-h-[460px]">
-                                            {(Object.keys(DATE_RANGE_LABELS) as DateRangeKey[]).filter(k => k !== 'custom').map((key) => (
+                                            {DATE_RANGE_ORDER.filter((key) => key !== "custom").map((key) => (
                                                 <button
                                                     key={key}
                                                     onClick={() => {
@@ -343,13 +401,15 @@ export default function AdvancedFilterBar(props: AdvancedFilterBarProps) {
                                             <div className="flex items-start gap-4">
                                                 <div className="flex-1">
                                                     <DualDateInput
+                                                        ref={customStartInputRef}
                                                         label="From Date"
                                                         value={{
                                                             ad: tempCustomRange.from,
-                                                            bs: adToBs(tempCustomRange.from)
+                                                            bs: tempCustomRange.from ? adToBs(tempCustomRange.from) : ""
                                                         }}
                                                         onChange={(next) => setTempCustomRange(prev => ({ ...prev, from: next.ad }))}
                                                         accentColor="bg-indigo-600"
+                                                        onEnterNext={() => customEndInputRef.current?.focus()}
                                                     />
                                                 </div>
                                                 <div className="pt-7 text-slate-300">
@@ -357,10 +417,11 @@ export default function AdvancedFilterBar(props: AdvancedFilterBarProps) {
                                                 </div>
                                                 <div className="flex-1">
                                                     <DualDateInput
+                                                        ref={customEndInputRef}
                                                         label="To Date"
                                                         value={{
                                                             ad: tempCustomRange.to,
-                                                            bs: adToBs(tempCustomRange.to)
+                                                            bs: tempCustomRange.to ? adToBs(tempCustomRange.to) : ""
                                                         }}
                                                         onChange={(next) => setTempCustomRange(prev => ({ ...prev, to: next.ad }))}
                                                         accentColor="bg-indigo-600"
@@ -476,7 +537,10 @@ export default function AdvancedFilterBar(props: AdvancedFilterBarProps) {
 
                 {/* Secondary Filters */}
                 {secondaryFilters.length > 0 && (
-                    <DropdownMenu>
+                    <DropdownMenu onOpenChange={(open) => {
+                        setIsFilterBackdropOpen(open);
+                        if (!open) setIsCustomDateOpen(false);
+                    }}>
                         <DropdownMenuTrigger asChild>
                             <Button
                                 variant="outline"
@@ -545,11 +609,15 @@ export default function AdvancedFilterBar(props: AdvancedFilterBarProps) {
 
                 {/* Column Visibility */}
                 {(config.columns || []).length > 0 && (
-                    <DropdownMenu>
+                    <DropdownMenu onOpenChange={(open) => {
+                        setIsFilterBackdropOpen(open);
+                        if (!open) setIsCustomDateOpen(false);
+                    }}>
                         <DropdownMenuTrigger asChild>
                             <Button
                                 variant="outline"
                                 size="sm"
+                                onClick={() => setIsCustomDateOpen(false)}
                                 className="h-9 px-3 rounded-xl gap-1.5 font-bold text-xs border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-900 hover:border-indigo-300"
                             >
                                 <Settings2 className="h-3.5 w-3.5 text-indigo-500" />
@@ -686,6 +754,7 @@ export default function AdvancedFilterBar(props: AdvancedFilterBarProps) {
                     </button>
                 </div>
             )}
-        </div>
+            </div>
+        </>
     );
 }

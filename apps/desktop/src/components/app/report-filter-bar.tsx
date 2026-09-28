@@ -4,7 +4,7 @@ import * as React from "react";
 import { CalendarDays, ChevronDown, Filter, Play, Search } from "lucide-react";
 import { Button, Input } from "@lekhaly/ui";
 import { cn } from "@/lib/utils";
-import { DATE_RANGE_LABELS, type DateRangeKey, getDateRange } from "@/lib/dates/ranges";
+import { DATE_RANGE_LABELS, DATE_RANGE_ORDER, type DateRangeKey, getDateRange } from "@/lib/dates/ranges";
 import DualDateInput from "@/components/app/dual-date-input";
 import { adToBs } from "@/lib/dates/convert";
 import { getSettings, subscribeSettings, type CalendarPreference } from "@/lib/store/settings";
@@ -201,7 +201,7 @@ export default function ReportFilterBar({
 
           {rangeOpen && (
             <div className="absolute right-0 top-[calc(100%+0.5rem)] z-[70] w-[260px] overflow-hidden rounded-2xl border border-border bg-popover p-2 text-popover-foreground shadow-2xl shadow-black/10 dark:shadow-black/40">
-              {(Object.keys(DATE_RANGE_LABELS) as DateRangeKey[]).map((key) => (
+              {DATE_RANGE_ORDER.map((key) => (
                 <button
                   key={key}
                   type="button"

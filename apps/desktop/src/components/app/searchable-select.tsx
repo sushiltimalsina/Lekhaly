@@ -46,6 +46,7 @@ export interface SearchableSelectProps<T> {
     onKeyDownCustom?: (e: React.KeyboardEvent<any>) => void;
     fallbackLabel?: string;
     disabled?: boolean;
+    menuZIndex?: number;
 }
 
 export default function SearchableSelect<T extends any>(props: SearchableSelectProps<T>) {
@@ -64,6 +65,7 @@ export default function SearchableSelect<T extends any>(props: SearchableSelectP
         emptyText = "No items found",
         fallbackLabel,
         disabled,
+        menuZIndex = 2000,
     } = props;
     const valueId = valueIdProp ?? value ?? "";
 
@@ -120,7 +122,7 @@ export default function SearchableSelect<T extends any>(props: SearchableSelectP
                 top: rect.bottom + 8,
                 left: rect.left,
                 width: Math.max(rect.width, 250),
-                zIndex: 1000,
+                zIndex: menuZIndex,
                 opacity: 1,
                 pointerEvents: "auto",
             });
@@ -137,7 +139,7 @@ export default function SearchableSelect<T extends any>(props: SearchableSelectP
             window.removeEventListener("resize", update);
             window.removeEventListener("scroll", update, true);
         };
-    }, [open]);
+    }, [open, menuZIndex]);
 
     const listRef = React.useRef<HTMLDivElement>(null);
     React.useEffect(() => {
