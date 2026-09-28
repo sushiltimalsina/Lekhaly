@@ -74,8 +74,12 @@ export function Calendar({
         };
     }, [externalPreference]);
 
-    const [viewYear, setViewYear] = React.useState(2080);
-    const [viewMonth, setViewMonth] = React.useState(1);
+    const [initialBsView] = React.useState(() => {
+        const [year, month] = adToBs(new Date().toISOString().slice(0, 10)).split("-").map(Number);
+        return { year, month };
+    });
+    const [viewYear, setViewYear] = React.useState(initialBsView.year);
+    const [viewMonth, setViewMonth] = React.useState(initialBsView.month);
     const [viewAdYear, setViewAdYear] = React.useState(new Date().getFullYear());
     const [viewAdMonth, setViewAdMonth] = React.useState(new Date().getMonth() + 1);
 
@@ -171,7 +175,7 @@ export function Calendar({
     };
 
     return (
-        <div className={cn("w-full overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900", className)}>
+        <div className={cn("w-full overflow-hidden rounded-2xl border border-indigo-200 bg-white shadow-sm dark:border-indigo-950 dark:bg-slate-950", className)}>
             <div className={cn("flex flex-col gap-0 px-4 py-3 text-white transition-colors duration-300", accentColor)}>
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-1.5">
@@ -284,11 +288,11 @@ export function Calendar({
                             type="button"
                             onClick={() => handleSelect(day)}
                             className={cn(
-                                "relative aspect-square rounded-xl flex flex-col items-center justify-center transition-all group/day",
+                                "relative aspect-square rounded-xl flex flex-col items-center justify-center transition-all group/day border border-transparent",
                                 isSelected
-                                    ? cn("text-white shadow-lg", accentColor)
-                                    : "hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200",
-                                isToday && !isSelected && "ring-2 ring-primary ring-offset-2 dark:ring-offset-zinc-900"
+                                    ? cn("text-white shadow-lg ring-1 ring-indigo-500/60", accentColor)
+                                    : "hover:bg-indigo-50 dark:hover:bg-indigo-950/30 text-slate-700 dark:text-slate-200",
+                                isToday && !isSelected && "border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-800 dark:bg-indigo-950/20 dark:text-indigo-300"
                             )}
                         >
                             <span className="text-xs font-black leading-none">

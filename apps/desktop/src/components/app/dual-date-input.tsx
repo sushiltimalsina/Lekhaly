@@ -22,6 +22,7 @@ type DualDateInputProps = {
   onEnterNext?: () => void;
   className?: string;
   accentColor?: string; // Optional accent color class e.g. "bg-rose-600"
+  popupZIndex?: number;
 };
 
 function useOutsideClick<T extends HTMLElement>(
@@ -59,6 +60,7 @@ const DualDateInput = React.forwardRef<HTMLInputElement, DualDateInputProps>(
       onEnterNext,
       className,
       accentColor = "bg-primary",
+      popupZIndex = 1500,
     } = props;
 
     const [mounted, setMounted] = React.useState(false);
@@ -112,12 +114,12 @@ const DualDateInput = React.forwardRef<HTMLInputElement, DualDateInputProps>(
             position: "fixed",
             top,
             left,
-            zIndex: 1500,
+            zIndex: popupZIndex,
             opacity: 1,
           });
         }
       }
-    }, [open]);
+    }, [open, popupZIndex]);
 
     const todayAd = new Date().toISOString().slice(0, 10);
     const todayBs = adToBs(todayAd);

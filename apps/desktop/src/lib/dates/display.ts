@@ -23,7 +23,7 @@ export function getDateDisplay({ ad, bs, format }: DateInput) {
 
   return {
     primary: primary || "--",
-    secondary: secondary || "",
+    secondary: secondary ? `(${secondary})` : "",
     bs: bsDisplay || "--",
     ad: adDisplay || "",
   };

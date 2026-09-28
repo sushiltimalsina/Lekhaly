@@ -74,8 +74,12 @@ export function Calendar({
         };
     }, [externalPreference]);
 
-    const [viewYear, setViewYear] = React.useState(2080);
-    const [viewMonth, setViewMonth] = React.useState(1);
+    const [initialBsView] = React.useState(() => {
+        const [year, month] = adToBs(new Date().toISOString().slice(0, 10)).split("-").map(Number);
+        return { year, month };
+    });
+    const [viewYear, setViewYear] = React.useState(initialBsView.year);
+    const [viewMonth, setViewMonth] = React.useState(initialBsView.month);
     const [viewAdYear, setViewAdYear] = React.useState(new Date().getFullYear());
     const [viewAdMonth, setViewAdMonth] = React.useState(new Date().getMonth() + 1);
 

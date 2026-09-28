@@ -23,6 +23,7 @@ type DualDateInputProps = {
   className?: string;
   accentColor?: string; // Optional accent color class e.g. "bg-rose-600"
   withBackdrop?: boolean;
+  popupZIndex?: number;
 };
 
 function useOutsideClick<T extends HTMLElement>(
@@ -61,6 +62,7 @@ const DualDateInput = React.forwardRef<HTMLInputElement, DualDateInputProps>(
       className,
       accentColor = "bg-primary",
       withBackdrop = false,
+      popupZIndex = 1500,
     } = props;
 
     const [mounted, setMounted] = React.useState(false);
@@ -90,6 +92,14 @@ const DualDateInput = React.forwardRef<HTMLInputElement, DualDateInputProps>(
       opacity: 0,
     });
 
+    const setInputRef = React.useCallback((node: HTMLInputElement | null) => {
+      if (typeof ref === "function") {
+        ref(node);
+      } else if (ref) {
+        ref.current = node;
+      }
+    }, [ref]);
+
     React.useEffect(() => {
       if (open) {
         const rect = buttonRef.current?.parentElement?.getBoundingClientRect();
@@ -114,12 +124,12 @@ const DualDateInput = React.forwardRef<HTMLInputElement, DualDateInputProps>(
             position: "fixed",
             top,
             left,
-            zIndex: 1500,
+            zIndex: popupZIndex,
             opacity: 1,
           });
         }
       }
-    }, [open]);
+    }, [open, popupZIndex]);
 
     const todayAd = new Date().toISOString().slice(0, 10);
     const todayBs = adToBs(todayAd);
@@ -180,7 +190,7 @@ const DualDateInput = React.forwardRef<HTMLInputElement, DualDateInputProps>(
         <div className="group/input">
           <div className="relative">
             <Input
-              ref={ref}
+              ref={setInputRef}
               type="text"
               value={localMain || display.main || ""}
               onChange={(e) => setLocalMain(e.target.value)}

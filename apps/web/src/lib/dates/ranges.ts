@@ -20,6 +20,26 @@ export interface DateRange {
 
 import NepaliDate from "nepali-date-converter";
 
+const DEFAULT_FISCAL_YEAR_START_MONTH = 4;
+
+function getFiscalYearBounds(date: Date, fiscalYearStartMonth = DEFAULT_FISCAL_YEAR_START_MONTH) {
+    const monthIndex = fiscalYearStartMonth - 1;
+    const currentYear = date.getFullYear();
+    const effectiveYear = date.getMonth() >= monthIndex ? currentYear : currentYear - 1;
+    const from = new Date(effectiveYear, monthIndex, 1, 0, 0, 0, 0);
+    const to = new Date(effectiveYear + 1, monthIndex, 0, 23, 59, 59, 999);
+    return { from, to };
+}
+
+export const DATE_RANGE_ORDER: DateRangeKey[] = [
+    "today",
+    "this_week",
+    "this_month",
+    "this_year",
+    "previous_year",
+    "custom",
+];
+
 export function getDateRange(key: DateRangeKey, calendar: "ad" | "bs" = "ad"): DateRange {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -69,11 +89,16 @@ export function getDateRange(key: DateRangeKey, calendar: "ad" | "bs" = "ad"): D
                 return { from: start, to: nextQStart };
             }
             case "this_year": {
-                const start = toJSDate(new NepaliDate(year, 0, 1));
-                const nextYearStart = toJSDate(new NepaliDate(year + 1, 0, 1));
-                nextYearStart.setDate(nextYearStart.getDate() - 1);
-                nextYearStart.setHours(23, 59, 59, 999);
-                return { from: start, to: nextYearStart };
+                const { from, to } = getFiscalYearBounds(now, DEFAULT_FISCAL_YEAR_START_MONTH);
+                return { from, to };
+            }
+            case "previous_year": {
+                const thisYear = getFiscalYearBounds(now, DEFAULT_FISCAL_YEAR_START_MONTH);
+                const from = new Date(thisYear.from);
+                from.setFullYear(from.getFullYear() - 1);
+                const to = new Date(thisYear.to);
+                to.setFullYear(to.getFullYear() - 1);
+                return { from, to };
             }
             case "yesterday": {
                 const prev = new Date(today);
@@ -88,7 +113,6 @@ export function getDateRange(key: DateRangeKey, calendar: "ad" | "bs" = "ad"): D
         }
     }
 
-    // Default AD Logic
     switch (key) {
         case "today": {
             const from = new Date(today);
@@ -98,7 +122,7 @@ export function getDateRange(key: DateRangeKey, calendar: "ad" | "bs" = "ad"): D
         }
         case "this_week": {
             const from = new Date(today);
-            from.setDate(today.getDate() - today.getDay()); // Sunday
+            from.setDate(today.getDate() - today.getDay());
             const to = new Date(from);
             to.setDate(from.getDate() + 6);
             to.setHours(23, 59, 59, 999);
@@ -124,8 +148,7 @@ export function getDateRange(key: DateRangeKey, calendar: "ad" | "bs" = "ad"): D
             return { from, to };
         }
         case "this_year": {
-            const from = new Date(today.getFullYear(), 0, 1);
-            const to = new Date(today.getFullYear(), 11, 31, 23, 59, 59, 999);
+            const { from, to } = getFiscalYearBounds(today, DEFAULT_FISCAL_YEAR_START_MONTH);
             return { from, to };
         }
         case "yesterday": {
@@ -157,8 +180,11 @@ export function getDateRange(key: DateRangeKey, calendar: "ad" | "bs" = "ad"): D
             return { from, to };
         }
         case "previous_year": {
-            const from = new Date(today.getFullYear() - 1, 0, 1);
-            const to = new Date(today.getFullYear() - 1, 11, 31, 23, 59, 59, 999);
+            const thisYear = getFiscalYearBounds(today, DEFAULT_FISCAL_YEAR_START_MONTH);
+            const from = new Date(thisYear.from);
+            from.setFullYear(from.getFullYear() - 1);
+            const to = new Date(thisYear.to);
+            to.setFullYear(to.getFullYear() - 1);
             return { from, to };
         }
         case "custom":
