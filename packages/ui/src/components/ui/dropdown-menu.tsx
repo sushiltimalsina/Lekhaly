@@ -10,9 +10,19 @@ const DropdownMenuContext = React.createContext<{
     containerRef: React.RefObject<HTMLDivElement | null>
 } | null>(null)
 
-export function DropdownMenu({ children }: { children: React.ReactNode }) {
+export function DropdownMenu({
+    children,
+    onOpenChange,
+}: {
+    children: React.ReactNode
+    onOpenChange?: (open: boolean) => void
+}) {
     const [open, setOpen] = React.useState(false)
     const containerRef = React.useRef<HTMLDivElement>(null)
+
+    React.useEffect(() => {
+        onOpenChange?.(open)
+    }, [open, onOpenChange])
 
     React.useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -108,30 +118,22 @@ export function DropdownMenuContent({
     if (!context.open || !position) return null
 
     return createPortal(
-        <>
-            {/* Backdrop */}
-            <div
-                className="fixed inset-0 z-[9999] bg-black/20 backdrop-blur-sm"
-                onClick={() => context.setOpen(false)}
-            />
-            {/* Content */}
-            <div
-                ref={contentRef}
-                onMouseDown={(event) => event.stopPropagation()}
-                onClick={(event) => event.stopPropagation()}
-                className={cn(
-                    "fixed z-[10000] overflow-hidden rounded-[20px] border border-slate-200 bg-white p-1 shadow-xl shadow-slate-200/50 outline-none dark:border-slate-800 dark:bg-slate-950 dark:shadow-none animate-in fade-in zoom-in-95 duration-150",
-                    className
-                )}
-                style={{
-                    top: position.top,
-                    left: position.left,
-                    width: '288px' // w-72
-                }}
-            >
-                {children}
-            </div>
-        </>,
+        <div
+            ref={contentRef}
+            onMouseDown={(event) => event.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
+            className={cn(
+                "fixed z-[10000] overflow-hidden rounded-[20px] border border-slate-200 bg-white p-1 shadow-xl shadow-slate-200/50 outline-none dark:border-slate-800 dark:bg-slate-950 dark:shadow-none animate-in fade-in zoom-in-95 duration-150",
+                className
+            )}
+            style={{
+                top: position.top,
+                left: position.left,
+                width: '288px' // w-72
+            }}
+        >
+            {children}
+        </div>,
         document.body
     )
 }

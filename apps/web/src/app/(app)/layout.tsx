@@ -7,16 +7,21 @@ import CommandPalette from "@/components/app/command-palette";
 import OfflineSyncBanner from "@/components/app/offline-sync-banner";
 import UnsavedChangesGuard from "@/components/app/unsaved-changes-guard";
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useShortcuts } from "@/hooks/use-shortcuts";
-import { clearToken, getToken } from "@/lib/store/auth";
+import { getToken } from "@/lib/store/auth";
+import { getCompany, logout } from "@/lib/api/auth";
+import { startBrowserSessionLifecycle } from "@/lib/auth/session-lifecycle";
 
 const IDLE_LOGOUT_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const isCreationPage = false;
+
+  useEffect(() => startBrowserSessionLifecycle(), []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -31,8 +36,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       if (!getToken()) return;
 
       timeoutId = window.setTimeout(() => {
-        clearToken();
-        router.replace("/login");
+        void logout().catch(() => undefined).finally(() => router.replace("/login"));
       }, IDLE_LOGOUT_TIMEOUT_MS);
     };
 
@@ -54,6 +58,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       events.forEach((eventName) => window.removeEventListener(eventName, resetIdleTimer));
     };
   }, [router]);
+
+  useEffect(() => {
+    if (!getToken() || pathname === "/configuration") return;
+    let active = true;
+    getCompany()
+      .then((company: any) => {
+        if (active && company && !company.onboardingCompleted) {
+          router.replace("/configuration?onboarding=true");
+        }
+      })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, [pathname, router]);
 
   useShortcuts({
     "alt+d": () => router.push("/dashboard"),

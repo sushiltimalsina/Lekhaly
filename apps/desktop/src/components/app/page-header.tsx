@@ -4,6 +4,7 @@ import * as React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, List } from "lucide-react";
+import { useTranslation } from "@/lib/i18n";
 
 type PageHeaderProps = {
   title: string;
@@ -90,6 +91,7 @@ function BackButton({
   onRegistry: () => void;
   registryLabel: string;
 }) {
+  const t = useTranslation();
   const [open, setOpen] = React.useState(false);
   const ref = React.useRef<HTMLDivElement>(null);
 
@@ -118,7 +120,7 @@ function BackButton({
         className="inline-flex h-9 items-center gap-2 rounded-full border border-slate-200 bg-white pl-3.5 pr-4 text-xs font-bold text-slate-800 shadow-sm transition-all hover:border-orange-500 hover:bg-orange-50 hover:text-orange-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-slate-200 dark:hover:border-orange-500 dark:hover:bg-orange-950/40 dark:hover:text-orange-400"
       >
         <ArrowLeft className="h-3.5 w-3.5" />
-        Back
+        {t("Back")}
       </button>
 
       {/* Hover dropdown showing single Back to Registry shortcut */}
@@ -135,7 +137,7 @@ function BackButton({
             className="flex w-full items-center gap-2.5 rounded-xl px-3.5 py-2 text-left text-xs font-bold text-slate-700 transition-colors hover:bg-orange-50 hover:text-orange-600 dark:text-slate-200 dark:hover:bg-orange-950/40 dark:hover:text-orange-400"
           >
             <List className="h-4 w-4 shrink-0 text-orange-500 dark:text-orange-400" />
-            <span>Back to {registryLabel}</span>
+            <span>{t("Back to")} {t(registryLabel)}</span>
           </button>
         </div>
       </div>
@@ -144,6 +146,7 @@ function BackButton({
 }
 
 export default function PageHeader({ title, description, actions, breadcrumb, className, icon: Icon, iconContainerClassName, showBack, backHref, backLabel = "Back", onBack }: PageHeaderProps) {
+  const t = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const shouldShowBack = showBack ?? shouldAutoShowBack(location.pathname, breadcrumb);
@@ -204,10 +207,10 @@ export default function PageHeader({ title, description, actions, breadcrumb, cl
           <div className="space-y-1">
             {breadcrumb ? <div className="mb-2">{breadcrumb}</div> : null}
             <h1 className="text-2xl font-heading font-bold tracking-tight text-foreground sm:text-3xl">
-              {title}
+              {t(title)}
             </h1>
             {description ? (
-              <p className="text-sm text-muted-foreground max-w-2xl">{description}</p>
+              <p className="text-sm text-muted-foreground max-w-2xl">{t(description)}</p>
             ) : null}
           </div>
         </div>

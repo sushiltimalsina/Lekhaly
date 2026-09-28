@@ -39,6 +39,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { getInventorySettings, type InventorySettings } from "@/lib/api/inventory";
 import { inventoryFeatures, type InventoryFeatureSet } from "@/lib/inventory-features";
+import { useTranslation } from "@/lib/i18n";
 
 type NavItem = {
   label: string;
@@ -245,6 +246,7 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export default function Sidebar({ className, onNavigate }: SidebarProps) {
+  const t = useTranslation();
   const [collapsed, setCollapsed] = React.useState(true);
   const [resetSignal, setResetSignal] = React.useState(0);
   const [inventorySettings, setInventorySettings] = React.useState<InventorySettings | null>(null);
@@ -325,6 +327,7 @@ export default function Sidebar({ className, onNavigate }: SidebarProps) {
           <NavItemNode
             key={i}
             item={item}
+            translate={t}
             onNavigate={handleNavigate}
             collapsed={collapsed}
             onExpand={() => setCollapsed(false)}
@@ -343,9 +346,11 @@ function NavItemNode({
   collapsed,
   onExpand,
   onChildNavigate,
-  resetSignal
+  resetSignal,
+  translate
 }: {
   item: NavItem;
+  translate: (text: string) => string;
   depth?: number;
   onNavigate?: () => void;
   collapsed?: boolean;
@@ -395,7 +400,7 @@ function NavItemNode({
           collapsed && "justify-center px-2"
         )}
         style={collapsed ? undefined : { paddingLeft: `${16 + depth * 12}px` }}
-        title={collapsed ? item.label : undefined}
+        title={collapsed ? translate(item.label) : undefined}
       >
         {isActive ? (
           <span className="absolute left-1 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-primary" />
@@ -408,7 +413,7 @@ function NavItemNode({
             )}
           />
         )}
-        {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
+        {!collapsed && <span className="flex-1 truncate">{translate(item.label)}</span>}
         {!collapsed && isActive && depth === 0 ? <ChevronRight className="h-4 w-4 opacity-50" /> : null}
       </Link>
     );
@@ -433,7 +438,7 @@ function NavItemNode({
           collapsed && "justify-center px-2"
         )}
         style={collapsed ? undefined : { paddingLeft: `${16 + depth * 12}px` }}
-        title={collapsed ? item.label : undefined}
+        title={collapsed ? translate(item.label) : undefined}
       >
         {Icon && (
           <Icon
@@ -443,7 +448,7 @@ function NavItemNode({
             )}
           />
         )}
-        {!collapsed && <span className="flex-1 text-left truncate">{item.label}</span>}
+        {!collapsed && <span className="flex-1 text-left truncate">{translate(item.label)}</span>}
         {!collapsed && (
           <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", isOpen ? "rotate-180" : "")} />
         )}
@@ -462,6 +467,7 @@ function NavItemNode({
                 <NavItemNode
                   key={i}
                   item={child}
+                  translate={translate}
                   depth={depth + 1}
                   onNavigate={onNavigate}
                   collapsed={collapsed}

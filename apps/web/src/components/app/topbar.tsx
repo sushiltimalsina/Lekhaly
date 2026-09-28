@@ -7,7 +7,8 @@ import { Input } from "@lekhaly/ui";
 import { getUiState, subscribeUi, toggleDensity } from "@/lib/store/ui";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@lekhaly/ui";
 import { useRouter } from "next/navigation";
-import { clearToken } from "@/lib/store/auth";
+import { logout } from "@/lib/api/auth";
+import { useTranslation } from "@/lib/i18n";
 
 type TopbarProps = {
   title?: string;
@@ -16,14 +17,15 @@ type TopbarProps = {
 };
 
 export default function Topbar({ title, subtitle, rightSlot }: TopbarProps) {
+  const t = useTranslation();
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [density, setDensityState] = React.useState(getUiState().density);
   const [theme, setThemeState] = React.useState<"light" | "dark">("light");
   const [mounted, setMounted] = React.useState(false);
   const router = useRouter();
 
-  const handleLogout = () => {
-    clearToken();
+  const handleLogout = async () => {
+    await logout().catch(() => undefined);
     router.replace("/login");
   };
 
@@ -72,10 +74,10 @@ export default function Topbar({ title, subtitle, rightSlot }: TopbarProps) {
 
             <div className="flex flex-col">
               <h1 className="text-lg font-heading font-semibold tracking-tight leading-none text-foreground">
-                {title || "Dashboard"}
+                {t(title || "Dashboard")}
               </h1>
               <p className="text-xs text-muted-foreground truncate max-w-[200px] mt-1">
-                {subtitle || "Manage your business finances"}
+                {t(subtitle || "Manage your business finances")}
               </p>
             </div>
           </div>
@@ -85,7 +87,7 @@ export default function Topbar({ title, subtitle, rightSlot }: TopbarProps) {
             <div className="relative w-full">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search anything... (Ctrl + K)"
+                placeholder={t("Search anything... (Ctrl + K)")}
                 className="w-full pl-9 bg-muted/50 border-transparent focus:bg-background transition-all rounded-xl"
               />
             </div>
@@ -106,7 +108,7 @@ export default function Topbar({ title, subtitle, rightSlot }: TopbarProps) {
                 ) : (
                   <LayoutGrid className="h-4 w-4" />
                 )}
-                {density === "compact" ? "Compact" : "Comfortable"}
+                {t(density === "compact" ? "Compact" : "Comfortable")}
               </button>
             ) : (
               <div className="hidden sm:block h-7 w-[110px]" aria-hidden="true" />
@@ -116,8 +118,8 @@ export default function Topbar({ title, subtitle, rightSlot }: TopbarProps) {
               type="button"
               className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground hover:text-foreground"
               onClick={toggleTheme}
-              aria-label="Toggle theme"
-              title="Toggle theme"
+              aria-label={t("Toggle theme")}
+              title={t("Toggle theme")}
             >
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
@@ -147,14 +149,14 @@ export default function Topbar({ title, subtitle, rightSlot }: TopbarProps) {
                 <DropdownMenuSeparator className="bg-border/50" />
                 <DropdownMenuItem className="rounded-xl px-3 py-2.5 focus:bg-primary/10 cursor-pointer transition-colors">
                   <User className="mr-2 h-4 w-4" />
-                  <span className="font-medium text-sm text-foreground">Profile Settings</span>
+                  <span className="font-medium text-sm text-foreground">{t("Profile Settings")}</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   className="rounded-xl px-3 py-2.5 text-red-600 focus:bg-red-50 focus:text-red-700 dark:focus:bg-red-950/30 cursor-pointer transition-colors"
                   onClick={handleLogout}
                 >
                   <LogOut className="mr-2 h-4 w-4" />
-                  <span className="font-medium text-sm">Log out & Exit</span>
+                  <span className="font-medium text-sm">{t("Log out & Exit")}</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -166,7 +168,7 @@ export default function Topbar({ title, subtitle, rightSlot }: TopbarProps) {
           <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search..."
+              placeholder={t("Search...")}
               className="w-full pl-9 bg-muted/50 border-transparent focus:bg-background transition-all rounded-xl"
             />
           </div>
@@ -182,7 +184,7 @@ export default function Topbar({ title, subtitle, rightSlot }: TopbarProps) {
           />
           <div className="absolute left-0 top-0 h-full w-[280px] animate-slide-in bg-card shadow-2xl">
             <div className="flex items-center justify-between border-b px-4 py-4">
-              <span className="font-heading font-bold text-lg">Menu</span>
+              <span className="font-heading font-bold text-lg">{t("Menu")}</span>
               <button
                 type="button"
                 className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground hover:text-foreground"
