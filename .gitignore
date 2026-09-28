@@ -56,3 +56,5 @@ find_*.ts
 check_db.js
 **/check_db.js
 test_api.js
+.gemini/
+

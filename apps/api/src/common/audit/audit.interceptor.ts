@@ -45,6 +45,8 @@ export class AuditInterceptor implements NestInterceptor {
           where: { id: entityId },
           include: { deviceUsers: { include: { user: true } } }
         });
+      case "fiscalSession":
+        return this.prisma.fiscalSession.findUnique({ where: { id: entityId } });
       default:
         return null;
     }

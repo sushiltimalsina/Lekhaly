@@ -1,4 +1,5 @@
 // apps/desktop/src/lib/api/client.ts
+import { clearToken, getRefreshToken, getToken, setToken } from "../store/auth";
 
 export type ApiErrorResponse = {
   statusCode?: number;
@@ -67,11 +68,6 @@ export function buildUrl(path: string, query?: RequestOptions["query"]) {
     });
   }
   return url.toString();
-}
-
-function getToken() {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("lekhaly_token");
 }
 
 function createLocalId() {
@@ -179,6 +175,11 @@ function isLikelyNetworkError(error: unknown) {
   return error.name === "TypeError" || /network|fetch|failed to fetch|load failed/i.test(error.message);
 }
 
+function isLikelyAuthValidationFailure(errObj?: ApiErrorResponse, message?: string) {
+  const normalized = `${errObj?.message ?? ""} ${errObj?.error ?? ""} ${message ?? ""}`.toLowerCase();
+  return /(invalid password|wrong password|incorrect password|invalid recovery code|invalid authenticator|invalid code|invalid credentials|recovery code already used|authenticator or recovery code)/.test(normalized);
+}
+
 async function queueOfflineRequest(opts: RequestOptions): Promise<OfflineQueuedResponse> {
   const config = opts.offlineQueue;
   if (!config?.enabled || opts.body === undefined) {
@@ -231,6 +232,45 @@ async function executeRequest(opts: RequestOptions) {
   });
 }
 
+let refreshInFlight: Promise<boolean> | null = null;
+
+function refreshSession() {
+  if (refreshInFlight) return refreshInFlight;
+
+  refreshInFlight = (async () => {
+    const refreshToken = getRefreshToken();
+    if (!refreshToken) return false;
+
+    try {
+      const requestRefresh = async (token: string) => {
+        const response = await fetch(buildUrl("/auth/refresh"), {
+          method: "POST",
+          headers: { Accept: "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({ refreshToken: token })
+        });
+        return { response, result: await response.json() };
+      };
+
+      let { response, result } = await requestRefresh(refreshToken);
+      if (!response.ok) {
+        const latestRefreshToken = getRefreshToken();
+        if (latestRefreshToken && latestRefreshToken !== refreshToken) {
+          ({ response, result } = await requestRefresh(latestRefreshToken));
+        }
+      }
+      if (!response.ok || !result?.accessToken || !result?.refreshToken) return false;
+      setToken(result.accessToken, result.refreshToken);
+      return true;
+    } catch {
+      return false;
+    }
+  })();
+
+  return refreshInFlight.finally(() => {
+    refreshInFlight = null;
+  });
+}
+
 export async function syncPendingOfflineRequests() {
   if (typeof window === "undefined" || !navigator.onLine) {
     return { synced: 0, failed: 0, pending: await getPendingOfflineRequestCount() };
@@ -242,27 +282,18 @@ export async function syncPendingOfflineRequests() {
 
   for (const item of items) {
     try {
-      const response = await executeRequest({
+      await apiRequest({
         method: item.method,
         path: item.path,
         body: item.body,
       });
-
-      if (!response.ok) {
-        if (response.status >= 500) {
-          failed += 1;
-          continue;
-        }
-        await deleteOfflineQueueItem(item.id);
-        failed += 1;
-        continue;
-      }
-
       await deleteOfflineQueueItem(item.id);
       synced += 1;
     } catch (error) {
       if (isLikelyNetworkError(error)) break;
       failed += 1;
+      if (!(error instanceof ApiError) || error.status === 401 || (error.status ?? 0) >= 500) break;
+      await deleteOfflineQueueItem(item.id);
     }
   }
 
@@ -286,6 +317,12 @@ export async function apiRequest<T>(opts: RequestOptions): Promise<T> {
     throw error;
   }
 
+  if (res.status === 401 && (opts.auth ?? true) && !opts.path.endsWith("/auth/refresh")) {
+    if (await refreshSession()) {
+      res = await executeRequest(opts);
+    }
+  }
+
   let data: any = null;
   const text = await res.text();
   if (text) {
@@ -305,9 +342,16 @@ export async function apiRequest<T>(opts: RequestOptions): Promise<T> {
       errObj?.error ||
       `Request failed with status ${res.status}`;
 
-    // Handle session expiration
-    if (res.status === 401 && typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
-      localStorage.removeItem("lekhaly_token");
+    // Only sign the user out for genuine session expiry. Invalid password / OTP / recovery code
+    // checks are user validation errors and should keep them in the current settings flow.
+    if (
+      res.status === 401 &&
+      (opts.auth ?? true) &&
+      typeof window !== "undefined" &&
+      !window.location.pathname.startsWith("/login") &&
+      !isLikelyAuthValidationFailure(errObj, msg)
+    ) {
+      clearToken();
       window.location.href = "/login";
     }
 
