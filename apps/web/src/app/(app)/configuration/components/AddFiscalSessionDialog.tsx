@@ -3,8 +3,35 @@
 import * as React from "react";
 import { Button, Input, Switch } from "@lekhaly/ui";
 import { createFiscalSession } from "@/lib/api/fiscal-sessions";
+import DualDateInput from "@/components/app/dual-date-input";
+import { adToBs, bsToAd } from "@/lib/dates/convert";
 import { createPortal } from "react-dom";
 import { X, Calendar as CalendarIcon } from "lucide-react";
+
+function getFiscalYearEndDate(startBs: string) {
+  if (!startBs) return { ad: "", bs: "" };
+  const [year, month, day] = startBs.split("-").map(Number);
+  let nextYearStartAd = "";
+
+  for (let candidateDay = day; candidateDay > 0; candidateDay -= 1) {
+    const candidateBs = `${year + 1}-${String(month).padStart(2, "0")}-${String(candidateDay).padStart(2, "0")}`;
+    try {
+      const candidateAd = bsToAd(candidateBs);
+      if (adToBs(candidateAd) === candidateBs) {
+        nextYearStartAd = candidateAd;
+        break;
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  if (!nextYearStartAd) return { ad: "", bs: "" };
+  const endAdDate = new Date(`${nextYearStartAd}T12:00:00.000Z`);
+  endAdDate.setUTCDate(endAdDate.getUTCDate() - 1);
+  const ad = endAdDate.toISOString().slice(0, 10);
+  return { ad, bs: adToBs(ad) };
+}
 
 interface AddFiscalSessionDialogProps {
   open: boolean;
@@ -22,10 +49,14 @@ export default function AddFiscalSessionDialog({
 
   const [form, setForm] = React.useState({
     name: "",
-    startDate: "",
-    endDate: "",
     isCurrent: true
   });
+  const [startDate, setStartDate] = React.useState({ ad: "", bs: "" });
+  const [endDate, setEndDate] = React.useState({ ad: "", bs: "" });
+  const invoiceSuffix = startDate.bs && endDate.bs
+    ? `${startDate.bs.slice(2, 4)}/${endDate.bs.slice(2, 4)}`
+    : "";
+  const dateRangeValid = Boolean(startDate.ad && endDate.ad && startDate.ad <= endDate.ad);
 
   React.useEffect(() => {
     if (open) {
@@ -47,12 +78,15 @@ export default function AddFiscalSessionDialog({
     try {
       await createFiscalSession({
         ...form,
-        startDate: new Date(form.startDate).toISOString(),
-        endDate: new Date(form.endDate).toISOString(),
+        startDate: new Date(`${startDate.ad}T12:00:00.000Z`).toISOString(),
+        endDate: new Date(`${endDate.ad}T12:00:00.000Z`).toISOString(),
+        invoiceSuffix,
       });
       onSuccess();
       onClose();
-      setForm({ name: "", startDate: "", endDate: "", isCurrent: true });
+      setForm({ name: "", isCurrent: true });
+      setStartDate({ ad: "", bs: "" });
+      setEndDate({ ad: "", bs: "" });
     } catch (err: any) {
       setError(err.message || "Failed to create fiscal session");
     } finally {
@@ -86,48 +120,38 @@ export default function AddFiscalSessionDialog({
               {error}
             </div>
           )}
-          
+
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-muted-foreground ml-1 uppercase tracking-tight">Session Name</label>
-            <Input 
-              placeholder="e.g. FY 2024-25" 
-              value={form.name} 
-              onChange={e => setForm({...form, name: e.target.value})} 
-              required 
+            <Input
+              placeholder="e.g. FY 2024-25"
+              value={form.name}
+              onChange={e => setForm({...form, name: e.target.value})}
+              required
               className="h-11 rounded-2xl bg-accent/20 dark:bg-accent/10 border-border"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-muted-foreground ml-1 uppercase tracking-tight">Start Date</label>
-              <Input 
-                type="date" 
-                value={form.startDate} 
-                onChange={e => setForm({...form, startDate: e.target.value})} 
-                required 
-                className="h-11 rounded-2xl bg-accent/20 dark:bg-accent/10 border-border"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-muted-foreground ml-1 uppercase tracking-tight">End Date</label>
-              <Input 
-                type="date" 
-                value={form.endDate} 
-                onChange={e => setForm({...form, endDate: e.target.value})} 
-                required 
-                className="h-11 rounded-2xl bg-accent/20 dark:bg-accent/10 border-border"
-              />
-            </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <DualDateInput label="Start Date" required value={startDate} onChange={(value) => {
+              setStartDate(value);
+              setEndDate(getFiscalYearEndDate(value.bs));
+            }} popupZIndex={10010} />
+            <DualDateInput label="End Date (calculated)" disabled value={endDate} onChange={() => {}} popupZIndex={10010} />
+          </div>
+
+          <div className="flex items-center justify-between border-t border-border pt-3 text-sm">
+            <span className="text-muted-foreground">Invoice Number Suffix</span>
+            <span className="font-semibold tabular-nums">{invoiceSuffix || "--"}</span>
           </div>
 
           <div className="flex items-center justify-between p-4 rounded-2xl bg-muted/20 border">
             <label htmlFor="isCurrent" className="text-sm font-medium leading-none cursor-pointer">
               Set as current active session
             </label>
-            <Switch 
-              checked={form.isCurrent} 
-              onCheckedChange={(v: boolean) => setForm({...form, isCurrent: v})} 
+            <Switch
+              checked={form.isCurrent}
+              onCheckedChange={(v: boolean) => setForm({...form, isCurrent: v})}
             />
           </div>
 
@@ -140,8 +164,8 @@ export default function AddFiscalSessionDialog({
               CANCEL
             </button>
             <button
-                type="submit" 
-                disabled={loading} 
+                type="submit"
+                disabled={loading || !dateRangeValid}
                 className="h-11 px-8 rounded-2xl text-xs font-bold bg-emerald-600 text-emerald-50 hover:bg-emerald-700 shadow-lg shadow-emerald-200 dark:shadow-none transition-all flex items-center justify-center min-w-[140px]"
             >
               {loading ? "CREATING..." : "CREATE SESSION"}

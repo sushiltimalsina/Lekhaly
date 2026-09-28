@@ -95,6 +95,17 @@ export async function createFiscalSession(data: any) {
   });
 }
 
+export async function createNextFiscalSession(
+  id: string,
+  data: { name: string; startDate: string; endDate: string; lockCurrent: boolean },
+) {
+  return apiRequest<FiscalSessionRecord>({
+    path: `/fiscal-sessions/${id}/next`,
+    method: "POST",
+    body: data,
+  });
+}
+
 export async function switchFiscalSession(id: string) {
   return apiRequest<{ success: boolean; activeFiscalSessionId: string }>({
     path: `/fiscal-sessions/${id}/switch`,
@@ -102,10 +113,10 @@ export async function switchFiscalSession(id: string) {
   });
 }
 
-export async function lockFiscalSession(id: string, lock: boolean) {
+export async function lockFiscalSession(id: string, body: { lock: boolean; reason: string; password?: string; totpCode?: string }) {
   return apiRequest<FiscalSessionRecord>({
     path: `/fiscal-sessions/${id}/lock`,
     method: "PUT",
-    body: { lock },
+    body,
   });
 }

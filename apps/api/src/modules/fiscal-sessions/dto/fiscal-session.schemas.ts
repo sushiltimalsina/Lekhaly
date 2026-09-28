@@ -5,7 +5,7 @@ export const CreateFiscalSessionSchema = z.object({
   startDate: z.string().transform((v) => new Date(v)),
   endDate: z.string().transform((v) => new Date(v)),
   isCurrent: z.boolean().optional().default(false),
-  
+
   // Optional template overrides
   invoicePrefix: z.string().optional(),
   purchasePrefix: z.string().optional(),
@@ -28,4 +28,15 @@ export const CreateFiscalSessionSchema = z.object({
   receiptSuffix: z.string().optional(),
   paymentSuffix: z.string().optional(),
   journalSuffix: z.string().optional(),
+});
+
+export const LockFiscalSessionSchema = z.object({
+  lock: z.boolean(),
+  reason: z.string().trim().min(3).max(500),
+  password: z.string().min(1).max(128).optional(),
+  totpCode: z.string().trim().regex(/^\d{6}$/).optional(),
+}).superRefine((value, context) => {
+  if (!value.lock && !value.password) {
+    context.addIssue({ code: "custom", path: ["password"], message: "Password is required to unlock a fiscal year" });
+  }
 });

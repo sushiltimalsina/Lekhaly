@@ -5,6 +5,22 @@ import { Calendar, ChevronDown, ChevronRight, Plus, CheckCircle2, Lock, Unlock }
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent } from "@lekhaly/ui";
 import { cn } from "@/lib/utils";
 import type { FiscalSessionRecord } from "@/lib/api/fiscal-sessions";
+import { useDateFormat } from "@/lib/date-format";
+import { adToBs } from "@/lib/dates/convert";
+
+function getSessionDateParts(value: string, format: "ad" | "bs") {
+  const ad = value.slice(0, 10);
+  let bs = "--";
+  try {
+    bs = adToBs(ad);
+  } catch {
+    // Keep the session visible if a legacy date cannot be converted.
+  }
+
+  return format === "bs"
+    ? { primary: bs, primaryCalendar: "BS", secondary: ad, secondaryCalendar: "AD" }
+    : { primary: ad, primaryCalendar: "AD", secondary: bs, secondaryCalendar: "BS" };
+}
 
 interface FiscalSessionsPanelProps {
   sessions: FiscalSessionRecord[];
@@ -14,6 +30,7 @@ interface FiscalSessionsPanelProps {
   expanded: boolean;
   onToggle: () => void;
   onAdd: () => void;
+  onCreateNext: (id: string) => void;
   onSwitch: (id: string) => void;
   onToggleLock: (id: string, lock: boolean) => void;
 }
@@ -26,12 +43,15 @@ export function FiscalSessionsPanel({
   expanded,
   onToggle,
   onAdd,
+  onCreateNext,
   onSwitch,
   onToggleLock
 }: FiscalSessionsPanelProps) {
+  const { dateFormat } = useDateFormat();
+
   return (
     <Card className={cn("glass-card overflow-hidden")}>
-      <CardHeader 
+      <CardHeader
         onClick={onToggle}
         className={cn("flex flex-row items-center justify-between cursor-pointer hover:bg-accent/10 transition-colors select-none", expanded ? "pb-2" : "pb-4")}
       >
@@ -61,8 +81,8 @@ export function FiscalSessionsPanel({
             ) : sessions.length ? (
               sessions.map(s => {
                 const isActive = s.id === activeSessionId;
-                const startDate = new Date(s.startDate).toLocaleDateString();
-                const endDate = new Date(s.endDate).toLocaleDateString();
+                const startDate = getSessionDateParts(s.startDate, dateFormat);
+                const endDate = getSessionDateParts(s.endDate, dateFormat);
 
                 return (
                   <div key={s.id} className={cn(
@@ -83,25 +103,40 @@ export function FiscalSessionsPanel({
                           </span>
                         )}
                       </div>
-                      <div className="text-xs text-muted-foreground flex items-center gap-2">
-                        <span>{startDate}</span>
-                        <span>→</span>
-                        <span>{endDate}</span>
-                      </div>
-                      <div className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground/70 mt-1">
-                        Prefix: {s.invoicePrefix} | {s.invoiceSuffix || 'No Suffix'}
+                      <div className="grid max-w-sm grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-2">
+                        <div className="min-w-0">
+                          <div className="mono-numbers text-sm font-semibold text-foreground">{startDate.primary} <span className="text-[10px] font-semibold text-muted-foreground">{startDate.primaryCalendar}</span></div>
+                          <div className="text-xs text-muted-foreground">({startDate.secondary} {startDate.secondaryCalendar})</div>
+                        </div>
+                        <span className="pt-0.5 text-xs text-muted-foreground">to</span>
+                        <div className="min-w-0">
+                          <div className="mono-numbers text-sm font-semibold text-foreground">{endDate.primary} <span className="text-[10px] font-semibold text-muted-foreground">{endDate.primaryCalendar}</span></div>
+                          <div className="text-xs text-muted-foreground">({endDate.secondary} {endDate.secondaryCalendar})</div>
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        {!isActive && (
-                          <Button 
-                            size="sm" 
-                            variant="secondary" 
+                        {isActive && (
+                          <Button
+                            size="sm"
+                            variant="secondary"
                             className="rounded-xl px-4"
                             disabled={busy}
-                            onClick={() => onSwitch(s.id)}
+                            onClick={() => onCreateNext(s.id)}
                           >
-                            Switch to this Year
+                            Create Next Year
+                          </Button>
+                        )}
+                        {!isActive && (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="rounded-xl px-4"
+                            disabled={busy || s.isLocked}
+                            title={s.isLocked ? "This fiscal year is locked and cannot be activated." : "Switch to this year"}
+                            onClick={() => !s.isLocked && onSwitch(s.id)}
+                          >
+                            {s.isLocked ? "Locked" : "Switch to this Year"}
                           </Button>
                         )}
                         <Button

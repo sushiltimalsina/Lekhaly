@@ -1,8 +1,9 @@
 import { Body, Controller, Get, Param, Post, Put } from "@nestjs/common";
+import { Audit } from "../../common/audit/audit.decorator";
 import { CurrentUser, RequirePerm } from "../../common/auth/auth.decorator";
 import { ZodValidationPipe } from "../../common/zod/zod.pipe";
 import type { AuthUser } from "../../common/auth/auth.types";
-import { CreateFiscalSessionSchema } from "./dto/fiscal-session.schemas";
+import { CreateFiscalSessionSchema, LockFiscalSessionSchema } from "./dto/fiscal-session.schemas";
 import { FiscalSessionsService } from "./fiscal-sessions.service";
 
 @Controller("fiscal-sessions")
@@ -30,6 +31,16 @@ export class FiscalSessionsController {
     return this.fiscalSessions.createSession(user, body);
   }
 
+  @Post(":id/next")
+  @RequirePerm("masters.write")
+  createNext(
+    @CurrentUser() user: AuthUser,
+    @Param("id") id: string,
+    @Body() body: { name: string; startDate: string; endDate: string; lockCurrent: boolean },
+  ) {
+    return this.fiscalSessions.createNextFiscalYear(user, id, body);
+  }
+
   @Put(":id/switch")
   @RequirePerm("masters.write")
   switch(@CurrentUser() user: AuthUser, @Param("id") id: string) {
@@ -37,12 +48,13 @@ export class FiscalSessionsController {
   }
 
   @Put(":id/lock")
+  @Audit({ entityType: "fiscalSession", idParam: "id" })
   @RequirePerm("masters.write")
   lock(
-    @CurrentUser() user: AuthUser, 
+    @CurrentUser() user: AuthUser,
     @Param("id") id: string,
-    @Body("lock") lock: boolean
+    @Body(new ZodValidationPipe(LockFiscalSessionSchema)) body: any
   ) {
-    return this.fiscalSessions.lockSession(user, id, lock);
+    return this.fiscalSessions.lockSession(user, id, body);
   }
 }
