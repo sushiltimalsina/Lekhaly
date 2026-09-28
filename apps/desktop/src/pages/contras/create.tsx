@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import PageHeader from "@/components/app/page-header";
+import { useNextVoucherNumber } from "@/hooks/use-next-voucher-number";
 import DualDateInput from "@/components/app/dual-date-input";
 import { Input } from "@lekhaly/ui";
 import { Button } from "@lekhaly/ui";
@@ -16,7 +16,7 @@ import {
     Save,
     Check,
     AlertCircle,
-    History,
+    History as HistoryIcon,
     FileText,
     ArrowRightCircle,
     X,
@@ -47,8 +47,67 @@ type LedgerOption = {
     category?: string;
 };
 
+
+function ContraBackButton({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const handleBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate("/vouchers?type=contra");
+    }
+  };
+
+  return (
+    <div
+      ref={ref}
+      className="relative -mt-3.5 mb-14 inline-flex"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <button
+        type="button"
+        onClick={handleBack}
+        className="inline-flex h-9 items-center gap-2 rounded-full border border-slate-200 bg-white pl-3.5 pr-4 text-xs font-bold text-slate-800 shadow-sm transition-all hover:border-cyan-500 hover:bg-cyan-50 hover:text-cyan-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-slate-200 dark:hover:border-cyan-500 dark:hover:bg-cyan-950/40 dark:hover:text-cyan-400"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" />
+        Back
+      </button>
+
+      <div
+        className={cn(
+          "absolute left-0 top-full z-50 pt-1.5 min-w-[210px] transition-all duration-150 ease-out",
+          open ? "pointer-events-auto translate-y-0 opacity-100 scale-100" : "pointer-events-none -translate-y-1 opacity-0 scale-95"
+        )}
+      >
+        <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-1 shadow-2xl shadow-slate-900/10 dark:border-zinc-800 dark:bg-zinc-900">
+          <button
+            type="button"
+            onClick={() => { setOpen(false); navigate("/vouchers?type=contra"); }}
+            className="flex w-full items-center gap-2.5 rounded-xl px-3.5 py-2 text-left text-xs font-bold text-slate-700 transition-colors hover:bg-cyan-50 hover:text-cyan-700 dark:text-slate-200 dark:hover:bg-cyan-950/40 dark:hover:text-cyan-400"
+          >
+            <ArrowRightLeft className="h-4 w-4 shrink-0 text-cyan-600 dark:text-cyan-400" />
+            <span>Back to Contra List</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ContraCreatePage() {
-    const navigate = useNavigate();
+    const { preview: nextContraPreview } = useNextVoucherNumber("contra");
+      const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const id = searchParams.get("id");
 
@@ -234,16 +293,7 @@ export default function ContraCreatePage() {
     return (
         <div className="flex flex-col gap-6 p-4 md:p-8 font-sans transition-colors duration-300 relative min-h-full pb-12">
             <div className="flex flex-col gap-6">
-                <div className="mb-2">
-                    <Button
-                        variant="ghost"
-                        onClick={() => navigate("/vouchers?type=contra")}
-                        className="rounded-full h-10 px-4 text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors"
-                    >
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to Contra List
-                    </Button>
-                </div>
+                <ContraBackButton navigate={navigate} />
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-600 text-white shadow-xl shadow-cyan-500/20">
@@ -264,7 +314,7 @@ export default function ContraCreatePage() {
                                 showHistory && "bg-cyan-50 border-cyan-200 text-cyan-600"
                             )}
                         >
-                            <History className="h-4 w-4" />
+                            <HistoryIcon className="h-4 w-4" />
                             Recent
                         </Button>
                     </div>
@@ -295,7 +345,7 @@ export default function ContraCreatePage() {
                                 <div className="w-[180px] space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500">Vch No.</label>
                                     <Input
-                                        value={form.voucherNo}
+                                        value={form.voucherNo === "NEW" ? nextContraPreview : form.voucherNo}
                                         readOnly
                                         className="h-10 rounded-xl bg-slate-50 border-slate-200 font-mono font-bold text-cyan-600 dark:bg-slate-950 dark:border-slate-800 dark:text-cyan-400 text-center"
                                     />
@@ -580,7 +630,7 @@ export default function ContraCreatePage() {
                     <div className="p-8 pb-4 flex items-center justify-between border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
                         <div className="flex items-center gap-3">
                             <div className="h-8 w-8 rounded-xl bg-cyan-50 dark:bg-cyan-900/30 flex items-center justify-center">
-                                <History className="h-4 w-4 text-cyan-600" />
+                                <HistoryIcon className="h-4 w-4 text-cyan-600" />
                             </div>
                             <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">
                                 History
@@ -594,7 +644,7 @@ export default function ContraCreatePage() {
                     <div className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-none">
                         {recentVouchers.length === 0 ? (
                             <div className="text-center py-20 opacity-20 dark:opacity-10">
-                                <History className="h-16 w-16 mx-auto mb-4" />
+                                <HistoryIcon className="h-16 w-16 mx-auto mb-4" />
                                 <p className="text-[10px] font-black uppercase tracking-widest">No entries yet</p>
                             </div>
                         ) : (
