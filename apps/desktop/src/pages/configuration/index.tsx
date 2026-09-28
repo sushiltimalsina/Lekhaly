@@ -1,6 +1,6 @@
 import * as React from "react";
 import PageHeader from "@/components/app/page-header";
-import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Switch } from "@lekhaly/ui";
+import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Switch, NEPAL_ADDRESS_DATA } from "@lekhaly/ui";
 import { deleteUnit, listUnits, reorderUnits, type UnitRecord } from "@/lib/api/units";
 import { deleteItemGroup, listItemGroups, reorderItemGroups, type ItemGroupRecord } from "@/lib/api/item-groups";
 import { listBillSundries, deleteBillSundry, reorderBillSundries, type BillSundryRecord } from "@/lib/api/bill-sundries";
@@ -8,8 +8,8 @@ import { listPaymentMethods, deletePaymentMethod, reorderPaymentMethods } from "
 import { listSaleTypes, deleteSaleType, reorderSaleTypes } from "@/lib/api/sale-types";
 import { listPurchaseTypes, deletePurchaseType, reorderPurchaseTypes } from "@/lib/api/purchase-types";
 import { SortableList } from "@/components/app/sortable-list";
-import { Trash2, Ruler, Layers, Calculator, Plus, AlertCircle, ChevronDown, ChevronRight, Search, Pencil, Monitor, Hash, Shield, CreditCard, Calendar, Tag, ShoppingBag, PackageCheck } from "lucide-react";
-import { useSearchParams } from "react-router-dom";
+import { Trash2, Ruler, Layers, Calculator, Plus, AlertCircle, ChevronDown, ChevronRight, Search, Pencil, Monitor, Hash, Shield, CreditCard, Calendar, Tag, ShoppingBag, PackageCheck, Save, Check, Loader2, Building2 } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import AddUnitDialog from "@/components/app/add-unit-dialog";
 import AddItemGroupDialog from "@/components/app/add-item-group-dialog";
@@ -18,11 +18,19 @@ import AddPaymentMethodDialog from "@/components/app/add-payment-method-dialog";
 import AddSaleTypeDialog from "@/components/app/add-sale-type-dialog";
 import AddPurchaseTypeDialog from "@/components/app/add-purchase-type-dialog";
 import ConfirmDialog from "@/components/app/confirm-dialog";
+import AddFiscalSessionDialog from "@/components/app/add-fiscal-session-dialog";
+import CreateNextFiscalYearDialog from "@/components/app/create-next-fiscal-year-dialog";
+import FiscalSessionLockDialog from "@/components/app/fiscal-session-lock-dialog";
+import FiscalSessionsPanel from "@/components/app/fiscal-sessions-panel";
 import { useDateFormat } from "@/lib/date-format";
 import { getSettings, setCalendarPreference, setDefaultDateRange, subscribeSettings } from "@/lib/store/settings";
 import { getCurrencySettings, setCurrencySymbol, setNumberFormat, subscribeUi } from "@/lib/store/ui";
 import { MoneyText } from "@/components/app/money";
-import { getCompany, updateCompany } from "@/lib/api/auth";
+import DualDateInput from "@/components/app/dual-date-input";
+import { adToBs } from "@/lib/dates/convert";
+import { getFiscalYearEndDate } from "@/lib/dates/fiscal-year";
+import { completeCompanyOnboarding, getCompany, updateCompany } from "@/lib/api/auth";
+import { createFiscalSession, createNextFiscalSession, formatVoucherNumber, getActiveFiscalSession, listFiscalSessions, lockFiscalSession, switchFiscalSession, type FiscalSessionRecord } from "@/lib/api/fiscal-sessions";
 import { getInventorySettings, updateInventorySettings, type InventorySettings } from "@/lib/api/inventory";
 import { listWarehouses, type Warehouse } from "@/lib/api/warehouses";
 
@@ -32,24 +40,24 @@ function normalizeList<T>(input: unknown): T[] {
   return obj?.items ?? obj?.data ?? [];
 }
 
-function NumberingRow({ 
-  label, 
-  prefix, 
-  seq, 
+function NumberingRow({
+  label,
+  prefix,
+  seq,
   suffix,
-  onPrefixChange, 
-  onSeqChange, 
+  onPrefixChange,
+  onSeqChange,
   onSuffixChange,
-  onSave 
-}: { 
-  label: string; 
-  prefix?: string; 
-  seq?: number; 
+  onSave
+}: {
+  label: string;
+  prefix?: string;
+  seq?: number;
   suffix?: string;
-  onPrefixChange: (v: string) => void; 
-  onSeqChange: (v: number) => void; 
+  onPrefixChange: (v: string) => void;
+  onSeqChange: (v: number) => void;
   onSuffixChange: (v: string) => void;
-  onSave: () => void; 
+  onSave: () => void;
 }) {
   const p = prefix || "";
   const s = suffix || "";
@@ -57,7 +65,7 @@ function NumberingRow({
   const formattedSuffix = s ? (s.startsWith("-") ? s : `-${s}`) : "";
   const preview = `${formattedPrefix}${seq || 1}${formattedSuffix}`;
 
-  
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
@@ -68,8 +76,8 @@ function NumberingRow({
       </div>
       <div className="grid grid-cols-7 gap-2">
         <div className="col-span-2">
-          <Input 
-            value={prefix || ""} 
+          <Input
+            value={prefix || ""}
             placeholder="PRE"
             onChange={e => onPrefixChange(e.target.value)}
             onBlur={onSave}
@@ -77,17 +85,17 @@ function NumberingRow({
           />
         </div>
         <div className="col-span-3">
-          <Input 
+          <Input
             type="number"
-            value={seq || 1} 
+            value={seq || 1}
             onChange={e => onSeqChange(parseInt(e.target.value) || 1)}
             onBlur={onSave}
             className="h-9 rounded-xl font-mono text-xs text-center"
           />
         </div>
         <div className="col-span-2">
-          <Input 
-            value={suffix || ""} 
+          <Input
+            value={suffix || ""}
             placeholder="SUF"
             onChange={e => onSuffixChange(e.target.value)}
             onBlur={onSave}
@@ -130,11 +138,14 @@ function InventoryToggleRow({
 }
 
 export default function ConfigurationPage() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const focus = searchParams.get("focus");
+  const onboarding = searchParams.get("onboarding") === "true";
   const unitsRef = React.useRef<HTMLDivElement | null>(null);
   const groupsRef = React.useRef<HTMLDivElement | null>(null);
   const sundriesRef = React.useRef<HTMLDivElement | null>(null);
+  const numberingRef = React.useRef<HTMLDivElement | null>(null);
 
   const [units, setUnits] = React.useState<UnitRecord[]>([]);
   const [groups, setGroups] = React.useState<ItemGroupRecord[]>([]);
@@ -184,6 +195,20 @@ export default function ConfigurationPage() {
   // Company Settings State
   const [company, setCompany] = React.useState<any>(null);
   const [companyForm, setCompanyForm] = React.useState<any>({});
+  const [fiscalSessions, setFiscalSessions] = React.useState<FiscalSessionRecord[]>([]);
+  const [activeFiscalSessionId, setActiveFiscalSessionId] = React.useState<string | undefined>();
+  const [fiscalSessionLockTarget, setFiscalSessionLockTarget] = React.useState<{ id: string; name: string; lock: boolean } | null>(null);
+  const [fiscalYearStartDate, setFiscalYearStartDate] = React.useState({ ad: "", bs: "" });
+  const [fiscalYearEndDate, setFiscalYearEndDate] = React.useState({ ad: "", bs: "" });
+  const [addFiscalSessionOpen, setAddFiscalSessionOpen] = React.useState(false);
+  const [nextFiscalYearTarget, setNextFiscalYearTarget] = React.useState<{
+    sessionId: string;
+    startDate: { ad: string; bs: string };
+    endDate: { ad: string; bs: string };
+  } | null>(null);
+  const [companyExpanded, setCompanyExpanded] = React.useState(onboarding);
+  const [savingNumbering, setSavingNumbering] = React.useState(false);
+  const [savedSuccessNumbering, setSavedSuccessNumbering] = React.useState(false);
 
   // Custom Dialog States
   const [confirmState, setConfirmState] = React.useState<{
@@ -203,7 +228,7 @@ export default function ConfigurationPage() {
     setLoading(true);
     setError(null);
     try {
-      const [uRes, gRes, sRes, pmRes, stRes, ptRes, cRes, invRes, whRes] = await Promise.all([
+      const [uRes, gRes, sRes, pmRes, stRes, ptRes, cRes, activeFiscalSession, fiscalSessionRes, invRes, whRes] = await Promise.all([
         listUnits({ take: 100 }),
         listItemGroups({ take: 100 }),
         listBillSundries({ take: 100 }),
@@ -211,6 +236,8 @@ export default function ConfigurationPage() {
         listSaleTypes({ take: 100 }),
         listPurchaseTypes({ take: 100 }),
         getCompany(),
+        getActiveFiscalSession(),
+        listFiscalSessions(),
         getInventorySettings(),
         listWarehouses({ isActive: true })
       ]);
@@ -222,6 +249,13 @@ export default function ConfigurationPage() {
       setPurchaseTypes(normalizeList<any>(ptRes));
       setCompany(cRes);
       setCompanyForm(cRes);
+      setFiscalSessions(normalizeList<FiscalSessionRecord>(fiscalSessionRes));
+      setActiveFiscalSessionId(activeFiscalSession?.id);
+      const startAd = activeFiscalSession?.startDate.slice(0, 10) ?? "";
+      const endAd = activeFiscalSession?.endDate.slice(0, 10) ?? "";
+      setFiscalYearStartDate({ ad: startAd, bs: startAd ? adToBs(startAd) : "" });
+      setFiscalYearEndDate({ ad: endAd, bs: endAd ? adToBs(endAd) : "" });
+      setCompanyExpanded(onboarding || !cRes?.onboardingCompleted);
       setInventorySettings(invRes);
       setWarehouses(normalizeList<Warehouse>(whRes));
     } catch (e: unknown) {
@@ -268,8 +302,22 @@ export default function ConfigurationPage() {
         setExpandedSection("sundries");
         sundriesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       }
+      if (focus === "numbering") {
+        setExpandedSection("numbering");
+        setTimeout(() => {
+          numberingRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 100);
+      }
     }
   }, [focus, loading]);
+
+  React.useEffect(() => {
+    if (expandedSection === "numbering" && numberingRef.current) {
+      setTimeout(() => {
+        numberingRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    }
+  }, [expandedSection]);
 
   const onRemoveUnit = (id: string) => {
     const item = units.find(u => u.id === id);
@@ -286,7 +334,7 @@ export default function ConfigurationPage() {
   const onRemoveSundry = (id: string) => {
     const item = sundries.find(s => s.id === id);
     if (!item) return;
-    
+
     const systemNames = ["Discount", "Shipping & Handling", "Packaging Charges", "Insurance", "Round Off", "VAT"];
     if (systemNames.includes(item.name)) {
       setAlertState({
@@ -298,13 +346,13 @@ export default function ConfigurationPage() {
     }
     setConfirmState({ id, name: item.name, type: "sundry", open: true });
   };
-  
+
   const onRemovePaymentMethod = (id: string) => {
     const item = paymentMethods.find(pm => pm.id === id);
     if (!item) return;
     setConfirmState({ id, name: item.name, type: "payment-method", open: true });
   };
-  
+
   const onRemoveSaleType = (id: string) => {
     const item = saleTypes.find(st => st.id === id);
     if (!item) return;
@@ -321,7 +369,7 @@ export default function ConfigurationPage() {
     setBusy(true);
     setError(null);
     try {
-      const res = await updateCompany({ ...companyForm, ...updates });
+      const res = await updateCompany(updates);
       setCompany(res);
       setCompanyForm(res);
       // Optional: Show success toast/message
@@ -329,6 +377,117 @@ export default function ConfigurationPage() {
       setError(e?.message ?? "Failed to update company settings.");
     } finally {
       setBusy(false);
+    }
+  };
+
+  const completeOnboarding = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await completeCompanyOnboarding({
+        name: companyForm.name,
+        address: companyForm.address,
+        phone: companyForm.phone,
+        mobileNumber: companyForm.mobileNumber,
+        email: companyForm.email,
+        ownerName: companyForm.ownerName,
+        panVatNumber: companyForm.panVatNumber,
+        companyRegistrationNumber: companyForm.companyRegistrationNumber,
+        localRegistrationNumber: companyForm.localRegistrationNumber,
+        dftqcNumber: companyForm.dftqcNumber,
+        tole: companyForm.tole,
+        province: companyForm.province,
+        district: companyForm.district,
+        localLevel: companyForm.localLevel,
+        ward: companyForm.ward,
+        fiscalYearStartMonth: Number(fiscalYearStartDate.bs.slice(5, 7)),
+        fiscalYearStartDateBs: fiscalYearStartDate.bs,
+      });
+      setCompany({ ...company, ...result });
+      setCompanyForm((current: any) => ({ ...current, ...result }));
+      navigate("/dashboard", { replace: true });
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to complete company setup.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSwitchFiscalSession = async (sessionId: string) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await switchFiscalSession(sessionId);
+      await fetchData();
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to switch financial year.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleToggleFiscalSessionLock = async (sessionId: string, locked: boolean) => {
+    const session = fiscalSessions.find((item) => item.id === sessionId);
+    if (session) setFiscalSessionLockTarget({ id: sessionId, name: session.name, lock: locked });
+  };
+
+  const confirmFiscalSessionLock = async (credentials: { reason: string; password?: string; totpCode?: string }) => {
+    if (!fiscalSessionLockTarget) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await lockFiscalSession(fiscalSessionLockTarget.id, { lock: fiscalSessionLockTarget.lock, ...credentials });
+      await fetchData();
+      setFiscalSessionLockTarget(null);
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to update fiscal-year lock.");
+      throw e;
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSaveAllNumbering = async () => {
+    try {
+      setSavingNumbering(true);
+      await saveCompanySettings({
+        invoicePrefix: companyForm.invoicePrefix,
+        nextInvoiceNumber: companyForm.nextInvoiceNumber,
+        invoiceSuffix: companyForm.invoiceSuffix,
+        purchasePrefix: companyForm.purchasePrefix,
+        nextPurchaseNumber: companyForm.nextPurchaseNumber,
+        purchaseSuffix: companyForm.purchaseSuffix,
+        salesReturnPrefix: companyForm.salesReturnPrefix,
+        nextSalesReturnNumber: companyForm.nextSalesReturnNumber,
+        salesReturnSuffix: companyForm.salesReturnSuffix,
+        purchaseReturnPrefix: companyForm.purchaseReturnPrefix,
+        nextPurchaseReturnNumber: companyForm.nextPurchaseReturnNumber,
+        purchaseReturnSuffix: companyForm.purchaseReturnSuffix,
+        receiptPrefix: companyForm.receiptPrefix,
+        nextReceiptNumber: companyForm.nextReceiptNumber,
+        receiptSuffix: companyForm.receiptSuffix,
+        paymentPrefix: companyForm.paymentPrefix,
+        nextPaymentNumber: companyForm.nextPaymentNumber,
+        paymentSuffix: companyForm.paymentSuffix,
+        journalPrefix: companyForm.journalPrefix,
+        nextJournalNumber: companyForm.nextJournalNumber,
+        journalSuffix: companyForm.journalSuffix,
+        quotationPrefix: companyForm.quotationPrefix,
+        nextQuotationNumber: companyForm.nextQuotationNumber,
+        quotationSuffix: companyForm.quotationSuffix,
+        orderPrefix: companyForm.orderPrefix,
+        nextOrderNumber: companyForm.nextOrderNumber,
+        orderSuffix: companyForm.orderSuffix,
+        purchaseOrderPrefix: companyForm.purchaseOrderPrefix,
+        nextPurchaseOrderNumber: companyForm.nextPurchaseOrderNumber,
+        purchaseOrderSuffix: companyForm.purchaseOrderSuffix,
+      });
+      setSavedSuccessNumbering(true);
+      setTimeout(() => setSavedSuccessNumbering(false), 2500);
+    } catch (err) {
+      console.error("Failed to save numbering settings:", err);
+    } finally {
+      setSavingNumbering(false);
     }
   };
 
@@ -401,6 +560,26 @@ export default function ConfigurationPage() {
     }
   };
 
+  const companySetupFieldsComplete = [
+    companyForm.name,
+    companyForm.email,
+    companyForm.ownerName,
+    companyForm.province,
+    companyForm.district,
+    companyForm.localLevel,
+  ].every((value) => typeof value === "string" && value.trim().length > 0);
+  const fiscalYearDatesComplete = Boolean(fiscalYearStartDate.bs && fiscalYearEndDate.bs && fiscalYearStartDate.ad <= fiscalYearEndDate.ad);
+  const fiscalYearInvoiceSuffix = fiscalYearDatesComplete
+    ? `${fiscalYearStartDate.bs.slice(2, 4)}/${fiscalYearEndDate.bs.slice(2, 4)}`
+    : "--";
+  const invoiceNumberExample = fiscalYearDatesComplete
+    ? formatVoucherNumber(companyForm.invoicePrefix || "SI", companyForm.nextInvoiceNumber ?? 1, fiscalYearInvoiceSuffix)
+    : "--";
+  const companyAddressComplete = companySetupFieldsComplete && Number.isInteger(companyForm.ward) && companyForm.ward > 0 && fiscalYearDatesComplete;
+  const selectedProvince = NEPAL_ADDRESS_DATA.find((province) => province.name === companyForm.province);
+  const selectedDistrict = selectedProvince?.districts.find((district) => district.name === companyForm.district);
+  const selectedLocalLevel = selectedDistrict?.localLevels.find((localLevel) => localLevel.name === companyForm.localLevel);
+
   const handleReorderUnits = async (newUnits: UnitRecord[]) => {
     setUnits(newUnits);
     try {
@@ -472,8 +651,130 @@ export default function ConfigurationPage() {
     <div className="space-y-6">
       <PageHeader
         title="Configuration"
-        description="Manage item units, groups, and bill sundries used across the system."
+        description={onboarding ? "Finish your company details before using your workspace." : "Manage company details and operating defaults."}
       />
+
+      <section className="border border-border bg-card">
+        <div className="flex items-center justify-between gap-4 p-5 sm:p-6">
+        <button
+          type="button"
+          className="flex min-w-0 flex-1 items-center gap-4 text-left"
+          onClick={() => setCompanyExpanded((expanded) => !expanded)}
+          aria-expanded={companyExpanded}
+        >
+          <span className="flex items-start gap-3">
+            <span className="mt-0.5 flex h-8 w-8 items-center justify-center">
+              {companyExpanded ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
+            </span>
+            <Building2 className="mt-1 h-5 w-5 text-primary" />
+            <span>
+              <span className="block text-lg font-semibold">Company Information</span>
+              <span className="block text-sm text-muted-foreground">{company?.onboardingCompleted ? "Used on invoices, reports, and company documents." : "Add your company details to finish workspace setup."}</span>
+            </span>
+          </span>
+        </button>
+        {!company?.onboardingCompleted && <Button onClick={completeOnboarding} disabled={busy || loading || !companyAddressComplete}>{busy ? "Saving..." : "Complete Setup"}</Button>}
+        </div>
+        {companyExpanded && <div className="space-y-5 px-5 pb-5 sm:px-6 sm:pb-6">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2 sm:col-span-2">
+              <label htmlFor="company-name" className="text-sm font-medium">Company Name{!company?.onboardingCompleted && <span className="text-destructive"> *</span>}</label>
+              <Input id="company-name" className="h-11" required={!company?.onboardingCompleted} value={companyForm.name ?? ""} onChange={(event) => setCompanyForm({ ...companyForm, name: event.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="company-owner-name" className="text-sm font-medium">Owner Name{!company?.onboardingCompleted && <span className="text-destructive"> *</span>}</label>
+              <Input id="company-owner-name" className="h-11" required={!company?.onboardingCompleted} value={companyForm.ownerName ?? ""} onChange={(event) => setCompanyForm({ ...companyForm, ownerName: event.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="company-phone" className="text-sm font-medium">Phone</label>
+              <Input id="company-phone" className="h-11" value={companyForm.phone ?? ""} onChange={(event) => setCompanyForm({ ...companyForm, phone: event.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="company-email" className="text-sm font-medium">Company Email{!company?.onboardingCompleted && <span className="text-destructive"> *</span>}</label>
+              <Input id="company-email" className="h-11" type="email" required={!company?.onboardingCompleted} value={companyForm.email ?? ""} onChange={(event) => setCompanyForm({ ...companyForm, email: event.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="company-mobile-number" className="text-sm font-medium">Mobile Number</label>
+              <Input id="company-mobile-number" className="h-11" type="tel" value={companyForm.mobileNumber ?? ""} onChange={(event) => setCompanyForm({ ...companyForm, mobileNumber: event.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="company-pan-vat" className="text-sm font-medium">PAN/VAT Number</label>
+              <Input id="company-pan-vat" className="h-11" value={companyForm.panVatNumber ?? ""} onChange={(event) => setCompanyForm({ ...companyForm, panVatNumber: event.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="company-registration" className="text-sm font-medium">Company Registration Number</label>
+              <Input id="company-registration" className="h-11" value={companyForm.companyRegistrationNumber ?? ""} onChange={(event) => setCompanyForm({ ...companyForm, companyRegistrationNumber: event.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="company-local-registration" className="text-sm font-medium">Local Registration Number</label>
+              <Input id="company-local-registration" className="h-11" value={companyForm.localRegistrationNumber ?? ""} onChange={(event) => setCompanyForm({ ...companyForm, localRegistrationNumber: event.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="company-dftqc" className="text-sm font-medium">DFTQC Number</label>
+              <Input id="company-dftqc" className="h-11" value={companyForm.dftqcNumber ?? ""} onChange={(event) => setCompanyForm({ ...companyForm, dftqcNumber: event.target.value })} />
+            </div>
+            <div className="sm:col-span-2 border-t border-border pt-5 mt-1">
+              <h3 className="text-sm font-semibold">Address</h3>
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="company-province" className="text-sm font-medium">Province{!company?.onboardingCompleted && <span className="text-destructive"> *</span>}</label>
+              <select id="company-province" required={!company?.onboardingCompleted} className="h-11 w-full border border-input bg-background px-3 text-sm" value={companyForm.province ?? ""} onChange={(event) => setCompanyForm({ ...companyForm, province: event.target.value, district: "", localLevel: "", ward: undefined })}>
+                <option value="">Select province</option>
+                {NEPAL_ADDRESS_DATA.map((province) => <option key={province.code} value={province.name}>{province.name}</option>)}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="company-district" className="text-sm font-medium">District{!company?.onboardingCompleted && <span className="text-destructive"> *</span>}</label>
+              <select id="company-district" required={!company?.onboardingCompleted} className="h-11 w-full border border-input bg-background px-3 text-sm disabled:cursor-not-allowed disabled:opacity-50" disabled={!selectedProvince} value={companyForm.district ?? ""} onChange={(event) => setCompanyForm({ ...companyForm, district: event.target.value, localLevel: "", ward: undefined })}>
+                <option value="">Select district</option>
+                {selectedProvince?.districts.map((district) => <option key={district.code} value={district.name}>{district.name}</option>)}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="company-local-level" className="text-sm font-medium">Local Level{!company?.onboardingCompleted && <span className="text-destructive"> *</span>}</label>
+              <select id="company-local-level" required={!company?.onboardingCompleted} className="h-11 w-full border border-input bg-background px-3 text-sm disabled:cursor-not-allowed disabled:opacity-50" disabled={!selectedDistrict} value={companyForm.localLevel ?? ""} onChange={(event) => setCompanyForm({ ...companyForm, localLevel: event.target.value, ward: undefined })}>
+                <option value="">Select local level</option>
+                {selectedDistrict?.localLevels.map((localLevel) => <option key={localLevel.code} value={localLevel.name}>{localLevel.name}</option>)}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="company-ward" className="text-sm font-medium">Ward{!company?.onboardingCompleted && <span className="text-destructive"> *</span>}</label>
+              <select id="company-ward" required={!company?.onboardingCompleted} className="h-11 w-full border border-input bg-background px-3 text-sm disabled:cursor-not-allowed disabled:opacity-50" disabled={!selectedLocalLevel} value={companyForm.ward ?? ""} onChange={(event) => setCompanyForm({ ...companyForm, ward: event.target.value ? Number(event.target.value) : undefined })}>
+                <option value="">Select ward</option>
+                {selectedLocalLevel?.wards.map((ward) => <option key={ward} value={ward}>Ward {ward}</option>)}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="company-tole" className="text-sm font-medium">Tole (Local Address)</label>
+              <Input id="company-tole" className="h-11" value={companyForm.tole ?? ""} onChange={(event) => setCompanyForm({ ...companyForm, tole: event.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="company-address" className="text-sm font-medium">Address Line / Landmark</label>
+              <Input id="company-address" className="h-11" value={companyForm.address ?? ""} onChange={(event) => setCompanyForm({ ...companyForm, address: event.target.value })} />
+            </div>
+            <div className="space-y-4 border-t border-border pt-5 mt-1 sm:col-span-2">
+              <div>
+                <h3 className="text-sm font-semibold">Fiscal Year</h3>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <DualDateInput label="Start Date" required={!company?.onboardingCompleted} disabled={Boolean(company?.onboardingCompleted)} value={fiscalYearStartDate} onChange={(value) => {
+                  setFiscalYearStartDate(value);
+                  setFiscalYearEndDate(getFiscalYearEndDate(value.bs));
+                  setCompanyForm((current: any) => ({ ...current, fiscalYearStartMonth: value.bs ? Number(value.bs.slice(5, 7)) : undefined }));
+                }} />
+                <DualDateInput label="End Date (calculated)" disabled value={fiscalYearEndDate} onChange={() => {}} />
+              </div>
+              {!company?.onboardingCompleted && <div className="flex items-center justify-between border-t border-border pt-3 text-sm">
+                <span className="text-muted-foreground">Invoice number example</span>
+                <span className="font-semibold tabular-nums">{invoiceNumberExample}</span>
+              </div>}
+            </div>
+          </div>
+          <div className="flex justify-end gap-3">
+          {company?.onboardingCompleted && <Button variant="outline" onClick={() => saveCompanySettings({ name: companyForm.name, address: companyForm.address, phone: companyForm.phone, mobileNumber: companyForm.mobileNumber, email: companyForm.email?.trim() || null, ownerName: companyForm.ownerName, panVatNumber: companyForm.panVatNumber, companyRegistrationNumber: companyForm.companyRegistrationNumber, localRegistrationNumber: companyForm.localRegistrationNumber, dftqcNumber: companyForm.dftqcNumber, province: companyForm.province, district: companyForm.district, localLevel: companyForm.localLevel, ward: companyForm.ward, tole: companyForm.tole })} disabled={busy || loading}>Save Company Information</Button>}
+          </div>
+        </div>}
+      </section>
 
       {error && (
         <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
@@ -489,7 +790,7 @@ export default function ConfigurationPage() {
       <div className="grid gap-6 lg:grid-cols-2 items-start">
         {/* Units Section */}
         <Card ref={unitsRef} className={cn("glass-card overflow-hidden", focus === "units" && "ring-2 ring-blue-500/50")}>
-          <CardHeader 
+          <CardHeader
             onClick={() => setExpandedSection(expandedSection === "units" ? null : "units")}
             className={cn("flex flex-row items-center justify-between cursor-pointer hover:bg-accent/10 transition-colors select-none", expandedSection === "units" ? "pb-2" : "pb-4")}
           >
@@ -568,7 +869,7 @@ export default function ConfigurationPage() {
 
         {/* Groups Section */}
         <Card ref={groupsRef} className={cn("glass-card overflow-hidden", focus === "groups" && "ring-2 ring-orange-500/50")}>
-          <CardHeader 
+          <CardHeader
             onClick={() => setExpandedSection(expandedSection === "groups" ? null : "groups")}
             className={cn("flex flex-row items-center justify-between cursor-pointer hover:bg-accent/10 transition-colors select-none", expandedSection === "groups" ? "pb-2" : "pb-4")}
           >
@@ -647,7 +948,7 @@ export default function ConfigurationPage() {
 
         {/* Bill Sundries Section */}
         <Card ref={sundriesRef} className={cn("glass-card overflow-hidden lg:col-span-2", focus === "sundries" && "ring-2 ring-indigo-500/50")}>
-          <CardHeader 
+          <CardHeader
             onClick={() => setExpandedSection(expandedSection === "sundries" ? null : "sundries")}
             className={cn("flex flex-row items-center justify-between cursor-pointer hover:bg-accent/10 transition-colors select-none", expandedSection === "sundries" ? "pb-2" : "pb-4")}
           >
@@ -747,7 +1048,7 @@ export default function ConfigurationPage() {
 
         {/* Payment Methods Section */}
         <Card className={cn("glass-card overflow-hidden", expandedSection === "payment-methods" && "ring-2 ring-emerald-500/50")}>
-          <CardHeader 
+          <CardHeader
             onClick={() => setExpandedSection(expandedSection === "payment-methods" ? null : "payment-methods")}
             className={cn("flex flex-row items-center justify-between cursor-pointer hover:bg-accent/10 transition-colors select-none", expandedSection === "payment-methods" ? "pb-2" : "pb-4")}
           >
@@ -829,7 +1130,7 @@ export default function ConfigurationPage() {
 
         {/* Trade Types Section (Sales & Purchase) */}
         <Card className={cn("glass-card overflow-hidden", expandedSection === "trade-types" && "ring-2 ring-indigo-500/50")}>
-          <CardHeader 
+          <CardHeader
             onClick={() => setExpandedSection(expandedSection === "trade-types" ? null : "trade-types")}
             className={cn("flex flex-row items-center justify-between cursor-pointer hover:bg-accent/10 transition-colors select-none", expandedSection === "trade-types" ? "pb-2" : "pb-4")}
           >
@@ -849,7 +1150,7 @@ export default function ConfigurationPage() {
           {expandedSection === "trade-types" && (
             <CardContent className="animate-in fade-in slide-in-from-top-1 duration-200">
               <div className="grid gap-6 md:grid-cols-2">
-                
+
                 {/* Sales Types Section */}
                 <div className="space-y-4 rounded-2xl border border-slate-100 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/20 p-4">
                   <div className="flex items-center justify-between">
@@ -863,7 +1164,7 @@ export default function ConfigurationPage() {
                       <Plus className="h-4 w-4 mr-1" /> Add
                     </Button>
                   </div>
-                  
+
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
@@ -932,7 +1233,7 @@ export default function ConfigurationPage() {
                       <Plus className="h-4 w-4 mr-1" /> Add
                     </Button>
                   </div>
-                  
+
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
@@ -993,9 +1294,32 @@ export default function ConfigurationPage() {
           )}
         </Card>
 
+        {company?.onboardingCompleted && <FiscalSessionsPanel
+          sessions={fiscalSessions}
+          activeSessionId={activeFiscalSessionId}
+          loading={loading}
+          busy={busy}
+          expanded={expandedSection === "sessions"}
+          onToggle={() => setExpandedSection(expandedSection === "sessions" ? null : "sessions")}
+          onAdd={() => setAddFiscalSessionOpen(true)}
+          onCreateNext={(sessionId) => {
+            const session = fiscalSessions.find((item) => item.id === sessionId);
+            if (!session) return;
+            const nextStartAdDate = new Date(`${session.endDate.slice(0, 10)}T12:00:00.000Z`);
+            nextStartAdDate.setUTCDate(nextStartAdDate.getUTCDate() + 1);
+            const startAd = nextStartAdDate.toISOString().slice(0, 10);
+            const startDate = { ad: startAd, bs: adToBs(startAd) };
+            const endDate = getFiscalYearEndDate(startDate.bs);
+            setError(null);
+            setNextFiscalYearTarget({ sessionId, startDate, endDate });
+          }}
+          onSwitch={handleSwitchFiscalSession}
+          onToggleLock={handleToggleFiscalSessionLock}
+        />}
+
         {/* Inventory Configuration Section */}
         <Card className={cn("glass-card overflow-hidden lg:col-span-2", expandedSection === "inventory" && "ring-2 ring-emerald-500/50")}>
-          <CardHeader 
+          <CardHeader
             className="cursor-pointer hover:bg-muted/50 transition-colors select-none"
             onClick={() => setExpandedSection(expandedSection === "inventory" ? null : "inventory")}
           >
@@ -1014,9 +1338,9 @@ export default function ConfigurationPage() {
                   </div>
                 </div>
               </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 className="rounded-xl"
                 disabled={busy}
                 onClick={(e) => { e.stopPropagation(); refreshInventoryConfiguration(); }}
@@ -1025,7 +1349,7 @@ export default function ConfigurationPage() {
               </Button>
             </div>
           </CardHeader>
-          
+
           {expandedSection === "inventory" && (
             <CardContent className="space-y-5 pt-0 animate-in fade-in slide-in-from-top-1">
               {!inventorySettings ? (
@@ -1088,7 +1412,7 @@ export default function ConfigurationPage() {
 
         {/* System & Regional Preferences Section */}
         <Card className={cn("glass-card overflow-hidden lg:col-span-2")}>
-          <CardHeader 
+          <CardHeader
             onClick={() => setExpandedSection(expandedSection === "regional" ? null : "regional")}
             className={cn("flex flex-row items-center justify-between cursor-pointer hover:bg-accent/10 transition-colors select-none", expandedSection === "regional" ? "pb-2" : "pb-4")}
           >
@@ -1125,8 +1449,8 @@ export default function ConfigurationPage() {
                         onClick={() => setCalendarPreference(pref)}
                         className={cn(
                           "flex-1 py-3 rounded-xl text-xs font-bold transition-all duration-200",
-                          calendarPreference === pref 
-                            ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30 ring-1 ring-blue-500/50" 
+                          calendarPreference === pref
+                            ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30 ring-1 ring-blue-500/50"
                             : "text-muted-foreground hover:bg-background/50 hover:text-foreground"
                         )}
                       >
@@ -1153,8 +1477,8 @@ export default function ConfigurationPage() {
                         onClick={() => setDateFormat(pref)}
                         className={cn(
                           "flex-1 py-3 rounded-xl text-xs font-bold uppercase transition-all duration-200",
-                          dateFormat === pref 
-                            ? "bg-emerald-600 text-white shadow-lg shadow-emerald-500/30 ring-1 ring-emerald-500/50" 
+                          dateFormat === pref
+                            ? "bg-emerald-600 text-white shadow-lg shadow-emerald-500/30 ring-1 ring-emerald-500/50"
                             : "text-muted-foreground hover:bg-background/50 hover:text-foreground"
                         )}
                       >
@@ -1181,8 +1505,8 @@ export default function ConfigurationPage() {
                         onClick={() => setDefaultDateRange(range)}
                         className={cn(
                           "py-2 px-2 rounded-xl text-[10px] font-bold uppercase tracking-tight transition-all duration-200 border",
-                          defaultDateRange === range 
-                            ? "bg-orange-500 border-orange-400 text-white shadow-md shadow-orange-500/30" 
+                          defaultDateRange === range
+                            ? "bg-orange-500 border-orange-400 text-white shadow-md shadow-orange-500/30"
                             : "bg-transparent border-transparent text-muted-foreground hover:bg-background/50 hover:text-foreground"
                         )}
                       >
@@ -1210,8 +1534,8 @@ export default function ConfigurationPage() {
                           onClick={() => setCurrencySymbol(symbol)}
                           className={cn(
                             "flex-1 py-3 rounded-xl text-[10px] font-bold transition-all duration-200",
-                            currencySymbol === symbol 
-                              ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30 ring-1 ring-indigo-500/50" 
+                            currencySymbol === symbol
+                              ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30 ring-1 ring-indigo-500/50"
                               : "text-muted-foreground hover:bg-background/50 hover:text-foreground"
                           )}
                         >
@@ -1227,8 +1551,8 @@ export default function ConfigurationPage() {
                           onClick={() => setNumberFormat(format)}
                           className={cn(
                             "flex-1 py-3 rounded-xl text-[10px] font-bold transition-all duration-200",
-                            numberFormat === format 
-                              ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30 ring-1 ring-indigo-500/50" 
+                            numberFormat === format
+                              ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30 ring-1 ring-indigo-500/50"
                               : "text-muted-foreground hover:bg-background/50 hover:text-foreground"
                           )}
                         >
@@ -1252,8 +1576,8 @@ export default function ConfigurationPage() {
                     <Monitor className="h-5 w-5 text-indigo-500" />
                     <div className="text-sm font-bold text-foreground">Print Logo on Documents</div>
                   </div>
-                  <Switch 
-                    checked={companyForm.printLogo ?? true} 
+                  <Switch
+                    checked={companyForm.printLogo ?? true}
                     onCheckedChange={(v) => {
                       setCompanyForm({...companyForm, printLogo: v});
                       saveCompanySettings({ printLogo: v });
@@ -1268,7 +1592,7 @@ export default function ConfigurationPage() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Voucher Numbering Section */}
-        <Card className="glass-card overflow-hidden lg:col-span-2">
+        <Card ref={numberingRef} className="glass-card overflow-hidden lg:col-span-2 scroll-mt-6">
           <CardHeader onClick={() => setExpandedSection(expandedSection === "numbering" ? null : "numbering")} className="cursor-pointer hover:bg-accent/10 transition-colors select-none border-b border-border/10">
             <div className="flex items-center gap-4">
               {expandedSection === "numbering" ? (
@@ -1295,8 +1619,8 @@ export default function ConfigurationPage() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-8">
                 {/* Sales Invoice */}
-                <NumberingRow 
-                  label="Sales Invoice" 
+                <NumberingRow
+                  label="Sales Invoice"
                   prefix={companyForm.invoicePrefix}
                   seq={companyForm.nextInvoiceNumber}
                   suffix={companyForm.invoiceSuffix}
@@ -1305,10 +1629,10 @@ export default function ConfigurationPage() {
                   onSuffixChange={v => setCompanyForm({...companyForm, invoiceSuffix: v})}
                   onSave={() => saveCompanySettings({ invoicePrefix: companyForm.invoicePrefix, nextInvoiceNumber: companyForm.nextInvoiceNumber, invoiceSuffix: companyForm.invoiceSuffix })}
                 />
-                
+
                 {/* Purchase Invoice */}
-                <NumberingRow 
-                  label="Purchase Invoice" 
+                <NumberingRow
+                  label="Purchase Invoice"
                   prefix={companyForm.purchasePrefix}
                   seq={companyForm.nextPurchaseNumber}
                   suffix={companyForm.purchaseSuffix}
@@ -1319,8 +1643,8 @@ export default function ConfigurationPage() {
                 />
 
                 {/* Sales Return */}
-                <NumberingRow 
-                  label="Sales Return" 
+                <NumberingRow
+                  label="Sales Return"
                   prefix={companyForm.salesReturnPrefix}
                   seq={companyForm.nextSalesReturnNumber}
                   suffix={companyForm.salesReturnSuffix}
@@ -1331,8 +1655,8 @@ export default function ConfigurationPage() {
                 />
 
                 {/* Purchase Return */}
-                <NumberingRow 
-                  label="Purchase Return" 
+                <NumberingRow
+                  label="Purchase Return"
                   prefix={companyForm.purchaseReturnPrefix}
                   seq={companyForm.nextPurchaseReturnNumber}
                   suffix={companyForm.purchaseReturnSuffix}
@@ -1343,8 +1667,8 @@ export default function ConfigurationPage() {
                 />
 
                 {/* Receipt Voucher */}
-                <NumberingRow 
-                  label="Receipt Voucher" 
+                <NumberingRow
+                  label="Receipt Voucher"
                   prefix={companyForm.receiptPrefix}
                   seq={companyForm.nextReceiptNumber}
                   suffix={companyForm.receiptSuffix}
@@ -1355,8 +1679,8 @@ export default function ConfigurationPage() {
                 />
 
                 {/* Payment Voucher */}
-                <NumberingRow 
-                  label="Payment Voucher" 
+                <NumberingRow
+                  label="Payment Voucher"
                   prefix={companyForm.paymentPrefix}
                   seq={companyForm.nextPaymentNumber}
                   suffix={companyForm.paymentSuffix}
@@ -1367,8 +1691,8 @@ export default function ConfigurationPage() {
                 />
 
                 {/* Journal Voucher */}
-                <NumberingRow 
-                  label="Journal Voucher" 
+                <NumberingRow
+                  label="Journal Voucher"
                   prefix={companyForm.journalPrefix}
                   seq={companyForm.nextJournalNumber}
                   suffix={companyForm.journalSuffix}
@@ -1379,8 +1703,8 @@ export default function ConfigurationPage() {
                 />
 
                 {/* Quotation */}
-                <NumberingRow 
-                  label="Quotation" 
+                <NumberingRow
+                  label="Quotation"
                   prefix={companyForm.quotationPrefix}
                   seq={companyForm.nextQuotationNumber}
                   suffix={companyForm.quotationSuffix}
@@ -1391,8 +1715,8 @@ export default function ConfigurationPage() {
                 />
 
                 {/* Sales Order */}
-                <NumberingRow 
-                  label="Sales Order" 
+                <NumberingRow
+                  label="Sales Order"
                   prefix={companyForm.orderPrefix}
                   seq={companyForm.nextOrderNumber}
                   suffix={companyForm.orderSuffix}
@@ -1403,8 +1727,8 @@ export default function ConfigurationPage() {
                 />
 
                 {/* Purchase Order */}
-                <NumberingRow 
-                  label="Purchase Order" 
+                <NumberingRow
+                  label="Purchase Order"
                   prefix={companyForm.purchaseOrderPrefix}
                   seq={companyForm.nextPurchaseOrderNumber}
                   suffix={companyForm.purchaseOrderSuffix}
@@ -1414,65 +1738,42 @@ export default function ConfigurationPage() {
                   onSave={() => saveCompanySettings({ purchaseOrderPrefix: companyForm.purchaseOrderPrefix, nextPurchaseOrderNumber: companyForm.nextPurchaseOrderNumber, purchaseOrderSuffix: companyForm.purchaseOrderSuffix })}
                 />
               </div>
+
+              <div className="flex justify-end pt-4 border-t border-border/10">
+                <Button
+                  type="button"
+                  onClick={() => handleSaveAllNumbering()}
+                  disabled={savingNumbering}
+                  className={cn(
+                    "gap-2 transition-all px-6 py-2 shadow-md font-medium",
+                    savedSuccessNumbering
+                      ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                      : "bg-indigo-600 hover:bg-indigo-700 text-white"
+                  )}
+                >
+                  {savingNumbering ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Saving Settings...</span>
+                    </>
+                  ) : savedSuccessNumbering ? (
+                    <>
+                      <Check className="h-4 w-4" />
+                      <span>Settings Saved Successfully!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4" />
+                      <span>Save All Numbering Settings</span>
+                    </>
+                  )}
+                </Button>
+              </div>
             </CardContent>
           )}
         </Card>
 
         <div className="space-y-6">
-          {/* Fiscal Year & Security Section */}
-          <Card className="glass-card overflow-hidden">
-            <CardHeader onClick={() => setExpandedSection(expandedSection === "security" ? null : "security")} className="cursor-pointer hover:bg-accent/10 transition-colors select-none">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Shield className="h-5 w-5 text-red-500" />
-                Fiscal & Security
-              </CardTitle>
-              <CardDescription>Lock dates and start month</CardDescription>
-            </CardHeader>
-            {expandedSection === "security" && (
-              <CardContent className="space-y-4 animate-in fade-in slide-in-from-top-1">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      Account Lock Date
-                    </label>
-                    <Input 
-                      type="date"
-                      value={companyForm.lockDate ? new Date(companyForm.lockDate).toISOString().split('T')[0] : ""}
-                      onChange={e => {
-                        const d = e.target.value;
-                        setCompanyForm({...companyForm, lockDate: d || null});
-                        saveCompanySettings({ lockDate: d || null });
-                      }}
-                      className="rounded-xl h-11"
-                    />
-                    <p className="text-[10px] text-muted-foreground italic">No vouchers can be added/modified on or before this date.</p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
-                      <Monitor className="h-4 w-4" />
-                      FY Start Month
-                    </label>
-                    <select 
-                      value={companyForm.fiscalYearStartMonth || 4} 
-                      onChange={e => {
-                        const v = parseInt(e.target.value);
-                        setCompanyForm({...companyForm, fiscalYearStartMonth: v});
-                        saveCompanySettings({ fiscalYearStartMonth: v });
-                      }}
-                      className="w-full h-11 rounded-xl border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                    >
-                      {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
-                        <option key={m} value={m}>{new Date(2000, m-1).toLocaleString('default', { month: 'long' })}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </CardContent>
-            )}
-          </Card>
-
           {/* Global Credit Management */}
           <Card className="glass-card overflow-hidden">
             <CardHeader onClick={() => setExpandedSection(expandedSection === "credit" ? null : "credit")} className="cursor-pointer hover:bg-accent/10 transition-colors select-none">
@@ -1489,9 +1790,9 @@ export default function ConfigurationPage() {
                     <label className="text-xs font-bold uppercase text-muted-foreground">Default Credit Limit (Rs.)</label>
                     <div className="relative">
                       <CreditCard className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input 
+                      <Input
                         type="number"
-                        value={companyForm.creditLimitAmount || 0} 
+                        value={companyForm.creditLimitAmount || 0}
                         onChange={e => setCompanyForm({...companyForm, creditLimitAmount: parseFloat(e.target.value)})}
                         onBlur={() => saveCompanySettings({ creditLimitAmount: companyForm.creditLimitAmount })}
                         className="pl-9 h-11 rounded-xl font-bold text-emerald-600"
@@ -1507,6 +1808,33 @@ export default function ConfigurationPage() {
           </Card>
         </div>
       </div>
+
+      <AddFiscalSessionDialog
+        open={addFiscalSessionOpen}
+        onClose={() => setAddFiscalSessionOpen(false)}
+        onSuccess={() => { void fetchData(); }}
+      />
+
+      <CreateNextFiscalYearDialog
+        open={Boolean(nextFiscalYearTarget)}
+        sessionId={nextFiscalYearTarget?.sessionId}
+        startDate={nextFiscalYearTarget?.startDate}
+        endDate={nextFiscalYearTarget?.endDate}
+        onClose={() => setNextFiscalYearTarget(null)}
+        onSubmit={async (input) => {
+          if (!nextFiscalYearTarget) return;
+          await createNextFiscalSession(nextFiscalYearTarget.sessionId, input);
+          await fetchData();
+        }}
+      />
+
+      <FiscalSessionLockDialog
+        open={Boolean(fiscalSessionLockTarget)}
+        sessionName={fiscalSessionLockTarget?.name ?? ""}
+        lock={fiscalSessionLockTarget?.lock ?? false}
+        onClose={() => setFiscalSessionLockTarget(null)}
+        onSubmit={confirmFiscalSessionLock}
+      />
 
       <AddUnitDialog
         open={addUnitOpen}

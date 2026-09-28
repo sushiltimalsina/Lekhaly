@@ -29,7 +29,7 @@ export default function LoginPage() {
     try {
       const res: any = await login(form);
       if (res?.accessToken) {
-        setToken(res.accessToken);
+        setToken(res.accessToken, res.refreshToken);
         navigate("/dashboard");
       } else {
         throw new Error("Invalid login response");

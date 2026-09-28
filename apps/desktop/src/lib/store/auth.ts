@@ -2,14 +2,17 @@
 
 type AuthState = {
   token: string | null;
+  refreshToken: string | null;
 };
 
 type Listener = (state: AuthState) => void;
 
 const KEY = "lekhaly_token";
+const REFRESH_KEY = "lekhaly_refresh_token";
 
 let state: AuthState = {
   token: typeof window !== "undefined" ? localStorage.getItem(KEY) : null,
+  refreshToken: typeof window !== "undefined" ? localStorage.getItem(REFRESH_KEY) : null,
 };
 
 const listeners = new Set<Listener>();
@@ -19,18 +22,29 @@ function emit() {
 }
 
 export function getToken() {
-  return state.token;
+  return typeof window !== "undefined" ? localStorage.getItem(KEY) : state.token;
 }
 
-export function setToken(token: string) {
-  state = { token };
-  if (typeof window !== "undefined") localStorage.setItem(KEY, token);
+export function getRefreshToken() {
+  return typeof window !== "undefined" ? localStorage.getItem(REFRESH_KEY) : state.refreshToken;
+}
+
+export function setToken(token: string, refreshToken?: string) {
+  state = { token, refreshToken: refreshToken ?? null };
+  if (typeof window !== "undefined") {
+    localStorage.setItem(KEY, token);
+    if (refreshToken) localStorage.setItem(REFRESH_KEY, refreshToken);
+    else localStorage.removeItem(REFRESH_KEY);
+  }
   emit();
 }
 
 export function clearToken() {
-  state = { token: null };
-  if (typeof window !== "undefined") localStorage.removeItem(KEY);
+  state = { token: null, refreshToken: null };
+  if (typeof window !== "undefined") {
+    localStorage.removeItem(KEY);
+    localStorage.removeItem(REFRESH_KEY);
+  }
   emit();
 }
 
@@ -46,8 +60,11 @@ export function initAuthStorageSync() {
   if (typeof window === "undefined") return () => {};
 
   const onStorage = (e: StorageEvent) => {
-    if (e.key !== KEY) return;
-    state = { token: e.newValue };
+    if (e.key !== KEY && e.key !== REFRESH_KEY) return;
+    state = {
+      token: localStorage.getItem(KEY),
+      refreshToken: localStorage.getItem(REFRESH_KEY)
+    };
     emit();
   };
 

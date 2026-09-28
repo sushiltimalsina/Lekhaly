@@ -1,7 +1,9 @@
 // apps/desktop/src/app.tsx
 import React, { useEffect } from "react";
 import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
-import { clearToken, getToken } from "@/lib/store/auth";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { getToken } from "@/lib/store/auth";
+import { getCompany, logout, logoutOnClose } from "@/lib/api/auth";
 
 // Shell Components
 import Sidebar from "@/components/app/sidebar";
@@ -16,6 +18,9 @@ import { cn } from "@/lib/utils";
 // Auth Pages
 import LoginPage from "@/pages/auth/login";
 import RegisterPage from "@/pages/auth/register";
+import ForgotPasswordPage from "@/pages/auth/forgot-password";
+import ResetPasswordPage from "@/pages/auth/reset-password";
+import GoogleCallbackPage from "@/pages/auth/google-callback";
 
 // Main Pages
 import DashboardPage from "@/pages/dashboard";
@@ -97,6 +102,7 @@ import ContraCreatePage from "@/pages/contras/create";
 
 // Configuration & Settings
 import CoaPage from "@/pages/coa";
+import CoaGroupDetailPage from "@/pages/coa/group-detail";
 import BanksPage from "@/pages/banks";
 import UsersPage from "@/pages/users";
 import ConfigurationPage from "@/pages/configuration";
@@ -130,6 +136,18 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = getToken();
   const location = useLocation();
 
+  const publicRoutes = [
+    "/login",
+    "/register",
+    "/forgot-password",
+    "/reset-password",
+    "/google/callback",
+  ];
+
+  if (publicRoutes.includes(location.pathname)) {
+    return <>{children}</>;
+  }
+
   if (!token) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
@@ -139,7 +157,29 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function AppShell({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const isCreationPage = false;
+
+  useEffect(() => {
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+
+    void getCurrentWindow()
+      .onCloseRequested(() => logoutOnClose())
+      .then((stopListening) => {
+        if (disposed) {
+          stopListening();
+        } else {
+          unlisten = stopListening;
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -154,8 +194,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
       if (!getToken()) return;
 
       timeoutId = window.setTimeout(() => {
-        clearToken();
-        navigate("/login");
+        void logout().catch(() => undefined).finally(() => navigate("/login"));
       }, 30 * 60 * 1000);
     };
 
@@ -177,6 +216,19 @@ function AppShell({ children }: { children: React.ReactNode }) {
       events.forEach((eventName) => window.removeEventListener(eventName, resetIdleTimer));
     };
   }, [navigate]);
+
+  useEffect(() => {
+    if (!getToken() || location.pathname === "/configuration") return;
+    let active = true;
+    getCompany()
+      .then((company: any) => {
+        if (active && company && !company.onboardingCompleted) {
+          navigate("/configuration?onboarding=true", { replace: true });
+        }
+      })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, [location.pathname, navigate]);
 
   return (
     <div className="min-h-screen bg-background text-foreground flex overflow-hidden">
@@ -219,6 +271,9 @@ export default function App() {
       {/* Auth Routes */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/google/callback" element={<GoogleCallbackPage />} />
 
       {/* Protected Routes */}
       <Route
@@ -306,6 +361,7 @@ export default function App() {
 
                 {/* Configuration & Settings */}
                 <Route path="/coa" element={<CoaPage />} />
+                <Route path="/coa/:id" element={<CoaGroupDetailPage />} />
                 <Route path="/banks" element={<BanksPage />} />
                 <Route path="/users" element={<UsersPage />} />
                 <Route path="/configuration" element={<ConfigurationPage />} />
