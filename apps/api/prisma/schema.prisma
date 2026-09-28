@@ -81,6 +81,7 @@ model Company {
   id           String  @id @default(uuid())
   code         String? @unique
   name         String
+  onboardingCompleted Boolean @default(true)
   baseCurrency String  @default("NPR")
   timezone     String  @default("Asia/Kathmandu")
 
@@ -89,9 +90,20 @@ model Company {
   // Profile Information
   address   String?
   phone     String?
+  mobileNumber String?
   email     String?
+  ownerName String?
   panNumber String?
   vatNumber String?
+  panVatNumber             String?
+  companyRegistrationNumber String?
+  localRegistrationNumber   String?
+  dftqcNumber               String?
+  tole                      String?
+  province                  String?
+  district                  String?
+  localLevel                String?
+  ward                      Int?
 
   // numbering + lock settings
   invoicePrefix        String @default("SI")
@@ -192,6 +204,11 @@ model User {
   email        String
   name         String?
   passwordHash String
+  passwordResetTokenHash String?
+  passwordResetTokenExpiresAt DateTime?
+  googleSubject String? @unique
+  linkedinSubject String? @unique
+  microsoftSubject String? @unique
   status       UserStatus @default(active)
 
   totpEnabled          Boolean @default(false)
@@ -336,6 +353,7 @@ model ChartOfAccount {
 
   isPostable Boolean @default(true)
   isActive   Boolean @default(true)
+  isContra   Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1774,6 +1792,9 @@ model FiscalSession {
   startDate DateTime
   endDate   DateTime
   isLocked  Boolean  @default(false)
+  lockChangedAt       DateTime?
+  lockChangedByUserId String?
+  lockReason          String?
 
   // Session-specific numbering + lock settings
   invoicePrefix        String @default("SI")
@@ -1935,15 +1956,15 @@ model LandedCostAllocation {
   id                    String      @id @default(uuid())
   companyId             String
   company               Company     @relation(fields: [companyId], references: [id])
-  
+
   expenseVoucherId      String
   expenseVoucher        Voucher     @relation("LandedCostExpenses", fields: [expenseVoucherId], references: [id])
-  
+
   purchaseVoucherLineId String
   purchaseVoucherLine   VoucherLine @relation("LandedCostTargets", fields: [purchaseVoucherLineId], references: [id])
-  
+
   amount                Decimal     @db.Decimal(14, 2)
-  
+
   createdAt             DateTime    @default(now())
   updatedAt             DateTime    @updatedAt
 
