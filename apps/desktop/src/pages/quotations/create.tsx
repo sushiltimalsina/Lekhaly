@@ -23,6 +23,7 @@ import AddCustomerDialog from "@/components/app/add-customer-dialog";
 import AddBillSundryDialog from "@/components/app/add-bill-sundry-dialog";
 import { useUiState } from "@/lib/store/ui";
 import { useExcelPaste } from "@/hooks/use-excel-paste";
+import { useNextVoucherNumber } from "@/hooks/use-next-voucher-number";
 
 import {
     Plus,
@@ -375,7 +376,7 @@ export default function QuotationCreatePage() {
         partyId: "",
         quotationDate: { bs: "", ad: "" },
         expiryDate: { bs: "", ad: "" },
-        quotationNoDisplay: "System generated",
+        quotationNoDisplay: "",
         referenceNo: "",
         salesType: "vat_13" as any,
         memo: "",
@@ -434,6 +435,7 @@ export default function QuotationCreatePage() {
 
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
+    const { preview: nextQuotationPreview } = useNextVoucherNumber("quotation", !!searchParams.get("id"));
     const [isEditMode, setIsEditMode] = React.useState(true);
     const [quotationStatus, setQuotationStatus] = React.useState<string | null>(null);
 
@@ -879,7 +881,7 @@ export default function QuotationCreatePage() {
                                     <label className="text-xs font-medium text-slate-500">Quotation No.</label>
                                     <Input
                                         ref={quotationNoRef}
-                                        value={form.quotationNoDisplay}
+                                        value={!!searchParams.get("id") ? (form.quotationNoDisplay || "System generated") : (form.quotationNoDisplay || nextQuotationPreview)}
                                         readOnly
                                         className="bg-slate-100 text-slate-500"
                                         tabIndex={-1}

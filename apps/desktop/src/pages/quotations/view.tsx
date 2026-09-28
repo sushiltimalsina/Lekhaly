@@ -41,6 +41,9 @@ import {
     DropdownMenuTrigger
 } from "@lekhaly/ui";
 
+const SALES_ORDER_DRAFT_KEY = "lekhaly.salesOrderSourceDraft";
+const SALES_INVOICE_DRAFT_KEY = "lekhaly.salesInvoiceSourceDraft";
+
 export default function QuotationDetailPage() {
     const params = useParams();
     const navigate = useNavigate();
@@ -107,22 +110,49 @@ export default function QuotationDetailPage() {
         }
     }
 
-    async function onConvert() {
-        if (!id) return;
-        setActionLoading(true);
+    const buildSalesSourceDraft = () => {
+        if (!id || !quotation) throw new Error("Quotation is not loaded.");
+        const quoteLines = Array.isArray(quotation.items) ? quotation.items : [];
+        if (!quoteLines.length) throw new Error("Quotation has no item lines.");
+        return {
+            sourceType: "quotation",
+            sourceId: id,
+            sourceNo: quotation.quotationNo,
+            partyId: quotation.partyId || quotation.party?.id || "",
+            partyName: quotation.partyName || quotation.party?.name || "",
+            referenceNo: quotation.quotationNo,
+            salesType: quotation.salesType || "vat_13",
+            memo: quotation.memo || undefined,
+            notes: quotation.notes || quotation.additionalNote || undefined,
+            terms: quotation.terms || undefined,
+            termsText: quotation.terms || undefined,
+            lines: quoteLines.map((line: any) => ({
+                itemId: line.itemId || line.item?.id || "",
+                qty: Number(line.qty || 0),
+                rate: Number(line.rate || 0),
+                unit: line.item?.unit || line.unit || undefined,
+                description: line.description || line.item?.name || undefined
+            })).filter((line: any) => line.itemId && line.qty > 0),
+            sundries: quotation.sundries || []
+        };
+    };
+
+    function onConvert() {
         try {
-            const res: any = await convertToSalesOrder(id);
-            const orderId = res?.id ?? res?.salesOrderId;
+            window.localStorage.setItem(SALES_ORDER_DRAFT_KEY, JSON.stringify(buildSalesSourceDraft()));
             setConfirmConvert(false);
-            if (orderId) {
-                navigate(`/sales-orders/${orderId}`);
-            } else {
-                await load();
-            }
+            navigate("/sales-orders/create");
         } catch (e: any) {
-            setError(e?.message ?? "Failed to convert to sales order");
-        } finally {
-            setActionLoading(false);
+            setError(e?.message ?? "Failed to prepare sales order");
+        }
+    }
+
+    function onCreateSalesInvoice() {
+        try {
+            window.localStorage.setItem(SALES_INVOICE_DRAFT_KEY, JSON.stringify(buildSalesSourceDraft()));
+            navigate("/sales/create");
+        } catch (e: any) {
+            setError(e?.message ?? "Failed to prepare sales invoice");
         }
     }
 
@@ -197,11 +227,21 @@ export default function QuotationDetailPage() {
                             className="rounded-2xl h-11 bg-orange-600 text-white font-black text-xs uppercase tracking-widest px-8 shadow-lg shadow-orange-500/20 hover:bg-orange-700 hover:scale-105 active:scale-95 transition-all"
                         >
                             <ArrowUpRight className="mr-2 h-4 w-4" />
-                            Convert to Order
+                            Create Sales Order
                         </Button>
                     )}
 
-                    {status === "sent" && (
+                                        {status === "accepted" && (
+                        <Button
+                            onClick={onCreateSalesInvoice}
+                            disabled={actionLoading}
+                            className="rounded-2xl h-11 bg-emerald-600 text-white font-black text-xs uppercase tracking-widest px-8 shadow-lg shadow-emerald-500/20 hover:bg-emerald-700 hover:scale-105 active:scale-95 transition-all"
+                        >
+                            <FileText className="mr-2 h-4 w-4" />
+                            Create Sales Invoice
+                        </Button>
+                    )}
+{status === "sent" && (
                         <Button
                             onClick={() => setConfirmAccept(true)}
                             disabled={actionLoading}
@@ -413,8 +453,8 @@ export default function QuotationDetailPage() {
 
             <ConfirmDialog
                 open={confirmConvert}
-                title="Convert to Sales Order?"
-                description="Convert this accepted quotation into an active Sales Order. This will close the quotation and create a new order registry."
+                title="Create sales order from quotation?"
+                description="Create an editable sales order draft from this quotation."
                 confirmText="Create Sales Order"
                 onConfirm={onConvert}
                 onCancel={() => setConfirmConvert(false)}

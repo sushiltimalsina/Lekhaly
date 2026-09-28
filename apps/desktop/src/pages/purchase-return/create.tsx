@@ -1,3 +1,4 @@
+import { useNextVoucherNumber } from "@/hooks/use-next-voucher-number";
 "use client";
 
 import * as React from "react";
@@ -336,7 +337,9 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
 }
 
 export default function PurchaseReturnCreatePage() {
-    const [mounted, setMounted] = React.useState(false);
+  const [searchParamsForSkip] = useSearchParams();
+  const isEditModeFromQuery = !!searchParamsForSkip.get("id");
+      const [mounted, setMounted] = React.useState(false);
 
     const purchaseDateRef = React.useRef<HTMLInputElement>(null);
     const vendorInvoiceDateRef = React.useRef<HTMLInputElement>(null);
@@ -455,6 +458,7 @@ export default function PurchaseReturnCreatePage() {
     const ui = useUiState();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
+  const { preview: nextReturnPreview } = useNextVoucherNumber("purchaseReturn", !!searchParams.get("id"));
     const [isEditMode, setIsEditMode] = React.useState(true);
     const [voucherStatus, setVoucherStatus] = React.useState<string | null>(null);
 
@@ -807,15 +811,7 @@ export default function PurchaseReturnCreatePage() {
     return (
         <div className="space-y-6" onPaste={handlePaste}>
             <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                <div className="mb-4">
-                    <Button
-                        onClick={() => navigate("/purchase-return")}
-                        className="rounded-full h-10 px-4 bg-white text-slate-900 border border-slate-200 hover:bg-sky-600 hover:text-white hover:border-sky-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 dark:hover:bg-sky-600 dark:hover:text-white dark:hover:border-sky-600 transition-colors shadow-sm"
-                    >
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to Registry
-                    </Button>
-                </div>
+                
 
                 <PageHeader
                     icon={PackageMinus}
@@ -874,7 +870,7 @@ export default function PurchaseReturnCreatePage() {
                                 <span className="text-xs text-muted-foreground">Return No.</span>
                                 <Input
                                     ref={invoiceNoRef}
-                                    value={form.referenceNo || form.voucherNumber}
+                                    value={!!searchParams.get("id") ? (form.referenceNo || form.voucherNumber || "System generated") : (form.referenceNo || form.voucherNumber || nextReturnPreview)}
                                     className="h-11 rounded-2xl bg-slate-50/60 dark:bg-slate-900/60 font-medium"
                                     disabled={true}
                                 />

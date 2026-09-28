@@ -23,6 +23,8 @@ import { cn } from "@/lib/utils";
 import { Button } from "@lekhaly/ui";
 import AdvancedFilterBar from "@/components/app/advanced-filter-bar";
 
+const PURCHASE_INVOICE_DRAFT_KEY = "lekhaly.purchaseInvoiceSourceDraft";
+
 export default function PurchaseOrdersListPage() {
     const router = useRouter();
     const [settings, setSettings] = React.useState(getSettings());
@@ -139,6 +141,29 @@ export default function PurchaseOrdersListPage() {
         }));
     };
 
+    const createPurchaseInvoiceFromOrder = (order: any) => {
+        const orderLines = Array.isArray(order.items) ? order.items : [];
+        if (!orderLines.length) return;
+        window.localStorage.setItem(PURCHASE_INVOICE_DRAFT_KEY, JSON.stringify({
+            sourceType: "purchase_order",
+            sourceId: order.id,
+            sourceNo: order.orderNo,
+            partyId: order.partyId || order.party?.id || "",
+            partyName: order.partyName || order.party?.name || "",
+            referenceNo: order.orderNo,
+            purchaseType: order.purchaseType || "vat_13",
+            memo: order.memo || undefined,
+            lines: orderLines.map((line: any) => ({
+                itemId: line.itemId || line.item?.id || "",
+                qty: Number(line.qty || 0),
+                rate: Number(line.rate || 0),
+                unit: line.item?.unit || line.unit || undefined,
+                description: line.description || line.itemName || line.item?.name || undefined
+            })).filter((line: any) => line.itemId && line.qty > 0),
+            sundries: order.sundries || []
+        }));
+        router.push("/purchase/create");
+    };
     const getFulfillmentBadge = (order: PurchaseOrderRecord) => {
         if (order.status === "received") {
             return <div className="flex flex-col items-center">
@@ -363,7 +388,12 @@ export default function PurchaseOrdersListPage() {
                                                 <tr className="bg-slate-50/50 dark:bg-slate-900/20">
                                                     <td colSpan={visibleColumns.length + 1} className="px-6 py-4">
                                                         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-                                                            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Procured Items Inventory</h4>
+                                                                                                                        <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                                                <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Procured Items Inventory</h4>
+                                                                <Button size="sm" onClick={() => createPurchaseInvoiceFromOrder(order)} className="h-9 rounded-xl bg-orange-600 text-white hover:bg-orange-700">
+                                                                    <FileText className="mr-2 h-3.5 w-3.5" /> Create Purchase Invoice
+                                                                </Button>
+                                                            </div>
                                                             <table className="w-full text-xs">
                                                                 <thead>
                                                                     <tr className="border-b border-slate-100 dark:border-slate-800">

@@ -720,15 +720,7 @@ function PurchaseOrderCreateContent() {
     return (
         <div className="space-y-6">
             <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                <div className="mb-4">
-                    <Button
-                        onClick={() => router.push("/purchase-orders")}
-                        className="rounded-full h-10 px-4 bg-white text-slate-900 border border-slate-200 hover:!bg-orange-600 hover:!text-white hover:!border-orange-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm"
-                    >
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to Registry
-                    </Button>
-                </div>
+                
                 <PageHeader
                     icon={ShoppingBag}
                     title={searchParams.get("id") ? (isEditMode ? "Edit Purchase Order" : "View Purchase Order") : "Create New Purchase Order"}
@@ -781,7 +773,7 @@ function PurchaseOrderCreateContent() {
                     {/* Top Row: Supplier & Meta */}
                     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                         {/* Supplier */}
-                        <div className="space-y-4 rounded-2xl bg-slate-50 p-4 dark:bg-slate-900/50">
+                        <div className="space-y-4 rounded-3xl border border-orange-100 bg-white p-5 shadow-sm dark:border-orange-950/40 dark:bg-slate-900/50">
                             <div className="flex items-center justify-between">
                                 <label className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                                     Supplier
@@ -811,7 +803,7 @@ function PurchaseOrderCreateContent() {
                         </div>
 
                         {/* Dates & No */}
-                        <div className="col-span-1 space-y-4 rounded-2xl bg-slate-50 p-4 dark:bg-slate-900/50 lg:col-span-2">
+                        <div className="col-span-1 space-y-4 rounded-3xl border border-orange-100 bg-white p-5 shadow-sm dark:border-orange-950/40 dark:bg-slate-900/50 lg:col-span-2">
                             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                 <div className="space-y-1">
                                     <label className="text-xs font-medium text-slate-500">Order Date</label>
@@ -1053,7 +1045,7 @@ function PurchaseOrderCreateContent() {
                         </div>
 
                         {/* Totals */}
-                        <div className="space-y-4 rounded-2xl bg-slate-50 p-6 dark:bg-slate-900/50">
+                        <div className="space-y-4 rounded-3xl border border-orange-100 bg-white p-6 shadow-sm dark:border-orange-950/40 dark:bg-slate-900/50">
                             {/* Sundries UI (Reuse) */}
                             <div className="flex items-center justify-between">
                                 <h3 className="font-semibold">Bill Sundries</h3>
@@ -1123,7 +1115,7 @@ function PurchaseOrderCreateContent() {
 
                 {/* Footer Actions */}
                 {isEditMode && (
-                    <div className="mt-8 flex items-center justify-end gap-4 rounded-2xl bg-slate-50 p-4 dark:bg-slate-900/50">
+                    <div className="mt-8 flex items-center justify-end gap-4 rounded-3xl border border-orange-100 bg-white p-4 shadow-sm dark:border-orange-950/40 dark:bg-slate-900/50">
                         <Button variant="ghost" onClick={() => router.back()} className="rounded-2xl h-12 px-6 font-bold text-xs uppercase tracking-widest transition-all active:scale-95">Cancel</Button>
                         <Button onClick={onSave} disabled={loading} className="flex-1 md:flex-none rounded-2xl h-12 px-10 font-black text-xs uppercase tracking-widest shadow-xl transition-all hover:scale-105 active:scale-95 shadow-orange-500/25 bg-orange-600 text-white hover:bg-orange-700 border-none">
                             <Save className="mr-2 h-4 w-4" />

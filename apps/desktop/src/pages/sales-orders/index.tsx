@@ -11,7 +11,8 @@ import {
     ShoppingBag,
     FileText,
     Clock,
-    CheckCircle
+    CheckCircle,
+    Truck
 } from "lucide-react";
 import PageHeader from "@/components/app/page-header";
 import StatusBadge, { DocStatus } from "@/components/app/status-badge";
@@ -22,6 +23,8 @@ import { getDateDisplay } from "@/lib/dates/display";
 import { cn } from "@/lib/utils";
 import { Button } from "@lekhaly/ui";
 import AdvancedFilterBar from "@/components/app/advanced-filter-bar";
+
+const SALES_INVOICE_DRAFT_KEY = "lekhaly.salesInvoiceSourceDraft";
 
 export default function SalesOrdersListPage() {
     const navigate = useNavigate();
@@ -139,6 +142,29 @@ export default function SalesOrdersListPage() {
         }));
     };
 
+    const createSalesInvoiceFromOrder = (order: any) => {
+        const orderLines = Array.isArray(order.items) ? order.items : [];
+        if (!orderLines.length) return;
+        window.localStorage.setItem(SALES_INVOICE_DRAFT_KEY, JSON.stringify({
+            sourceType: "sales_order",
+            sourceId: order.id,
+            sourceNo: order.orderNo,
+            partyId: order.partyId || order.party?.id || "",
+            partyName: order.partyName || order.party?.name || "",
+            referenceNo: order.orderNo,
+            salesType: order.salesType || "vat_13",
+            memo: order.memo || undefined,
+            lines: orderLines.map((line: any) => ({
+                itemId: line.itemId || line.item?.id || "",
+                qty: Number(line.qty || 0),
+                rate: Number(line.rate || 0),
+                unit: line.item?.unit || line.unit || undefined,
+                description: line.description || line.itemName || line.item?.name || undefined
+            })).filter((line: any) => line.itemId && line.qty > 0),
+            sundries: order.sundries || []
+        }));
+        navigate("/sales/create");
+    };
     const getFulfillmentBadge = (order: SalesOrderRecord) => {
         if (order.status === "fulfilled") {
             return <div className="flex flex-col items-center">
@@ -362,7 +388,17 @@ export default function SalesOrdersListPage() {
                                                 <tr className="bg-slate-50/50 dark:bg-slate-900/20">
                                                     <td colSpan={visibleColumns.length + 1} className="px-6 py-4">
                                                         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-                                                            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Ordered Items Registry</h4>
+                                                                                                                        <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                                                <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Ordered Items Registry</h4>
+                                                                <div className="flex flex-wrap gap-2">
+                                                                    <Button size="sm" variant="outline" onClick={() => navigate("/inventory/dispatch")} className="h-9 rounded-xl">
+                                                                        <Truck className="mr-2 h-3.5 w-3.5" /> Create Dispatch
+                                                                    </Button>
+                                                                    <Button size="sm" onClick={() => createSalesInvoiceFromOrder(order)} className="h-9 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700">
+                                                                        <FileText className="mr-2 h-3.5 w-3.5" /> Create Sales Invoice
+                                                                    </Button>
+                                                                </div>
+                                                            </div>
                                                             <table className="w-full text-xs">
                                                                 <thead>
                                                                     <tr className="border-b border-slate-100 dark:border-slate-800">

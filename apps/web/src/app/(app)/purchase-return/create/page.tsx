@@ -22,6 +22,7 @@ import { listPurchaseTypes } from "@/lib/api/purchase-types";
 import { getInventorySettings, type InventorySettings } from "@/lib/api/inventory";
 import { listWarehouses, type Warehouse } from "@/lib/api/warehouses";
 import { useUiState } from "@/lib/store/ui";
+import { useNextVoucherNumber } from "@/hooks/use-next-voucher-number";
 
 import {
     Plus,
@@ -328,6 +329,79 @@ function SearchableSelect<T extends { id: string; name?: string }>(props: {
     );
 }
 
+// Hover-dropdown back button for the purchase return create page
+function PurchaseReturnBackButton({ router }: { router: ReturnType<typeof import("next/navigation").useRouter> }) {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const guard = () => typeof window !== "undefined" ? (window as any).lekhalyUnsavedChanges : null;
+
+  const handleBack = () => {
+    const go = () => {
+      if (typeof window !== "undefined" && window.history.length > 1) {
+        router.back();
+      } else {
+        router.push("/purchase-return");
+      }
+    };
+    const g = guard();
+    if (g && !g.requestNavigation(go)) return;
+    go();
+  };
+
+  const handleRegistry = () => {
+    const go = () => router.push("/purchase-return");
+    const g = guard();
+    if (g && !g.requestNavigation(go)) return;
+    go();
+  };
+
+  return (
+    <div
+      ref={ref}
+      className="relative -mt-3.5 mb-14 inline-flex"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <button
+        type="button"
+        onClick={handleBack}
+        className="inline-flex h-9 items-center gap-2 rounded-full border border-slate-200 bg-white pl-3.5 pr-4 text-xs font-bold text-slate-800 shadow-sm transition-all hover:border-sky-500 hover:bg-sky-50 hover:text-sky-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-slate-200 dark:hover:border-sky-500 dark:hover:bg-sky-950/40 dark:hover:text-sky-400"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" />
+        Back
+      </button>
+
+      {/* Hover dropdown showing single Back to Purchase Returns shortcut */}
+      <div
+        className={cn(
+          "absolute left-0 top-full z-50 pt-1.5 min-w-[210px] transition-all duration-150 ease-out",
+          open ? "pointer-events-auto translate-y-0 opacity-100 scale-100" : "pointer-events-none -translate-y-1 opacity-0 scale-95"
+        )}
+      >
+        <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-1 shadow-2xl shadow-slate-900/10 dark:border-zinc-800 dark:bg-zinc-900">
+          <button
+            type="button"
+            onClick={() => { setOpen(false); handleRegistry(); }}
+            className="flex w-full items-center gap-2.5 rounded-xl px-3.5 py-2 text-left text-xs font-bold text-slate-700 transition-colors hover:bg-sky-50 hover:text-sky-700 dark:text-slate-200 dark:hover:bg-sky-950/40 dark:hover:text-sky-400"
+          >
+            <FileText className="h-4 w-4 shrink-0 text-sky-600 dark:text-sky-400" />
+            <span>Back to Purchase Returns</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function PurchaseReturnCreatePage() {
     return (
         <React.Suspense fallback={null}>
@@ -338,6 +412,9 @@ export default function PurchaseReturnCreatePage() {
 
 function PurchaseReturnCreateContent() {
     const [mounted, setMounted] = React.useState(false);
+    const searchParamsForSkip = useSearchParams();
+    const isEditModeForSkip = !!searchParamsForSkip.get("id");
+    const { preview: nextReturnPreview } = useNextVoucherNumber("purchaseReturn", isEditModeForSkip);
 
     const purchaseDateRef = React.useRef<HTMLInputElement>(null);
     const vendorInvoiceDateRef = React.useRef<HTMLInputElement>(null);
@@ -788,16 +865,7 @@ function PurchaseReturnCreateContent() {
     return (
         <div className="space-y-6">
             <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                <div className="mb-4">
-                    <Button
-                        variant="outline"
-                        onClick={() => router.push("/purchase-return")}
-                        className="h-9 px-3 rounded-xl border-slate-200 text-slate-600 font-bold hover:bg-slate-50 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-900 transition-colors"
-                    >
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to Registry
-                    </Button>
-                </div>
+                <PurchaseReturnBackButton router={router} />
 
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-4">
@@ -864,7 +932,7 @@ function PurchaseReturnCreateContent() {
                                 <span className="text-xs text-muted-foreground">Return No.</span>
                                 <Input
                                     ref={invoiceNoRef}
-                                    value={form.referenceNo || form.voucherNumber}
+                                    value={isEditModeForSkip ? (form.referenceNo || form.voucherNumber || "System generated") : (form.referenceNo || form.voucherNumber || nextReturnPreview)}
                                     className="h-11 rounded-2xl bg-slate-50/60 dark:bg-slate-900/60"
                                     disabled={true}
                                 />

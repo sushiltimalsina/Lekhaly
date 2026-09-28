@@ -516,13 +516,11 @@ function PurchaseCreateContent() {
         const now = new Date();
         const ad = now.toISOString().slice(0, 10);
         const bs = toBs(ad);
-        const refNo = Math.floor(100000 + Math.random() * 900000).toString();
 
         setForm((f) => ({
             ...f,
             purchaseDate: { bs, ad },
             vendorInvoiceDate: { bs, ad },
-            referenceNo: refNo,
         }));
     }, [searchParams]);
 
@@ -1096,9 +1094,9 @@ function PurchaseCreateContent() {
                                 <span className="text-xs text-muted-foreground">Invoice No.</span>
                                 <Input
                                     ref={invoiceNoRef}
-                                    value={form.referenceNo || (isEditMode ? "System generated" : nextPurchasePreview)}
+                                    value={isEditModeForSkip ? (form.referenceNo || "System generated") : (form.referenceNo || nextPurchasePreview)}
                                     onChange={(e) => setForm((f) => ({ ...f, referenceNo: e.target.value }))}
-                                    placeholder="Reference No."
+                                    placeholder="Auto-generated"
                                     className="h-11 rounded-2xl bg-slate-50/60 dark:bg-slate-900/60 font-semibold text-slate-700 dark:text-slate-200"
                                     disabled={true}
                                 />

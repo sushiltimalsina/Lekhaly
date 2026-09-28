@@ -386,7 +386,7 @@ function QuotationCreateContent() {
         partyId: "",
         quotationDate: { bs: "", ad: "" },
         expiryDate: { bs: "", ad: "" },
-        quotationNoDisplay: "System generated",
+        quotationNoDisplay: "",
         referenceNo: "",
         salesType: "vat_13" as any,
         memo: "",
@@ -858,7 +858,7 @@ function QuotationCreateContent() {
                                     <label className="text-xs font-medium text-slate-500">Quotation No.</label>
                                     <Input
                                         ref={quotationNoRef}
-                                        value={form.quotationNoDisplay !== "System generated" ? form.quotationNoDisplay : (isEditMode ? "System generated" : nextQuotationPreview)}
+                                        value={isEditModeForSkip ? (form.quotationNoDisplay || "System generated") : (form.quotationNoDisplay || nextQuotationPreview)}
                                         readOnly
                                         className="bg-slate-100 text-slate-500"
                                         tabIndex={-1}

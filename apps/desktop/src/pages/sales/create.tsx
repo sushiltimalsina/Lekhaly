@@ -516,7 +516,7 @@ export default function SalesCreatePage() {
     invoiceDate: { bs: "", ad: "" },
     dueDate: { bs: "", ad: "" },
 
-    invoiceNoDisplay: "System generated",
+    invoiceNoDisplay: "",
     referenceNo: "",
 
     paymentMethod: "" as any,
@@ -1124,7 +1124,7 @@ export default function SalesCreatePage() {
                 <span className="text-xs text-muted-foreground">Invoice No.</span>
                 <Input
                   ref={invoiceNoRef}
-                  value={form.invoiceNoDisplay || (isEditMode ? "System generated" : nextInvoicePreview)}
+                  value={!!searchParams.get("id") ? (form.invoiceNoDisplay || "System generated") : (form.invoiceNoDisplay || nextInvoicePreview)}
                   onChange={(e) => setForm((f) => ({ ...f, invoiceNoDisplay: e.target.value }))}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
@@ -1132,7 +1132,7 @@ export default function SalesCreatePage() {
                       safeFocus(paymentMethodRef.current);
                     }
                   }}
-                  placeholder="System generated"
+                  placeholder="Auto-generated"
                   className="h-11 rounded-2xl bg-slate-50/60 dark:bg-slate-900/60"
                   disabled={true}
                 />

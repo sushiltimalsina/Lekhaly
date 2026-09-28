@@ -500,13 +500,11 @@ export default function PurchaseCreatePage() {
         const now = new Date();
         const ad = now.toISOString().slice(0, 10);
         const bs = toBs(ad);
-        const refNo = Math.floor(100000 + Math.random() * 900000).toString();
 
         setForm((f) => ({
             ...f,
             purchaseDate: { bs, ad },
             vendorInvoiceDate: { bs, ad },
-            referenceNo: refNo,
         }));
     }, [searchParams]);
 
@@ -1087,7 +1085,7 @@ export default function PurchaseCreatePage() {
                                 <span className="text-xs text-muted-foreground">Invoice No.</span>
                                 <Input
                                     ref={invoiceNoRef}
-                                    value={form.referenceNo || (isEditMode ? "System generated" : nextPurchasePreview)}
+                                    value={!!searchParams.get("id") ? (form.referenceNo || "System generated") : (form.referenceNo || nextPurchasePreview)}
                                     onChange={(e) => setForm((f) => ({ ...f, referenceNo: e.target.value }))}
                                     onKeyDown={(e) => {
                                         if (e.key === "Enter") {
@@ -1095,7 +1093,7 @@ export default function PurchaseCreatePage() {
                                             safeFocus(vendorInvoiceNoRef.current);
                                         }
                                     }}
-                                    placeholder="Reference No."
+                                    placeholder="Auto-generated"
                                     className="h-11 rounded-2xl bg-slate-50/60 dark:bg-slate-900/60"
                                     disabled={true} // Auto-generated reference number
                                 />

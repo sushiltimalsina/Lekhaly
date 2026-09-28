@@ -25,6 +25,7 @@ import AddPaymentMethodDialog from "@/components/app/add-payment-method-dialog";
 import AddSaleTypeDialog from "@/components/app/add-sale-type-dialog";
 import AddBillSundryDialog from "@/components/app/add-bill-sundry-dialog";
 import { useExcelPaste } from "@/hooks/use-excel-paste";
+import { useNextVoucherNumber } from "@/hooks/use-next-voucher-number";
 
 import {
     Plus,
@@ -344,9 +345,82 @@ function isoAddDays(iso: string, days: number) {
     return d.toISOString().slice(0, 10);
 }
 
+
+function SalesReturnBackButton({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const guard = () => typeof window !== "undefined" ? (window as any).lekhalyUnsavedChanges : null;
+
+  const handleBack = () => {
+    const go = () => {
+      if (typeof window !== "undefined" && window.history.length > 1) {
+        navigate(-1);
+      } else {
+        navigate("/sales-return");
+      }
+    };
+    const g = guard();
+    if (g && !g.requestNavigation(go)) return;
+    go();
+  };
+
+  const handleRegistry = () => {
+    const go = () => navigate("/sales-return");
+    const g = guard();
+    if (g && !g.requestNavigation(go)) return;
+    go();
+  };
+
+  return (
+    <div
+      ref={ref}
+      className="relative -mt-3.5 mb-14 inline-flex"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <button
+        type="button"
+        onClick={handleBack}
+        className="inline-flex h-9 items-center gap-2 rounded-full border border-slate-200 bg-white pl-3.5 pr-4 text-xs font-bold text-slate-800 shadow-sm transition-all hover:border-rose-500 hover:bg-rose-50 hover:text-rose-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-slate-200 dark:hover:border-rose-500 dark:hover:bg-rose-950/40 dark:hover:text-rose-400"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" />
+        Back
+      </button>
+
+      <div
+        className={cn(
+          "absolute left-0 top-full z-50 pt-1.5 min-w-[210px] transition-all duration-150 ease-out",
+          open ? "pointer-events-auto translate-y-0 opacity-100 scale-100" : "pointer-events-none -translate-y-1 opacity-0 scale-95"
+        )}
+      >
+        <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-1 shadow-2xl shadow-slate-900/10 dark:border-zinc-800 dark:bg-zinc-900">
+          <button
+            type="button"
+            onClick={() => { setOpen(false); handleRegistry(); }}
+            className="flex w-full items-center gap-2.5 rounded-xl px-3.5 py-2 text-left text-xs font-bold text-slate-700 transition-colors hover:bg-rose-50 hover:text-rose-700 dark:text-slate-200 dark:hover:bg-rose-950/40 dark:hover:text-rose-400"
+          >
+            <Undo2 className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" />
+            <span>Back to Sales Returns</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SalesReturnCreatePage() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
+  const { preview: nextReturnPreview } = useNextVoucherNumber("salesReturn", !!searchParams.get("id"));
     const [mounted, setMounted] = React.useState(false);
 
     const invoiceDateRef = React.useRef<HTMLInputElement>(null);
@@ -410,7 +484,7 @@ export default function SalesReturnCreatePage() {
         invoiceDate: { bs: "", ad: "" },
         dueDate: { bs: "", ad: "" },
 
-        invoiceNoDisplay: "System generated",
+        invoiceNoDisplay: "",
         referenceNo: "",
 
         paymentMethod: "" as any,
@@ -775,15 +849,7 @@ export default function SalesReturnCreatePage() {
     return (
         <div className="space-y-6" onPaste={handlePaste}>
             <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                <div className="mb-4">
-                    <Button
-                        onClick={() => navigate("/sales-return")}
-                        className="rounded-full h-10 px-4 bg-white text-slate-900 border border-slate-200 hover:bg-rose-600 hover:text-white hover:border-rose-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-800 transition-colors shadow-sm"
-                    >
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to Registry
-                    </Button>
-                </div>
+                <SalesReturnBackButton navigate={navigate} />
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-4">
                         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-600 text-white shadow-xl shadow-rose-500/20">
@@ -839,10 +905,10 @@ export default function SalesReturnCreatePage() {
                     <div className="grid gap-6 lg:grid-cols-12 lg:pr-[300px]">
                         <div className="lg:col-span-4 space-y-3">
                             <label className="space-y-1 text-sm">
-                                <span className="text-xs text-muted-foreground">Return No.</span>
+                                <span className="text-xs text-muted-foreground">Sales Return No. <span className="text-red-500">*</span></span>
                                 <Input
                                     ref={invoiceNoRef}
-                                    value={form.invoiceNoDisplay}
+                                    value={!!searchParams.get("id") ? (form.invoiceNoDisplay || "System generated") : (form.invoiceNoDisplay || nextReturnPreview)}
                                     onChange={(e) => setForm((f) => ({ ...f, invoiceNoDisplay: e.target.value }))}
                                     onKeyDown={(e) => {
                                         if (e.key === "Enter") {
@@ -850,7 +916,7 @@ export default function SalesReturnCreatePage() {
                                             safeFocus(paymentMethodRef.current);
                                         }
                                     }}
-                                    placeholder="System generated"
+                                    placeholder="Auto-generated"
                                     className="h-11 rounded-2xl bg-slate-50/60 dark:bg-slate-900/60"
                                 />
                             </label>

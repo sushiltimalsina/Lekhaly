@@ -23,6 +23,7 @@ import AddCustomerDialog from "@/components/app/add-customer-dialog";
 import AddBillSundryDialog from "@/components/app/add-bill-sundry-dialog";
 import { listBillSundries, type BillSundryRecord } from "@/lib/api/bill-sundries";
 import { useUiState } from "@/lib/store/ui";
+import { useNextVoucherNumber } from "@/hooks/use-next-voucher-number";
 
 import {
     Plus,
@@ -41,6 +42,8 @@ import { toBs } from "@/lib/dates/bs";
 import { useRouter, useSearchParams } from "next/navigation";
 
 const SALES_INVOICE_DRAFT_KEY = "lekhaly.salesInvoiceSourceDraft";
+
+const SALES_ORDER_DRAFT_KEY = "lekhaly.salesOrderSourceDraft";
 
 // --- Components (SearchableSelect, isoAddDays) - Reused ---
 
@@ -334,6 +337,9 @@ export default function SalesOrderCreatePage() {
 
 function SalesOrderCreateContent() {
     const [mounted, setMounted] = React.useState(false);
+    const searchParamsForSkip = useSearchParams();
+    const isEditModeForSkip = !!searchParamsForSkip.get("id");
+    const { preview: nextOrderPreview } = useNextVoucherNumber("order", isEditModeForSkip);
 
     const dateRef = React.useRef<HTMLInputElement>(null);
     const expectedDeliveryRef = React.useRef<HTMLInputElement>(null);
@@ -377,7 +383,7 @@ function SalesOrderCreateContent() {
         partyId: "",
         orderDate: { bs: "", ad: "" },
         expectedDelivery: { bs: "", ad: "" },
-        orderNoDisplay: "System generated",
+        orderNoDisplay: "",
         customerPoRef: "",
         salesType: "vat_13" as any,
         memo: "",
@@ -458,9 +464,52 @@ function SalesOrderCreateContent() {
                     }
                     return row;
                 }));
-
-                // Load Edit ID if present
+                // Load source document draft when coming from a quotation.
                 const editId = searchParams.get("id");
+                if (!editId && typeof window !== "undefined") {
+                    const rawDraft = window.localStorage.getItem(SALES_ORDER_DRAFT_KEY);
+                    if (rawDraft) {
+                        try {
+                            const draft = JSON.parse(rawDraft);
+                            const draftLines = Array.isArray(draft?.lines) ? draft.lines : [];
+                            if (draftLines.length) {
+                                setForm((f) => ({
+                                    ...f,
+                                    partyId: draft.partyId || "",
+                                    partyName: draft.partyName || "",
+                                    customerPoRef: draft.referenceNo || draft.sourceNo || "",
+                                    salesType: draft.salesType || f.salesType || "vat_13",
+                                    memo: draft.memo || f.memo,
+                                    notes: draft.notes || f.notes,
+                                    terms: draft.terms || f.terms
+                                }));
+                                setLines(draftLines.map((line: any) => ({
+                                    itemId: line.itemId || "",
+                                    qty: String(Number(line.qty || 0)),
+                                    rate: String(Number(line.rate || 0)),
+                                    unit: line.unit || "",
+                                    description: line.description || line.itemName || ""
+                                })));
+                                if (Array.isArray(draft.sundries) && draft.sundries.length) {
+                                    setBillSundries(draft.sundries.map((sn: any) => ({
+                                        id: crypto.randomUUID?.() || Math.random().toString(36).slice(2),
+                                        sundryId: sn.billSundryId || sn.sundryId,
+                                        name: sn.name || "",
+                                        type: sn.type || "add",
+                                        ratePct: String(sn.rate ?? sn.ratePct ?? "0"),
+                                        manualAmount: sn.amount !== undefined ? String(sn.amount) : undefined,
+                                        isManual: sn.amount !== undefined
+                                    })));
+                                }
+                                setSuccess(`Loaded ${draftLines.length} item${draftLines.length === 1 ? "" : "s"} from ${draft.sourceNo || "quotation"}. Review and save the sales order.`);
+                            }
+                        } catch (err) {
+                            console.error("Failed to load sales order source draft", err);
+                        } finally {
+                            window.localStorage.removeItem(SALES_ORDER_DRAFT_KEY);
+                        }
+                    }
+                }
                 if (editId) {
                     setIsEditMode(false);
                     getSalesOrder(editId).then(so => {
@@ -692,16 +741,6 @@ function SalesOrderCreateContent() {
     return (
         <div className="space-y-6">
             <div className="rounded-[28px] border bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                <div className="mb-4">
-                    <Button
-                        variant="ghost"
-                        onClick={() => router.push("/sales-orders")}
-                        className="rounded-full h-10 px-4 text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors"
-                    >
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to Registry
-                    </Button>
-                </div>
                 <PageHeader
                     title={searchParams.get("id") ? (isEditMode ? "Edit Sales Order" : "View Sales Order") : "Create New Sales Order"}
                     description={
@@ -715,7 +754,7 @@ function SalesOrderCreateContent() {
                             {!isEditMode && searchParams.get("id") && (
                                 <Button
                                     onClick={onCreateSalesInvoice}
-                                    className="rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg h-10 px-4"
+                                    className="rounded-full h-10 px-6 bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20 text-xs font-bold uppercase tracking-widest"
                                 >
                                     <FileText className="mr-2 h-4 w-4" />
                                     Create Sales Invoice
@@ -725,7 +764,7 @@ function SalesOrderCreateContent() {
                             {!isEditMode && searchParams.get("id") ? (
                                 <Button
                                     onClick={() => setIsEditMode(true)}
-                                    className="rounded-2xl bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-500/20 h-10 px-6 font-black text-xs uppercase tracking-widest transition-all active:scale-95 border-none"
+                                    className="rounded-full h-10 px-6 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20 text-xs font-bold uppercase tracking-widest transition-all active:scale-95 border-none"
                                 >
                                     Edit
                                 </Button>
@@ -753,7 +792,7 @@ function SalesOrderCreateContent() {
                     {/* Top Row: Customer & Meta */}
                     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                         {/* Customer */}
-                        <div className="space-y-4 rounded-2xl bg-slate-50 p-4 dark:bg-slate-900/50">
+                        <div className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
                             <div className="flex items-center justify-between">
                                 <label className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                                     Customer
@@ -781,7 +820,7 @@ function SalesOrderCreateContent() {
                         </div>
 
                         {/* Dates & No */}
-                        <div className="col-span-1 space-y-4 rounded-2xl bg-slate-50 p-4 dark:bg-slate-900/50 lg:col-span-2">
+                        <div className="col-span-1 space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/50 lg:col-span-2">
                             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                 <div className="space-y-1">
                                     <label className="text-xs font-medium text-slate-500">Order Date</label>
@@ -831,7 +870,7 @@ function SalesOrderCreateContent() {
                                     <label className="text-xs font-medium text-slate-500">Order No.</label>
                                     <Input
                                         ref={orderNoRef}
-                                        value={form.orderNoDisplay}
+                                        value={isEditModeForSkip ? (form.orderNoDisplay || "System generated") : (form.orderNoDisplay || nextOrderPreview)}
                                         readOnly
                                         className="bg-slate-100 text-slate-500"
                                         tabIndex={-1}
@@ -1024,7 +1063,7 @@ function SalesOrderCreateContent() {
                         </div>
 
                         {/* Totals */}
-                        <div className="space-y-4 rounded-2xl bg-slate-50 p-6 dark:bg-slate-900/50">
+                        <div className="space-y-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
                             {/* Sundries UI (Reuse) */}
                             <div className="flex items-center justify-between">
                                 <h3 className="font-semibold">Bill Sundries</h3>
@@ -1094,9 +1133,9 @@ function SalesOrderCreateContent() {
 
                 {/* Footer Actions */}
                 {isEditMode && (
-                    <div className="mt-8 flex items-center justify-end gap-4 rounded-2xl bg-slate-50 p-4 dark:bg-slate-900/50">
+                    <div className="mt-8 flex items-center justify-end gap-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
                         <Button variant="ghost" onClick={() => router.back()}>Cancel</Button>
-                        <Button onClick={onSave} disabled={loading} className="rounded-xl px-8">
+                        <Button onClick={onSave} disabled={loading} className="rounded-full h-12 px-10 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-widest shadow-lg shadow-emerald-500/20">
                             {loading ? "Saving..." : "Save Sales Order"}
                         </Button>
                     </div>
